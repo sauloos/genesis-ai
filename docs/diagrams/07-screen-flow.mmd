@@ -1,0 +1,106 @@
+flowchart TD
+    classDef public      fill:#546e7a,color:#fff,stroke:none
+    classDef auth        fill:#c84b00,color:#fff,stroke:none
+    classDef app         fill:#1565c0,color:#fff,stroke:none
+    classDef generation  fill:#2e7d32,color:#fff,stroke:none
+    classDef brand       fill:#0078d4,color:#fff,stroke:none
+    classDef order       fill:#6a1b9a,color:#fff,stroke:none
+    classDef account     fill:#37474f,color:#fff,stroke:none
+    classDef decision    fill:#f9a825,color:#000,stroke:none
+
+    %% ── Public ───────────────────────────────────────────────────
+    LANDING["🏠 Landing Page\nHero · Features · Pricing · CTA"]:::public
+    PRICING["💰 Pricing Page\nPlan comparison · CTA"]:::public
+    BLOG["📝 Blog / Content\n(Strapi-powered)"]:::public
+
+    %% ── Auth ─────────────────────────────────────────────────────
+    LOGIN["🔐 Login\nEmail + password\nOAuth (future)"]:::auth
+    REGISTER["📝 Register\nName · Email · Password"]:::auth
+    FORGOT["🔑 Forgot Password\nEmail reset link"]:::auth
+    RESET["🔑 Reset Password\nNew password form"]:::auth
+
+    %% ── App Shell ────────────────────────────────────────────────
+    DASHBOARD["📊 Dashboard\nAll brands · Quick actions"]:::app
+
+    %% ── Brand Creation Flow ──────────────────────────────────────
+    NEW_BRAND["➕ New Brand\nName your brand · Choose plan"]:::app
+
+    Q1["💬 Questionnaire — Step 1\nWhat does your business do?"]:::generation
+    Q2["💬 Questionnaire — Step 2\nWho is your audience?"]:::generation
+    Q3["💬 Questionnaire — Step 3\nPersonality · Tone · Competitors"]:::generation
+    QN["💬 Questionnaire — Step N\nAdditional signal questions\n(dynamic, LLM-driven)"]:::generation
+    Q_REVIEW["👁 Signal Review\nExtracted brand signals\nConfirm or adjust"]:::generation
+
+    GENERATING["⚡ Generating...\nReal-time progress via SSE\nCopy · Visuals · Assets\n(runs concurrently)"]:::generation
+
+    %% ── Brand Detail ─────────────────────────────────────────────
+    BRAND_READY["🎉 Brand Ready\nPreview · Download · Share"]:::brand
+    BRAND_DETAIL["🎨 Brand Detail\nFull brand identity view"]:::brand
+    BRAND_ASSETS["📁 Asset Library\nLogos · Colours · Fonts\nSocial templates"]:::brand
+    BRAND_GUIDELINES["📄 Brand Guidelines\nDownloadable PDF"]:::brand
+    BRAND_EVOLVE["🔄 Evolve Brand\nWhat's changed?\nRe-run generation"]:::brand
+
+    %% ── Orders ───────────────────────────────────────────────────
+    PRODUCTS["🛍 Product Catalogue\nBusiness cards · Banners\nMerch · Stationery"]:::order
+    ORDER_CONFIG["⚙️ Configure Order\nQuantity · Variants · Address"]:::order
+    ORDER_PAYMENT["💳 Payment\nStripe checkout"]:::order
+    ORDER_CONFIRM["✅ Order Confirmed\nTracking info"]:::order
+    ORDER_HISTORY["📦 Order History\nStatus · Tracking · Reorder"]:::order
+
+    %% ── Account ──────────────────────────────────────────────────
+    ACCOUNT["👤 Account Settings\nProfile · Email · Password"]:::account
+    BILLING["💳 Billing & Subscription\nPlan · Invoices · Upgrade"]:::account
+
+    %% ── Flows ────────────────────────────────────────────────────
+
+    %% Public navigation
+    LANDING --> LOGIN
+    LANDING --> REGISTER
+    LANDING --> PRICING
+    LANDING --> BLOG
+    PRICING --> REGISTER
+
+    %% Auth flows
+    LOGIN --> DASHBOARD
+    LOGIN --> FORGOT
+    FORGOT --> RESET
+    RESET --> LOGIN
+    REGISTER --> DASHBOARD
+
+    %% Dashboard actions
+    DASHBOARD --> NEW_BRAND
+    DASHBOARD --> BRAND_DETAIL
+    DASHBOARD --> ORDER_HISTORY
+    DASHBOARD --> ACCOUNT
+    DASHBOARD --> BILLING
+
+    %% Brand creation — questionnaire
+    NEW_BRAND --> Q1
+    Q1 --> Q2
+    Q2 --> Q3
+    Q3 --> QN
+    QN -->|enough signals collected| Q_REVIEW
+    Q3 -->|enough signals collected| Q_REVIEW
+    Q_REVIEW -->|confirm| GENERATING
+    Q_REVIEW -->|adjust answers| Q1
+
+    %% Generation → brand ready
+    GENERATING --> BRAND_READY
+
+    %% Brand detail navigation
+    BRAND_READY --> BRAND_DETAIL
+    BRAND_DETAIL --> BRAND_ASSETS
+    BRAND_DETAIL --> BRAND_GUIDELINES
+    BRAND_DETAIL --> PRODUCTS
+    BRAND_DETAIL --> BRAND_EVOLVE
+    BRAND_EVOLVE --> GENERATING
+
+    %% Order flow
+    PRODUCTS --> ORDER_CONFIG
+    ORDER_CONFIG --> ORDER_PAYMENT
+    ORDER_PAYMENT --> ORDER_CONFIRM
+    ORDER_CONFIRM --> ORDER_HISTORY
+
+    %% Back to dashboard
+    BRAND_DETAIL --> DASHBOARD
+    ORDER_HISTORY --> DASHBOARD

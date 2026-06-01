@@ -1,0 +1,86 @@
+flowchart TB
+    classDef customer   fill:#08427b,color:#fff,stroke:none
+    classDef designer   fill:#2e7d32,color:#fff,stroke:none
+    classDef service    fill:#438dd5,color:#fff,stroke:none
+    classDef data       fill:#e8f4f8,color:#000,stroke:#aaa
+    classDef external   fill:#999,color:#fff,stroke:none
+    classDef note       fill:#fff8e1,color:#000,stroke:#f9a825
+
+    NOTE["⚠️  Phase 3 — Low Priority\nAll interfaces and data models provisioned\nbut not built until Phase 1 & 2 are live"]:::note
+
+    %% ── Actors ──────────────────────────────────────────────
+    CUSTOMER["Customer\n(Startup Founder)"]:::customer
+    DESIGNER_A["Designer\n(Freelancer / Studio)"]:::designer
+
+    %% ── Customer flow ───────────────────────────────────────
+    subgraph CUSTOMER_FLOW["  Customer Journey  "]
+        direction TB
+        SELECT["Select Human Fulfilment\ntier at checkout"]:::customer
+        BRIEF_VIEW["View & approve\nBrandDNA brief"]:::customer
+        REVIEW["Review submission\n(approve / request revision)"]:::customer
+        DOWNLOAD["Download final assets"]:::customer
+    end
+
+    %% ── Designer flow ───────────────────────────────────────
+    subgraph DESIGNER_FLOW["  Designer Journey  "]
+        direction TB
+        REGISTER["Register & verify\nportfolio + ID"]:::designer
+        BROWSE["Browse open briefs\n(BrandDNA summary)"]:::designer
+        ACCEPT["Accept brief\n(claim + lock window)"]:::designer
+        UPLOAD["Upload assets\n(logo, colours, fonts, variants)"]:::designer
+        REVISE["Action revision\nrequests"]:::designer
+        PAYOUT["Receive payout\nvia Stripe Connect"]:::designer
+    end
+
+    %% ── Marketplace Service ─────────────────────────────────
+    subgraph DM_SVC["  Designer Marketplace Service  "]
+        direction TB
+        BRIEF_SVC["Brief Service\nPublish BrandDNA as structured brief\nExpiry · Exclusivity window"]:::service
+        ASSIGN_SVC["Assignment Service\nClaim · Lock · Timeout · Re-open"]:::service
+        SUBMISSION_SVC["Submission Service\nAsset validation · Version tracking"]:::service
+        REVIEW_SVC["Review Service\nApproval · Revision rounds · SLA tracking"]:::service
+        PAYOUT_SVC["Payout Service\nEscrow · Release on approval\nStripe Connect split"]:::service
+        PROFILE_SVC["Designer Profile\nPortfolio · Rating · Tier · Availability"]:::service
+    end
+
+    %% ── Data ────────────────────────────────────────────────
+    subgraph DM_DATA["  Data  "]
+        direction LR
+        PG[("PostgreSQL\nBriefs · Assignments\nSubmissions · Reviews\nPayouts")]:::data
+        BLOB[("Blob Storage\nDesigner uploads\nFinal approved assets")]:::data
+        COSMOS[("Cosmos DB\nBrandDNA brief\nsnapshot")]:::data
+    end
+
+    %% ── External ────────────────────────────────────────────
+    SC["Stripe Connect\nMarketplace payouts\nEscrow & split"]:::external
+    NF["Notification Service\n(existing)"]:::external
+
+    %% ── Relationships ───────────────────────────────────────
+    SELECT      --> BRIEF_SVC
+    BRIEF_SVC   --> COSMOS
+    BRIEF_SVC   --> PG
+    BRIEF_VIEW  --> BRIEF_SVC
+
+    REGISTER    --> PROFILE_SVC
+    PROFILE_SVC --> PG
+
+    BROWSE      --> BRIEF_SVC
+    ACCEPT      --> ASSIGN_SVC
+    ASSIGN_SVC  --> PG
+
+    UPLOAD      --> SUBMISSION_SVC
+    SUBMISSION_SVC --> BLOB & PG
+
+    REVIEW      --> REVIEW_SVC
+    REVISE      --> SUBMISSION_SVC
+    REVIEW_SVC  --> PG
+
+    REVIEW_SVC  -->|CustomerApproved| PAYOUT_SVC
+    PAYOUT_SVC  --> SC
+    SC          --> PAYOUT
+
+    DOWNLOAD    --> BLOB
+
+    ASSIGN_SVC  --> NF
+    REVIEW_SVC  --> NF
+    PAYOUT_SVC  --> NF

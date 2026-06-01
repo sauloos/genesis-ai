@@ -1,0 +1,30 @@
+# Environment
+.env
+.env.local
+
+# Dependencies
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+
+# Build output
+dist/
+build/
+target/
+*.jar
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Assets (large binary files — store references in DB, files in blob storage)
+knowledge/assets/
+
+# Claude Code local settings
+.claude/settings.local.json

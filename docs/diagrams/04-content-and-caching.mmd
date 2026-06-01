@@ -1,0 +1,99 @@
+flowchart TB
+    classDef user     fill:#08427b,color:#fff,stroke:none
+    classDef frontend fill:#1168bd,color:#fff,stroke:none
+    classDef service  fill:#438dd5,color:#fff,stroke:none
+    classDef cache    fill:#e8a838,color:#000,stroke:none
+    classDef cdn      fill:#e86a38,color:#fff,stroke:none
+    classDef cms      fill:#67ab9f,color:#000,stroke:none
+    classDef data     fill:#e8f4f8,color:#000,stroke:#aaa
+    classDef external fill:#999,color:#fff,stroke:none
+
+    %% ── Users ───────────────────────────────────────────────
+    subgraph USERS["  👤 Users  "]
+        direction LR
+        CUSTOMER["Customer\nBrowser"]:::user
+        EDITOR["Content Editor\nDarrell's Team"]:::user
+    end
+
+    %% ── CDN Layer ───────────────────────────────────────────
+    subgraph CDN_LAYER["  🌐  Edge / CDN Layer  "]
+        direction LR
+        CDN["Azure CDN\nImmutable asset URLs\nAggressive cache headers\n/assets/{brandId}/{version}/{file}"]:::cdn
+        CDN_CONTENT["Azure CDN\nUI static files\nReact build artefacts"]:::cdn
+    end
+
+    %% ── Frontend ─────────────────────────────────────────────
+    subgraph FRONT["  🖥  Frontend  "]
+        SPA["React SPA\nOnboarding · Dashboard · Orders"]:::frontend
+    end
+
+    %% ── Platform Services ───────────────────────────────────
+    subgraph PLATFORM["  ⚙️  Platform Services  "]
+        direction LR
+        GW["API Gateway"]:::service
+        ADMIN["Admin Service\nQuestionnaire config\nPrompt templates\nTier rules"]:::service
+        ASSET_SVC["Asset Service\nServes brand assets\nVersion-addressed URLs"]:::service
+    end
+
+    %% ── CMS Layer ───────────────────────────────────────────
+    subgraph CMS_LAYER["  📝  Content Management  "]
+        direction LR
+        STRAPI["Strapi CMS\nSelf-hosted on AKS\nMarketing copy · FAQs\nEmail templates · Blog\nPricing page content"]:::cms
+        APP_CFG["Azure App Config\nFeature flags\nTier feature switches\nA/B test config\nRuntime settings"]:::cms
+    end
+
+    %% ── Cache Layer ─────────────────────────────────────────
+    subgraph CACHE_LAYER["  ⚡  Cache Layer  "]
+        direction LR
+        REDIS_SESSION["Redis\nSessions · Rate limits\nGateway state"]:::cache
+        REDIS_GEN["Redis\nGeneration cache\nInput hash → output\nCuts repeat AI costs"]:::cache
+        REDIS_ASSET["Redis\nAsset search cache\nStock image queries\nFont recommendations"]:::cache
+    end
+
+    %% ── Storage ─────────────────────────────────────────────
+    subgraph STORAGE["  🗄  Storage — Azure  "]
+        direction LR
+        BLOB_ASSETS[("Blob Storage\nGenerated assets\nLogos · PDFs · Images\n(CDN origin)")]:::data
+        BLOB_STATIC[("Blob Storage\nStatic UI files\n(CDN origin)")]:::data
+        PG[("PostgreSQL\nCMS overrides\nAdmin config")]:::data
+    end
+
+    %% ── Generation Pipeline ─────────────────────────────────
+    GEN["Generation Pipeline\nCopy · Visual · Asset Composer"]:::service
+
+    %% ── Relationships ───────────────────────────────────────
+
+    %% User → CDN → SPA
+    CUSTOMER        -->|"Brand assets\n(logos, PDFs)"| CDN
+    CUSTOMER        -->|"App load"| CDN_CONTENT
+    CDN             -->|"Cache miss"| BLOB_ASSETS
+    CDN_CONTENT     -->|"Cache miss"| BLOB_STATIC
+    CDN             --> SPA
+    CDN_CONTENT     --> SPA
+
+    %% Editor → CMS
+    EDITOR          --> STRAPI
+    EDITOR          --> ADMIN
+
+    %% SPA → Platform
+    SPA             --> GW
+    GW              --> ASSET_SVC
+    GW              --> ADMIN
+    GW              --> REDIS_SESSION
+
+    %% Asset service → storage
+    ASSET_SVC       --> BLOB_ASSETS
+
+    %% CMS → SPA (content API)
+    STRAPI          -->|"Content API"| GW
+    APP_CFG         --> GW
+    APP_CFG         --> ADMIN
+
+    %% Admin config feeds generation
+    ADMIN           -->|"Prompt templates\nQuestionnaire flow"| GEN
+    ADMIN           --> PG
+
+    %% Generation → cache checks
+    GEN             -->|"Check cache\nbefore calling AI"| REDIS_GEN
+    GEN             -->|"Asset search cache"| REDIS_ASSET
+    GEN             -->|"Write outputs\nto blob"| BLOB_ASSETS

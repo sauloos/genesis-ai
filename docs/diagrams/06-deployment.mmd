@@ -1,0 +1,123 @@
+flowchart TB
+    classDef user       fill:#08427b,color:#fff,stroke:none
+    classDef gateway    fill:#c84b00,color:#fff,stroke:none
+    classDef pod        fill:#1565c0,color:#fff,stroke:none
+    classDef phase3     fill:#6a1b9a,color:#fff,stroke:none
+    classDef azdata     fill:#0078d4,color:#fff,stroke:none
+    classDef azsupport  fill:#50a0d0,color:#fff,stroke:none
+    classDef external   fill:#555,color:#fff,stroke:none
+
+    INTERNET["Internet\nCustomers · Designers · Admins"]:::user
+
+    %% ── Edge ──────────────────────────────────────────────────
+    subgraph EDGE["  🌐  Edge  "]
+        AFD["Azure Front Door (Standard/Premium)\nWAF · Global CDN · Path-based routing\n/api/* /ws/* → AKS  ·  /* static → Blob"]:::gateway
+    end
+
+    %% ── AKS ───────────────────────────────────────────────────
+    subgraph AKS["  ☸️  AKS Cluster — Azure Kubernetes Service  "]
+        direction TB
+
+        subgraph NS_INGRESS["  namespace: ingress  "]
+            NGINX["NGINX Ingress Controller\nInternal routing · TLS offload"]:::pod
+            GW["Spring Cloud Gateway\nDeployment + HPA\nAuth · Rate limit · WebSocket / SSE"]:::pod
+        end
+
+        subgraph NS_CORE["  namespace: core  "]
+            direction LR
+            ID["Identity\nService"]:::pod
+            BE["Brand Engine\n(Orchestrator)"]:::pod
+            CV["Conversation\nService"]:::pod
+            OR["Order\nService"]:::pod
+            DL["Delivery\nService"]:::pod
+            NF["Notification\nService"]:::pod
+            ADM["Admin\nService"]:::pod
+        end
+
+        subgraph NS_GEN["  namespace: generation  "]
+            direction LR
+            CP["Copy\nGenerator"]:::pod
+            VG["Visual\nGenerator"]:::pod
+            AC["Asset\nComposer"]:::pod
+        end
+
+        subgraph NS_CMS["  namespace: cms  "]
+            STRAPI["Strapi CMS\nMarketing copy · Blog\nEmail templates"]:::pod
+        end
+
+        subgraph NS_MKT["  namespace: marketplace  ⚠️ Phase 3  "]
+            DM["Designer Marketplace\nService"]:::phase3
+        end
+    end
+
+    %% ── Azure Managed Services ────────────────────────────────
+    subgraph AZ_DATA["  🗄  Azure Managed — Data & Messaging  "]
+        direction LR
+        COSMOS[("Cosmos DB\nBrandDNA docs\nVersioned")]:::azdata
+        PG[("PostgreSQL\nFlexible Server\nUsers · Orders · Billing")]:::azdata
+        BLOB[("Blob Storage\nAssets · PDFs\nDesigner uploads")]:::azdata
+        SB[("Service Bus\nAsync event\npipeline")]:::azdata
+        REDIS[("Redis Cache\nSessions · Rate limits\nGeneration cache")]:::azdata
+    end
+
+    subgraph AZ_AI["  🤖  Azure Managed — AI  "]
+        AOAI["Azure OpenAI\nGPT-4o\nCopy + prompt reasoning"]:::azdata
+    end
+
+    subgraph AZ_OPS["  🔧  Azure Managed — Ops  "]
+        direction LR
+        APP_CFG["App Configuration\nFeature flags · A/B · Runtime settings"]:::azsupport
+        KV["Key Vault\nSecrets · API keys\n(CSI secret driver → AKS)"]:::azsupport
+        ACR["Container Registry\nService images\n(pulled by AKS nodes)"]:::azsupport
+        MONITOR["Azure Monitor\nLogs · Metrics · Alerts"]:::azsupport
+    end
+
+    %% ── External SaaS ─────────────────────────────────────────
+    subgraph EXT["  🌐  External SaaS  "]
+        direction LR
+        STRIPE["Stripe\nCustomer payments"]:::external
+        STRIPE_C["Stripe Connect\nDesigner payouts\n⚠️ Phase 3"]:::external
+        SENDGRID["SendGrid\nTransactional email"]:::external
+        IMG_GEN["Image Gen\nStability AI · Flux"]:::external
+        PRINT["Print Partners\nPrintful · MOO · Gelato"]:::external
+        MERCH["Merch Partners\nPrintify"]:::external
+    end
+
+    %% ── Relationships ─────────────────────────────────────────
+
+    %% Internet → Edge → AKS / Blob
+    INTERNET        --> AFD
+    AFD             --> NGINX
+    NGINX           --> GW
+    AFD             -.->|"/* static & assets"| BLOB
+
+    %% Gateway → Core Services
+    GW              --> ID & BE & OR & DL & STRAPI & ADM & DM
+    GW              --> REDIS
+
+    %% Brand Engine
+    BE              --> CV
+    BE              <--> COSMOS
+    BE              --> SB
+
+    %% Event pipeline → downstream consumers
+    SB              --> CP & VG & AC & DL & NF
+
+    %% Generation
+    CP & VG         --> AOAI
+    VG              --> IMG_GEN
+    AC              --> BLOB
+    DL              --> BLOB
+
+    %% Core service data
+    ID              --> PG & STRIPE
+    OR              --> PG & PRINT & MERCH
+    NF              --> SENDGRID
+    ADM             --> PG
+    DM              --> PG & BLOB & STRIPE_C
+
+    %% Ops wiring (dotted = config / infrastructure, not runtime calls)
+    APP_CFG         -.->|runtime config| GW & ADM
+    KV              -.->|CSI secret driver| AKS
+    ACR             -.->|image pull| AKS
+    AKS             -.->|logs & metrics| MONITOR

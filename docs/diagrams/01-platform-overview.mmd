@@ -1,0 +1,123 @@
+flowchart TB
+    classDef user        fill:#08427b,color:#fff,stroke:none
+    classDef frontend    fill:#1168bd,color:#fff,stroke:none
+    classDef service     fill:#438dd5,color:#fff,stroke:none
+    classDef provider    fill:#85bbf0,color:#000,stroke:none
+    classDef data        fill:#e8f4f8,color:#000,stroke:#aaa
+    classDef external    fill:#999,color:#fff,stroke:none
+    classDef cdn         fill:#e86a38,color:#fff,stroke:none
+    classDef cms         fill:#67ab9f,color:#000,stroke:none
+
+    %% ── Users ──────────────────────────────────────────────
+    subgraph USERS["  👤 Users  "]
+        direction LR
+        CUSTOMER["Customer\nStartup Founder"]:::user
+        ADMIN["Ops / Admin\nGenesis Team"]:::user
+        DESIGNER["Designer\nFreelancer / Studio"]:::user
+    end
+
+    %% ── CDN Layer ───────────────────────────────────────────
+    subgraph CDN_LAYER["  🌐  Edge / CDN Layer  "]
+        direction LR
+        CDN["Azure CDN\nBrand assets · Immutable URLs\n/assets/{brandId}/{version}/{file}"]:::cdn
+        CDN_UI["Azure CDN\nUI static files\nReact build artefacts"]:::cdn
+    end
+
+    %% ── Frontend ────────────────────────────────────────────
+    subgraph FRONT["  🖥  Frontend  "]
+        SPA["React SPA\nOnboarding · Dashboard · Orders · Downloads"]:::frontend
+    end
+
+    %% ── Platform ────────────────────────────────────────────
+    subgraph PLATFORM["  ⚙️  Genesis Platform — AKS on Azure  "]
+        direction TB
+        GW["API Gateway\nSpring Cloud Gateway\nAuth · Routing · Rate Limit · WS"]:::service
+
+        subgraph CORE["Core Services"]
+            direction LR
+            ID["Identity\nUsers · Plans · Billing"]:::service
+            BE["Brand Engine\nOrchestrator · BrandDNA · State Machine"]:::service
+            CV["Conversation\nLLM Questionnaire · Signal Extraction"]:::service
+            OR["Order\nPrint & Merch Routing"]:::service
+            DL["Delivery\nPDF · ZIP · Web Export"]:::service
+            NF["Notification\nEmail · In-app · Webhooks"]:::service
+            ADMIN_SVC["Admin Service\nQuestionnaire config\nPrompt templates · Tier rules"]:::service
+            DM["Designer Marketplace\n⚠️ Phase 3 — Low Priority\nBriefs · Submissions · Payouts"]:::service
+        end
+
+        subgraph CMS_LAYER["Content & Config"]
+            direction LR
+            STRAPI["Strapi CMS\nMarketing copy · FAQs\nEmail templates · Blog"]:::cms
+            APP_CFG["Azure App Config\nFeature flags\nA/B config · Runtime settings"]:::cms
+        end
+
+        subgraph GEN["Generation Services"]
+            direction LR
+            CP["Copy Generator\nMission · Values · Taglines · ToV"]:::service
+            VG["Visual Generator\nLogo · Colours · Typography"]:::service
+            AC["Asset Composer\nAssembles assets from BrandDNA"]:::service
+        end
+    end
+
+    %% ── Provider Layer ──────────────────────────────────────
+    subgraph PROVIDERS["  🔌  Provider Abstraction Layer — Pluggable Adapters  "]
+        direction LR
+        AI["AI Providers\nAzure OAI · OpenAI · Stability · Flux · Internal"]:::provider
+        AS["Asset Providers\nInternal Library · Adobe Stock · Unsplash"]:::provider
+        PR["Print Providers\nPrintful · MOO · Gelato"]:::provider
+        ME["Merch Providers\nPrintify · Custom Suppliers"]:::provider
+    end
+
+    %% ── Data Layer ──────────────────────────────────────────
+    subgraph DATA["  🗄  Data Layer — Azure Managed  "]
+        direction LR
+        COSMOS[("Cosmos DB\nBrandDNA Documents\nVersioned")]:::data
+        PG[("PostgreSQL\nUsers · Orders\nBilling")]:::data
+        BLOB[("Blob Storage\nAssets · PDFs\nImages")]:::data
+        SB[("Service Bus\nAsync Event\nPipeline")]:::data
+        REDIS[("Redis\nSessions · Cache\nRate Limits")]:::data
+    end
+
+    %% ── External ─────────────────────────────────────────────
+    subgraph EXT["  🌐  External Services  "]
+        direction LR
+        AOAI["Azure OpenAI\nGPT-4o"]:::external
+        IMG["Image Gen\nStability · Flux"]:::external
+        STRIPE["Stripe\nPayments"]:::external
+        STRIPE_CONNECT["Stripe Connect\nDesigner Payouts\n⚠️ Phase 3"]:::external
+        PRINT_EXT["Print Partners\nPrintful · MOO"]:::external
+        MERCH_EXT["Merch Partners\nPrintify"]:::external
+        EMAIL["SendGrid\nEmail"]:::external
+    end
+
+    %% ── Relationships ───────────────────────────────────────
+    CUSTOMER & ADMIN & DESIGNER --> CDN & CDN_UI
+    CDN & CDN_UI --> SPA
+    CDN -.->|cache miss| BLOB
+    SPA --> GW
+
+    GW --> ID & BE & OR & DL & STRAPI & ADMIN_SVC & DM
+    GW <-.->|WebSocket / SSE| SPA
+    APP_CFG --> GW & ADMIN_SVC
+
+    BE --> CV
+    BE --> SB
+    BE <--> COSMOS
+
+    SB --> CP & VG & AC & DL & NF
+
+    CP & VG --> AI
+    VG --> AS
+    AC --> BLOB
+    DL --> BLOB
+
+    ID --> PG & STRIPE
+    DM --> PG & BLOB & STRIPE_CONNECT
+    OR --> PG & PR & ME
+    NF --> EMAIL
+    GW --> REDIS
+    ADMIN_SVC --> PG
+
+    AI --> AOAI & IMG
+    PR --> PRINT_EXT
+    ME --> MERCH_EXT

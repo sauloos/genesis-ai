@@ -1,0 +1,86 @@
+flowchart TB
+    classDef api      fill:#08427b,color:#fff,stroke:none
+    classDef core     fill:#1168bd,color:#fff,stroke:none
+    classDef support  fill:#438dd5,color:#fff,stroke:none
+    classDef data     fill:#e8f4f8,color:#000,stroke:#aaa
+    classDef external fill:#85bbf0,color:#000,stroke:none
+
+    %% ── Inbound ─────────────────────────────────────────────
+    GW["API Gateway"]:::external
+    CONV["Conversation Service"]:::external
+
+    %% ── API Layer ───────────────────────────────────────────
+    subgraph API_LAYER["  📡  API Layer  "]
+        BRAND_API["Brand API\nREST Controller\nCRUD · Generation trigger · SSE progress"]:::api
+    end
+
+    %% ── Orchestration ───────────────────────────────────────
+    subgraph ORCH_LAYER["  🎛  Orchestration  "]
+        direction LR
+        ORCH["Generation\nOrchestrator"]:::core
+        SM["Brand\nState Machine"]:::core
+        TIER["Tier Rules\nEngine"]:::core
+        VALID["BrandDNA\nValidator"]:::core
+    end
+
+    %% ── Domain ──────────────────────────────────────────────
+    subgraph DOMAIN_LAYER["  🧬  Domain  "]
+        direction LR
+        DNA["BrandDNA\nService"]:::core
+        VER["Version\nManager"]:::core
+    end
+
+    %% ── Eventing ────────────────────────────────────────────
+    subgraph EVENT_LAYER["  📨  Eventing  "]
+        direction LR
+        PUB["Event\nPublisher"]:::support
+        CON["Event\nConsumer"]:::support
+        RETRY["Retry\nManager"]:::support
+        PROG["Progress\nTracker"]:::support
+    end
+
+    %% ── Data ────────────────────────────────────────────────
+    subgraph DATA_LAYER["  🗄  Data  "]
+        direction LR
+        COSMOS[("Cosmos DB\nBrandDNA")]:::data
+        PG[("PostgreSQL\nState")]:::data
+        SB[("Service Bus")]:::data
+    end
+
+    %% ── Downstream ──────────────────────────────────────────
+    subgraph DOWNSTREAM["  ⚙️  Generation Services  "]
+        direction LR
+        CG["Copy\nGenerator"]:::external
+        VG["Visual\nGenerator"]:::external
+        AC["Asset\nComposer"]:::external
+    end
+
+    %% ── Relationships ───────────────────────────────────────
+    GW          --> BRAND_API
+    CONV        --> BRAND_API
+
+    BRAND_API   --> ORCH
+    BRAND_API   --> DNA
+    BRAND_API   --> PROG
+
+    ORCH        --> SM
+    ORCH        --> TIER
+    ORCH        --> VALID
+    ORCH        --> PUB
+    ORCH        --> DNA
+
+    CON         --> ORCH
+    CON         --> RETRY
+
+    DNA         --> COSMOS
+    DNA         --> VER
+    VER         --> COSMOS
+
+    SM          --> PG
+
+    PUB         --> SB
+    CON         --> SB
+
+    SB          --> CG & VG & AC
+
+    PROG        --> GW

@@ -1,0 +1,213 @@
+flowchart TD
+    classDef public      fill:#546e7a,color:#fff,stroke:none
+    classDef auth        fill:#c84b00,color:#fff,stroke:none
+    classDef app         fill:#1565c0,color:#fff,stroke:none
+    classDef generation  fill:#2e7d32,color:#fff,stroke:none
+    classDef brand       fill:#0078d4,color:#fff,stroke:none
+    classDef order       fill:#6a1b9a,color:#fff,stroke:none
+    classDef account     fill:#37474f,color:#fff,stroke:none
+
+    %% ── Public ───────────────────────────────────────────────────
+    LANDING["🏠 Landing Page
+    Hero · Features · Pricing · CTA
+    ──────────────
+    static — no API calls"]:::public
+
+    PRICING["💰 Pricing Page
+    Plan comparison · CTA
+    ──────────────
+    static — no API calls"]:::public
+
+    BLOG["📝 Blog / Content
+    Strapi-powered
+    ──────────────
+    Strapi: GET /api/articles"]:::public
+
+    %% ── Auth ─────────────────────────────────────────────────────
+    LOGIN["🔐 Login
+    Email + password
+    ──────────────
+    Identity: POST /api/v1/auth/login
+    Identity: POST /api/v1/auth/refresh"]:::auth
+
+    REGISTER["📝 Register
+    Name · Email · Password
+    ──────────────
+    Identity: POST /api/v1/auth/register"]:::auth
+
+    FORGOT["🔑 Forgot Password
+    Email reset link
+    ──────────────
+    Identity: POST /api/v1/auth/password-reset"]:::auth
+
+    RESET["🔑 Reset Password
+    New password form
+    ──────────────
+    Identity: POST /api/v1/auth/password-reset/confirm"]:::auth
+
+    %% ── App Shell ────────────────────────────────────────────────
+    DASHBOARD["📊 Dashboard
+    All brands · Quick actions
+    ──────────────
+    Identity: GET /api/v1/users/me
+    Brand Engine: GET /api/v1/brands"]:::app
+
+    %% ── Brand Creation Flow ──────────────────────────────────────
+    NEW_BRAND["➕ New Brand
+    Name your brand · Choose plan
+    ──────────────
+    Brand Engine: POST /api/v1/brands
+    → Stripe Checkout (plan payment)"]:::app
+
+    Q1["💬 Questionnaire — Step 1
+    What does your business do?
+    ──────────────
+    Conversation: GET /api/v1/conversations/{id}
+    Conversation: POST /api/v1/conversations/{id}/answer"]:::generation
+
+    Q2["💬 Questionnaire — Step 2
+    Who is your audience?
+    ──────────────
+    Conversation: POST /api/v1/conversations/{id}/answer"]:::generation
+
+    Q3["💬 Questionnaire — Step 3
+    Personality · Tone · Competitors
+    ──────────────
+    Conversation: POST /api/v1/conversations/{id}/answer"]:::generation
+
+    QN["💬 Questionnaire — Step N
+    Additional signal questions (dynamic, LLM-driven)
+    ──────────────
+    Conversation: POST /api/v1/conversations/{id}/answer"]:::generation
+
+    Q_REVIEW["👁 Signal Review
+    Extracted brand signals · Confirm or adjust
+    ──────────────
+    Conversation: GET /api/v1/conversations/{id}/signals
+    Conversation: POST /api/v1/conversations/{id}/complete"]:::generation
+
+    GENERATING["⚡ Generating...
+    Real-time progress · Copy · Visuals · Assets (concurrent)
+    ──────────────
+    Brand Engine: GET /sse/brands/{id}/stream  ← SSE"]:::generation
+
+    %% ── Brand Detail ─────────────────────────────────────────────
+    BRAND_READY["🎉 Brand Ready
+    Preview · Download · Share
+    ──────────────
+    Brand Engine: GET /api/v1/brands/{id}
+    Delivery: GET /api/v1/brands/{id}/download"]:::brand
+
+    BRAND_DETAIL["🎨 Brand Detail
+    Full brand identity view
+    ──────────────
+    Brand Engine: GET /api/v1/brands/{id}
+    Brand Engine: GET /api/v1/brands/{id}/dna"]:::brand
+
+    BRAND_ASSETS["📁 Asset Library
+    Logos · Colours · Fonts · Social templates
+    ──────────────
+    Delivery: GET /api/v1/brands/{id}/assets"]:::brand
+
+    BRAND_GUIDELINES["📄 Brand Guidelines
+    Downloadable PDF (Premium + Ultimate)
+    ──────────────
+    Delivery: GET /api/v1/brands/{id}/guidelines"]:::brand
+
+    BRAND_EVOLVE["🔄 Evolve Brand
+    What's changed? · Re-run generation
+    ──────────────
+    Brand Engine: POST /api/v1/brands/{id}/evolve"]:::brand
+
+    %% ── Orders (Phase 2) ─────────────────────────────────────────
+    PRODUCTS["🛍 Product Catalogue
+    Business cards · Banners · Merch · Stationery
+    ──────────────
+    Order: GET /api/v1/products"]:::order
+
+    ORDER_CONFIG["⚙️ Configure Order
+    Quantity · Variants · Delivery address
+    ──────────────
+    Order: GET /api/v1/products/{sku}"]:::order
+
+    ORDER_PAYMENT["💳 Payment
+    Stripe checkout
+    ──────────────
+    Order: POST /api/v1/orders
+    → Stripe Checkout redirect"]:::order
+
+    ORDER_CONFIRM["✅ Order Confirmed
+    Tracking info
+    ──────────────
+    Order: GET /api/v1/orders/{id}"]:::order
+
+    ORDER_HISTORY["📦 Order History
+    Status · Tracking · Reorder
+    ──────────────
+    Order: GET /api/v1/orders"]:::order
+
+    %% ── Account ──────────────────────────────────────────────────
+    ACCOUNT["👤 Account Settings
+    Profile · Email · Password
+    ──────────────
+    Identity: GET /api/v1/users/me
+    Identity: PATCH /api/v1/users/me"]:::account
+
+    BILLING["💳 Billing & Subscription
+    Plan · Invoices · Upgrade
+    ──────────────
+    Identity: GET /api/v1/users/me/subscription"]:::account
+
+    %% ── Flows ────────────────────────────────────────────────────
+
+    %% Public navigation
+    LANDING --> LOGIN
+    LANDING --> REGISTER
+    LANDING --> PRICING
+    LANDING --> BLOG
+    PRICING --> REGISTER
+
+    %% Auth flows
+    LOGIN --> DASHBOARD
+    LOGIN --> FORGOT
+    FORGOT --> RESET
+    RESET --> LOGIN
+    REGISTER --> DASHBOARD
+
+    %% Dashboard actions
+    DASHBOARD --> NEW_BRAND
+    DASHBOARD --> BRAND_DETAIL
+    DASHBOARD --> ORDER_HISTORY
+    DASHBOARD --> ACCOUNT
+    DASHBOARD --> BILLING
+
+    %% Brand creation — questionnaire
+    NEW_BRAND --> Q1
+    Q1 --> Q2
+    Q2 --> Q3
+    Q3 --> QN
+    QN -->|enough signals collected| Q_REVIEW
+    Q3 -->|enough signals collected| Q_REVIEW
+    Q_REVIEW -->|confirm| GENERATING
+    Q_REVIEW -->|adjust answers| Q1
+
+    %% Generation → brand ready
+    GENERATING --> BRAND_READY
+
+    %% Brand detail navigation
+    BRAND_READY --> BRAND_DETAIL
+    BRAND_DETAIL --> BRAND_ASSETS
+    BRAND_DETAIL --> BRAND_GUIDELINES
+    BRAND_DETAIL --> PRODUCTS
+    BRAND_DETAIL --> BRAND_EVOLVE
+    BRAND_EVOLVE --> GENERATING
+
+    %% Order flow
+    PRODUCTS --> ORDER_CONFIG
+    ORDER_CONFIG --> ORDER_PAYMENT
+    ORDER_PAYMENT --> ORDER_CONFIRM
+    ORDER_CONFIRM --> ORDER_HISTORY
+
+    %% Back to dashboard
+    BRAND_DETAIL --> DASHBOARD
+    ORDER_HISTORY --> DASHBOARD

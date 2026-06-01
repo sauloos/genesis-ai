@@ -1,0 +1,43 @@
+stateDiagram-v2
+    title Brand DNA State Machine
+
+    [*] --> DRAFT : ConversationCompleted
+
+    %% ── AI Fulfilment path (default) ───────────────────────
+    DRAFT --> GENERATING : GenerationStarted
+
+    state GENERATING {
+        [*] --> PARALLEL
+        state PARALLEL {
+            CopyGeneration
+            VisualGeneration
+        }
+        PARALLEL --> COMPOSING : AllGeneratorsComplete
+        COMPOSING --> RENDERING : AssetsComposed
+    }
+
+    GENERATING --> READY : RenderingComplete
+    GENERATING --> PARTIAL : SomeGeneratorsFailed
+    GENERATING --> FAILED : CriticalFailure
+
+    READY --> PUBLISHED : CustomerApproved
+    PARTIAL --> GENERATING : RetryFailed
+    FAILED --> DRAFT : Reset
+
+    PUBLISHED --> EVOLVING : RefreshTriggered
+    EVOLVING --> PUBLISHED : RefreshComplete
+
+    PUBLISHED --> ARCHIVED : CustomerCancelled
+
+    %% ── Human Fulfilment path (Phase 3 — Designer Marketplace) ──
+    DRAFT --> AWAITING_DESIGNER : HumanFulfillmentSelected
+
+    state AWAITING_DESIGNER {
+        BriefPublished
+    }
+
+    AWAITING_DESIGNER --> DESIGNER_ASSIGNED : DesignerAccepted
+    DESIGNER_ASSIGNED --> UNDER_REVIEW : DesignerSubmitted
+    UNDER_REVIEW --> PUBLISHED : CustomerApproved
+    UNDER_REVIEW --> DESIGNER_ASSIGNED : RevisionRequested
+    DESIGNER_ASSIGNED --> AWAITING_DESIGNER : DesignerWithdrew
