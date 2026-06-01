@@ -1,0 +1,101 @@
+module: brand-archetypes
+version: 1.0
+description: Brand archetype framework Genesis AI uses to anchor each of the three creative directions. Every direction must be grounded in a specific archetype or strategic position — not arbitrary style choices.
+
+archetypes:
+  - name: The Sage
+    essence: Truth through knowledge
+    drives: Understanding, expertise, insight
+    brand_voice: Clear, authoritative, educational
+    visual_territory: Clean, precise, trustworthy
+    suitable_for: Professional services, education, research, advisory
+
+  - name: The Hero
+    essence: Mastery through courage
+    drives: Proving worth, overcoming adversity, achievement
+    brand_voice: Bold, motivating, direct
+    visual_territory: Strong, dynamic, aspirational
+    suitable_for: Sport, fitness, challenger brands, social causes
+
+  - name: The Creator
+    essence: Innovation through imagination
+    drives: Building something meaningful, self-expression, craft
+    brand_voice: Visionary, original, detail-obsessed
+    visual_territory: Distinctive, expressive, artisan
+    suitable_for: Design, technology, art, fashion, craft
+
+  - name: The Caregiver
+    essence: Service through compassion
+    drives: Protecting others, nurturing, generosity
+    brand_voice: Warm, reassuring, inclusive
+    visual_territory: Soft, approachable, human
+    suitable_for: Healthcare, childcare, wellness, community brands
+
+  - name: The Ruler
+    essence: Control through order
+    drives: Leadership, responsibility, creating prosperity
+    brand_voice: Authoritative, polished, confident
+    visual_territory: Premium, structured, timeless
+    suitable_for: Luxury, finance, legal, enterprise
+
+  - name: The Rebel
+    essence: Revolution through disruption
+    drives: Breaking rules, liberation, radical change
+    brand_voice: Provocative, irreverent, honest
+    visual_territory: Bold, unconventional, raw
+    suitable_for: Counter-culture brands, challenger startups, youth markets
+
+  - name: The Magician
+    essence: Transformation through vision
+    drives: Making dreams real, transformation, vision
+    brand_voice: Inspiring, expansive, transformative
+    visual_territory: Imaginative, mystical, premium
+    suitable_for: Technology, luxury, entertainment, wellness transformation
+
+  - name: The Innocent
+    essence: Safety through simplicity
+    drives: Happiness, honesty, optimism, return to goodness
+    brand_voice: Simple, honest, warm, cheerful
+    visual_territory: Clean, bright, wholesome
+    suitable_for: FMCG, children's brands, ethical/sustainable brands
+
+  - name: The Explorer
+    essence: Freedom through discovery
+    drives: Adventure, authenticity, independence
+    brand_voice: Adventurous, honest, free-spirited
+    visual_territory: Natural, rugged, expansive
+    suitable_for: Outdoor, travel, sustainability, lifestyle
+
+  - name: The Jester
+    essence: Joy through play
+    drives: Fun, humour, living in the moment
+    brand_voice: Playful, irreverent, witty
+    visual_territory: Colourful, energetic, unexpected
+    suitable_for: Entertainment, youth brands, food/drink, social apps
+
+  - name: The Lover
+    essence: Connection through intimacy
+    drives: Passion, sensory pleasure, belonging, relationships
+    brand_voice: Sensual, warm, personal, aspirational
+    visual_territory: Rich, intimate, beautiful
+    suitable_for: Luxury, beauty, food, relationships, lifestyle
+
+  - name: The Everyman
+    essence: Belonging through authenticity
+    drives: Fitting in, being down-to-earth, community
+    brand_voice: Friendly, unpretentious, relatable
+    visual_territory: Approachable, familiar, honest
+    suitable_for: Mass-market, community brands, local businesses
+
+direction_derivation_rules: >
+  When deriving the three directions for a brand:
+  1. Direction 1 (Anchored): Choose the archetype most expected for this industry and audience.
+     This is what the market already understands and trusts.
+  2. Direction 2 (Evolved): Choose an adjacent archetype or a distinctive expression of the same
+     archetype. Still recognisable, but sets the brand apart within its category.
+  3. Direction 3 (Disruptive): Choose an archetype that challenges category conventions.
+     This should feel unexpected but — on reflection — compelling. Only recommend this direction
+     if the brand has the cultural and commercial conviction to sustain it.
+
+  No two directions should share the same archetype unless they represent fundamentally different
+  strategic positions (e.g. Ruler expressed as accessible luxury vs. Ruler as cold authority).

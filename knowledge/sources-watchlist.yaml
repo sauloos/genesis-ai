@@ -1,0 +1,16 @@
+# Genesis AI — Watched Sources
+# The feed monitor checks these periodically for new content.
+# Run: python ingestion/monitor.py
+# Schedule: cron  0 */6 * * *  python /path/to/ingestion/monitor.py
+
+youtube_channels:
+  # Add YouTube channel IDs here. Find them in the channel's About page URL.
+  # - id: UCxxxxxxxxxxxxxxxxxxxxxx
+  #   name: Brand Master Academy
+
+rss_feeds:
+  # Add RSS feed URLs here.
+  # - url: https://brandingstrategyinsider.com/feed
+  #   name: Branding Strategy Insider
+  # - url: https://www.marketingweek.com/feed/
+  #   name: Marketing Week

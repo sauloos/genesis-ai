@@ -15,17 +15,21 @@ Every engagement produces three brand directions — anchored, evolved, and disr
 ## The Two-Layer Knowledge Base
 
 ### Layer 1 — Reasoning Substrate
-The agency's codified methodology. How to read a brief, what signals matter, how to
-evaluate creative output. Structured YAML modules, version-controlled in this repo.
-Updated deliberately when methodology evolves.
+Two sub-layers: **1a — Knowledge Sources** (raw corpus: blog posts, podcast transcripts,
+books, courses, workshop materials — the philosophy behind the agency's approach) and
+**1b — Reasoning Modules** (structured YAML rules distilled from those sources, applied
+at runtime). Sources are not queried directly; they inform the modules.
 
 ```
 knowledge/
   layer1/
-    intake/          brief completeness criteria, probing question frameworks
-    directions/      brand archetype frameworks, direction brief templates
-    evaluation/      copy, logo, and visual quality rubrics
-    assembly/        playbook and brand book structure
+    sources/         raw corpus — blog posts, podcast transcripts, book highlights,
+                     course notes, workshop materials
+    modules/
+      intake/        brief completeness criteria, probing question frameworks
+      directions/    brand archetype frameworks, direction brief templates
+      evaluation/    copy, logo, and visual quality rubrics
+      assembly/      playbook and brand book structure
 ```
 
 ### Layer 2 — Project Memory
@@ -44,7 +48,9 @@ knowledge/
 
 **Model:** Claude Opus 4 with extended thinking
 
-**Responsibilities:**
+Genesis AI operates in two modes — same model, same knowledge base, same brand context:
+
+**Mode 1 — Engagement (background orchestrator):**
 1. Conduct client journey (structured questionnaire + conversational extension)
 2. Decide when brief is complete (Layer 1 completeness criteria)
 3. Derive three creative directions from brief + Layer 1 + Layer 2 precedent
@@ -52,6 +58,13 @@ knowledge/
 5. Evaluate specialist output against Layer 1 rubrics — accept or loop
 6. Instruct assembly of playbook and brand book
 7. Trigger Layer 2 ingestion on completion
+
+**Mode 2 — Consultant (conversational interface):**
+A persistent chat interface where the user consults Genesis AI as a creative director.
+Genesis AI has full context (BrandDNA + Layer 1 + Layer 2) and responds with strategic
+advice, answers brand questions, explains its reasoning, and can propose actions (e.g.
+trigger a new engagement, suggest BrandDNA updates). Conversation history is persisted
+per brand. Responses stream in real time.
 
 ---
 

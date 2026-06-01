@@ -1,0 +1,49 @@
+module: brief-completeness
+version: 1.0
+description: Criteria Genesis AI applies to decide when a client brief is complete enough to proceed to direction derivation.
+
+required_signals:
+  - name: business_name
+    description: The name of the brand or business.
+    probing_question: "What is the name of your brand or business?"
+
+  - name: industry_sector
+    description: The industry or market the brand operates in.
+    probing_question: "What industry or market does your brand operate in?"
+
+  - name: target_audience
+    description: Who the brand's primary customers are — demographics, psychographics, mindset.
+    probing_question: "Who is your primary customer? Describe them beyond demographics — what do they value, what are they trying to achieve?"
+
+  - name: value_proposition
+    description: What problem the brand solves or what value it delivers.
+    probing_question: "What problem does your brand solve, or what value does it create that others don't?"
+
+  - name: brand_personality
+    description: At least three adjectives or traits that should characterise the brand's voice and feel.
+    probing_question: "If your brand were a person at a dinner party, how would guests describe them?"
+
+  - name: competitive_context
+    description: Key competitors or alternative solutions the audience considers.
+    probing_question: "Who are your main competitors, and what do you want to be distinctly different from them?"
+
+  - name: ambition
+    description: What success looks like — what the brand is trying to achieve in 2–3 years.
+    probing_question: "What does success look like for this brand in two to three years?"
+
+enrichment_signals:
+  # Nice-to-have signals that improve direction quality but are not required to proceed.
+  - name: founding_story
+    description: The origin or motivation behind the brand.
+  - name: existing_assets
+    description: Any existing logo, colours, or identity elements to respect or evolve.
+  - name: price_positioning
+    description: Where the brand sits on the premium/accessible spectrum.
+  - name: geographic_scope
+    description: Local, national, or global ambition.
+
+completeness_rule: >
+  A brief is complete when all required_signals have non-empty, substantive responses.
+  A one-word answer to target_audience or value_proposition is not substantive — probe further.
+  If a client cannot answer value_proposition after two attempts, flag this as a strategic risk
+  before proceeding: a brand without a clear value proposition will produce weak directions.

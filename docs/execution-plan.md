@@ -1,5 +1,47 @@
 # Genesis Brands — Execution Plan
 
+## Phase 0 — Demo: Genesis AI Consultant
+> Goal: demonstrate the intelligence behind the platform to potential customers, without
+> committing to asset generation. Show the brain — the methodology, the reasoning, the
+> creative director voice — before the full pipeline is built.
+
+**Scope:** Consultant mode only. Internal-facing. No brand asset generation.
+
+### What we're building
+
+- [ ] Layer 1 knowledge base: seed `knowledge/layer1/sources/` with initial knowledge
+      sources (blog posts, frameworks, methodology docs) and author the first Layer 1b
+      reasoning modules from them
+- [ ] Genesis AI consultant agent: Claude Opus 4, extended thinking, loaded with Layer 1b
+      modules and brand context, conversational creative director voice
+- [ ] Minimal BrandDNA input: a lightweight intake form (or even a free-text brief) to
+      give Genesis AI brand context before the conversation starts — no full questionnaire yet
+- [ ] Chat interface: streaming conversation UI, per-brand conversation history
+- [ ] Demo environment: simple, self-contained — no microservices, no auth complexity
+
+### What this demo proves to potential customers
+
+- Genesis AI knows how to think about brands (Layer 1 methodology in action)
+- It gives opinionated, expert advice — not generic AI output
+- It reasons from past precedent (even if Layer 2 is thin at demo stage)
+- It can conduct a strategic brand conversation at the level of a senior creative director
+- The full pipeline (copy, visual, assets) is the natural next step from this intelligence
+
+### What this demo deliberately excludes
+
+- Asset generation (copy, logo, visual identity, brand book)
+- The full client questionnaire flow
+- Specialist agents
+- The async pipeline / Service Bus / microservices stack
+- Payments, delivery, admin
+
+> **Why this order:** Asset generation quality depends on Layer 1 being deep and Layer 2
+> being populated with precedent. Building the full pipeline before the knowledge base is
+> ready produces generic output that undersells what Genesis AI will become. The consultant
+> demo proves the intelligence first.
+
+---
+
 ## Phase 1 — Core Platform (MVP)
 > Goal: end-to-end AI brand generation working for a paying customer
 

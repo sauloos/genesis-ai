@@ -13,6 +13,20 @@ dist/
 build/
 target/
 *.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Gradle
+.gradle/
+gradle-app.setting
+
+# Spring Boot
+data/
+
+# Python ingestion
+ingestion/.env
+ingestion/__pycache__/
+ingestion/**/__pycache__/
+ingestion/*.egg-info/
 
 # IDE
 .idea/
@@ -27,4 +41,8 @@ Thumbs.db
 knowledge/assets/
 
 # Claude Code local settings
-.claude/settings.local.json
+.claude/
+
+# Ingested knowledge chunks (generated — re-ingest to recreate)
+knowledge/layer1/chunks/
+knowledge/layer2/chunks/

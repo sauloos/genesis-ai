@@ -1,0 +1,26 @@
+agent: genesis-ai
+version: 1.0
+
+model:
+  provider: anthropic
+  id: claude-opus-4-5
+  max_tokens: 8000
+  extended_thinking: false   # enable for engagement mode deep reasoning passes
+
+layer1_modules:
+  - intake/brief-completeness.yaml
+  - directions/archetypes.yaml
+  - evaluation/copy-rubric.yaml
+  - assembly/playbook-structure.yaml
+
+retrieval:
+  collection: genesis-knowledge
+  top_k: 5
+  score_threshold: 0.7
+  filters:
+    - layer: layer1     # always include methodology chunks
+    - layer: layer2     # project precedent
+
+conversation:
+  history_turns: 20    # number of previous turns to include in context
+  persist_per_brand: true

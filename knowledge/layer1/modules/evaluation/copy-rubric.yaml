@@ -1,0 +1,60 @@
+module: copy-evaluation-rubric
+version: 1.0
+description: Criteria Genesis AI uses to evaluate copy output from the Copy Agent before accepting it.
+
+evaluation_dimensions:
+
+  - name: on_brief
+    weight: critical
+    description: Does the copy accurately reflect the brand signals in the brief?
+    pass_criteria: Every major brand signal (audience, value proposition, personality) is reflected somewhere in the copy set.
+    fail_criteria: Copy could belong to any brand in the category — no specific signals land.
+
+  - name: archetype_consistency
+    weight: critical
+    description: Is the copy consistent with the assigned brand archetype?
+    pass_criteria: Voice, tone, and word choices are congruent with the archetype's essence and drives.
+    fail_criteria: Tone contradicts the archetype (e.g. Rebel copy sounds corporate, Caregiver copy sounds cold).
+
+  - name: tagline_quality
+    weight: high
+    description: Does the tagline do the job a tagline should do?
+    pass_criteria:
+      - Memorable — short enough to repeat from memory
+      - Differentiated — could not apply equally to a competitor
+      - Resonant — speaks to the audience's aspiration or pain
+      - Active — creates a feeling, not just a label
+    fail_criteria:
+      - Generic ("Quality you can trust", "Innovation for everyone")
+      - Descriptive without personality ("Brand X: Financial Services")
+      - Forgettable — sounds like every other tagline in the category
+
+  - name: brand_story_coherence
+    weight: high
+    description: Does the brand story have a clear narrative arc?
+    pass_criteria: There is a recognisable story structure — origin or tension, what changes, what it means for the audience.
+    fail_criteria: Reads as a list of features or a corporate statement rather than a story.
+
+  - name: tone_guide_specificity
+    weight: medium
+    description: Is the tone guide specific enough to be actionable?
+    pass_criteria: A copywriter reading this could produce consistent on-brand content without further guidance.
+    fail_criteria: Vague descriptors like "professional but friendly" with no examples or anti-examples.
+
+  - name: audience_resonance
+    weight: high
+    description: Would the target audience recognise themselves in this copy?
+    pass_criteria: The copy speaks to the audience's real language, concerns, and aspirations.
+    fail_criteria: Copy is written at or about the audience, not to them.
+
+rejection_triggers:
+  # If any of these are present, return the copy for revision regardless of other scores.
+  - Tagline is longer than 7 words
+  - Brand story mentions the word "passionate" or "innovative" without specific evidence
+  - Tone guide is three adjectives with no elaboration
+  - Copy contains corporate jargon without justification for the brand context
+
+feedback_format: >
+  When returning copy for revision, lead with what is working before stating what needs to change.
+  Be specific: name the exact line or section, state what the problem is, and suggest the direction
+  of improvement (not the exact fix — that is the Copy Agent's job).

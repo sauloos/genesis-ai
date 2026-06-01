@@ -1,0 +1,61 @@
+module: playbook-structure
+version: 1.0
+description: Required structure and content for every brand playbook Genesis AI assembles.
+
+sections:
+  - name: Brand Foundation
+    required: true
+    contents:
+      - Brand story (origin, mission, what we believe)
+      - Vision statement (where we are going)
+      - Mission statement (what we do and for whom)
+      - Brand values (3–5, each with a one-sentence behavioural definition)
+
+  - name: Brand Positioning
+    required: true
+    contents:
+      - Positioning statement (for [audience] who [need], [brand] is the [category] that [benefit] because [reason to believe])
+      - Key differentiators (3 max — what is true of us that is not true of the competition)
+      - Competitive landscape snapshot
+
+  - name: Audience
+    required: true
+    contents:
+      - Primary audience profile (demographics + psychographics + what they want)
+      - Audience language guide (words they use, words to avoid)
+
+  - name: Brand Personality & Voice
+    required: true
+    contents:
+      - Brand archetype and what it means in practice
+      - Personality traits (with do/don't examples for each)
+      - Tone of voice guide (formal/informal, serious/playful, concise/expansive spectrum)
+      - Writing style guide (sentence structure, punctuation preferences, vocabulary level)
+
+  - name: Verbal Identity
+    required: true
+    contents:
+      - Tagline (primary + usage notes)
+      - Elevator pitch (30 seconds / 3 sentences)
+      - Boilerplate (standard 50-word brand description)
+      - Key messages by audience segment (if multiple audiences)
+
+  - name: Visual Identity (reference)
+    required: true
+    contents:
+      - Colour palette (primary + secondary, with hex codes and usage rationale)
+      - Typography (primary and secondary typefaces, usage hierarchy)
+      - Visual direction summary (mood, imagery style, composition principles)
+      - Logo usage reference (link to asset pack)
+
+  - name: Brand in Action
+    required: false
+    contents:
+      - Example headlines and social media posts
+      - Do/don't examples for common brand touchpoints
+      - Co-branding guidelines
+
+quality_standards: >
+  A playbook is complete when a new employee could read it and produce on-brand work
+  without asking a single question about tone, values, or audience. If any section
+  requires guessing, it is not complete.
