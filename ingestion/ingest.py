@@ -68,6 +68,37 @@ def ingest_url(url: str, force: bool = False) -> None:
     print(f"  → {count} chunks ingested\n")
 
 
+def ingest_channel(channel_url: str, force: bool = False) -> None:
+    import yt_dlp
+
+    # Normalise to /videos tab so yt-dlp returns individual videos not channel tabs
+    if "/@" in channel_url or "/channel/" in channel_url or "/c/" in channel_url:
+        channel_url = channel_url.rstrip("/") + "/videos"
+
+    print(f"Discovering videos: {channel_url}")
+    ydl_opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "extract_flat": "in_playlist",
+        "ignoreerrors": True,
+    }
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(channel_url, download=False)
+
+    entries = [e for e in (info.get("entries") or []) if e and e.get("id")]
+    print(f"Found {len(entries)} videos. Starting ingestion...\n")
+    total = 0
+    for i, entry in enumerate(entries, 1):
+        url = f"https://www.youtube.com/watch?v={entry['id']}"
+        print(f"[{i}/{len(entries)}] {entry.get('title', url)}")
+        try:
+            ingest_youtube(url, force=force)
+            total += 1
+        except Exception as e:
+            print(f"  Skipped (error): {e}\n")
+    print(f"\nDone. {total}/{len(entries)} videos ingested.")
+
+
 def ingest_crawl(index_url: str, force: bool = False) -> None:
     from extractors.crawl import discover_urls
     print(f"Crawling: {index_url}")
@@ -119,6 +150,7 @@ def main() -> None:
     group.add_argument("--youtube", metavar="URL", help="Ingest a YouTube video transcript")
     group.add_argument("--pdf", metavar="FILE", help="Ingest a PDF file")
     group.add_argument("--url", metavar="URL", help="Ingest a web article")
+    group.add_argument("--channel", metavar="URL", help="Ingest all videos from a YouTube channel or playlist")
     group.add_argument("--crawl", metavar="URL", help="Crawl a blog index and ingest all articles")
     group.add_argument("--folder", metavar="PATH", help="Batch ingest a folder of PDFs/text files")
     group.add_argument("--reembed", action="store_true", help="Re-embed all chunks with current embedding model")
@@ -126,7 +158,9 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    if args.crawl:
+    if args.channel:
+        ingest_channel(args.channel, force=args.force)
+    elif args.crawl:
         ingest_crawl(args.crawl, force=args.force)
     elif args.reembed:
         reembed()
