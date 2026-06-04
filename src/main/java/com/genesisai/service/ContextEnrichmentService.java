@@ -1,5 +1,6 @@
 package com.genesisai.service;
 
+import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.jsoup.Jsoup;
@@ -29,7 +30,7 @@ public class ContextEnrichmentService {
         String name = file.getOriginalFilename() != null ? file.getOriginalFilename().toLowerCase() : "";
         try {
             if (name.endsWith(".pdf")) {
-                try (PDDocument doc = PDDocument.load(file.getInputStream())) {
+                try (PDDocument doc = Loader.loadPDF(file.getBytes())) {
                     String text = new PDFTextStripper().getText(doc);
                     return truncate(text, MAX_ATTACHMENT_WORDS);
                 }
