@@ -17,7 +17,7 @@ echo ""
 # Build image locally and push to ACR
 echo "[ 1/2 ] Building image locally and pushing to ACR..."
 az acr login -n "$ACR_NAME" -o none
-docker build -t "$ACR_SERVER/genesis-ai:latest" .
+docker build --no-cache -t "$ACR_SERVER/genesis-ai:latest" .
 docker push "$ACR_SERVER/genesis-ai:latest"
 
 # Update Container App with new image revision
