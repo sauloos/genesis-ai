@@ -57,6 +57,12 @@ dependencies {
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
+    // PDF text extraction (attachments)
+    implementation 'org.apache.pdfbox:pdfbox:3.0.3'
+
+    // HTML parsing (URL fetching)
+    implementation 'org.jsoup:jsoup:1.18.3'
+
     // Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

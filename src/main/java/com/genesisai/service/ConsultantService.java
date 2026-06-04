@@ -55,7 +55,6 @@ public class ConsultantService {
         "That's outside my territory. I'm a brand strategy creative director — " +
         "if you have a question about your brand, positioning, identity, or marketing, I'm here for that.";
 
-    // Topics that are clearly never brand strategy
     private static final List<String> OUT_OF_SCOPE_PATTERNS = List.of(
         "recipe", "ingredient", "bake", "cook", "preheat", "tablespoon", "teaspoon", "flour", "butter",
         "trim()", ".trim", "java method", "python ", "javascript ", "c++ ", "sql query", "html tag",
@@ -71,23 +70,25 @@ public class ConsultantService {
     }
 
     public Flux<String> chat(String brandId, String userMessage) {
+        return chat(brandId, userMessage, null, List.of());
+    }
+
+    public Flux<String> chat(String brandId, String userMessage,
+                             String attachmentText,
+                             List<ContextEnrichmentService.UrlContent> urlContents) {
         Brand brand = brandRepo.findById(brandId)
             .orElseThrow(() -> new IllegalArgumentException("Brand not found: " + brandId));
 
-        // Persist user message
         save(brandId, "user", userMessage);
 
-        // Guard: reject clearly out-of-scope questions before hitting the model
         if (isOutOfScope(userMessage)) {
             save(brandId, "assistant", OUT_OF_SCOPE_RESPONSE);
             return Flux.just(OUT_OF_SCOPE_RESPONSE);
         }
 
-        // Build prompt
-        List<Message> messages = buildMessages(brand, userMessage);
+        List<Message> messages = buildMessages(brand, userMessage, attachmentText, urlContents);
         Prompt prompt = new Prompt(messages);
 
-        // Stream response, accumulate for persistence
         StringBuilder responseBuffer = new StringBuilder();
 
         return chatModel.stream(prompt)
@@ -108,14 +109,14 @@ public class ConsultantService {
             });
     }
 
-    private List<Message> buildMessages(Brand brand, String userMessage) {
+    private List<Message> buildMessages(Brand brand, String userMessage,
+                                        String attachmentText,
+                                        List<ContextEnrichmentService.UrlContent> urlContents) {
         List<Message> messages = new ArrayList<>();
 
-        // System message: persona + layer 1 + brand context + retrieved knowledge
-        String systemContent = buildSystemContent(brand, userMessage);
+        String systemContent = buildSystemContent(brand, userMessage, attachmentText, urlContents);
         messages.add(new SystemMessage(systemContent));
 
-        // Conversation history (last N turns)
         List<ConversationMessage> history = messageRepo.findByBrandIdOrderByCreatedAtAsc(brand.getId());
         int start = Math.max(0, history.size() - (HISTORY_TURNS * 2));
         for (int i = start; i < history.size(); i++) {
@@ -126,18 +127,17 @@ public class ConsultantService {
                 : new AssistantMessage(m.getContent()));
         }
 
-        // Current user turn
         messages.add(new UserMessage(userMessage));
         return messages;
     }
 
-    private String buildSystemContent(Brand brand, String query) {
+    private String buildSystemContent(Brand brand, String query,
+                                      String attachmentText,
+                                      List<ContextEnrichmentService.UrlContent> urlContents) {
         var sb = new StringBuilder();
 
-        // Persona (system-prompt.md)
         sb.append(loadSystemPrompt()).append("\n\n");
 
-        // Brand context
         sb.append("# Current Brand Context\n\n");
         sb.append("**Brand:** ").append(brand.getName()).append("\n");
         if (brand.getIndustry() != null && !brand.getIndustry().isBlank()) {
@@ -151,17 +151,29 @@ public class ConsultantService {
         }
         sb.append("\n\n");
 
-        // Layer 1 methodology
         String layer1Context = layer1.buildContextBlock();
         if (!layer1Context.isBlank()) {
             sb.append(layer1Context).append("\n\n");
         }
 
-        // Retrieved knowledge relevant to this query
         String retrieved = retrieval.retrieve(query, RETRIEVAL_TOP_K);
         if (!retrieved.isBlank()) {
             sb.append("# Relevant Knowledge\n\n");
             sb.append(retrieved).append("\n\n");
+        }
+
+        // Ephemeral context for this turn only (not persisted to conversation history)
+        if (attachmentText != null && !attachmentText.isBlank()) {
+            sb.append("# Attached Document\n\n");
+            sb.append(attachmentText).append("\n\n");
+        }
+
+        if (urlContents != null && !urlContents.isEmpty()) {
+            sb.append("# Referenced URLs\n\n");
+            for (var uc : urlContents) {
+                sb.append("**").append(uc.url()).append("**\n\n");
+                sb.append(uc.text()).append("\n\n");
+            }
         }
 
         return sb.toString();

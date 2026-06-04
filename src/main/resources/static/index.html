@@ -151,6 +151,27 @@
   #send-btn:disabled { background: #e5e5e5; cursor: not-allowed; }
 
   .hint { text-align: center; font-size: 11px; color: #ccc; margin-top: 8px; }
+
+  /* ── Attachment ── */
+  #attach-btn {
+    width: 32px; height: 32px; background: none; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    color: #bbb; border-radius: 8px; transition: color 0.15s, background 0.15s;
+    align-self: flex-end;
+  }
+  #attach-btn:hover { color: #666; background: #f0f0f0; }
+  #attach-btn.has-file { color: #1a1a1a; }
+  #attachment-bar {
+    display: none; align-items: center; gap: 8px; padding: 6px 12px 0;
+    font-size: 12px; color: #555;
+  }
+  #attachment-bar.visible { display: flex; }
+  #attachment-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #remove-attach {
+    background: none; border: none; color: #aaa; cursor: pointer; font-size: 14px;
+    padding: 0 2px; line-height: 1; transition: color 0.15s;
+  }
+  #remove-attach:hover { color: #ff6b6b; }
 </style>
 </head>
 <body>
@@ -188,8 +209,21 @@
   <div id="messages" style="display:none"></div>
 
   <div id="input-area">
+    <div id="attachment-bar">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66L9.41 17.41a2 2 0 01-2.83-2.83l8.49-8.48"/>
+      </svg>
+      <span id="attachment-name"></span>
+      <button id="remove-attach" onclick="removeAttachment()" title="Remove attachment">✕</button>
+    </div>
     <div id="input-wrap">
-      <textarea id="msg-input" rows="1" placeholder="Ask Genesis AI anything…"
+      <button id="attach-btn" onclick="document.getElementById('file-input').click()" title="Attach file (PDF or text)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66L9.41 17.41a2 2 0 01-2.83-2.83l8.49-8.48"/>
+        </svg>
+      </button>
+      <input type="file" id="file-input" accept=".pdf,.txt,.md" style="display:none" onchange="onFileSelected(event)">
+      <textarea id="msg-input" rows="1" placeholder="Ask Genesis AI anything… paste a URL to read it"
         onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
       <button id="send-btn" onclick="sendMessage()" disabled>
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -197,7 +231,7 @@
         </svg>
       </button>
     </div>
-    <div class="hint">Genesis AI · powered by cre8ion knowledge base</div>
+    <div class="hint">Genesis AI · paste a URL to read it · attach a PDF or text file for context</div>
   </div>
 </div>
 
@@ -206,8 +240,9 @@ const API = '';
 const KEY = 'genesis-ai-key';
 const HEADERS = { 'Content-Type': 'application/json', 'X-Api-Key': KEY };
 
-let currentBrandId = null;
-let isStreaming    = false;
+let currentBrandId  = null;
+let isStreaming     = false;
+let pendingFile     = null;
 
 marked.use({ breaks: true, gfm: true });
 
@@ -282,6 +317,23 @@ async function clearHistory() {
   document.getElementById('messages').innerHTML = '';
 }
 
+// ── Attachment ────────────────────────────────────────
+function onFileSelected(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  pendingFile = file;
+  document.getElementById('attachment-name').textContent = file.name;
+  document.getElementById('attachment-bar').classList.add('visible');
+  document.getElementById('attach-btn').classList.add('has-file');
+}
+
+function removeAttachment() {
+  pendingFile = null;
+  document.getElementById('file-input').value = '';
+  document.getElementById('attachment-bar').classList.remove('visible');
+  document.getElementById('attach-btn').classList.remove('has-file');
+}
+
 // ── Messaging ─────────────────────────────────────────
 async function sendMessage() {
   const input = document.getElementById('msg-input');
@@ -291,6 +343,9 @@ async function sendMessage() {
   input.value = '';
   autoResize(input);
   document.getElementById('send-btn').disabled = true;
+
+  const file = pendingFile;
+  removeAttachment();
 
   // Create brand on first message if needed
   if (!currentBrandId) {
@@ -326,9 +381,13 @@ async function sendMessage() {
   let fullText = '';
 
   try {
+    const formData = new FormData();
+    formData.append('message', text);
+    if (file) formData.append('file', file);
+
+    const chatHeaders = { 'X-Api-Key': KEY }; // no Content-Type — browser sets multipart boundary
     const response = await fetch(`${API}/api/brands/${currentBrandId}/chat`, {
-      method: 'POST', headers: HEADERS,
-      body: JSON.stringify({ message: text })
+      method: 'POST', headers: chatHeaders, body: formData
     });
 
     const reader  = response.body.getReader();
