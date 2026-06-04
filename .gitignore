@@ -46,3 +46,7 @@ knowledge/assets/
 # Ingested knowledge chunks (generated — re-ingest to recreate)
 knowledge/layer1/chunks/
 knowledge/layer2/chunks/
+
+# Source content lives in genesis-ai-knowledge repo
+knowledge/layer1/sources/
+.azure-config
