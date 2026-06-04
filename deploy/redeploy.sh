@@ -16,15 +16,22 @@ echo ""
 
 # Build image locally and push to ACR
 echo "[ 1/2 ] Building image locally and pushing to ACR..."
+TAG=$(date +%Y%m%d%H%M%S)
+IMAGE="$ACR_SERVER/genesis-ai:$TAG"
+
 az acr login -n "$ACR_NAME" -o none
-docker build --no-cache -t "$ACR_SERVER/genesis-ai:latest" .
+docker build --no-cache -t "$IMAGE" .
+docker push "$IMAGE"
+
+# Also tag as latest for reference
+docker tag "$IMAGE" "$ACR_SERVER/genesis-ai:latest"
 docker push "$ACR_SERVER/genesis-ai:latest"
 
-# Update Container App with new image revision
+# Update Container App with unique tag to force image pull
 echo "[ 2/2 ] Updating Container App..."
 az containerapp update \
   -n "$APP_NAME" -g "$RESOURCE_GROUP" \
-  --image "$ACR_SERVER/genesis-ai:latest" \
+  --image "$IMAGE" \
   -o none
 
 echo ""
