@@ -4,7 +4,7 @@ import com.genesisai.model.Brand;
 import com.genesisai.model.ConversationMessage;
 import com.genesisai.repository.BrandRepository;
 import com.genesisai.repository.ConversationMessageRepository;
-import org.springframework.ai.anthropic.AnthropicChatModel;
+import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
@@ -15,7 +15,6 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -29,7 +28,7 @@ public class ConsultantService {
     private static final int HISTORY_TURNS = 20;
     private static final int RETRIEVAL_TOP_K = 5;
 
-    private final AnthropicChatModel chatModel;
+    private final ChatModel chatModel;
     private final RetrievalService retrieval;
     private final Layer1Service layer1;
     private final BrandRepository brandRepo;
@@ -39,7 +38,7 @@ public class ConsultantService {
     private String systemPromptPath;
 
     public ConsultantService(
-        AnthropicChatModel chatModel,
+        ChatModel chatModel,
         RetrievalService retrieval,
         Layer1Service layer1,
         BrandRepository brandRepo,
@@ -52,12 +51,37 @@ public class ConsultantService {
         this.messageRepo = messageRepo;
     }
 
+    private static final String OUT_OF_SCOPE_RESPONSE =
+        "That's outside my territory. I'm a brand strategy creative director — " +
+        "if you have a question about your brand, positioning, identity, or marketing, I'm here for that.";
+
+    // Topics that are clearly never brand strategy
+    private static final List<String> OUT_OF_SCOPE_PATTERNS = List.of(
+        "recipe", "ingredient", "bake", "cook", "preheat", "tablespoon", "teaspoon", "flour", "butter",
+        "trim()", ".trim", "java method", "python ", "javascript ", "c++ ", "sql query", "html tag",
+        "css style", "git commit", "docker ", "kubernetes", "regex ", "algorithm ", "data structure",
+        "neural network", "machine learning model", "what is rag", "what is llm", "what is gpt",
+        "what is bert", "transformer model", "flight to", "hotel in", "visa for",
+        "medical ", "diagnosis ", "symptom ", "medication ", "doctor "
+    );
+
+    private boolean isOutOfScope(String message) {
+        String lower = message.toLowerCase();
+        return OUT_OF_SCOPE_PATTERNS.stream().anyMatch(lower::contains);
+    }
+
     public Flux<String> chat(String brandId, String userMessage) {
         Brand brand = brandRepo.findById(brandId)
             .orElseThrow(() -> new IllegalArgumentException("Brand not found: " + brandId));
 
         // Persist user message
         save(brandId, "user", userMessage);
+
+        // Guard: reject clearly out-of-scope questions before hitting the model
+        if (isOutOfScope(userMessage)) {
+            save(brandId, "assistant", OUT_OF_SCOPE_RESPONSE);
+            return Flux.just(OUT_OF_SCOPE_RESPONSE);
+        }
 
         // Build prompt
         List<Message> messages = buildMessages(brand, userMessage);
@@ -96,6 +120,7 @@ public class ConsultantService {
         int start = Math.max(0, history.size() - (HISTORY_TURNS * 2));
         for (int i = start; i < history.size(); i++) {
             ConversationMessage m = history.get(i);
+            if (m.getContent() == null || m.getContent().isBlank()) continue;
             messages.add("user".equals(m.getRole())
                 ? new UserMessage(m.getContent())
                 : new AssistantMessage(m.getContent()));
@@ -136,7 +161,6 @@ public class ConsultantService {
         String retrieved = retrieval.retrieve(query, RETRIEVAL_TOP_K);
         if (!retrieved.isBlank()) {
             sb.append("# Relevant Knowledge\n\n");
-            sb.append("The following excerpts from the agency's knowledge base are relevant to this conversation.\n\n");
             sb.append(retrieved).append("\n\n");
         }
 

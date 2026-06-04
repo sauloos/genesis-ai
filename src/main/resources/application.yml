@@ -1,6 +1,9 @@
 spring:
   application:
     name: genesis-ai
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.vectorstore.qdrant.autoconfigure.QdrantVectorStoreAutoConfiguration
   datasource:
     url: jdbc:h2:file:./data/genesis;AUTO_SERVER=TRUE
     driver-class-name: org.h2.Driver
@@ -16,23 +19,16 @@ spring:
       path: /h2-console
   ai:
     anthropic:
-      api-key: ${ANTHROPIC_API_KEY}
+      api-key: ${ANTHROPIC_API_KEY:}
       chat:
         options:
           model: claude-opus-4-5
           max-tokens: 8000
     openai:
-      api-key: ${OPENAI_API_KEY}
+      api-key: ${OPENAI_API_KEY:}
       embedding:
         options:
           model: text-embedding-3-small
-    vectorstore:
-      qdrant:
-        host: ${QDRANT_HOST:localhost}
-        port: ${QDRANT_GRPC_PORT:6334}
-        collection-name: ${QDRANT_COLLECTION:genesis-knowledge}
-        use-tls: false
-        initialize-schema: true
 
 server:
   port: 8080
@@ -45,3 +41,8 @@ springdoc:
 
 genesis:
   api-key: ${GENESIS_API_KEY:dev-key-change-in-prod}
+
+qdrant:
+  rest:
+    url: ${QDRANT_REST_URL:http://localhost:6333}
+    api-key: ${QDRANT_API_KEY:}

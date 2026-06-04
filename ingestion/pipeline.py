@@ -47,12 +47,58 @@ def _get_openai() -> OpenAI:
 def _get_qdrant() -> QdrantClient:
     global _qdrant
     if _qdrant is None:
-        kwargs = {"url": QDRANT_URL}
+        from urllib.parse import urlparse
+        parsed = urlparse(QDRANT_URL)
+        is_https = parsed.scheme == "https"
+        # qdrant_client always defaults to port 6333 even for https URLs.
+        # Azure Container Apps only exposes 443, so we must pass host/port/https
+        # explicitly when the URL has no explicit port.
+        if parsed.port:
+            port = parsed.port
+        else:
+            port = 443 if is_https else 6333
+        kwargs = {
+            "host": parsed.hostname,
+            "port": port,
+            "https": is_https,
+            "check_compatibility": False,
+        }
         if QDRANT_API_KEY:
             kwargs["api_key"] = QDRANT_API_KEY
         _qdrant = QdrantClient(**kwargs)
         _ensure_collection(_qdrant)
     return _qdrant
+
+
+def _upsert_with_retry(points, max_attempts: int = 3) -> None:
+    """POST points directly via REST — avoids httpx connection-pool staleness."""
+    import json as _json
+    import time
+    import requests
+
+    url = QDRANT_URL.rstrip("/") + f"/collections/{COLLECTION_NAME}/points"
+    headers = {"Content-Type": "application/json"}
+    if QDRANT_API_KEY:
+        headers["api-key"] = QDRANT_API_KEY
+
+    payload = {
+        "points": [
+            {"id": p.id, "vector": p.vector, "payload": p.payload}
+            for p in points
+        ]
+    }
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            resp = requests.put(url, headers=headers, data=_json.dumps(payload), timeout=30)
+            resp.raise_for_status()
+            return
+        except Exception as e:
+            if attempt == max_attempts:
+                raise
+            wait = 5 * attempt
+            print(f"  Qdrant upsert failed (attempt {attempt}/{max_attempts}): {e} — retrying in {wait}s...")
+            time.sleep(wait)
 
 
 def _ensure_collection(client: QdrantClient) -> None:
@@ -63,6 +109,29 @@ def _ensure_collection(client: QdrantClient) -> None:
             vectors_config=VectorParams(size=EMBEDDING_DIM, distance=Distance.COSINE),
         )
         print(f"Created Qdrant collection: {COLLECTION_NAME}")
+
+
+_NORMALISE_PROMPT = """\
+Rewrite the following text so it reads as neutral brand strategy knowledge — remove or replace \
+any references to specific agencies, companies, consultants, or clients by name. \
+Replace "the agency" / "our agency" with "we". Replace named individuals with their role \
+(e.g. "the founder", "the strategist"). Replace named client companies with a generic descriptor \
+(e.g. "a healthcare brand", "a tech startup", "a B2B services firm") based on context. \
+Keep all strategic insight, frameworks, and principles intact. Return only the rewritten text.\
+"""
+
+
+def _normalise_chunk(text: str) -> str:
+    """Rewrite a chunk via GPT to strip entity references. Runs once at ingestion."""
+    response = _get_openai().chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": _NORMALISE_PROMPT},
+            {"role": "user", "content": text},
+        ],
+        temperature=0,
+    )
+    return response.choices[0].message.content.strip()
 
 
 def _chunk_text(text: str) -> list[str]:
@@ -116,6 +185,7 @@ def process(
     date: str = "",
     layer: str = "layer1",
     force: bool = False,
+    normalise: bool = True,
 ) -> int:
     """
     Process extracted text through the full pipeline.
@@ -137,6 +207,10 @@ def process(
         return 0
 
     print(f"  Chunking: {len(raw_chunks)} chunks from {len(text.split())} words")
+
+    if normalise:
+        print(f"  Normalising {len(raw_chunks)} chunks...")
+        raw_chunks = [_normalise_chunk(c) for c in raw_chunks]
 
     chunks_data = [
         {
@@ -164,8 +238,7 @@ def process(
         batch = raw_chunks[i : i + batch_size]
         all_embeddings.extend(_embed(batch))
 
-    # Upsert into Qdrant
-    client = _get_qdrant()
+    # Upsert into Qdrant with retries (cloud connections can drop)
     points = [
         PointStruct(
             id=chunk["id"],
@@ -174,7 +247,7 @@ def process(
         )
         for chunk, embedding in zip(chunks_data, all_embeddings)
     ]
-    client.upsert(collection_name=COLLECTION_NAME, points=points)
+    _upsert_with_retry(points)
 
     # Save chunks to disk (backup / re-embed source of truth)
     _save_chunks(chunks_data)
@@ -213,6 +286,6 @@ def reembed(embedding_model: str = EMBEDDING_MODEL) -> None:
             )
             for chunk, embedding in zip(chunks_data, all_embeddings)
         ]
-        client.upsert(collection_name=COLLECTION_NAME, points=points)
+        _upsert_with_retry(points)
 
     print("Re-embedding complete.")

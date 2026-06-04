@@ -1,0 +1,23 @@
+spring:
+  ai:
+    # Disable direct API clients — not used in azure profile
+    anthropic:
+      api-key: disabled
+    openai:
+      chat:
+        enabled: false
+      embedding:
+        enabled: false
+
+    # Azure OpenAI — GPT-4o for chat, text-embedding-3-small for embeddings (uksouth)
+    azure:
+      openai:
+        endpoint: ${AZURE_OPENAI_ENDPOINT}
+        api-key: ${AZURE_OPENAI_KEY}
+        chat:
+          options:
+            deployment-name: ${AZURE_OPENAI_CHAT_DEPLOYMENT:gpt-4o}
+            max-tokens: 8000
+        embedding:
+          options:
+            deployment-name: ${AZURE_OPENAI_EMBEDDING_DEPLOYMENT:text-embedding-3-small}

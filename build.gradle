@@ -40,11 +40,12 @@ dependencies {
     // Spring AI — Anthropic (Claude)
     implementation 'org.springframework.ai:spring-ai-starter-model-anthropic'
 
-    // Spring AI — OpenAI (embeddings only)
+    // Spring AI — OpenAI (embeddings, and Azure AI Foundry OpenAI-compatible endpoint)
     implementation 'org.springframework.ai:spring-ai-starter-model-openai'
 
-    // Spring AI — Qdrant vector store (starter includes auto-configuration)
-    implementation 'org.springframework.ai:spring-ai-starter-vector-store-qdrant'
+    // Spring AI — Azure OpenAI (embeddings via Azure OpenAI when azure profile is active)
+    implementation 'org.springframework.ai:spring-ai-starter-model-azure-openai'
+
 
     // API docs
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'

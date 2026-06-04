@@ -1,76 +1,97 @@
 package com.genesisai.service;
 
-import io.qdrant.client.QdrantClient;
-import io.qdrant.client.grpc.Points.SearchPoints;
-import io.qdrant.client.grpc.Points.ScoredPoint;
-import io.qdrant.client.grpc.Points.WithPayloadSelector;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Retrieves relevant knowledge chunks from Qdrant given a query.
- * Uses the Qdrant client directly to read our custom payload field ("text").
+ * Retrieves relevant knowledge chunks from Qdrant via REST API.
+ * Uses port 6333 (REST) so the same endpoint works for both the Java app
+ * and the Python ingestion pipeline — a single port for Container Apps.
  */
 @Service
 public class RetrievalService {
 
-    private final QdrantClient qdrantClient;
     private final EmbeddingModel embeddingModel;
+    private final RestTemplate restTemplate;
+
+    @Value("${qdrant.rest.url:http://localhost:6333}")
+    private String qdrantUrl;
+
+    @Value("${qdrant.rest.api-key:}")
+    private String qdrantApiKey;
 
     @Value("${spring.ai.vectorstore.qdrant.collection-name:genesis-knowledge}")
     private String collectionName;
 
-    private static final float SIMILARITY_THRESHOLD = 0.45f;
+    private static final double SIMILARITY_THRESHOLD = 0.45;
 
-    public RetrievalService(QdrantClient qdrantClient, EmbeddingModel embeddingModel) {
-        this.qdrantClient = qdrantClient;
+    public RetrievalService(EmbeddingModel embeddingModel) {
         this.embeddingModel = embeddingModel;
+        this.restTemplate = new RestTemplate();
     }
 
+    @SuppressWarnings("unchecked")
     public String retrieve(String query, int topK) {
         float[] embedding = embeddingModel.embed(query);
 
-        SearchPoints request = SearchPoints.newBuilder()
-            .setCollectionName(collectionName)
-            .addAllVector(toFloatList(embedding))
-            .setLimit(topK)
-            .setScoreThreshold(SIMILARITY_THRESHOLD)
-            .setWithPayload(WithPayloadSelector.newBuilder().setEnable(true).build())
-            .build();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        if (qdrantApiKey != null && !qdrantApiKey.isBlank()) {
+            headers.set("api-key", qdrantApiKey);
+        }
 
-        List<ScoredPoint> results;
+        Map<String, Object> body = Map.of(
+            "vector", toList(embedding),
+            "limit", topK,
+            "score_threshold", SIMILARITY_THRESHOLD,
+            "with_payload", true
+        );
+
+        String url = qdrantUrl.replaceAll("/$", "") + "/collections/" + collectionName + "/points/search";
+
         try {
-            results = qdrantClient.searchAsync(request).get();
-        } catch (InterruptedException | ExecutionException e) {
-            Thread.currentThread().interrupt();
+            Map<String, Object> response = restTemplate.postForObject(
+                url, new HttpEntity<>(body, headers), Map.class);
+
+            if (response == null) return "";
+            List<Map<String, Object>> results = (List<Map<String, Object>>) response.get("result");
+            if (results == null || results.isEmpty()) return "";
+
+            return results.stream()
+                .map(point -> {
+                    Map<String, Object> payload = (Map<String, Object>) point.get("payload");
+                    if (payload == null) return "";
+                    String text       = str(payload, "text");
+                    String title      = str(payload, "title");
+                    String sourceUrl  = str(payload, "source_url");
+                    String sourceType = str(payload, "source_type");
+                    String source     = !title.isBlank() ? title : sourceUrl;
+                    return String.format("[Source: %s (%s)]\n%s", source, sourceType, text);
+                })
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.joining("\n\n---\n\n"));
+
+        } catch (Exception e) {
             return "";
         }
-
-        if (results == null || results.isEmpty()) {
-            return "";
-        }
-
-        return results.stream()
-            .map(point -> {
-                var payload = point.getPayloadMap();
-                String text = payload.containsKey("text") ? payload.get("text").getStringValue() : "";
-                String title = payload.containsKey("title") ? payload.get("title").getStringValue() : "";
-                String sourceUrl = payload.containsKey("source_url") ? payload.get("source_url").getStringValue() : "";
-                String sourceType = payload.containsKey("source_type") ? payload.get("source_type").getStringValue() : "";
-                String source = !title.isBlank() ? title : sourceUrl;
-                return String.format("[Source: %s (%s)]\n%s", source, sourceType, text);
-            })
-            .filter(s -> !s.isBlank())
-            .collect(Collectors.joining("\n\n---\n\n"));
     }
 
-    private static List<Float> toFloatList(float[] arr) {
+    private static String str(Map<String, Object> map, String key) {
+        Object v = map.get(key);
+        return v != null ? v.toString() : "";
+    }
+
+    private static List<Float> toList(float[] arr) {
         List<Float> list = new ArrayList<>(arr.length);
         for (float f : arr) list.add(f);
         return list;

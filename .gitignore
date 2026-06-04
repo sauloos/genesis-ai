@@ -49,4 +49,10 @@ knowledge/layer2/chunks/
 
 # Source content lives in genesis-ai-knowledge repo
 knowledge/layer1/sources/
+
+# One-off comparison scripts and images
+comparison_*.png
+make_comparison*.py
+make_images.py
+make_all_comparisons.py
 .azure-config

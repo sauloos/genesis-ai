@@ -26,9 +26,8 @@ public class ApiKeyFilter extends OncePerRequestFilter {
 
         String path = req.getRequestURI();
 
-        // Allow swagger, docs, h2-console, and actuator without auth
-        if (path.startsWith("/swagger-ui") || path.startsWith("/api-docs")
-            || path.startsWith("/h2-console") || path.startsWith("/actuator")) {
+        // Only protect /api/** — everything else (UI, swagger, actuator) passes through
+        if (!path.startsWith("/api/")) {
             chain.doFilter(req, res);
             return;
         }
