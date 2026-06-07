@@ -41,7 +41,8 @@ Thumbs.db
 knowledge/assets/
 
 # Claude Code local settings
-.claude/
+.claude/*
+!.claude/memory/
 
 # Ingested knowledge chunks (generated — re-ingest to recreate)
 knowledge/layer1/chunks/
