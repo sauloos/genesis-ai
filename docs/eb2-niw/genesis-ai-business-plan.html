@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Genesis AI — One-Page Business Plan</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+
+  @page { size: letter landscape; margin: 0.42in 0.48in; }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', Arial, sans-serif;
+    background: #fff;
+    color: #111;
+    font-size: 9pt;
+    line-height: 1.4;
+    width: 10in;
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    border-bottom: 3px solid #111;
+    padding-bottom: 7px;
+    margin-bottom: 9px;
+  }
+  .brand-name {
+    font-size: 30pt;
+    font-weight: 900;
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+  .brand-name .lightning { color: #F5E642; }
+  .brand-sub {
+    font-size: 8.5pt;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: #888;
+    margin-top: 2px;
+  }
+  .header-right {
+    text-align: right;
+    font-size: 8.5pt;
+    color: #666;
+    line-height: 1.5;
+  }
+  .header-right strong { color: #111; font-size: 10pt; display: block; }
+
+  /* ── Grid ── */
+  .grid {
+    display: grid;
+    grid-template-columns: 2.05fr 1.9fr 2.0fr 2.05fr;
+    gap: 7px;
+  }
+
+  .box {
+    border: 1.5px solid #ddd;
+    border-radius: 3px;
+    padding: 8px 9px;
+    position: relative;
+  }
+  .box.accent-left { border-left: 4px solid #F5E642; }
+  .box.dark { background: #111; color: #fff; border-color: #111; }
+  .box.yellow { background: #FFF9CC; border-color: #F5E642; border-width: 2px; }
+  .box.highlight { background: #F8F8F8; }
+
+  h3 {
+    font-size: 7pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: #999;
+    margin-bottom: 5px;
+  }
+  .dark h3 { color: #F5E642; }
+  .yellow h3 { color: #111; }
+
+  p, li { font-size: 8.5pt; margin-bottom: 2px; }
+  ul { padding-left: 11px; }
+  li { list-style: disc; }
+
+  .big { font-size: 20pt; font-weight: 900; line-height: 1; }
+  .big-sub { font-size: 7.5pt; color: #666; }
+
+  .span-2 { grid-column: span 2; }
+
+  .tag {
+    display: inline-block;
+    background: #F5E642;
+    color: #111;
+    font-size: 7pt;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 2px;
+    margin-bottom: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .tag.muted { background: #eee; color: #888; }
+  .dark .tag { background: #333; color: #F5E642; }
+
+  /* Revenue layers */
+  .rev-layer { border-left: 3px solid #F5E642; padding-left: 6px; margin-bottom: 5px; }
+  .rev-layer.future { border-color: #ddd; }
+  .rev-layer .layer-title { font-weight: 700; font-size: 8.5pt; }
+  .rev-layer .layer-price { font-weight: 700; color: #111; }
+  .rev-layer .layer-desc { color: #666; font-size: 7.5pt; }
+
+  /* Roadmap */
+  .milestone { display: flex; gap: 6px; margin-bottom: 4px; align-items: flex-start; }
+  .ms-when { font-size: 7pt; font-weight: 700; color: #888; min-width: 60px; padding-top: 1px; }
+  .ms-when.live { color: #111; background: #F5E642; padding: 1px 4px; border-radius: 2px; }
+  .ms-body { font-size: 8pt; }
+  .ms-title { font-weight: 700; }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; font-size: 8pt; margin-top: 4px; }
+  th { background: #111; color: #F5E642; padding: 3px 4px; font-weight: 600; text-align: center; font-size: 7.5pt; }
+  td { padding: 2px 4px; text-align: center; border-bottom: 1px solid #eee; }
+  tr.yr-row td { background: #FFF9CC; font-weight: 600; }
+  td.left { text-align: left; }
+
+  /* Footer */
+  .footer {
+    border-top: 1px solid #ddd;
+    padding-top: 5px;
+    margin-top: 7px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 7.5pt;
+    color: #888;
+  }
+  .footer strong { color: #111; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div>
+    <div class="brand-name">Genesis<span class="lightning"> ⚡</span></div>
+    <div class="brand-sub">INTELLIGENT BRAND DESIGN</div>
+  </div>
+  <div class="header-right">
+    <strong>One-Page Business Plan</strong>
+    AI-Powered Brand Intelligence Platform · genesisbrands.ai<br>
+    Darrell Irwin & Saulo Oliveira · June 2026
+  </div>
+</div>
+
+<!-- Row 1 -->
+<div class="grid">
+
+  <div class="box dark">
+    <h3>Mission</h3>
+    <p style="font-size:10.5pt;font-weight:700;line-height:1.35;margin-bottom:6px">
+      The world's first AI creative director for growing businesses.
+    </p>
+    <p style="color:#bbb;font-size:8.5pt">
+      Genesis AI is an AI-native brand intelligence platform — a trained second brain that conducts discovery, derives strategy, orchestrates specialist agents, inspects their output through iterative quality loops, and delivers complete brand identities in minutes.
+    </p>
+    <p style="margin-top:6px;color:#bbb;font-size:8pt">
+      What makes it unique is not the AI — it is <strong style="color:#fff">what the AI has been taught.</strong> Twenty-five years of brand strategy expertise, encoded into structured reasoning, form the intelligence substrate of the Brain Engine. This is not a general model asked to make logos. It is a purpose-built creative intelligence that took decades to accumulate.
+    </p>
+  </div>
+
+  <div class="box accent-left">
+    <h3>Problem</h3>
+    <p>Brand is the most critical factor in startup survival — and the least accessible:</p>
+    <ul style="margin-top:4px">
+      <li><strong>5.5M</strong> new businesses start in the US every year</li>
+      <li>Traditional branding costs <strong>$15,000–$75,000+</strong></li>
+      <li>Only <strong>~10%</strong> of startups invest in professional branding in year one</li>
+      <li>Without a brand, businesses struggle to attract customers, investors, and talent</li>
+      <li>And even those who buy a logo have no ongoing brand advisor</li>
+    </ul>
+  </div>
+
+  <div class="box accent-left">
+    <h3>The Differential — The Brain Engine</h3>
+    <p style="margin-bottom:4px">Genesis AI is not a template generator. The core is a <strong>trained second brain</strong> that:</p>
+    <ul>
+      <li>Conducts intelligent brand discovery — not a form</li>
+      <li>Reasons with 25+ years of codified brand strategy</li>
+      <li>Produces <strong>three creative directions</strong> simultaneously</li>
+      <li>Briefs and orchestrates specialist agents</li>
+      <li>Inspects agent output in successive rounds until quality threshold is met</li>
+      <li>Retains brand memory — every session knows your brand</li>
+      <li>Stays as an ongoing consultant — not a one-time transaction</li>
+    </ul>
+  </div>
+
+  <div class="box">
+    <h3>Target Customers</h3>
+    <ul>
+      <li>US-based startups and early-stage founders (0–3 years)</li>
+      <li>Solopreneurs and freelancers building a professional identity</li>
+      <li>Accelerator and incubator cohorts (B2B channel)</li>
+      <li>Small businesses needing a rebrand or refresh</li>
+      <li>University entrepreneurship programs (institutional)</li>
+    </ul>
+    <p style="margin-top:5px;font-size:8pt;color:#666">
+      Entry through brand creation. Retained through subscription. Expanded through physical products and social media management.
+    </p>
+  </div>
+
+  <!-- Row 2 -->
+
+  <div class="box span-2">
+    <h3>Revenue Model — Four Layers</h3>
+    <div class="rev-layer">
+      <span class="layer-title">Entry — Brand Packages (one-time) &nbsp;</span>
+      <span class="layer-price">$229 / $349 / $849</span><br>
+      <span class="layer-desc">Complete brand identity: logo, copy, colour, typography, brand book, all digital assets. Three creative directions presented.</span>
+    </div>
+    <div class="rev-layer">
+      <span class="layer-title">Retention — Subscription &nbsp;</span>
+      <span class="layer-price">$39 – $149 / month</span><br>
+      <span class="layer-desc">Ongoing AI consultant access · asset regeneration · social media graphics, carousels & post templates (Growth tier) · AI social calendar management (Pro tier).</span>
+    </div>
+    <div class="rev-layer">
+      <span class="layer-title">Expansion — Physical Products &nbsp;</span>
+      <span class="layer-price">20–40% margin</span><br>
+      <span class="layer-desc">Branded business cards, banners, t-shirts, mugs, stationery — ordered in-platform, fulfilled by print-on-demand partners. Zero inventory risk.</span>
+    </div>
+    <div class="rev-layer future">
+      <span class="layer-title" style="color:#888">Future — AI Social Media Management &nbsp;</span>
+      <span class="layer-price" style="color:#888">Premium tier</span><br>
+      <span class="layer-desc">The AI manages the brand's social presence: generates, schedules, and publishes content autonomously. Brand voice and identity always consistent.</span>
+    </div>
+  </div>
+
+  <div class="box">
+    <h3>Competitive Advantage</h3>
+    <ul>
+      <li><strong>Second brain, not templates</strong> — reasoning and quality loops</li>
+      <li>Three directions simultaneously — not one output to iterate</li>
+      <li>25+ years of strategy encoded into AI reasoning</li>
+      <li>Brand memory compounds with every session</li>
+      <li>Full loop: creation → subscription → physical → social</li>
+      <li>No competitor owns this end-to-end journey</li>
+    </ul>
+    <p style="margin-top:5px;font-style:italic;font-size:8pt;color:#555">
+      Tailor Brands and Looka make logos.<br>
+      <strong>Genesis AI builds brands and stays.</strong>
+    </p>
+  </div>
+
+  <div class="box yellow">
+    <h3>Current State &amp; Roadmap</h3>
+    <div class="milestone">
+      <span class="ms-when">~5 yrs ago</span>
+      <div class="ms-body"><span class="ms-title">Alpha built &amp; validated</span> — decision-tree pipeline, real clients, testimonials on record.</div>
+    </div>
+    <div class="milestone">
+      <span class="ms-when live">LIVE NOW</span>
+      <div class="ms-body"><span class="ms-title">Brain Engine operational</span> — consultant mode live, delivering brand insights, demo scheduled.</div>
+    </div>
+    <div class="milestone">
+      <span class="ms-when">Next</span>
+      <div class="ms-body"><span class="ms-title">Agent pipeline</span> — connect specialist agents, refine brain's prompting &amp; inspection loop.</div>
+    </div>
+    <div class="milestone">
+      <span class="ms-when">Then</span>
+      <div class="ms-body"><span class="ms-title">UI &amp; questionnaire</span> — client-facing discovery experience built and connected.</div>
+    </div>
+    <div class="milestone">
+      <span class="ms-when">EOY 2026</span>
+      <div class="ms-body"><span class="ms-title">Beta launch</span> — full pipeline live, early subscriber access opens.</div>
+    </div>
+  </div>
+
+  <!-- Row 3 -->
+
+  <div class="box span-2">
+    <h3>3-Year Financial Projections (USD · $349 avg brand package · $59/mo avg subscription)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Year</th><th>Scenario</th><th>Brands/mo</th>
+          <th>Packages</th><th>+ Subscriptions</th><th>+ Physical</th><th>Total Revenue</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="yr-row"><td rowspan="3" class="left">Y1</td>
+          <td>High</td><td>300</td><td>$1,258,800</td><td>+$382,000</td><td>+$72,000</td><td><strong>$1,712,800</strong></td></tr>
+        <tr><td>Mid</td><td>150</td><td>$629,400</td><td>+$191,000</td><td>+$36,000</td><td><strong>$856,400</strong></td></tr>
+        <tr><td>Low</td><td>75</td><td>$314,700</td><td>+$95,000</td><td>+$18,000</td><td><strong>$427,700</strong></td></tr>
+        <tr class="yr-row"><td rowspan="3" class="left">Y2</td>
+          <td>High</td><td>1,000</td><td>$4,188,000</td><td>+$2,980,000</td><td>+$180,000</td><td><strong>$7,348,000</strong></td></tr>
+        <tr><td>Mid</td><td>500</td><td>$2,094,000</td><td>+$1,490,000</td><td>+$90,000</td><td><strong>$3,674,000</strong></td></tr>
+        <tr><td>Low</td><td>250</td><td>$1,047,000</td><td>+$745,000</td><td>+$45,000</td><td><strong>$1,837,000</strong></td></tr>
+        <tr class="yr-row"><td rowspan="3" class="left">Y3</td>
+          <td>High</td><td>5,000</td><td>$20,940,000</td><td>+$8,530,000</td><td>+$500,000</td><td><strong>$29,970,000</strong></td></tr>
+        <tr><td>Mid</td><td>2,500</td><td>$10,470,000</td><td>+$4,265,000</td><td>+$250,000</td><td><strong>$14,985,000</strong></td></tr>
+        <tr><td>Low</td><td>1,250</td><td>$5,235,000</td><td>+$2,132,000</td><td>+$125,000</td><td><strong>$7,492,000</strong></td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:7pt;color:#999;margin-top:3px">*Seed investment ~$530K · 20% cost increase Y2–Y3 · subscriptions assume 25% conversion of brand buyers · AI social management revenue not modelled above</p>
+  </div>
+
+  <div class="box">
+    <h3>Team</h3>
+    <p style="margin-bottom:5px">
+      <strong>Darrell Irwin</strong> — Founder &amp; CEO<br>
+      <span style="color:#555;font-size:8pt">25+ years brand strategy. Founded Cre8ion agency. The methodology and intelligence powering the Brain Engine is his life's work, codified.</span>
+    </p>
+    <p>
+      <strong>Saulo Oliveira</strong> — Co-Founder &amp; CTO<br>
+      <span style="color:#555;font-size:8pt">Enterprise software architect &amp; AI systems engineer. Designed the multi-agent orchestration engine, the Brain Engine, and the two-layer knowledge infrastructure.</span>
+    </p>
+    <p style="margin-top:5px;font-weight:700;font-size:8.5pt">$300,000+ in time invested to date.</p>
+  </div>
+
+  <div class="box">
+    <h3>Go-to-Market (US)</h3>
+    <ul>
+      <li><strong>Partnerships:</strong> SBA programs, YCombinator, Techstars, 500 Startups, university incubators</li>
+      <li><strong>Content:</strong> Founder personal brand + YouTube brand-building series</li>
+      <li><strong>Performance:</strong> Google &amp; Meta targeting founders &amp; entrepreneurs</li>
+      <li><strong>B2B:</strong> White-label licensing to accelerators, coworking hubs, and incubators</li>
+    </ul>
+    <p style="margin-top:5px;font-size:8pt;color:#555">
+      <strong>Market:</strong> 5.5M new US businesses/year (TAM) · 1.5M serviceable · 150K obtainable (10%)
+    </p>
+  </div>
+
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  <div><strong>Genesis AI</strong> · Intelligent Brand Design · genesisbrands.ai</div>
+  <div>
+    <strong>Darrell Irwin</strong>, Founder &amp; CEO &nbsp;|&nbsp;
+    <strong>Saulo Oliveira</strong>, Co-Founder &amp; CTO
+  </div>
+  <div>Seed investment sought: <strong>$530,000</strong></div>
+</div>
+
+</body>
+</html>
