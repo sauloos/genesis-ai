@@ -20,7 +20,7 @@ TAG=$(date +%Y%m%d%H%M%S)
 IMAGE="$ACR_SERVER/genesis-ai:$TAG"
 
 az acr login -n "$ACR_NAME" -o none
-docker build --no-cache -t "$IMAGE" .
+docker build --no-cache --platform linux/amd64 -t "$IMAGE" .
 docker push "$IMAGE"
 
 # Also tag as latest for reference
