@@ -42,6 +42,12 @@ springdoc:
 genesis:
   api-key: ${GENESIS_API_KEY:dev-key-change-in-prod}
 
+azure:
+  storage:
+    account-name: ${AZURE_STORAGE_ACCOUNT:}
+    account-key: ${AZURE_STORAGE_KEY:}
+    container: ${AZURE_STORAGE_CONTAINER:knowledge}
+
 qdrant:
   rest:
     url: ${QDRANT_REST_URL:http://localhost:6333}

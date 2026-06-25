@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Genesis AI — Training</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+         background: #fff; display: flex; height: 100vh; overflow: hidden; color: #1a1a1a; }
+
+  /* ── Sidebar ── */
+  #sidebar {
+    width: 260px; min-width: 260px; background: #111; display: flex;
+    flex-direction: column; border-right: 1px solid #222;
+  }
+  #sidebar-header { padding: 20px 16px 12px; border-bottom: 1px solid #222; }
+  #sidebar-header h1 { color: #fff; font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
+  #sidebar-header p  { color: #666; font-size: 11px; margin-top: 2px; }
+
+  /* ── Mode switcher ── */
+  #mode-switcher {
+    display: flex; margin: 10px 12px 4px; border-radius: 8px;
+    background: #1a1a1a; border: 1px solid #2a2a2a; overflow: hidden;
+  }
+  .mode-btn {
+    flex: 1; padding: 7px 0; font-size: 12px; font-weight: 500;
+    background: none; border: none; color: #666; cursor: pointer;
+    transition: all 0.15s; letter-spacing: 0.2px;
+  }
+  .mode-btn.active { background: #333; color: #fff; }
+  .mode-btn:hover:not(.active) { color: #aaa; }
+
+  #new-session-btn {
+    margin: 8px 12px; padding: 10px 14px; background: #1a1a1a; border: 1px solid #333;
+    border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500;
+    cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background 0.15s;
+  }
+  #new-session-btn:hover { background: #222; }
+
+  #sessions { flex: 1; overflow-y: auto; padding: 4px 8px 12px; }
+  #sessions::-webkit-scrollbar { width: 4px; }
+  #sessions::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+  .session-item {
+    padding: 9px 10px; border-radius: 7px; cursor: pointer; margin-bottom: 2px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .session-item:hover { background: #1c1c1c; }
+  .session-item.active { background: #222; }
+  .session-meta { flex: 1; min-width: 0; }
+  .session-name { color: #ccc; font-size: 13px; white-space: nowrap; overflow: hidden;
+                  text-overflow: ellipsis; }
+  .session-item.active .session-name { color: #fff; }
+  .session-badge {
+    font-size: 10px; padding: 1px 5px; border-radius: 3px; margin-top: 3px;
+    display: inline-block; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  .badge-knowledge  { background: #1a3a2a; color: #4caf7d; }
+  .badge-guidelines { background: #1a2a3a; color: #5a9fd4; }
+  .badge-ingested   { background: #2a2a1a; color: #c8a84b; }
+  .session-delete {
+    opacity: 0; background: none; border: none; color: #666; cursor: pointer;
+    padding: 2px 4px; border-radius: 4px; font-size: 14px; flex-shrink: 0;
+    transition: opacity 0.15s, color 0.15s;
+  }
+  .session-item:hover .session-delete { opacity: 1; }
+  .session-delete:hover { color: #ff6b6b; }
+
+  /* ── Main ── */
+  #main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+  /* ── Empty state ── */
+  #empty {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 12px; color: #aaa;
+  }
+  #empty svg { opacity: 0.3; }
+  #empty h2  { font-size: 18px; font-weight: 600; color: #555; }
+  #empty p   { font-size: 14px; text-align: center; max-width: 360px; line-height: 1.5; }
+
+  /* ── Session detail ── */
+  #detail { flex: 1; display: none; flex-direction: column; min-height: 0; }
+
+  #detail-header {
+    padding: 16px 24px; border-bottom: 1px solid #f0f0f0;
+    display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+  }
+  #topic-input {
+    flex: 1; font-size: 15px; font-weight: 600; border: none; outline: none;
+    font-family: inherit; color: #1a1a1a; background: transparent;
+  }
+  #topic-input::placeholder { color: #ccc; font-weight: 400; }
+  #ingest-btn {
+    padding: 7px 16px; background: #1a1a1a; border: none; border-radius: 8px;
+    color: #fff; font-size: 12px; font-weight: 600; cursor: pointer;
+    transition: background 0.15s; letter-spacing: 0.3px; flex-shrink: 0;
+  }
+  #ingest-btn:hover { background: #333; }
+  #ingest-btn:disabled { background: #4caf7d; cursor: default; }
+  #ingest-btn.ingested { background: #2a4a3a; color: #4caf7d; }
+
+  /* ── Classification bar ── */
+  #classification {
+    padding: 10px 24px; border-bottom: 1px solid #f5f5f5;
+    display: flex; align-items: center; gap: 16px; flex-shrink: 0; flex-wrap: wrap;
+    background: #fafafa;
+  }
+  .cls-label { font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase;
+               letter-spacing: 0.5px; }
+  .cls-group { display: flex; align-items: center; gap: 8px; }
+  .seg-btn {
+    padding: 4px 10px; border-radius: 5px; border: 1px solid #e5e5e5;
+    background: #fff; font-size: 12px; color: #666; cursor: pointer;
+    transition: all 0.15s; font-family: inherit;
+  }
+  .seg-btn.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+  .seg-btn:hover:not(.active) { border-color: #bbb; color: #333; }
+
+  #asset-types-wrap {
+    display: none; align-items: center; gap: 6px; flex-wrap: wrap;
+  }
+  #asset-types-wrap.visible { display: flex; }
+  .asset-chip {
+    padding: 3px 9px; border-radius: 12px; border: 1px solid #e5e5e5;
+    background: #fff; font-size: 11px; color: #666; cursor: pointer;
+    transition: all 0.15s; font-family: inherit;
+  }
+  .asset-chip.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+  .asset-chip:hover:not(.active) { border-color: #bbb; }
+
+  /* ── Content list ── */
+  #content-list {
+    flex: 1; overflow-y: auto; padding: 20px 24px; display: flex;
+    flex-direction: column; gap: 12px;
+  }
+  #content-list::-webkit-scrollbar { width: 6px; }
+  #content-list::-webkit-scrollbar-thumb { background: #e5e5e5; border-radius: 3px; }
+
+  .content-item {
+    border: 1px solid #f0f0f0; border-radius: 10px; padding: 12px 14px;
+    background: #fafafa; position: relative;
+  }
+  .content-item:hover { border-color: #e0e0e0; }
+  .content-type-tag {
+    font-size: 10px; font-weight: 600; color: #999; text-transform: uppercase;
+    letter-spacing: 0.4px; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;
+  }
+  .content-body { font-size: 14px; line-height: 1.6; color: #333; white-space: pre-wrap; word-break: break-word; }
+  .content-filename { font-size: 13px; color: #555; font-style: italic; }
+  .content-transcript { font-size: 13px; color: #555; line-height: 1.5; margin-top: 4px; }
+  .content-delete {
+    position: absolute; top: 10px; right: 10px; background: none; border: none;
+    color: #ccc; cursor: pointer; font-size: 14px; padding: 2px 5px;
+    border-radius: 4px; transition: color 0.15s; opacity: 0;
+  }
+  .content-item:hover .content-delete { opacity: 1; }
+  .content-delete:hover { color: #ff6b6b; }
+
+  .empty-content {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    color: #bbb; font-size: 14px;
+  }
+
+  /* ── Capture bar ── */
+  #capture-area {
+    padding: 16px 24px 20px; border-top: 1px solid #f0f0f0; flex-shrink: 0;
+  }
+
+  #attachment-bar {
+    display: none; align-items: center; gap: 8px; padding: 0 12px 6px;
+    font-size: 12px; color: #555;
+  }
+  #attachment-bar.visible { display: flex; }
+  #attachment-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #remove-attach {
+    background: none; border: none; color: #aaa; cursor: pointer; font-size: 14px;
+    padding: 0 2px; line-height: 1;
+  }
+  #remove-attach:hover { color: #ff6b6b; }
+
+  #capture-wrap {
+    display: flex; align-items: flex-end; gap: 8px; background: #fafafa;
+    border: 1px solid #e5e5e5; border-radius: 12px; padding: 10px 12px;
+    transition: border-color 0.15s;
+  }
+  #capture-wrap:focus-within { border-color: #1a1a1a; background: #fff; }
+
+  #text-input {
+    flex: 1; border: none; background: none; font-size: 14px; line-height: 1.5;
+    resize: none; outline: none; font-family: inherit; color: #1a1a1a;
+    max-height: 120px; overflow-y: auto;
+  }
+  #text-input::placeholder { color: #bbb; }
+
+  .cap-btn {
+    width: 32px; height: 32px; background: none; border: 1px solid #ddd;
+    border-radius: 8px; cursor: pointer; display: flex; align-items: center;
+    justify-content: center; flex-shrink: 0; color: #888;
+    transition: all 0.15s; align-self: flex-end;
+  }
+  .cap-btn:hover { color: #333; background: #f0f0f0; border-color: #bbb; }
+  .cap-btn.recording { color: #fff; background: #e53935; border-color: #e53935; animation: pulse 1s infinite; }
+
+  #send-btn {
+    width: 32px; height: 32px; background: #1a1a1a; border: none; border-radius: 8px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; align-self: flex-end; transition: background 0.15s;
+  }
+  #send-btn:hover:not(:disabled) { background: #333; }
+  #send-btn:disabled { background: #e5e5e5; cursor: not-allowed; }
+
+  .hint { text-align: center; font-size: 11px; color: #ccc; margin-top: 8px; }
+
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.6; } }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div id="sidebar-header">
+    <h1>Genesis AI</h1>
+    <p>Brand Intelligence</p>
+  </div>
+
+  <div id="mode-switcher">
+    <button class="mode-btn" onclick="window.location='/'">Consultant</button>
+    <button class="mode-btn active">Training</button>
+  </div>
+
+  <button id="new-session-btn" onclick="newSession()">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    New session
+  </button>
+  <div id="sessions"></div>
+</div>
+
+<div id="main">
+  <div id="empty">
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <rect x="6" y="6" width="36" height="36" rx="6" stroke="#999" stroke-width="2"/>
+      <path d="M16 18h16M16 24h10M16 30h12" stroke="#999" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="38" cy="10" r="6" fill="#1a1a1a"/>
+      <path d="M35 10h6M38 7v6" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <h2>Build your knowledge</h2>
+    <p>Create a training session to add guidelines, rules, or knowledge that Genesis AI applies when producing brand assets.</p>
+  </div>
+
+  <div id="detail">
+    <div id="detail-header">
+      <input id="topic-input" type="text" placeholder="Session topic…" oninput="debounceSave()">
+      <button id="ingest-btn" onclick="ingestSession()">Ingest</button>
+    </div>
+
+    <div id="classification">
+      <span class="cls-label">Intent</span>
+      <div class="cls-group" id="intent-group">
+        <button class="seg-btn active" data-value="KNOWLEDGE" onclick="setIntent(this)">Knowledge</button>
+        <button class="seg-btn" data-value="GUIDELINES" onclick="setIntent(this)">Guidelines &amp; Rules</button>
+      </div>
+
+      <span class="cls-label">Scope</span>
+      <div class="cls-group" id="scope-group">
+        <button class="seg-btn active" data-value="GLOBAL" onclick="setScope(this)">Global</button>
+        <button class="seg-btn" data-value="ASSET_SCOPED" onclick="setScope(this)">Asset types</button>
+      </div>
+
+      <div id="asset-types-wrap">
+        <span class="cls-label">Types</span>
+        <button class="asset-chip" data-value="logo"            onclick="toggleAsset(this)">Logo</button>
+        <button class="asset-chip" data-value="copy"            onclick="toggleAsset(this)">Copy</button>
+        <button class="asset-chip" data-value="visual-identity" onclick="toggleAsset(this)">Visual Identity</button>
+        <button class="asset-chip" data-value="playbook"        onclick="toggleAsset(this)">Playbook</button>
+        <button class="asset-chip" data-value="brand-book"      onclick="toggleAsset(this)">Brand Book</button>
+      </div>
+    </div>
+
+    <div id="content-list"></div>
+
+    <div id="capture-area">
+      <div id="attachment-bar">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66L9.41 17.41a2 2 0 01-2.83-2.83l8.49-8.48"/>
+        </svg>
+        <span id="attachment-name"></span>
+        <button id="remove-attach" onclick="removeAttachment()">✕</button>
+      </div>
+      <div id="capture-wrap">
+        <button class="cap-btn" onclick="document.getElementById('file-input').click()" title="Attach file">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66L9.41 17.41a2 2 0 01-2.83-2.83l8.49-8.48"/>
+          </svg>
+        </button>
+        <input type="file" id="file-input" accept=".pdf,.txt,.md" style="display:none" onchange="onFileSelected(event)">
+
+        <button class="cap-btn" id="record-btn" onclick="toggleRecording()" title="Record voice note">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="2" width="6" height="12" rx="3"/>
+            <path d="M19 10a7 7 0 01-14 0M12 19v3M8 22h8"/>
+          </svg>
+        </button>
+
+        <textarea id="text-input" rows="1" placeholder="Write a note, guideline, or rule…"
+          onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+
+        <button id="send-btn" onclick="submitText()" disabled>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M13 1L1 5.5l5 2.5 2.5 5L13 1z" fill="white"/>
+          </svg>
+        </button>
+      </div>
+      <div class="hint">Write a note · attach a file · or record your voice</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API     = '';
+const KEY     = 'genesis-ai-key';
+const HEADERS = { 'Content-Type': 'application/json', 'X-Api-Key': KEY };
+
+let currentSessionId = null;
+let currentSession   = null;
+let pendingFile      = null;
+let mediaRecorder    = null;
+let audioChunks      = [];
+let saveTimer        = null;
+
+const ASSET_TYPES = ['logo', 'copy', 'visual-identity', 'playbook', 'brand-book'];
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+async function boot() {
+  await loadSessions();
+  document.getElementById('text-input').addEventListener('input', () => {
+    document.getElementById('send-btn').disabled =
+      document.getElementById('text-input').value.trim() === '' && !pendingFile;
+  });
+}
+
+// ── Sessions ──────────────────────────────────────────────────────────────────
+async function loadSessions() {
+  const sessions = await fetch(`${API}/api/training/sessions`, { headers: HEADERS })
+    .then(r => r.json()).catch(() => []);
+
+  const el = document.getElementById('sessions');
+  el.innerHTML = '';
+  for (const s of sessions) {
+    const div = document.createElement('div');
+    div.className = 'session-item' + (s.id === currentSessionId ? ' active' : '');
+    div.dataset.id = s.id;
+
+    const intentLabel = s.intent === 'GUIDELINES' ? 'Guidelines' : 'Knowledge';
+    const intentClass = s.intent === 'GUIDELINES' ? 'badge-guidelines' : 'badge-knowledge';
+    const statusBadge = s.status === 'INGESTED'
+      ? `<span class="session-badge badge-ingested">Ingested</span>` : '';
+
+    div.innerHTML = `
+      <div class="session-meta">
+        <div class="session-name">${esc(s.topic)}</div>
+        <span class="session-badge ${intentClass}">${intentLabel}</span>${statusBadge}
+      </div>
+      <button class="session-delete" onclick="deleteSession(event,'${s.id}')" title="Delete">✕</button>`;
+    div.addEventListener('click', () => openSession(s.id));
+    el.appendChild(div);
+  }
+}
+
+async function newSession() {
+  const res = await fetch(`${API}/api/training/sessions`, {
+    method: 'POST', headers: HEADERS,
+    body: JSON.stringify({ topic: 'New session' })
+  }).then(r => r.json());
+  await loadSessions();
+  openSession(res.id);
+}
+
+async function openSession(id) {
+  const detail = await fetch(`${API}/api/training/sessions/${id}`, { headers: HEADERS })
+    .then(r => r.json());
+
+  currentSessionId = id;
+  currentSession   = detail.session;
+
+  document.getElementById('empty').style.display  = 'none';
+  document.getElementById('detail').style.display = 'flex';
+  document.querySelectorAll('.session-item').forEach(el =>
+    el.classList.toggle('active', el.dataset.id === id));
+
+  document.getElementById('topic-input').value = detail.session.topic;
+  renderClassification(detail.session);
+  renderContent(detail.content);
+  updateIngestBtn(detail.session);
+}
+
+async function deleteSession(e, id) {
+  e.stopPropagation();
+  await fetch(`${API}/api/training/sessions/${id}`, { method: 'DELETE', headers: HEADERS });
+  if (currentSessionId === id) {
+    currentSessionId = null;
+    document.getElementById('detail').style.display = 'none';
+    document.getElementById('empty').style.display  = 'flex';
+  }
+  await loadSessions();
+}
+
+// ── Classification ────────────────────────────────────────────────────────────
+function renderClassification(session) {
+  document.querySelectorAll('#intent-group .seg-btn').forEach(btn =>
+    btn.classList.toggle('active', btn.dataset.value === session.intent));
+
+  document.querySelectorAll('#scope-group .seg-btn').forEach(btn =>
+    btn.classList.toggle('active', btn.dataset.value === session.scope));
+
+  const assetWrap = document.getElementById('asset-types-wrap');
+  assetWrap.classList.toggle('visible', session.scope === 'ASSET_SCOPED');
+
+  const active = (session.assetTypes || '').split(',').filter(Boolean);
+  document.querySelectorAll('.asset-chip').forEach(chip =>
+    chip.classList.toggle('active', active.includes(chip.dataset.value)));
+}
+
+function setIntent(btn) {
+  document.querySelectorAll('#intent-group .seg-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  saveClassification();
+}
+
+function setScope(btn) {
+  document.querySelectorAll('#scope-group .seg-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('asset-types-wrap').classList.toggle('visible', btn.dataset.value === 'ASSET_SCOPED');
+  saveClassification();
+}
+
+function toggleAsset(chip) {
+  chip.classList.toggle('active');
+  saveClassification();
+}
+
+async function saveClassification() {
+  if (!currentSessionId) return;
+  const intent    = document.querySelector('#intent-group .seg-btn.active')?.dataset.value || 'KNOWLEDGE';
+  const scope     = document.querySelector('#scope-group .seg-btn.active')?.dataset.value  || 'GLOBAL';
+  const assetTypes = [...document.querySelectorAll('.asset-chip.active')]
+                      .map(c => c.dataset.value).join(',');
+  const topic     = document.getElementById('topic-input').value.trim() || 'Untitled';
+
+  await fetch(`${API}/api/training/sessions/${currentSessionId}`, {
+    method: 'PUT', headers: HEADERS,
+    body: JSON.stringify({ topic, intent, scope, assetTypes })
+  });
+  await loadSessions();
+}
+
+function debounceSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveClassification, 600);
+}
+
+// ── Content ───────────────────────────────────────────────────────────────────
+function renderContent(items) {
+  const el = document.getElementById('content-list');
+  if (!items || items.length === 0) {
+    el.innerHTML = '<div class="empty-content">No content yet — write a note, attach a file, or record your voice.</div>';
+    return;
+  }
+  el.innerHTML = '';
+  for (const item of items) {
+    const div = document.createElement('div');
+    div.className = 'content-item';
+    const icon = item.contentType === 'AUDIO' ? '🎙' : item.contentType === 'FILE' ? '📎' : '📝';
+    const typeLabel = { TEXT: 'Note', FILE: 'File', AUDIO: 'Voice note' }[item.contentType];
+
+    let body = '';
+    if (item.contentType === 'TEXT') {
+      body = `<div class="content-body">${esc(item.textContent)}</div>`;
+    } else if (item.contentType === 'FILE') {
+      body = `<div class="content-filename">${esc(item.fileName)}</div>`;
+    } else if (item.contentType === 'AUDIO') {
+      body = `
+        <div class="content-filename">${esc(item.fileName)}</div>
+        ${item.transcript ? `<div class="content-transcript">"${esc(item.transcript)}"</div>` : ''}`;
+    }
+
+    div.innerHTML = `
+      <div class="content-type-tag">${icon} ${typeLabel}</div>
+      ${body}
+      <button class="content-delete" onclick="deleteContent('${item.id}')" title="Remove">✕</button>`;
+    el.appendChild(div);
+  }
+}
+
+async function deleteContent(contentId) {
+  await fetch(`${API}/api/training/sessions/${currentSessionId}/content/${contentId}`,
+    { method: 'DELETE', headers: HEADERS });
+  await refreshContent();
+}
+
+async function refreshContent() {
+  const detail = await fetch(`${API}/api/training/sessions/${currentSessionId}`, { headers: HEADERS })
+    .then(r => r.json());
+  renderContent(detail.content);
+  updateIngestBtn(detail.session);
+  await loadSessions();
+}
+
+// ── Capture — text ────────────────────────────────────────────────────────────
+async function submitText() {
+  if (!currentSessionId) return;
+  const input = document.getElementById('text-input');
+  const text  = input.value.trim();
+
+  if (pendingFile) {
+    await submitFile();
+    return;
+  }
+  if (!text) return;
+
+  input.value = '';
+  autoResize(input);
+  document.getElementById('send-btn').disabled = true;
+
+  await fetch(`${API}/api/training/sessions/${currentSessionId}/content/text`, {
+    method: 'POST', headers: HEADERS,
+    body: JSON.stringify({ text })
+  });
+  await refreshContent();
+}
+
+// ── Capture — file ────────────────────────────────────────────────────────────
+function onFileSelected(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  pendingFile = file;
+  document.getElementById('attachment-name').textContent = file.name;
+  document.getElementById('attachment-bar').classList.add('visible');
+  document.getElementById('send-btn').disabled = false;
+}
+
+function removeAttachment() {
+  pendingFile = null;
+  document.getElementById('file-input').value = '';
+  document.getElementById('attachment-bar').classList.remove('visible');
+  document.getElementById('send-btn').disabled =
+    document.getElementById('text-input').value.trim() === '';
+}
+
+async function submitFile() {
+  if (!pendingFile || !currentSessionId) return;
+  const file = pendingFile;
+  removeAttachment();
+  document.getElementById('send-btn').disabled = true;
+
+  const form = new FormData();
+  form.append('file', file);
+  await fetch(`${API}/api/training/sessions/${currentSessionId}/content/file`, {
+    method: 'POST', headers: { 'X-Api-Key': KEY }, body: form
+  });
+  await refreshContent();
+}
+
+// ── Capture — audio ───────────────────────────────────────────────────────────
+async function toggleRecording() {
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    mediaRecorder.stop();
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioChunks  = [];
+    mediaRecorder = new MediaRecorder(stream);
+
+    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+
+    mediaRecorder.onstop = async () => {
+      document.getElementById('record-btn').classList.remove('recording');
+      stream.getTracks().forEach(t => t.stop());
+
+      const blob = new Blob(audioChunks, { type: 'audio/webm' });
+      const form = new FormData();
+      form.append('audio', blob, 'recording.webm');
+
+      await fetch(`${API}/api/training/sessions/${currentSessionId}/content/audio`, {
+        method: 'POST', headers: { 'X-Api-Key': KEY }, body: form
+      });
+      await refreshContent();
+    };
+
+    mediaRecorder.start();
+    document.getElementById('record-btn').classList.add('recording');
+  } catch (err) {
+    alert('Microphone access is required for voice notes.');
+  }
+}
+
+// ── Ingest ────────────────────────────────────────────────────────────────────
+async function ingestSession() {
+  if (!currentSessionId) return;
+  const btn = document.getElementById('ingest-btn');
+  btn.disabled = true;
+  btn.textContent = 'Ingesting…';
+
+  const session = await fetch(`${API}/api/training/sessions/${currentSessionId}/ingest`, {
+    method: 'POST', headers: HEADERS
+  }).then(r => r.json());
+
+  updateIngestBtn(session);
+  await loadSessions();
+}
+
+function updateIngestBtn(session) {
+  const btn = document.getElementById('ingest-btn');
+  if (session.status === 'INGESTED') {
+    btn.textContent = 'Ingested ✓';
+    btn.classList.add('ingested');
+    btn.disabled = false;
+  } else {
+    btn.textContent = 'Ingest';
+    btn.classList.remove('ingested');
+    btn.disabled = false;
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitText(); }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function esc(s) {
+  if (!s) return '';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+           .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+boot();
+</script>
+</body>
+</html>
