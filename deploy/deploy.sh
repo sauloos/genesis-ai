@@ -10,6 +10,8 @@ ACR_NAME="genesisai$(cat /dev/urandom | LC_ALL=C tr -dc 'a-z0-9' | head -c 6)"
 ENVIRONMENT="genesis-ai-env"
 QDRANT_APP="genesis-qdrant"
 APP_NAME="genesis-ai"
+STORAGE_ACCOUNT="genesisaiknowledge"
+KNOWLEDGE_CONTAINER="knowledge"
 QDRANT_API_KEY_VALUE="$(cat /dev/urandom | LC_ALL=C tr -dc 'a-zA-Z0-9' | head -c 32)"
 
 # ── Load .env ─────────────────────────────────────────────────────────────────
@@ -30,26 +32,26 @@ echo "Resource group: $RESOURCE_GROUP ($LOCATION)"
 echo ""
 
 # ── 1. Resource group ─────────────────────────────────────────────────────────
-echo "[ 1/7 ] Creating resource group..."
+echo "[ 1/8 ] Creating resource group..."
 az group create -n "$RESOURCE_GROUP" -l "$LOCATION" -o none
 
 # ── 2. Container Registry ─────────────────────────────────────────────────────
-echo "[ 2/7 ] Creating container registry: $ACR_NAME..."
+echo "[ 2/8 ] Creating container registry: $ACR_NAME..."
 az acr create -n "$ACR_NAME" -g "$RESOURCE_GROUP" --sku Basic --admin-enabled true -o none
 ACR_SERVER=$(az acr show -n "$ACR_NAME" --query loginServer -o tsv)
 ACR_USER=$(az acr credential show -n "$ACR_NAME" --query username -o tsv)
 ACR_PASS=$(az acr credential show -n "$ACR_NAME" --query "passwords[0].value" -o tsv)
 
 # ── 3. Build image in ACR (AMD64, in the cloud) ───────────────────────────────
-echo "[ 3/7 ] Building genesis-ai image in ACR (this takes ~3 min)..."
+echo "[ 3/8 ] Building genesis-ai image in ACR (this takes ~3 min)..."
 az acr build -r "$ACR_NAME" -t genesis-ai:latest . -o none
 
 # ── 4. Container Apps Environment ─────────────────────────────────────────────
-echo "[ 4/7 ] Creating Container Apps environment..."
+echo "[ 4/8 ] Creating Container Apps environment..."
 az containerapp env create -n "$ENVIRONMENT" -g "$RESOURCE_GROUP" -l "$LOCATION" -o none
 
 # ── 5. Deploy Qdrant ──────────────────────────────────────────────────────────
-echo "[ 5/7 ] Deploying Qdrant..."
+echo "[ 5/8 ] Deploying Qdrant..."
 az containerapp create \
   -n "$QDRANT_APP" -g "$RESOURCE_GROUP" \
   --environment "$ENVIRONMENT" \
@@ -69,7 +71,7 @@ QDRANT_REST_URL="https://$QDRANT_FQDN"
 echo "   Qdrant: $QDRANT_REST_URL"
 
 # ── 6. Deploy genesis-ai ──────────────────────────────────────────────────────
-echo "[ 6/7 ] Deploying genesis-ai..."
+echo "[ 6/8 ] Deploying genesis-ai..."
 az containerapp create \
   -n "$APP_NAME" -g "$RESOURCE_GROUP" \
   --environment "$ENVIRONMENT" \
@@ -95,7 +97,31 @@ APP_FQDN=$(az containerapp show -n "$APP_NAME" -g "$RESOURCE_GROUP" \
   --query properties.configuration.ingress.fqdn -o tsv)
 
 # ── 7. Save config ────────────────────────────────────────────────────────────
-echo "[ 7/7 ] Saving deployment config..."
+# ── 7. Storage account + knowledge container ──────────────────────────────────
+echo "[ 7/8 ] Creating knowledge storage..."
+az storage account create \
+  --name "$STORAGE_ACCOUNT" \
+  --resource-group "$RESOURCE_GROUP" \
+  --location "$LOCATION" \
+  --sku Standard_LRS \
+  --kind StorageV2 \
+  --output none
+
+STORAGE_KEY=$(az storage account keys list \
+  --account-name "$STORAGE_ACCOUNT" \
+  --resource-group "$RESOURCE_GROUP" \
+  --query "[0].value" -o tsv)
+
+az storage container create \
+  --name "$KNOWLEDGE_CONTAINER" \
+  --account-name "$STORAGE_ACCOUNT" \
+  --account-key "$STORAGE_KEY" \
+  --output none
+
+echo "   Storage: https://$STORAGE_ACCOUNT.blob.core.windows.net/$KNOWLEDGE_CONTAINER"
+
+# ── 8. Save config ────────────────────────────────────────────────────────────
+echo "[ 8/8 ] Saving deployment config..."
 cat > deploy/.azure-config << EOF
 RESOURCE_GROUP=$RESOURCE_GROUP
 ACR_NAME=$ACR_NAME
@@ -106,6 +132,10 @@ APP_NAME=$APP_NAME
 QDRANT_REST_URL=$QDRANT_REST_URL
 QDRANT_API_KEY=$QDRANT_API_KEY_VALUE
 APP_URL=https://$APP_FQDN
+
+STORAGE_ACCOUNT=$STORAGE_ACCOUNT
+KNOWLEDGE_CONTAINER=$KNOWLEDGE_CONTAINER
+STORAGE_KEY=$STORAGE_KEY
 EOF
 
 echo ""
@@ -116,7 +146,7 @@ echo ""
 echo "  Genesis AI UI  →  https://$APP_FQDN"
 echo "  Qdrant REST    →  $QDRANT_REST_URL"
 echo ""
-echo "Next: re-ingest the knowledge base pointing to the cloud Qdrant:"
-echo "  QDRANT_URL=$QDRANT_REST_URL QDRANT_API_KEY=$QDRANT_API_KEY_VALUE \\"
-echo "    bash deploy/ingest-cloud.sh"
+echo "Next steps:"
+echo "  1. Upload knowledge:  bash deploy/upload-knowledge.sh"
+echo "  2. Rebuild brain:     bash deploy/rebuild-brain.sh"
 echo ""

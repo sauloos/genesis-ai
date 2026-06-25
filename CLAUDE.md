@@ -42,6 +42,10 @@ knowledge/
   assets/            logos, brand books, campaign imagery (local → Azure Blob)
 ```
 
+Raw content (Layer 1 sources, training sessions, client records, assets) lives in
+Azure Blob Storage in production — not in this repo. GitHub holds code only.
+Qdrant is the vector store; PostgreSQL holds structured records and metadata.
+
 ---
 
 ## Genesis AI — Orchestrator Agent
@@ -90,9 +94,10 @@ Each runs within a Genesis AI evaluation loop.
 |---|---|---|
 | Orchestrator | Claude Opus 4 (Anthropic SDK) | Claude Opus 4 |
 | Specialists | Claude Sonnet 4.6 | Claude Sonnet 4.6 |
-| Layer 1 store | YAML files in this repo | Same (deployed) |
-| Layer 2 vector store | PostgreSQL + pgvector | Azure Database for PostgreSQL |
-| Layer 2 assets | `knowledge/assets/` local | Azure Blob Storage |
+| Layer 1 store | YAML files in this repo | Azure Blob Storage |
+| Layer 2 vector store | Qdrant (local) | Qdrant Cloud |
+| Structured data | PostgreSQL (local) | Azure Database for PostgreSQL |
+| Raw content / assets | `knowledge/` local | Azure Blob Storage |
 | Embeddings | OpenAI text-embedding-3-small | OpenAI / Azure OpenAI |
 | API layer | TBD | TBD |
 | Frontend | TBD | TBD |
