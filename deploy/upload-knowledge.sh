@@ -30,6 +30,7 @@ az storage blob upload-batch \
   --account-name "$STORAGE_ACCOUNT" \
   --account-key "$STORAGE_KEY" \
   --overwrite true \
+  --pattern "!.git/*" \
   --output none
 
 COUNT=$(az storage blob list \
