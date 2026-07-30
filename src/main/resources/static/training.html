@@ -150,6 +150,34 @@
   .content-body { font-size: 14px; line-height: 1.6; color: #333; white-space: pre-wrap; word-break: break-word; }
   .content-filename { font-size: 13px; color: #555; font-style: italic; }
   .content-transcript { font-size: 13px; color: #555; line-height: 1.5; margin-top: 4px; }
+
+  .interp-badge {
+    display: inline-block; font-size: 9px; padding: 1px 5px; border-radius: 3px;
+    background: #1a3a2a; color: #4caf7d; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.3px; margin-left: 6px; vertical-align: middle;
+  }
+  details.raw-transcript { margin-top: 8px; }
+  details.raw-transcript > summary {
+    font-size: 11px; color: #bbb; cursor: pointer; user-select: none;
+    list-style: none; display: inline-flex; align-items: center; gap: 5px;
+  }
+  details.raw-transcript > summary::-webkit-details-marker { display: none; }
+  details.raw-transcript > summary::before {
+    content: '▶'; font-size: 7px; transition: transform 0.15s; display: inline-block;
+  }
+  details.raw-transcript[open] > summary::before { transform: rotate(90deg); }
+  details.raw-transcript .content-transcript { margin-top: 6px; }
+
+  .content-item.processing { opacity: 0.6; }
+  .processing-dots::after {
+    content: ''; animation: dots 1.2s infinite; display: inline-block;
+  }
+  @keyframes dots {
+    0%   { content: ''; }
+    33%  { content: '.'; }
+    66%  { content: '..'; }
+    100% { content: '...'; }
+  }
   .content-delete {
     position: absolute; top: 10px; right: 10px; background: none; border: none;
     color: #ccc; cursor: pointer; font-size: 14px; padding: 2px 5px;
@@ -481,13 +509,26 @@ function renderContent(items) {
     } else if (item.contentType === 'FILE') {
       body = `<div class="content-filename">${esc(item.fileName)}</div>`;
     } else if (item.contentType === 'AUDIO') {
+      const hasInterp = !!item.textContent;
       body = `
         <div class="content-filename">${esc(item.fileName)}</div>
-        ${item.transcript ? `<div class="content-transcript">"${esc(item.transcript)}"</div>` : ''}`;
+        ${hasInterp ? `
+          <div class="content-body">${esc(item.textContent)}</div>
+          ${item.transcript ? `
+            <details class="raw-transcript">
+              <summary>Raw transcript</summary>
+              <div class="content-transcript">"${esc(item.transcript)}"</div>
+            </details>` : ''}
+        ` : item.transcript ? `
+          <div class="content-transcript">"${esc(item.transcript)}"</div>
+        ` : ''}`;
     }
 
+    const interpBadge = item.contentType === 'AUDIO' && item.textContent
+      ? '<span class="interp-badge">Interpreted</span>' : '';
+
     div.innerHTML = `
-      <div class="content-type-tag">${icon} ${typeLabel}</div>
+      <div class="content-type-tag">${icon} ${typeLabel}${interpBadge}</div>
       ${body}
       <button class="content-delete" onclick="deleteContent('${item.id}')" title="Remove">✕</button>`;
     el.appendChild(div);
@@ -577,8 +618,24 @@ async function toggleRecording() {
     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
 
     mediaRecorder.onstop = async () => {
-      document.getElementById('record-btn').classList.remove('recording');
+      const btn = document.getElementById('record-btn');
+      btn.classList.remove('recording');
+      btn.disabled = true;
       stream.getTracks().forEach(t => t.stop());
+
+      // Show placeholder while transcription + interpretation run
+      const list = document.getElementById('content-list');
+      const placeholder = document.createElement('div');
+      placeholder.id = 'audio-processing';
+      placeholder.className = 'content-item processing';
+      placeholder.innerHTML = `
+        <div class="content-type-tag">🎙 Voice note</div>
+        <div class="content-transcript processing-dots">Transcribing and interpreting</div>`;
+      // Remove empty-content placeholder if present
+      const empty = list.querySelector('.empty-content');
+      if (empty) list.innerHTML = '';
+      list.appendChild(placeholder);
+      list.scrollTop = list.scrollHeight;
 
       const blob = new Blob(audioChunks, { type: 'audio/webm' });
       const form = new FormData();
@@ -587,6 +644,8 @@ async function toggleRecording() {
       await fetch(`${API}/api/training/sessions/${currentSessionId}/content/audio`, {
         method: 'POST', headers: { 'X-Api-Key': KEY }, body: form
       });
+
+      btn.disabled = false;
       await refreshContent();
     };
 

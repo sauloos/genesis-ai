@@ -10,7 +10,7 @@ ACR_NAME="genesisai$(cat /dev/urandom | LC_ALL=C tr -dc 'a-z0-9' | head -c 6)"
 ENVIRONMENT="genesis-ai-env"
 QDRANT_APP="genesis-qdrant"
 APP_NAME="genesis-ai"
-STORAGE_ACCOUNT="genesisaiknowledge"
+STORAGE_ACCOUNT="genesisai$(cat /dev/urandom | LC_ALL=C tr -dc 'a-z0-9' | head -c 8)"
 KNOWLEDGE_CONTAINER="knowledge"
 QDRANT_API_KEY_VALUE="$(cat /dev/urandom | LC_ALL=C tr -dc 'a-zA-Z0-9' | head -c 32)"
 

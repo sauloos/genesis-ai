@@ -6,7 +6,10 @@ import com.genesisai.model.TrainingSession;
 import com.genesisai.model.TrainingSession.Status;
 import com.genesisai.repository.TrainingContentRepository;
 import com.genesisai.repository.TrainingSessionRepository;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import org.springframework.ai.anthropic.AnthropicChatOptions;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
@@ -29,6 +32,7 @@ public class TrainingService {
     private final TrainingContentRepository contentRepo;
     private final BlobStorageService blob;
     private final EmbeddingModel embeddingModel;
+    private final ChatClient.Builder chatClientBuilder;
 
     @Value("${openai.api-key:${spring.ai.openai.api-key:}}")
     private String openAiKey;
@@ -42,7 +46,19 @@ public class TrainingService {
     @Value("${spring.ai.vectorstore.qdrant.collection-name:genesis-knowledge}")
     private String collectionName;
 
+    @Value("${genesis.training.interpretation.enabled:true}")
+    private boolean interpretationEnabled;
+
+    @Value("${genesis.training.interpretation.model:claude-haiku-4-5}")
+    private String interpretationModel;
+
     private final RestTemplate restTemplate = new RestTemplate();
+    private ChatClient chatClient;
+
+    @PostConstruct
+    private void init() {
+        chatClient = chatClientBuilder.build();
+    }
 
     // ── Sessions ──────────────────────────────────────────────────────────────
 
@@ -115,11 +131,12 @@ public class TrainingService {
     }
 
     public TrainingContent addAudio(String sessionId, MultipartFile audio) throws IOException {
-        getSession(sessionId);
+        TrainingSession session = getSession(sessionId);
         String blobPath = "training/" + sessionId + "/" + UUID.randomUUID() + "_" + audio.getOriginalFilename();
         blob.upload(blobPath, audio.getBytes());
 
         String transcript = transcribe(audio);
+        String interpreted = interpretationEnabled ? interpret(transcript, session) : null;
 
         TrainingContent content = new TrainingContent();
         content.setId(UUID.randomUUID().toString());
@@ -128,6 +145,7 @@ public class TrainingService {
         content.setBlobPath(blobPath);
         content.setFileName(audio.getOriginalFilename());
         content.setTranscript(transcript);
+        content.setTextContent(interpreted);
         touchSession(sessionId);
         return contentRepo.save(content);
     }
@@ -165,9 +183,30 @@ public class TrainingService {
     private String resolveText(TrainingContent c) {
         return switch (c.getContentType()) {
             case TEXT  -> c.getTextContent();
-            case AUDIO -> c.getTranscript();
+            case AUDIO -> c.getTextContent() != null ? c.getTextContent() : c.getTranscript();
             case FILE  -> null; // file text extraction not yet implemented — future: PDFBox
         };
+    }
+
+    private String interpret(String rawTranscript, TrainingSession session) {
+        String systemPrompt = """
+            You are a knowledge structuring assistant. You receive a raw voice transcript from a brand training session.
+            Clean up transcription artefacts, filler words, and run-on sentences, then restructure the content as
+            clear, coherent prose that preserves every piece of information, intent, and nuance from the speaker.
+            Do not add, infer, or omit anything. Output only the structured content — no preamble, no commentary.
+            """;
+
+        String userPrompt = String.format(
+            "Topic: %s | Intent: %s | Scope: %s\n\nTranscript:\n%s",
+            session.getTopic(), session.getIntent().name(), session.getScope().name(), rawTranscript
+        );
+
+        return chatClient.prompt()
+            .system(systemPrompt)
+            .user(userPrompt)
+            .options(AnthropicChatOptions.builder().model(interpretationModel).build())
+            .call()
+            .content();
     }
 
     private Map<String, Object> buildPayload(TrainingSession session, TrainingContent c, String text) {

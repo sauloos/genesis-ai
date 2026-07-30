@@ -41,6 +41,10 @@ springdoc:
 
 genesis:
   api-key: ${GENESIS_API_KEY:dev-key-change-in-prod}
+  training:
+    interpretation:
+      enabled: true
+      model: claude-haiku-4-5
 
 azure:
   storage:
