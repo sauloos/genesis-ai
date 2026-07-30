@@ -6,13 +6,13 @@ set -euo pipefail
 # ── Configuration ─────────────────────────────────────────────────────────────
 RESOURCE_GROUP="genesis-ai-rg"
 LOCATION="uksouth"
-ACR_NAME="genesisai$(cat /dev/urandom | LC_ALL=C tr -dc 'a-z0-9' | head -c 6)"
+ACR_NAME="genesisai$(openssl rand -hex 3)"
 ENVIRONMENT="genesis-ai-env"
 QDRANT_APP="genesis-qdrant"
 APP_NAME="genesis-ai"
-STORAGE_ACCOUNT="genesisai$(cat /dev/urandom | LC_ALL=C tr -dc 'a-z0-9' | head -c 8)"
+STORAGE_ACCOUNT="genesisai$(openssl rand -hex 4)"
 KNOWLEDGE_CONTAINER="knowledge"
-QDRANT_API_KEY_VALUE="$(cat /dev/urandom | LC_ALL=C tr -dc 'a-zA-Z0-9' | head -c 32)"
+QDRANT_API_KEY_VALUE="$(openssl rand -hex 16)"
 
 # ── Load .env ─────────────────────────────────────────────────────────────────
 if [ ! -f .env ]; then echo "ERROR: .env not found. Run from repo root."; exit 1; fi
