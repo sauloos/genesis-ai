@@ -12,6 +12,7 @@ __pycache__/
 dist/
 build/
 target/
+bin/
 *.jar
 !gradle/wrapper/gradle-wrapper.jar
 

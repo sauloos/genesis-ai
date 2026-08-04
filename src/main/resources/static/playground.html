@@ -458,7 +458,9 @@ async function fetchMethodResult(endpoint, brief, method) {
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
+    let message = null;
+    try { message = JSON.parse(text).message; } catch (_) { /* not JSON */ }
+    throw new Error(message || `HTTP ${res.status}: ${text.slice(0, 200)}`);
   }
   return res.json();
 }
