@@ -12,9 +12,14 @@
 
   /* ── Sidebar ── */
   #sidebar {
-    width: 280px; min-width: 280px; background: #111; display: flex;
-    flex-direction: column; border-right: 1px solid #222; overflow-y: auto;
+    width: 280px; min-width: 160px; max-width: 480px; background: #111; display: flex;
+    flex-direction: column; overflow-y: auto; flex-shrink: 0;
   }
+
+  #sidebar-resizer {
+    width: 5px; flex-shrink: 0; cursor: col-resize; background: #222;
+  }
+  #sidebar-resizer:hover, #sidebar-resizer.dragging { background: #4caf7d; }
   #sidebar-header { padding: 20px 16px 12px; border-bottom: 1px solid #222; }
   #sidebar-header h1 { color: #fff; font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
   #sidebar-header p  { color: #666; font-size: 11px; margin-top: 2px; }
@@ -72,7 +77,10 @@
   /* ── Main ── */
   #main { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
 
-  #form-area { flex-shrink: 0; padding: 20px 28px; border-bottom: 1px solid #f0f0f0; overflow-y: auto; max-height: 46vh; }
+  #form-area { flex-shrink: 0; padding: 20px 28px; overflow-y: auto; height: 46vh; min-height: 120px; }
+
+  #form-resizer { height: 5px; flex-shrink: 0; cursor: row-resize; background: #f0f0f0; }
+  #form-resizer:hover, #form-resizer.dragging { background: #1a1a1a; }
   #form-area h2 { font-size: 16px; font-weight: 700; margin-bottom: 3px; }
   #form-area .sub { font-size: 12px; color: #888; margin-bottom: 16px; }
 
@@ -210,6 +218,8 @@
   </div>
 </div>
 
+<div id="sidebar-resizer"></div>
+
 <div id="main">
   <div id="form-area">
     <h2>Copy Agent</h2>
@@ -276,6 +286,8 @@ This brand challenges the idea that good coffee has to be precious or intimidati
     </div>
   </div>
 
+  <div id="form-resizer"></div>
+
   <div id="results-area">
     <div id="results-empty">Run the agent to see output here.</div>
     <div class="results-cols" id="results-cols" style="display:none"></div>
@@ -288,6 +300,34 @@ const KEY     = 'genesis-ai-key';
 const HEADERS = { 'Content-Type': 'application/json', 'X-Api-Key': KEY };
 
 let currentDirection = 'DISRUPTIVE';
+
+function makeResizable(handle, target, axis, min, max) {
+  let dragging = false, startPos, startSize;
+  handle.addEventListener('mousedown', e => {
+    dragging = true;
+    handle.classList.add('dragging');
+    startPos = axis === 'x' ? e.clientX : e.clientY;
+    startSize = axis === 'x' ? target.getBoundingClientRect().width : target.getBoundingClientRect().height;
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const pos = axis === 'x' ? e.clientX : e.clientY;
+    const size = Math.max(min, Math.min(max, startSize + (pos - startPos)));
+    if (axis === 'x') target.style.width = size + 'px';
+    else target.style.height = size + 'px';
+  });
+  window.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    handle.classList.remove('dragging');
+    document.body.style.userSelect = '';
+  });
+}
+
+makeResizable(document.getElementById('sidebar-resizer'), document.getElementById('sidebar'), 'x', 160, 480);
+makeResizable(document.getElementById('form-resizer'), document.getElementById('form-area'), 'y', 120, window.innerHeight - 160);
 
 function setDirection(btn) {
   document.querySelectorAll('.dir-btn').forEach(b => b.classList.remove('active'));
