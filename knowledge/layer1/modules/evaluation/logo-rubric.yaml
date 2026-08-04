@@ -1,0 +1,55 @@
+module: logo-evaluation-rubric
+version: 1.0
+description: Criteria Genesis AI uses to evaluate logo concept output from the Logo Agent before accepting it. Applies to both generation methods — a DALL-E generated mark (evaluated visually) and a text-described SVG concept (evaluated from its markup and description) — with method-specific notes called out per dimension.
+
+evaluation_dimensions:
+
+  - name: on_brief
+    weight: critical
+    description: Does the mark accurately reflect the brand signals in the brief?
+    pass_criteria: The concept is traceable to a specific signal in the brief (differentiator, personality, industry) — not a generic category symbol.
+    fail_criteria: The mark could belong to any brand in the category — it reaches for the first cliché associated with the industry (e.g. a leaf for anything "natural", a swirl for anything "premium").
+
+  - name: archetype_consistency
+    weight: critical
+    description: Is the mark consistent with the assigned brand archetype and creative direction?
+    pass_criteria: The mark's weight, geometry, and tone are congruent with the archetype's essence — e.g. a Rebel archetype in DISRUPTIVE direction should not read as a Caregiver's soft rounded emblem.
+    fail_criteria: The mark contradicts the archetype or direction (e.g. a bold DISRUPTIVE direction rendered as a safe, generic corporate crest).
+
+  - name: distinctiveness
+    weight: high
+    description: Would this mark be recognisable and ownable, distinct from category competitors?
+    pass_criteria: The concept description names a specific, unusual visual idea (a particular shape relationship, negative-space device, or construction principle) rather than a category default.
+    fail_criteria: The concept is a stock symbol (generic swoosh, abstract globe, interlocking circles) with no specific rationale for why it belongs to this brand.
+
+  - name: legibility_and_scalability
+    weight: high
+    description: Will the mark still read clearly at small sizes and in a single colour?
+    pass_criteria: The concept is simple enough to survive reduction to favicon size and reproduction in one flat colour — described construction has no fine detail, thin hairlines, or reliance on gradients/photographic texture to read.
+    fail_criteria: The concept depends on fine detail, multiple colours, or gradient/photographic rendering to be legible — it would break down at small scale or in single-colour use.
+    method_notes:
+      dalle: Judge this directly from the generated image — zoom mentally to favicon scale; flag fine detail, gradients, or busy backgrounds that would not survive reduction.
+      svg_concept: Judge this from the described construction and any SVG markup — flag reliance on many path nodes, thin strokes, or effects that don't translate to a simple flat mark.
+
+  - name: technical_quality
+    weight: medium
+    description: Is the output technically sound for its method?
+    pass_criteria: N/A — see method_notes.
+    fail_criteria: N/A — see method_notes.
+    method_notes:
+      dalle: The image should show a clean, isolated mark (not a full branding mockup, business card, or scene) on a plain or transparent-appearing background, with no garbled text artifacts.
+      svg_concept: SVG markup (if present) should be well-formed and match the written concept description — no contradictions between what the markup draws and what the description claims.
+
+rejection_triggers:
+  # If any of these are present, return the output for revision regardless of other scores.
+  - The concept is a recognisable stock symbol with no brand-specific rationale
+  - dalle method: the image is a full mockup/scene rather than an isolated mark, or contains garbled text
+  - svg_concept method: markup is malformed or contradicts the written concept description
+  - Concept description or symbolism explanation is under 2 sentences or purely a list of adjectives
+
+feedback_format: >
+  When returning logo output for revision, lead with what is working before stating what needs to
+  change. Be specific about the visual element and the problem, and suggest the direction of
+  improvement (not the exact fix — that is the Logo Agent's job). For dalle-method revisions, note
+  that the next attempt is a fresh generation, not an edit — feedback should describe the concept
+  change needed, not a pixel-level correction.
