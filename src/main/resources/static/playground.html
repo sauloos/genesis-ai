@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Genesis AI — Agent Playground</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+         background: #fff; display: flex; height: 100vh; overflow: hidden; color: #1a1a1a; }
+
+  /* ── Sidebar ── */
+  #sidebar {
+    width: 280px; min-width: 280px; background: #111; display: flex;
+    flex-direction: column; border-right: 1px solid #222; overflow-y: auto;
+  }
+  #sidebar-header { padding: 20px 16px 12px; border-bottom: 1px solid #222; }
+  #sidebar-header h1 { color: #fff; font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
+  #sidebar-header p  { color: #666; font-size: 11px; margin-top: 2px; }
+
+  #mode-switcher {
+    display: flex; margin: 10px 12px 4px; border-radius: 8px;
+    background: #1a1a1a; border: 1px solid #2a2a2a; overflow: hidden;
+  }
+  .mode-btn {
+    flex: 1; padding: 7px 0; font-size: 12px; font-weight: 500;
+    background: none; border: none; color: #666; cursor: pointer;
+    transition: all 0.15s; letter-spacing: 0.2px;
+  }
+  .mode-btn.active { background: #333; color: #fff; }
+  .mode-btn:hover:not(.active) { color: #aaa; }
+
+  #agent-list { padding: 16px 12px; }
+  .side-label {
+    font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase;
+    letter-spacing: 0.5px; padding: 4px 4px 8px;
+  }
+  .agent-item {
+    padding: 10px 12px; border-radius: 8px; cursor: pointer; margin-bottom: 4px;
+    border: 1px solid transparent; transition: all 0.15s;
+  }
+  .agent-item:hover:not(.disabled) { background: #1c1c1c; }
+  .agent-item.active { background: #1a1a1a; border-color: #333; }
+  .agent-item.disabled { opacity: 0.35; cursor: default; }
+  .agent-name { color: #eee; font-size: 13px; font-weight: 600; }
+  .agent-desc { color: #777; font-size: 11px; margin-top: 2px; line-height: 1.4; }
+  .agent-item.active .agent-name { color: #fff; }
+
+  #compare-toggle-wrap {
+    padding: 14px 16px; margin: 4px 12px 12px; background: #1a1a1a; border-radius: 8px;
+    border: 1px solid #2a2a2a;
+  }
+  #compare-toggle-wrap label {
+    display: flex; align-items: center; gap: 8px; color: #ccc; font-size: 12px;
+    cursor: pointer; font-weight: 500;
+  }
+  #compare-toggle-wrap p { color: #666; font-size: 11px; margin-top: 6px; line-height: 1.5; }
+  #compare-toggle { width: 15px; height: 15px; accent-color: #4caf7d; cursor: pointer; }
+
+  #eval-toggle-wrap {
+    padding: 14px 16px; margin: 0 12px 12px; background: #1a1a1a; border-radius: 8px;
+    border: 1px solid #2a2a2a;
+  }
+  #eval-toggle-wrap label {
+    display: flex; align-items: center; gap: 8px; color: #ccc; font-size: 12px;
+    cursor: pointer; font-weight: 500;
+  }
+  #eval-toggle-wrap p { color: #666; font-size: 11px; margin-top: 6px; line-height: 1.5; }
+  #eval-toggle { width: 15px; height: 15px; accent-color: #6f9ce0; cursor: pointer; }
+
+  /* ── Main ── */
+  #main { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+
+  #form-area { flex-shrink: 0; padding: 20px 28px; border-bottom: 1px solid #f0f0f0; overflow-y: auto; max-height: 46vh; }
+  #form-area h2 { font-size: 16px; font-weight: 700; margin-bottom: 3px; }
+  #form-area .sub { font-size: 12px; color: #888; margin-bottom: 16px; }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field.full { grid-column: 1 / -1; }
+  .field label { font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: 0.4px; }
+  .field input, .field select, .field textarea {
+    font-family: inherit; font-size: 13px; padding: 8px 10px; border: 1px solid #e5e5e5;
+    border-radius: 7px; outline: none; color: #1a1a1a; background: #fafafa; resize: vertical;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: #1a1a1a; background: #fff; }
+  .field textarea { min-height: 44px; line-height: 1.4; }
+  .field .hint-text { font-size: 10px; color: #aaa; }
+
+  .direction-group { display: flex; gap: 6px; }
+  .dir-btn {
+    flex: 1; padding: 8px 0; border-radius: 7px; border: 1px solid #e5e5e5;
+    background: #fafafa; font-size: 12px; font-weight: 600; color: #666; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .dir-btn.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+
+  #run-row { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+  #run-btn {
+    padding: 10px 22px; background: #1a1a1a; border: none; border-radius: 8px;
+    color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.15s;
+  }
+  #run-btn:hover:not(:disabled) { background: #333; }
+  #run-btn:disabled { background: #ccc; cursor: default; }
+  #run-status { font-size: 12px; color: #888; }
+  #run-error { font-size: 12px; color: #c0392b; }
+
+  /* ── Results ── */
+  #results-area { flex: 1; overflow-y: auto; padding: 20px 28px 40px; }
+  #results-empty { color: #bbb; font-size: 14px; text-align: center; margin-top: 60px; }
+
+  .results-cols { display: grid; grid-template-columns: 1fr; gap: 20px; }
+  .results-cols.dual { grid-template-columns: 1fr 1fr; }
+
+  .result-card { border: 1px solid #eee; border-radius: 12px; overflow: hidden; }
+  .result-card-header {
+    padding: 10px 16px; display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid #eee;
+  }
+  .result-card-header.genesis { background: #14251c; }
+  .result-card-header.baseline { background: #f5f5f5; }
+  .result-card-title { font-size: 12px; font-weight: 700; letter-spacing: 0.3px; }
+  .result-card-header.genesis .result-card-title { color: #6fe0a5; }
+  .result-card-header.baseline .result-card-title { color: #555; }
+  .result-card-latency { font-size: 11px; color: #999; }
+  .result-card-body { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+
+  .rf-block .rf-label {
+    font-size: 10px; font-weight: 700; color: #999; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 5px;
+  }
+  .rf-block .rf-value { font-size: 14px; line-height: 1.6; color: #1a1a1a; white-space: pre-wrap; }
+  .rf-tagline .rf-value { font-size: 17px; font-weight: 700; }
+
+  .tone-principles { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+  .tone-principles li { font-size: 13px; color: #333; padding-left: 14px; position: relative; }
+  .tone-principles li::before { content: '—'; position: absolute; left: 0; color: #999; }
+
+  .tone-example { border-left: 2px solid #eee; padding: 6px 0 6px 10px; margin-top: 6px; }
+  .tone-example .te-do  { font-size: 12px; color: #2e7d4f; }
+  .tone-example .te-not { font-size: 12px; color: #b0453e; margin-top: 2px; }
+
+  .reasoning-box {
+    font-size: 12px; color: #777; line-height: 1.5; background: #fafafa;
+    border-radius: 8px; padding: 10px 12px; font-style: italic;
+  }
+
+  .eval-badge {
+    display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px;
+    border-radius: 10px; letter-spacing: 0.3px; margin-left: 8px;
+  }
+  .eval-badge.accepted { background: #14251c; color: #6fe0a5; }
+  .eval-badge.exhausted { background: #2a1c14; color: #e0a56f; }
+
+  .eval-round {
+    border-left: 2px solid #eee; padding: 6px 0 6px 10px; margin-bottom: 8px;
+  }
+  .eval-round .er-head { font-size: 11px; font-weight: 700; }
+  .eval-round .er-head.accept { color: #2e7d4f; }
+  .eval-round .er-head.revise { color: #b0453e; }
+  .eval-round .er-summary { font-size: 12px; color: #555; margin-top: 3px; line-height: 1.5; }
+  .eval-round .er-issues { font-size: 11px; color: #888; margin-top: 4px; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div id="sidebar-header">
+    <h1>Genesis AI</h1>
+    <p>Brand Intelligence</p>
+  </div>
+
+  <div id="mode-switcher">
+    <button class="mode-btn" onclick="window.location='/console'">Consultant</button>
+    <button class="mode-btn" onclick="window.location='/training'">Training</button>
+    <button class="mode-btn active">Playground</button>
+  </div>
+
+  <div id="agent-list">
+    <div class="side-label">Specialist agents</div>
+    <div class="agent-item active" data-agent="copy">
+      <div class="agent-name">✏️ Copy Agent</div>
+      <div class="agent-desc">Tagline, mission, brand story, elevator pitch, tone guide</div>
+    </div>
+    <div class="agent-item disabled">
+      <div class="agent-name">🎨 Visual Identity</div>
+      <div class="agent-desc">Coming soon</div>
+    </div>
+    <div class="agent-item disabled">
+      <div class="agent-name">🔺 Logo</div>
+      <div class="agent-desc">Coming soon</div>
+    </div>
+  </div>
+
+  <div id="compare-toggle-wrap">
+    <label>
+      <input type="checkbox" id="compare-toggle">
+      A/B compare vs. plain AI
+    </label>
+    <p>Runs the same brief through Genesis AI's orchestrated agent (persona, craft rubric, Layer 2 precedent, training instructions) side-by-side with a plain model call given only the raw facts — so you can see the value the orchestration adds.</p>
+  </div>
+
+  <div id="eval-toggle-wrap">
+    <label>
+      <input type="checkbox" id="eval-toggle">
+      Evaluation loop
+    </label>
+    <p>Genesis AI reviews the draft against the copy rubric and sends it back for revision until it's accepted (or the iteration budget runs out), instead of returning the first draft.</p>
+  </div>
+</div>
+
+<div id="main">
+  <div id="form-area">
+    <h2>Copy Agent</h2>
+    <div class="sub">Give it a brand context and a creative direction, then run it.</div>
+
+    <div class="form-grid">
+      <div class="field">
+        <label>Brand name</label>
+        <input id="f-name" type="text" placeholder="Groundwork" value="Groundwork">
+      </div>
+      <div class="field">
+        <label>Industry</label>
+        <input id="f-industry" type="text" placeholder="Specialty coffee roaster" value="Specialty coffee roaster">
+      </div>
+      <div class="field full">
+        <label>Target audience</label>
+        <input id="f-audience" type="text" placeholder="Urban professionals aged 25-40 who value craft over convenience"
+          value="Urban professionals aged 25-40 who value craft and provenance over convenience">
+      </div>
+      <div class="field full">
+        <label>Core offer</label>
+        <input id="f-offer" type="text" placeholder="Small-batch roasted specialty coffee, subscription and retail"
+          value="Small-batch roasted specialty coffee, subscription and retail">
+      </div>
+      <div class="field full">
+        <label>Differentiator</label>
+        <input id="f-diff" type="text" placeholder="Exceptional coffee without the snobbery"
+          value="Exceptional coffee without the snobbery">
+      </div>
+      <div class="field">
+        <label>Personality (comma-separated)</label>
+        <input id="f-personality" type="text" placeholder="direct, unpretentious, confident" value="direct, unpretentious, confident">
+      </div>
+      <div class="field">
+        <label>Tone</label>
+        <input id="f-tone" type="text" placeholder="bold, plainspoken, a little irreverent" value="bold, plainspoken, a little irreverent">
+      </div>
+
+      <div class="field full">
+        <label>Creative direction</label>
+        <div class="direction-group">
+          <button class="dir-btn" data-value="ANCHORED" onclick="setDirection(this)">Anchored</button>
+          <button class="dir-btn" data-value="EVOLVED" onclick="setDirection(this)">Evolved</button>
+          <button class="dir-btn active" data-value="DISRUPTIVE" onclick="setDirection(this)">Disruptive</button>
+        </div>
+      </div>
+
+      <div class="field full">
+        <label>Training instructions (one per line)</label>
+        <textarea id="f-training" placeholder="Avoid coffee cliches like 'awakens your senses'.">Lean into bold, unexpected language. Avoid coffee cliches like "awakens your senses" or "perfect blend".
+This brand challenges the idea that good coffee has to be precious or intimidating.</textarea>
+      </div>
+
+      <div class="field full">
+        <label>Additional context</label>
+        <textarea id="f-context" placeholder="Anything else the agent should know...">Groundwork is entering a market saturated with pretentious third-wave coffee brands. Their angle: exceptional coffee without the snobbery.</textarea>
+      </div>
+    </div>
+
+    <div id="run-row">
+      <button id="run-btn" onclick="runAgent()">Run agent</button>
+      <span id="run-status"></span>
+      <span id="run-error"></span>
+    </div>
+  </div>
+
+  <div id="results-area">
+    <div id="results-empty">Run the agent to see output here.</div>
+    <div class="results-cols" id="results-cols" style="display:none"></div>
+  </div>
+</div>
+
+<script>
+const API     = '';
+const KEY     = 'genesis-ai-key';
+const HEADERS = { 'Content-Type': 'application/json', 'X-Api-Key': KEY };
+
+let currentDirection = 'DISRUPTIVE';
+
+function setDirection(btn) {
+  document.querySelectorAll('.dir-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentDirection = btn.dataset.value;
+}
+
+function buildBrief() {
+  const personality = document.getElementById('f-personality').value
+    .split(',').map(s => s.trim()).filter(Boolean);
+  const trainingInstructions = document.getElementById('f-training').value
+    .split('\n').map(s => s.trim()).filter(Boolean);
+
+  return {
+    engagementId: 'playground-' + Date.now(),
+    brand: {
+      name: document.getElementById('f-name').value.trim(),
+      industry: document.getElementById('f-industry').value.trim(),
+      targetAudience: document.getElementById('f-audience').value.trim(),
+      coreOffer: document.getElementById('f-offer').value.trim(),
+      differentiator: document.getElementById('f-diff').value.trim(),
+      personality: personality,
+      tone: document.getElementById('f-tone').value.trim()
+    },
+    direction: currentDirection,
+    trainingInstructions: trainingInstructions,
+    additionalContext: document.getElementById('f-context').value.trim()
+  };
+}
+
+async function runAgent() {
+  const btn = document.getElementById('run-btn');
+  const status = document.getElementById('run-status');
+  const errorEl = document.getElementById('run-error');
+  const compare = document.getElementById('compare-toggle').checked;
+  const evaluate = document.getElementById('eval-toggle').checked;
+
+  btn.disabled = true;
+  errorEl.textContent = '';
+  status.textContent = compare ? 'Running both agents…' : (evaluate ? 'Running evaluation loop…' : 'Running…');
+  document.getElementById('results-empty').style.display = 'none';
+  const colsEl = document.getElementById('results-cols');
+  colsEl.style.display = 'none';
+
+  const brief = buildBrief();
+  const endpoint = compare
+    ? (evaluate ? '/api/agents/copy/compare-with-evaluation' : '/api/agents/copy/compare')
+    : (evaluate ? '/api/agents/copy/execute-with-evaluation' : '/api/agents/copy/execute');
+
+  const t0 = performance.now();
+  try {
+    const res = await fetch(`${API}${endpoint}`, {
+      method: 'POST', headers: HEADERS, body: JSON.stringify(brief)
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
+    }
+    const data = await res.json();
+    const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
+    status.textContent = `Done in ${elapsed}s`;
+
+    if (compare) {
+      renderCompare(data, evaluate);
+    } else {
+      renderSingle(data, evaluate);
+    }
+  } catch (err) {
+    status.textContent = '';
+    errorEl.textContent = err.message || String(err);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderSingle(data, evaluate) {
+  const colsEl = document.getElementById('results-cols');
+  colsEl.classList.remove('dual');
+  colsEl.style.display = 'grid';
+  const o = evaluate ? data.output : data;
+  const rounds = evaluate ? data.rounds : null;
+  const accepted = evaluate ? data.accepted : null;
+  colsEl.innerHTML = genesisCard(o, null, rounds, accepted);
+}
+
+function renderCompare(compareResult, evaluate) {
+  const colsEl = document.getElementById('results-cols');
+  colsEl.classList.add('dual');
+  colsEl.style.display = 'grid';
+  const genesis = evaluate ? compareResult.genesisAi.output : compareResult.genesisAi;
+  const rounds = evaluate ? compareResult.genesisAi.rounds : null;
+  const accepted = evaluate ? compareResult.genesisAi.accepted : null;
+  colsEl.innerHTML =
+    genesisCard(genesis, compareResult.genesisAiMs, rounds, accepted) +
+    baselineCard(compareResult.baselineAi, compareResult.baselineAiMs);
+}
+
+function genesisCard(o, ms, rounds, accepted) {
+  const latency = ms != null ? `<span class="result-card-latency">${(ms/1000).toFixed(1)}s</span>` : '';
+  const badge = rounds
+    ? (accepted
+        ? `<span class="eval-badge accepted">Accepted after ${rounds.length} round${rounds.length > 1 ? 's' : ''}</span>`
+        : `<span class="eval-badge exhausted">Budget exhausted (${rounds.length} rounds)</span>`)
+    : '';
+  return `
+    <div class="result-card">
+      <div class="result-card-header genesis">
+        <span class="result-card-title">GENESIS AI — Brain-orchestrated${badge}</span>
+        ${latency}
+      </div>
+      <div class="result-card-body">
+        ${block('Tagline', o.tagline, true)}
+        ${block('Mission statement', o.missionStatement)}
+        ${block('Brand story', o.brandStory)}
+        ${block('Elevator pitch', o.elevatorPitch)}
+        ${toneGuideBlock(o.toneGuide)}
+        ${o.reasoning ? `<div class="rf-block"><div class="rf-label">Reasoning</div><div class="reasoning-box">${esc(o.reasoning)}</div></div>` : ''}
+        ${evalTrailBlock(rounds)}
+      </div>
+    </div>`;
+}
+
+function evalTrailBlock(rounds) {
+  if (!rounds || !rounds.length) return '';
+  const items = rounds.map(r => {
+    const v = r.evaluation.verdict;
+    const cls = v === 'ACCEPT' ? 'accept' : 'revise';
+    const issues = (r.evaluation.revision && r.evaluation.revision.specificIssues || [])
+      .map(i => esc(i)).join(' · ');
+    return `
+      <div class="eval-round">
+        <div class="er-head ${cls}">Round ${r.iteration} — ${v}</div>
+        <div class="er-summary">${esc(r.evaluation.summary)}</div>
+        ${issues ? `<div class="er-issues">${issues}</div>` : ''}
+      </div>`;
+  }).join('');
+  return `
+    <div class="rf-block">
+      <div class="rf-label">Evaluation trail — Genesis AI review</div>
+      ${items}
+    </div>`;
+}
+
+function baselineCard(o, ms) {
+  const latency = ms != null ? `<span class="result-card-latency">${(ms/1000).toFixed(1)}s</span>` : '';
+  return `
+    <div class="result-card">
+      <div class="result-card-header baseline">
+        <span class="result-card-title">GENERIC AI REQUEST</span>
+        ${latency}
+      </div>
+      <div class="result-card-body">
+        ${block('Tagline', o.tagline, true)}
+        ${block('Mission statement', o.missionStatement)}
+        ${block('Brand story', o.brandStory)}
+        ${block('Elevator pitch', o.elevatorPitch)}
+      </div>
+    </div>`;
+}
+
+function block(label, value, isTagline) {
+  return `
+    <div class="rf-block ${isTagline ? 'rf-tagline' : ''}">
+      <div class="rf-label">${label}</div>
+      <div class="rf-value">${esc(value)}</div>
+    </div>`;
+}
+
+function toneGuideBlock(tg) {
+  if (!tg) return '';
+  const principles = (tg.principles || []).map(p => `<li>${esc(p)}</li>`).join('');
+  const examples = (tg.examples || []).map(ex => `
+    <div class="tone-example">
+      <div class="te-do">✓ ${esc(ex.doThis)}</div>
+      <div class="te-not">✕ ${esc(ex.notThis)}</div>
+    </div>`).join('');
+  return `
+    <div class="rf-block">
+      <div class="rf-label">Tone guide</div>
+      <ul class="tone-principles">${principles}</ul>
+      ${examples}
+    </div>`;
+}
+
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+           .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+</script>
+</body>
+</html>

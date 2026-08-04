@@ -16,5 +16,6 @@ FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 COPY --from=build /workspace/build/libs/*.jar app.jar
 COPY agents agents
+COPY knowledge/layer1/modules knowledge/layer1/modules
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]

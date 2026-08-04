@@ -20,9 +20,10 @@ spring:
   ai:
     anthropic:
       api-key: ${ANTHROPIC_API_KEY:}
+      base-url: ${ANTHROPIC_BASE_URL:https://api.anthropic.com}
       chat:
         options:
-          model: claude-opus-4-5
+          model: claude-opus-5
           max-tokens: 8000
     openai:
       api-key: ${OPENAI_API_KEY:}
@@ -41,10 +42,26 @@ springdoc:
 
 genesis:
   api-key: ${GENESIS_API_KEY:dev-key-change-in-prod}
+  basic-auth:
+    username: ${BASIC_AUTH_USERNAME:genesis}
+    password: ${BASIC_AUTH_PASSWORD:change-me-in-prod}
   training:
     interpretation:
       enabled: true
       model: claude-haiku-4-5
+  agents:
+    copy:
+      model: claude-sonnet-5
+      system-prompt: agents/copy/system.md
+      max-tokens: 3000
+      rag:
+        enabled: true
+        top-k: 3
+      max-iterations: 3
+    copy-evaluator:
+      model: claude-opus-5
+      system-prompt: agents/evaluation/copy-evaluator.md
+      max-tokens: 1500
 
 azure:
   storage:
