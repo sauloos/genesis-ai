@@ -169,6 +169,21 @@
   .eval-round .er-head.revise { color: #b0453e; }
   .eval-round .er-summary { font-size: 12px; color: #555; margin-top: 3px; line-height: 1.5; }
   .eval-round .er-issues { font-size: 11px; color: #888; margin-top: 4px; line-height: 1.5; }
+
+  .palette-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .swatch { border: 1px solid #eee; border-radius: 8px; overflow: hidden; }
+  .swatch-color { height: 48px; }
+  .swatch-info { padding: 8px 10px; }
+  .swatch-name { font-size: 12px; font-weight: 700; color: #1a1a1a; }
+  .swatch-hex { font-size: 11px; font-weight: 400; color: #999; margin-left: 4px; }
+  .swatch-role { font-size: 10px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.3px; margin-top: 3px; }
+  .swatch-rationale { font-size: 11px; color: #666; line-height: 1.4; margin-top: 4px; }
+
+  .typo-pairing { display: flex; gap: 24px; margin-bottom: 8px; }
+  .typo-role { display: flex; flex-direction: column; gap: 2px; }
+  .typo-role-label { font-size: 10px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.3px; }
+  .typo-font { font-size: 15px; font-weight: 700; color: #1a1a1a; }
+  .typo-rationale { font-size: 12px; color: #666; line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -187,13 +202,13 @@
 
   <div id="agent-list">
     <div class="side-label">Specialist agents</div>
-    <div class="agent-item active" data-agent="copy">
+    <div class="agent-item active" data-agent="copy" onclick="selectAgent(this)">
       <div class="agent-name">✏️ Copy Agent</div>
       <div class="agent-desc">Tagline, mission, brand story, elevator pitch, tone guide</div>
     </div>
-    <div class="agent-item disabled">
+    <div class="agent-item" data-agent="visual-identity" onclick="selectAgent(this)">
       <div class="agent-name">🎨 Visual Identity</div>
-      <div class="agent-desc">Coming soon</div>
+      <div class="agent-desc">Colour palette, typography, mood direction</div>
     </div>
     <div class="agent-item disabled">
       <div class="agent-name">🔺 Logo</div>
@@ -214,7 +229,7 @@
       <input type="checkbox" id="eval-toggle">
       Evaluation loop
     </label>
-    <p>Genesis AI reviews the draft against the copy rubric and sends it back for revision until it's accepted (or the iteration budget runs out), instead of returning the first draft.</p>
+    <p>Genesis AI reviews the draft against the agent's rubric and sends it back for revision until it's accepted (or the iteration budget runs out), instead of returning the first draft.</p>
   </div>
 </div>
 
@@ -222,8 +237,8 @@
 
 <div id="main">
   <div id="form-area">
-    <h2>Copy Agent</h2>
-    <div class="sub">Give it a brand context and a creative direction, then run it.</div>
+    <h2 id="form-title">Copy Agent</h2>
+    <div class="sub" id="form-sub">Give it a brand context and a creative direction, then run it.</div>
 
     <div class="form-grid">
       <div class="field">
@@ -300,6 +315,29 @@ const KEY     = 'genesis-ai-key';
 const HEADERS = { 'Content-Type': 'application/json', 'X-Api-Key': KEY };
 
 let currentDirection = 'DISRUPTIVE';
+let currentAgent = 'copy';
+
+const AGENT_META = {
+  'copy': { title: 'Copy Agent', sub: 'Give it a brand context and a creative direction, then run it.' },
+  'visual-identity': { title: 'Visual Identity Agent', sub: 'Give it a brand context and a creative direction, then run it.' }
+};
+
+function selectAgent(el) {
+  if (el.classList.contains('disabled')) return;
+  document.querySelectorAll('.agent-item').forEach(a => a.classList.remove('active'));
+  el.classList.add('active');
+  currentAgent = el.dataset.agent;
+
+  const meta = AGENT_META[currentAgent];
+  document.getElementById('form-title').textContent = meta.title;
+  document.getElementById('form-sub').textContent = meta.sub;
+
+  document.getElementById('results-empty').style.display = 'block';
+  document.getElementById('results-cols').style.display = 'none';
+  document.getElementById('results-cols').innerHTML = '';
+  document.getElementById('run-status').textContent = '';
+  document.getElementById('run-error').textContent = '';
+}
 
 function makeResizable(handle, target, axis, min, max) {
   let dragging = false, startPos, startSize;
@@ -374,8 +412,8 @@ async function runAgent() {
 
   const brief = buildBrief();
   const endpoint = compare
-    ? (evaluate ? '/api/agents/copy/compare-with-evaluation' : '/api/agents/copy/compare')
-    : (evaluate ? '/api/agents/copy/execute-with-evaluation' : '/api/agents/copy/execute');
+    ? (evaluate ? `/api/agents/${currentAgent}/compare-with-evaluation` : `/api/agents/${currentAgent}/compare`)
+    : (evaluate ? `/api/agents/${currentAgent}/execute-with-evaluation` : `/api/agents/${currentAgent}/execute`);
 
   const t0 = performance.now();
   try {
@@ -439,14 +477,63 @@ function genesisCard(o, ms, rounds, accepted) {
         ${latency}
       </div>
       <div class="result-card-body">
-        ${block('Tagline', o.tagline, true)}
-        ${block('Mission statement', o.missionStatement)}
-        ${block('Brand story', o.brandStory)}
-        ${block('Elevator pitch', o.elevatorPitch)}
-        ${toneGuideBlock(o.toneGuide)}
+        ${agentBody(o)}
         ${o.reasoning ? `<div class="rf-block"><div class="rf-label">Reasoning</div><div class="reasoning-box">${esc(o.reasoning)}</div></div>` : ''}
         ${evalTrailBlock(rounds)}
       </div>
+    </div>`;
+}
+
+function agentBody(o) {
+  return currentAgent === 'visual-identity' ? visualIdentityBody(o) : copyBody(o);
+}
+
+function copyBody(o) {
+  return `
+    ${block('Tagline', o.tagline, true)}
+    ${block('Mission statement', o.missionStatement)}
+    ${block('Brand story', o.brandStory)}
+    ${block('Elevator pitch', o.elevatorPitch)}
+    ${toneGuideBlock(o.toneGuide)}
+  `;
+}
+
+function visualIdentityBody(o) {
+  return `
+    ${paletteBlock(o.colorPalette)}
+    ${typographyBlock(o.typography)}
+    ${block('Mood direction', o.moodDirection)}
+  `;
+}
+
+function paletteBlock(palette) {
+  if (!palette || !palette.length) return '';
+  const swatches = palette.map(c => `
+    <div class="swatch">
+      <div class="swatch-color" style="background:${esc(c.hex)}"></div>
+      <div class="swatch-info">
+        <div class="swatch-name">${esc(c.name)}<span class="swatch-hex">${esc(c.hex)}</span></div>
+        <div class="swatch-role">${esc(c.role)}</div>
+        <div class="swatch-rationale">${esc(c.rationale)}</div>
+      </div>
+    </div>`).join('');
+  return `
+    <div class="rf-block">
+      <div class="rf-label">Colour palette</div>
+      <div class="palette-grid">${swatches}</div>
+    </div>`;
+}
+
+function typographyBlock(t) {
+  if (!t) return '';
+  return `
+    <div class="rf-block">
+      <div class="rf-label">Typography</div>
+      <div class="typo-pairing">
+        <div class="typo-role"><span class="typo-role-label">Headline</span><span class="typo-font">${esc(t.headlineFont)}</span></div>
+        <div class="typo-role"><span class="typo-role-label">Body</span><span class="typo-font">${esc(t.bodyFont)}</span></div>
+      </div>
+      <div class="typo-rationale">${esc(t.pairingRationale)}</div>
     </div>`;
 }
 
@@ -480,10 +567,7 @@ function baselineCard(o, ms) {
         ${latency}
       </div>
       <div class="result-card-body">
-        ${block('Tagline', o.tagline, true)}
-        ${block('Mission statement', o.missionStatement)}
-        ${block('Brand story', o.brandStory)}
-        ${block('Elevator pitch', o.elevatorPitch)}
+        ${agentBody(o)}
       </div>
     </div>`;
 }

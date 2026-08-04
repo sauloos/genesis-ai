@@ -1,0 +1,55 @@
+module: visual-identity-evaluation-rubric
+version: 1.0
+description: Criteria Genesis AI uses to evaluate visual identity output (colour palette, typography, mood direction) from the Visual Identity Agent before accepting it.
+
+evaluation_dimensions:
+
+  - name: on_brief
+    weight: critical
+    description: Does the visual system accurately reflect the brand signals in the brief?
+    pass_criteria: Palette, typography, and mood direction are each traceable to a specific signal in the brief (audience, differentiator, personality) — not generic category defaults.
+    fail_criteria: The system could belong to any brand in the category — no specific signals land.
+
+  - name: archetype_consistency
+    weight: critical
+    description: Is the visual system consistent with the assigned brand archetype and creative direction?
+    pass_criteria: Colour psychology, contrast, and typeface personality are congruent with the archetype's essence — e.g. a Rebel archetype in DISRUPTIVE direction should not read as a Caregiver's soft pastel palette.
+    fail_criteria: The visual mood contradicts the archetype or direction (e.g. a bold DISRUPTIVE direction rendered in a safe, corporate palette).
+
+  - name: palette_quality
+    weight: high
+    description: Is the colour palette functional as well as expressive?
+    pass_criteria:
+      - 4 to 6 swatches, each with a clear role (primary, secondary, accent, neutral)
+      - Sufficient contrast between primary and neutral tones for text-on-background use
+      - Each swatch has a rationale tying it to a brand signal, not just an aesthetic preference
+      - Hex values are valid 6-digit hex codes
+    fail_criteria:
+      - Fewer than 4 or more than 6 swatches
+      - No stated role or rationale for one or more swatches
+      - Palette is a generic corporate default (safe blue + grey) with no justification for the specific brand
+
+  - name: typography_pairing_quality
+    weight: high
+    description: Do the headline and body typefaces work together and fit the brand?
+    pass_criteria: Headline and body faces are legible at their intended use, contrast in weight or style without clashing, and the pairing rationale explains why this combination embodies the brand.
+    fail_criteria: Faces are visually redundant (near-identical), clash without justification, or the rationale is a vague adjective list with no connection to legibility or brand fit.
+
+  - name: mood_direction_clarity
+    weight: medium
+    description: Does the mood direction give a designer enough to work from?
+    pass_criteria: Describes texture, imagery style, and emotional register concretely enough that a designer could assemble a mood board without further guidance.
+    fail_criteria: Vague descriptors ("modern and clean") with no sensory or referential specificity.
+
+rejection_triggers:
+  # If any of these are present, return the output for revision regardless of other scores.
+  - Palette has fewer than 4 or more than 6 swatches
+  - Any hex value is not a valid 6-digit hex code
+  - Typography pairing uses the same typeface for both headline and body with no stated reason
+  - Mood direction is under 2 sentences or purely a list of adjectives
+
+feedback_format: >
+  When returning visual identity output for revision, lead with what is working before stating
+  what needs to change. Be specific: name the exact swatch, typeface, or phrase, state what the
+  problem is, and suggest the direction of improvement (not the exact fix — that is the Visual
+  Identity Agent's job).
