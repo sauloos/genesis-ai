@@ -34,13 +34,16 @@ public class TrainingSession {
     @Column(nullable = false)
     private Status status = Status.DRAFT;
 
+    @Column(name = "source_playground_session_id", length = 36)
+    private String sourcePlaygroundSessionId;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
 
-    public enum Intent   { KNOWLEDGE, GUIDELINES }
+    public enum Intent   { KNOWLEDGE, GUIDELINES, FEEDBACK }
     public enum Scope    { GLOBAL, ASSET_SCOPED }
-    public enum Status   { DRAFT, INGESTED }
+    public enum Status   { DRAFT, PENDING_REVIEW, REJECTED, INGESTED }
 }

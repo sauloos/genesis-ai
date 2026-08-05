@@ -68,6 +68,23 @@
   .session-item:hover .session-delete { opacity: 1; }
   .session-delete:hover { color: #ff6b6b; }
 
+  /* ── Sessions / Review tabs ── */
+  #sessions-tabs { display: flex; gap: 4px; margin: 4px 12px 6px; }
+  .stab {
+    flex: 1; padding: 6px 0; font-size: 11px; font-weight: 600; color: #666;
+    background: #1a1a1a; border: 1px solid #2a2a2a; cursor: pointer;
+    transition: all 0.15s; font-family: inherit; display: flex; align-items: center;
+    justify-content: center; gap: 5px;
+  }
+  .stab:first-child { border-radius: 7px 0 0 7px; }
+  .stab:last-child { border-radius: 0 7px 7px 0; border-left: none; }
+  .stab.active { background: #333; color: #fff; }
+  .review-badge {
+    background: #c8a84b; color: #1a1a1a; font-size: 9px; font-weight: 700;
+    padding: 1px 5px; border-radius: 8px; line-height: 1.3;
+  }
+  .badge-feedback { background: #3a1a3a; color: #c07de0; }
+
   /* ── Main ── */
   #main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 
@@ -100,6 +117,15 @@
   #ingest-btn:hover { background: #333; }
   #ingest-btn:disabled { background: #4caf7d; cursor: default; }
   #ingest-btn.ingested { background: #2a4a3a; color: #4caf7d; }
+
+  #approve-btn, #reject-btn {
+    padding: 7px 16px; border: none; border-radius: 8px; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: background 0.15s; letter-spacing: 0.3px; flex-shrink: 0;
+  }
+  #approve-btn { background: #1a3a2a; color: #4caf7d; }
+  #approve-btn:hover { background: #234f39; }
+  #reject-btn { background: #f5f5f5; color: #a33; }
+  #reject-btn:hover { background: #eee; }
 
   /* ── Classification bar ── */
   #classification {
@@ -186,6 +212,18 @@
   .content-item:hover .content-delete { opacity: 1; }
   .content-delete:hover { color: #ff6b6b; }
 
+  .content-asset-thumb {
+    max-width: 160px; max-height: 160px; border-radius: 8px; border: 1px solid #eee;
+    display: block; margin-top: 4px;
+  }
+  .label-badge {
+    display: inline-block; font-size: 9px; padding: 1px 6px; border-radius: 3px;
+    font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; margin-left: 6px;
+    vertical-align: middle;
+  }
+  .label-positive { background: #1a3a2a; color: #6fe0a5; }
+  .label-negative { background: #3a1a1a; color: #e07070; }
+
   .empty-content {
     flex: 1; display: flex; align-items: center; justify-content: center;
     color: #bbb; font-size: 14px;
@@ -264,6 +302,10 @@
     </svg>
     New session
   </button>
+  <div id="sessions-tabs">
+    <button class="stab active" data-tab="all" onclick="switchSessionsTab('all')">Sessions</button>
+    <button class="stab" data-tab="review" onclick="switchSessionsTab('review')">Review <span class="review-badge" id="review-count" style="display:none">0</span></button>
+  </div>
   <div id="sessions"></div>
 </div>
 
@@ -283,6 +325,8 @@
     <div id="detail-header">
       <input id="topic-input" type="text" placeholder="Session topic…" oninput="debounceSave()">
       <button id="ingest-btn" onclick="ingestSession()">Ingest</button>
+      <button id="approve-btn" onclick="approveSession()" style="display:none">Approve</button>
+      <button id="reject-btn" onclick="rejectSession()" style="display:none">Reject</button>
     </div>
 
     <div id="classification">
@@ -358,6 +402,8 @@ let pendingFile      = null;
 let mediaRecorder    = null;
 let audioChunks      = [];
 let saveTimer        = null;
+let sessionsTab       = 'all';
+let allSessionsCache   = [];
 
 const ASSET_TYPES = ['logo', 'copy', 'visual-identity', 'playbook', 'brand-book'];
 
@@ -374,18 +420,29 @@ async function boot() {
 async function loadSessions() {
   const sessions = await fetch(`${API}/api/training/sessions`, { headers: HEADERS })
     .then(r => r.json()).catch(() => []);
+  allSessionsCache = sessions;
+
+  const reviewCount = sessions.filter(s => s.intent === 'FEEDBACK' && s.status === 'PENDING_REVIEW').length;
+  const countEl = document.getElementById('review-count');
+  countEl.textContent = reviewCount;
+  countEl.style.display = reviewCount > 0 ? 'inline-block' : 'none';
+
+  const visible = sessionsTab === 'review'
+    ? sessions.filter(s => s.intent === 'FEEDBACK' && s.status === 'PENDING_REVIEW')
+    : sessions.filter(s => s.intent !== 'FEEDBACK');
 
   const el = document.getElementById('sessions');
   el.innerHTML = '';
-  for (const s of sessions) {
+  for (const s of visible) {
     const div = document.createElement('div');
     div.className = 'session-item' + (s.id === currentSessionId ? ' active' : '');
     div.dataset.id = s.id;
 
-    const intentLabel = s.intent === 'GUIDELINES' ? 'Guidelines' : 'Knowledge';
-    const intentClass = s.intent === 'GUIDELINES' ? 'badge-guidelines' : 'badge-knowledge';
+    const intentLabel = s.intent === 'FEEDBACK' ? 'Feedback' : s.intent === 'GUIDELINES' ? 'Guidelines' : 'Knowledge';
+    const intentClass = s.intent === 'FEEDBACK' ? 'badge-feedback' : s.intent === 'GUIDELINES' ? 'badge-guidelines' : 'badge-knowledge';
     const statusBadge = s.status === 'INGESTED'
-      ? `<span class="session-badge badge-ingested">Ingested</span>` : '';
+      ? `<span class="session-badge badge-ingested">Ingested</span>`
+      : s.status === 'REJECTED' ? `<span class="session-badge">Rejected</span>` : '';
 
     div.innerHTML = `
       <div class="session-meta">
@@ -396,6 +453,12 @@ async function loadSessions() {
     div.addEventListener('click', () => openSession(s.id));
     el.appendChild(div);
   }
+}
+
+function switchSessionsTab(tab) {
+  sessionsTab = tab;
+  document.querySelectorAll('.stab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  loadSessions();
 }
 
 async function newSession() {
@@ -420,9 +483,42 @@ async function openSession(id) {
     el.classList.toggle('active', el.dataset.id === id));
 
   document.getElementById('topic-input').value = detail.session.topic;
-  renderClassification(detail.session);
+  document.getElementById('classification').style.display = detail.session.intent === 'FEEDBACK' ? 'none' : 'flex';
+  if (detail.session.intent !== 'FEEDBACK') renderClassification(detail.session);
   renderContent(detail.content);
-  updateIngestBtn(detail.session);
+  updateDetailActions(detail.session);
+}
+
+function updateDetailActions(session) {
+  const isPendingFeedback = session.intent === 'FEEDBACK' && session.status === 'PENDING_REVIEW';
+  document.getElementById('ingest-btn').style.display = isPendingFeedback ? 'none' : 'block';
+  document.getElementById('approve-btn').style.display = isPendingFeedback ? 'block' : 'none';
+  document.getElementById('reject-btn').style.display = isPendingFeedback ? 'block' : 'none';
+  if (!isPendingFeedback) updateIngestBtn(session);
+}
+
+async function approveSession() {
+  if (!currentSessionId) return;
+  const btn = document.getElementById('approve-btn');
+  btn.disabled = true;
+  btn.textContent = 'Approving…';
+  await fetch(`${API}/api/training/sessions/${currentSessionId}/approve`, { method: 'POST', headers: HEADERS });
+  currentSessionId = null;
+  document.getElementById('detail').style.display = 'none';
+  document.getElementById('empty').style.display  = 'flex';
+  await loadSessions();
+}
+
+async function rejectSession() {
+  if (!currentSessionId) return;
+  const btn = document.getElementById('reject-btn');
+  btn.disabled = true;
+  btn.textContent = 'Rejecting…';
+  await fetch(`${API}/api/training/sessions/${currentSessionId}/reject`, { method: 'POST', headers: HEADERS });
+  currentSessionId = null;
+  document.getElementById('detail').style.display = 'none';
+  document.getElementById('empty').style.display  = 'flex';
+  await loadSessions();
 }
 
 async function deleteSession(e, id) {
@@ -501,14 +597,19 @@ function renderContent(items) {
   for (const item of items) {
     const div = document.createElement('div');
     div.className = 'content-item';
-    const icon = item.contentType === 'AUDIO' ? '🎙' : item.contentType === 'FILE' ? '📎' : '📝';
-    const typeLabel = { TEXT: 'Note', FILE: 'File', AUDIO: 'Voice note' }[item.contentType];
+    const icon = item.contentType === 'AUDIO' ? '🎙' : item.contentType === 'FILE' ? '📎' : item.contentType === 'ASSET' ? '🖼' : '📝';
+    const typeLabel = { TEXT: 'Note', FILE: 'File', AUDIO: 'Voice note', ASSET: 'Asset' }[item.contentType];
+    const labelBadge = item.label
+      ? `<span class="label-badge ${item.label === 'POSITIVE' ? 'label-positive' : 'label-negative'}">${item.label === 'POSITIVE' ? 'Good' : 'Bad'} example</span>`
+      : '';
 
     let body = '';
     if (item.contentType === 'TEXT') {
       body = `<div class="content-body">${esc(item.textContent)}</div>`;
     } else if (item.contentType === 'FILE') {
       body = `<div class="content-filename">${esc(item.fileName)}</div>`;
+    } else if (item.contentType === 'ASSET') {
+      body = `<img class="content-asset-thumb" src="/api/assets/${esc(item.blobPath)}" alt="${esc(item.fileName)}">`;
     } else if (item.contentType === 'AUDIO') {
       const hasInterp = !!item.textContent;
       body = `
@@ -529,7 +630,7 @@ function renderContent(items) {
       ? '<span class="interp-badge">Interpreted</span>' : '';
 
     div.innerHTML = `
-      <div class="content-type-tag">${icon} ${typeLabel}${interpBadge}</div>
+      <div class="content-type-tag">${icon} ${typeLabel}${interpBadge}${labelBadge}</div>
       ${body}
       <button class="content-delete" onclick="deleteContent('${item.id}')" title="Remove">✕</button>`;
     el.appendChild(div);

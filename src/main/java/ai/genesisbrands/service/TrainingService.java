@@ -1,8 +1,10 @@
 package ai.genesisbrands.service;
 
+import ai.genesisbrands.model.PlaygroundSession;
 import ai.genesisbrands.model.TrainingContent;
 import ai.genesisbrands.model.TrainingContent.ContentType;
 import ai.genesisbrands.model.TrainingSession;
+import ai.genesisbrands.model.TrainingSession.Intent;
 import ai.genesisbrands.model.TrainingSession.Status;
 import ai.genesisbrands.repository.TrainingContentRepository;
 import ai.genesisbrands.repository.TrainingSessionRepository;
@@ -34,6 +36,7 @@ public class TrainingService {
     private final BlobStorageService blob;
     private final EmbeddingModel embeddingModel;
     private final ChatClient.Builder chatClientBuilder;
+    private final PlaygroundSessionService playgroundSessionService;
 
     @Value("${openai.api-key:${spring.ai.openai.api-key:}}")
     private String openAiKey;
@@ -161,23 +164,156 @@ public class TrainingService {
         touchSession(sessionId);
     }
 
+    // ── Feedback (playground-sourced, asset-specific) ────────────────────────────
+
+    public TrainingSession submitFeedback(String playgroundSessionId, String assetType, TrainingContent.Label label,
+                                           String feedbackText, MultipartFile audio, String agentReasoning,
+                                           List<String> assetUrls) throws IOException {
+        String topic = "Feedback: " + assetType;
+        try {
+            PlaygroundSession pg = playgroundSessionService.get(playgroundSessionId);
+            topic = "Feedback: " + assetType + " — " + pg.getLabel();
+        } catch (Exception ignored) {
+            // best-effort topic derivation; the source id is still recorded below
+        }
+
+        TrainingSession session = new TrainingSession();
+        session.setId(UUID.randomUUID().toString());
+        session.setTopic(topic);
+        session.setIntent(Intent.FEEDBACK);
+        session.setScope(TrainingSession.Scope.ASSET_SCOPED);
+        session.setAssetTypes(assetType);
+        session.setStatus(Status.PENDING_REVIEW);
+        session.setSourcePlaygroundSessionId(playgroundSessionId);
+        session = sessionRepo.save(session);
+
+        if (agentReasoning != null && !agentReasoning.isBlank()) {
+            TrainingContent reasoning = new TrainingContent();
+            reasoning.setId(UUID.randomUUID().toString());
+            reasoning.setSessionId(session.getId());
+            reasoning.setContentType(ContentType.TEXT);
+            reasoning.setTextContent("Agent's own reasoning:\n" + agentReasoning);
+            contentRepo.save(reasoning);
+        }
+
+        if (audio != null) {
+            String blobPath = "training/" + session.getId() + "/" + UUID.randomUUID() + "_" + audio.getOriginalFilename();
+            blob.upload(blobPath, audio.getBytes());
+            String transcript = transcribe(audio);
+            String interpreted = interpretationEnabled ? interpret(transcript, session) : null;
+
+            TrainingContent feedback = new TrainingContent();
+            feedback.setId(UUID.randomUUID().toString());
+            feedback.setSessionId(session.getId());
+            feedback.setContentType(ContentType.AUDIO);
+            feedback.setBlobPath(blobPath);
+            feedback.setFileName(audio.getOriginalFilename());
+            feedback.setTranscript(transcript);
+            feedback.setTextContent(interpreted);
+            feedback.setLabel(label);
+            contentRepo.save(feedback);
+        } else if (feedbackText != null && !feedbackText.isBlank()) {
+            TrainingContent feedback = new TrainingContent();
+            feedback.setId(UUID.randomUUID().toString());
+            feedback.setSessionId(session.getId());
+            feedback.setContentType(ContentType.TEXT);
+            feedback.setTextContent(feedbackText);
+            feedback.setLabel(label);
+            contentRepo.save(feedback);
+        }
+
+        if (assetUrls != null) {
+            for (String url : assetUrls) {
+                String blobPath = stripAssetPrefix(url);
+                TrainingContent asset = new TrainingContent();
+                asset.setId(UUID.randomUUID().toString());
+                asset.setSessionId(session.getId());
+                asset.setContentType(ContentType.ASSET);
+                asset.setBlobPath(blobPath);
+                asset.setFileName(blobPath.substring(blobPath.lastIndexOf('/') + 1));
+                asset.setLabel(label);
+                contentRepo.save(asset);
+            }
+        }
+
+        return session;
+    }
+
+    public void approveSession(String id) {
+        TrainingSession session = getSession(id);
+        if (session.getStatus() != Status.PENDING_REVIEW) {
+            throw new IllegalStateException("Only sessions pending review can be approved");
+        }
+        ingest(id);
+    }
+
+    public TrainingSession rejectSession(String id) {
+        TrainingSession session = getSession(id);
+        if (session.getStatus() != Status.PENDING_REVIEW) {
+            throw new IllegalStateException("Only sessions pending review can be rejected");
+        }
+        session.setStatus(Status.REJECTED);
+        session.setUpdatedAt(Instant.now());
+        return sessionRepo.save(session);
+    }
+
+    private String stripAssetPrefix(String url) {
+        int idx = url.indexOf("/api/assets/");
+        return idx >= 0 ? url.substring(idx + "/api/assets/".length()) : url;
+    }
+
     // ── Ingest ────────────────────────────────────────────────────────────────
 
     public void ingest(String sessionId) {
         TrainingSession session = getSession(sessionId);
         List<TrainingContent> contents = contentRepo.findBySessionIdOrderByCreatedAtAsc(sessionId);
 
-        for (TrainingContent c : contents) {
-            String text = resolveText(c);
-            if (text == null || text.isBlank()) continue;
+        if (session.getIntent() == Intent.FEEDBACK) {
+            ingestFeedback(session, contents);
+        } else {
+            for (TrainingContent c : contents) {
+                String text = resolveText(c);
+                if (text == null || text.isBlank()) continue;
 
-            Map<String, Object> payload = buildPayload(session, c, text);
-            upsertToQdrant(text, payload, UUID.randomUUID().toString());
+                Map<String, Object> payload = buildPayload(session, c, text);
+                upsertToQdrant(text, payload, UUID.randomUUID().toString());
+            }
         }
 
         session.setStatus(Status.INGESTED);
         session.setUpdatedAt(Instant.now());
         sessionRepo.save(session);
+    }
+
+    private void ingestFeedback(TrainingSession session, List<TrainingContent> contents) {
+        StringBuilder text = new StringBuilder();
+        List<String> assetPaths = new ArrayList<>();
+        TrainingContent.Label label = null;
+
+        for (TrainingContent c : contents) {
+            if (label == null && c.getLabel() != null) label = c.getLabel();
+            if (c.getContentType() == ContentType.ASSET) {
+                if (c.getBlobPath() != null) assetPaths.add(c.getBlobPath());
+                continue;
+            }
+            String t = resolveText(c);
+            if (t != null && !t.isBlank()) text.append(t).append("\n\n");
+        }
+        if (text.isEmpty()) return;
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("text",        text.toString().strip());
+        payload.put("source_type", "feedback");
+        payload.put("session_id",  session.getId());
+        payload.put("topic",       session.getTopic());
+        payload.put("intent",      session.getIntent().name());
+        payload.put("scope",       session.getScope().name());
+        payload.put("asset_types", session.getAssetTypes() != null ? session.getAssetTypes() : "");
+        payload.put("label",       label != null ? label.name() : "");
+        payload.put("asset_paths", assetPaths);
+        payload.put("layer",       "training");
+
+        upsertToQdrant(text.toString().strip(), payload, UUID.randomUUID().toString());
     }
 
     // ── Internals ─────────────────────────────────────────────────────────────
@@ -187,6 +323,7 @@ public class TrainingService {
             case TEXT  -> c.getTextContent();
             case AUDIO -> c.getTextContent() != null ? c.getTextContent() : c.getTranscript();
             case FILE  -> null; // file text extraction not yet implemented — future: PDFBox
+            case ASSET -> null; // image reference only — carried via asset_paths, not embedded as text
         };
     }
 

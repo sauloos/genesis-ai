@@ -102,6 +102,47 @@ public class TrainingController {
         return trainingService.getSession(id);
     }
 
+    // ── Feedback (playground-sourced) ────────────────────────────────────────
+
+    @PostMapping("/feedback")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Submit written feedback on a playground run asset — enters the review queue")
+    public TrainingSession submitFeedback(@RequestBody SubmitFeedbackRequest req) throws IOException {
+        return trainingService.submitFeedback(
+            req.playgroundSessionId(), req.assetType(), req.label(),
+            req.feedbackText(), null, req.agentReasoning(), req.assetUrls()
+        );
+    }
+
+    @PostMapping(value = "/feedback/audio", consumes = "multipart/form-data")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Submit voice feedback on a playground run asset — transcribed, enters the review queue")
+    public TrainingSession submitFeedbackAudio(
+        @RequestParam String playgroundSessionId,
+        @RequestParam String assetType,
+        @RequestParam TrainingContent.Label label,
+        @RequestParam String agentReasoning,
+        @RequestParam List<String> assetUrls,
+        @RequestParam("audio") MultipartFile audio
+    ) throws IOException {
+        return trainingService.submitFeedback(
+            playgroundSessionId, assetType, label, null, audio, agentReasoning, assetUrls
+        );
+    }
+
+    @PostMapping("/sessions/{id}/approve")
+    @Operation(summary = "Approve a pending-review feedback session and ingest it into Qdrant")
+    public TrainingSession approve(@PathVariable String id) {
+        trainingService.approveSession(id);
+        return trainingService.getSession(id);
+    }
+
+    @PostMapping("/sessions/{id}/reject")
+    @Operation(summary = "Reject a pending-review feedback session — retained, never ingested")
+    public TrainingSession reject(@PathVariable String id) {
+        return trainingService.rejectSession(id);
+    }
+
     // ── Records ───────────────────────────────────────────────────────────────
 
     public record CreateSessionRequest(String topic) {}
@@ -113,4 +154,12 @@ public class TrainingController {
     ) {}
     public record AddTextRequest(String text) {}
     public record SessionDetail(TrainingSession session, List<TrainingContent> content) {}
+    public record SubmitFeedbackRequest(
+        String playgroundSessionId,
+        String assetType,
+        TrainingContent.Label label,
+        String feedbackText,
+        String agentReasoning,
+        List<String> assetUrls
+    ) {}
 }

@@ -219,6 +219,73 @@
     border: 1px solid #eee; border-radius: 10px; padding: 20px; min-height: 200px;
   }
   .logo-image-frame img, .logo-image-frame svg { max-width: 260px; max-height: 260px; }
+
+  /* ── Current / History tabs ── */
+  #results-tabs { display: flex; gap: 4px; margin-bottom: 14px; border-bottom: 1px solid #eee; }
+  .results-tab {
+    padding: 8px 14px; font-size: 12px; font-weight: 600; color: #888;
+    background: none; border: none; border-bottom: 2px solid transparent;
+    cursor: pointer; transition: all 0.15s; font-family: inherit;
+  }
+  .results-tab.active { color: #1a1a1a; border-bottom-color: #1a1a1a; }
+  .results-tab:hover:not(.active) { color: #333; }
+
+  .history-item {
+    padding: 10px 14px; border: 1px solid #eee; border-radius: 10px; margin-bottom: 8px;
+    display: flex; align-items: center; justify-content: space-between; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .history-item:hover { border-color: #ccc; background: #fafafa; }
+  .history-item.active { border-color: #1a1a1a; background: #f5f5f5; }
+  .history-meta { min-width: 0; }
+  .history-label { font-size: 13px; font-weight: 600; color: #1a1a1a; }
+  .history-sub { font-size: 11px; color: #999; margin-top: 2px; }
+  .history-delete {
+    background: none; border: none; color: #ccc; cursor: pointer; font-size: 14px;
+    padding: 2px 6px; border-radius: 4px; flex-shrink: 0; transition: color 0.15s;
+  }
+  .history-delete:hover { color: #ff6b6b; }
+  #history-empty { color: #bbb; font-size: 13px; text-align: center; margin-top: 40px; }
+  #history-back {
+    background: none; border: none; color: #666; font-size: 12px; cursor: pointer;
+    margin-bottom: 12px; padding: 0; font-family: inherit;
+  }
+  #history-back:hover { color: #1a1a1a; }
+
+  /* ── Feedback capture ── */
+  .result-card-actions { display: flex; align-items: center; gap: 8px; }
+  .fb-btn {
+    background: none; border: 1px solid rgba(255,255,255,0.25); color: inherit; opacity: 0.75;
+    font-size: 10px; font-weight: 600; padding: 3px 9px; border-radius: 12px; cursor: pointer;
+    transition: opacity 0.15s; font-family: inherit;
+  }
+  .result-card-header.baseline .fb-btn { border-color: #ccc; }
+  .fb-btn:hover { opacity: 1; }
+
+  .fb-panel-slot:empty { display: none; }
+  .fb-panel { border: 1px solid #eee; border-radius: 10px; padding: 12px; background: #fafafa; }
+  .fb-verdict-group { display: flex; gap: 6px; margin-bottom: 8px; }
+  .fb-verdict-btn {
+    flex: 1; padding: 6px 0; border-radius: 7px; border: 1px solid #e5e5e5; background: #fff;
+    font-size: 11px; font-weight: 600; color: #666; cursor: pointer; transition: all 0.15s; font-family: inherit;
+  }
+  .fb-verdict-btn.active.good { background: #14251c; color: #6fe0a5; border-color: #14251c; }
+  .fb-verdict-btn.active.bad  { background: #2a1414; color: #e07070; border-color: #2a1414; }
+  .fb-text {
+    width: 100%; font-family: inherit; font-size: 12px; padding: 8px; border: 1px solid #e5e5e5;
+    border-radius: 7px; resize: vertical; min-height: 50px; outline: none;
+  }
+  .fb-assets { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; font-size: 11px; color: #666; }
+  .fb-assets label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .fb-actions { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .fb-submit, .fb-record {
+    padding: 6px 12px; border-radius: 7px; border: none; font-size: 11px; font-weight: 600; cursor: pointer;
+  }
+  .fb-submit { background: #1a1a1a; color: #fff; }
+  .fb-submit:hover { background: #333; }
+  .fb-record { background: #fff; border: 1px solid #ddd; color: #666; }
+  .fb-record.recording { background: #e53935; color: #fff; border-color: #e53935; }
+  .fb-status { font-size: 11px; color: #888; }
 </style>
 </head>
 <body>
@@ -348,8 +415,20 @@ This brand challenges the idea that good coffee has to be precious or intimidati
   <div id="form-resizer"></div>
 
   <div id="results-area">
-    <div id="results-empty">Run the agent to see output here.</div>
-    <div class="results-cols" id="results-cols" style="display:none"></div>
+    <div id="results-tabs">
+      <button class="results-tab active" data-tab="current" onclick="switchResultsTab('current')">Current</button>
+      <button class="results-tab" data-tab="history" onclick="switchResultsTab('history')">History</button>
+    </div>
+
+    <div id="tab-current">
+      <div id="results-empty">Run the agent to see output here.</div>
+      <div class="results-cols" id="results-cols" style="display:none"></div>
+    </div>
+
+    <div id="tab-history" style="display:none">
+      <div id="history-list"></div>
+      <div id="history-detail" style="display:none"></div>
+    </div>
   </div>
 </div>
 
@@ -361,6 +440,9 @@ const HEADERS = { 'Content-Type': 'application/json', 'X-Api-Key': KEY };
 let currentDirection = 'DISRUPTIVE';
 let currentAgent = 'copy';
 let currentMethod = 'DALLE';
+let resultsTab = 'current';
+let currentPlaygroundSessionId = null;
+let currentRunAssets = [];
 
 const AGENT_META = {
   'copy': { title: 'Copy Agent', sub: 'Give it a brand context and a creative direction, then run it.' },
@@ -384,6 +466,104 @@ function selectAgent(el) {
   document.getElementById('results-cols').innerHTML = '';
   document.getElementById('run-status').textContent = '';
   document.getElementById('run-error').textContent = '';
+  currentPlaygroundSessionId = null;
+  currentRunAssets = [];
+  switchResultsTab('current');
+}
+
+// ── Current / History tabs ───────────────────────────────────────────────────
+async function switchResultsTab(tab) {
+  resultsTab = tab;
+  document.querySelectorAll('.results-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.getElementById('tab-current').style.display = tab === 'current' ? 'block' : 'none';
+  document.getElementById('tab-history').style.display = tab === 'history' ? 'block' : 'none';
+  if (tab === 'history') await loadHistory();
+}
+
+async function loadHistory() {
+  document.getElementById('history-detail').style.display = 'none';
+  document.getElementById('history-detail').innerHTML = '';
+  const listEl = document.getElementById('history-list');
+  listEl.style.display = 'block';
+  listEl.innerHTML = '<div id="history-empty">Loading…</div>';
+
+  const sessions = await fetch(`${API}/api/playground/sessions?agentId=${currentAgent}`, { headers: HEADERS })
+    .then(r => r.json()).catch(() => []);
+
+  if (!sessions.length) {
+    listEl.innerHTML = '<div id="history-empty">No runs yet for this agent.</div>';
+    return;
+  }
+
+  listEl.innerHTML = '';
+  for (const s of sessions) {
+    const div = document.createElement('div');
+    div.className = 'history-item';
+    div.dataset.id = s.id;
+    const when = new Date(s.createdAt).toLocaleString();
+    const badges = [s.method, s.compareMode ? 'Compare' : null, s.evaluateMode ? 'Eval loop' : null]
+      .filter(Boolean).join(' · ');
+    div.innerHTML = `
+      <div class="history-meta">
+        <div class="history-label">${esc(s.label)}</div>
+        <div class="history-sub">${when}${badges ? ' · ' + esc(badges) : ''}</div>
+      </div>
+      <button class="history-delete" onclick="deleteHistoryItem(event,'${s.id}')" title="Delete">✕</button>`;
+    div.addEventListener('click', () => openHistoryItem(s.id));
+    listEl.appendChild(div);
+  }
+}
+
+async function openHistoryItem(id) {
+  const detail = await fetch(`${API}/api/playground/sessions/${id}`, { headers: HEADERS }).then(r => r.json());
+  currentPlaygroundSessionId = id;
+  document.querySelectorAll('.history-item').forEach(el => el.classList.toggle('active', el.dataset.id === id));
+
+  const listEl = document.getElementById('history-list');
+  const detailEl = document.getElementById('history-detail');
+  listEl.style.display = 'none';
+  detailEl.style.display = 'block';
+
+  const s = detail.session;
+  const isMulti = s.method === 'BOTH';
+  const methods = isMulti ? detail.result.methods : [s.method];
+  const resultsList = isMulti ? detail.result.results : [detail.result];
+
+  const wrap = document.createElement('div');
+  if (methods.length > 1) {
+    wrap.innerHTML = methods.map((m, i) => {
+      const html = s.compareMode ? renderCompareHTML(resultsList[i], s.evaluateMode) : renderSingleHTML(resultsList[i], s.evaluateMode);
+      return `<div class="method-section">
+        <div class="method-section-label">${METHOD_LABELS[m] || m}</div>
+        <div class="results-cols${s.compareMode ? ' dual' : ''}">${html}</div>
+      </div>`;
+    }).join('');
+  } else {
+    wrap.className = 'results-cols' + (s.compareMode ? ' dual' : '');
+    wrap.innerHTML = s.compareMode ? renderCompareHTML(resultsList[0], s.evaluateMode) : renderSingleHTML(resultsList[0], s.evaluateMode);
+  }
+
+  detailEl.innerHTML = '';
+  const backBtn = document.createElement('button');
+  backBtn.id = 'history-back';
+  backBtn.textContent = '← Back to list';
+  backBtn.onclick = closeHistoryDetail;
+  detailEl.appendChild(backBtn);
+  detailEl.appendChild(wrap);
+  currentRunAssets = collectRunAssets(detailEl);
+}
+
+function closeHistoryDetail() {
+  document.getElementById('history-detail').style.display = 'none';
+  document.getElementById('history-list').style.display = 'block';
+  currentPlaygroundSessionId = null;
+  currentRunAssets = [];
+}
+
+async function deleteHistoryItem(e, id) {
+  e.stopPropagation();
+  await fetch(`${API}/api/playground/sessions/${id}`, { method: 'DELETE', headers: HEADERS });
+  await loadHistory();
 }
 
 function setMethod(btn) {
@@ -489,6 +669,9 @@ async function runAgent() {
     ? (evaluate ? `/api/agents/${currentAgent}/compare-with-evaluation` : `/api/agents/${currentAgent}/compare`)
     : (evaluate ? `/api/agents/${currentAgent}/execute-with-evaluation` : `/api/agents/${currentAgent}/execute`);
 
+  currentPlaygroundSessionId = null;
+  currentRunAssets = [];
+
   const t0 = performance.now();
   try {
     const results = await Promise.all(methods.map(m => fetchMethodResult(endpoint, brief, m)));
@@ -509,11 +692,39 @@ async function runAgent() {
       colsEl.classList.toggle('dual', compare);
       colsEl.style.display = 'grid';
     }
+
+    currentRunAssets = collectRunAssets(colsEl);
+    await savePlaygroundSession(brief, methods, results, compare, evaluate);
   } catch (err) {
     status.textContent = '';
     errorEl.textContent = err.message || String(err);
   } finally {
     btn.disabled = false;
+  }
+}
+
+function collectRunAssets(scopeEl) {
+  return Array.from(scopeEl.querySelectorAll('.logo-image-frame img')).map(img => {
+    const card = img.closest('.result-card');
+    const title = card ? card.querySelector('.result-card-title').textContent.trim() : 'Asset';
+    return { url: img.getAttribute('src'), label: title };
+  });
+}
+
+async function savePlaygroundSession(brief, methods, results, compare, evaluate) {
+  try {
+    const method = currentAgent === 'logo' ? (methods.length > 1 ? 'BOTH' : methods[0]) : null;
+    const resultPayload = methods.length > 1 ? { methods, results } : results[0];
+    const res = await fetch(`${API}/api/playground/sessions`, {
+      method: 'POST', headers: HEADERS,
+      body: JSON.stringify({ agentId: currentAgent, method, compare, evaluate, brief, result: resultPayload })
+    });
+    if (res.ok) {
+      const saved = await res.json();
+      currentPlaygroundSessionId = saved.id;
+    }
+  } catch (_) {
+    // history/feedback capture is best-effort — a save failure shouldn't disrupt the run
   }
 }
 
@@ -543,12 +754,13 @@ function genesisCard(o, ms, rounds, accepted) {
     <div class="result-card">
       <div class="result-card-header genesis">
         <span class="result-card-title">GENESIS AI — Brain-orchestrated${badge}</span>
-        ${latency}
+        <span class="result-card-actions">${latency}${feedbackButtonHTML(o, 'Genesis AI')}</span>
       </div>
       <div class="result-card-body">
         ${agentBody(o)}
         ${o.reasoning ? `<div class="rf-block"><div class="rf-label">Reasoning</div><div class="reasoning-box">${esc(o.reasoning)}</div></div>` : ''}
         ${evalTrailBlock(rounds)}
+        <div class="fb-panel-slot"></div>
       </div>
     </div>`;
 }
@@ -651,10 +863,11 @@ function baselineCard(o, ms) {
     <div class="result-card">
       <div class="result-card-header baseline">
         <span class="result-card-title">GENERIC AI REQUEST</span>
-        ${latency}
+        <span class="result-card-actions">${latency}${feedbackButtonHTML(o, 'Generic AI')}</span>
       </div>
       <div class="result-card-body">
         ${agentBody(o)}
+        <div class="fb-panel-slot"></div>
       </div>
     </div>`;
 }
@@ -687,6 +900,158 @@ function esc(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
            .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ── Feedback capture ──────────────────────────────────────────────────────────
+
+function feedbackContext(o, sourceLabel) {
+  const parts = [];
+  if (o.reasoning) parts.push(o.reasoning);
+  if (o.conceptDescription) parts.push('Concept: ' + o.conceptDescription);
+  if (o.symbolism) parts.push('Symbolism: ' + o.symbolism);
+  return { source: sourceLabel, reasoning: parts.join('\n\n'), imageUrl: o.imageUrl || null };
+}
+
+function feedbackButtonHTML(o, sourceLabel) {
+  const ctx = feedbackContext(o, sourceLabel);
+  return `<button class="fb-btn" data-context="${esc(JSON.stringify(ctx))}" onclick="toggleFeedbackPanel(this)">Give feedback</button>`;
+}
+
+function toggleFeedbackPanel(btn) {
+  const card = btn.closest('.result-card');
+  const slot = card.querySelector('.fb-panel-slot');
+  if (slot.innerHTML) {
+    slot.innerHTML = '';
+    return;
+  }
+  if (!currentPlaygroundSessionId) {
+    alert('This run is still saving — try again in a moment.');
+    return;
+  }
+  const ctx = JSON.parse(btn.dataset.context);
+  slot.innerHTML = feedbackPanelHTML(ctx);
+  slot.querySelector('.fb-panel').dataset.context = JSON.stringify(ctx);
+}
+
+function feedbackPanelHTML(ctx) {
+  const assetOptions = currentRunAssets.map(a => `
+    <label>
+      <input type="checkbox" class="fb-asset" value="${esc(a.url)}" ${a.url === ctx.imageUrl ? 'checked' : ''}>
+      ${esc(a.label)}
+    </label>`).join('');
+  return `
+    <div class="fb-panel" data-context="">
+      <div class="fb-verdict-group">
+        <button type="button" class="fb-verdict-btn" onclick="setFbVerdict(this,'POSITIVE')">Good example</button>
+        <button type="button" class="fb-verdict-btn" onclick="setFbVerdict(this,'NEGATIVE')">Bad example</button>
+      </div>
+      <input type="hidden" class="fb-label" value="">
+      <textarea class="fb-text" placeholder="What should the agent have done differently?"></textarea>
+      ${assetOptions ? `<div class="fb-assets">${assetOptions}</div>` : ''}
+      <div class="fb-actions">
+        <button type="button" class="fb-submit" onclick="submitTextFeedback(this)">Submit</button>
+        <button type="button" class="fb-record" onclick="toggleFeedbackRecording(this)">🎙</button>
+        <span class="fb-status"></span>
+      </div>
+    </div>`;
+}
+
+function setFbVerdict(btn, value) {
+  const panel = btn.closest('.fb-panel');
+  panel.querySelectorAll('.fb-verdict-btn').forEach(b => b.classList.remove('active', 'good', 'bad'));
+  btn.classList.add('active', value === 'POSITIVE' ? 'good' : 'bad');
+  panel.querySelector('.fb-label').value = value;
+}
+
+function submitTextFeedback(btn) {
+  const panel = btn.closest('.fb-panel');
+  submitFeedback(panel, null);
+}
+
+let fbMediaRecorder = null;
+let fbAudioChunks = [];
+
+async function toggleFeedbackRecording(btn) {
+  const panel = btn.closest('.fb-panel');
+  const status = panel.querySelector('.fb-status');
+  const label = panel.querySelector('.fb-label').value;
+
+  if (fbMediaRecorder && fbMediaRecorder.state === 'recording') {
+    fbMediaRecorder.stop();
+    btn.classList.remove('recording');
+    return;
+  }
+
+  if (!label) {
+    status.textContent = 'Choose Good or Bad example first.';
+    return;
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    fbAudioChunks = [];
+    fbMediaRecorder = new MediaRecorder(stream);
+    fbMediaRecorder.ondataavailable = e => fbAudioChunks.push(e.data);
+    fbMediaRecorder.onstop = () => {
+      stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(fbAudioChunks, { type: 'audio/webm' });
+      submitFeedback(panel, blob);
+    };
+    fbMediaRecorder.start();
+    btn.classList.add('recording');
+    status.textContent = 'Recording…';
+  } catch (err) {
+    status.textContent = 'Microphone access denied.';
+  }
+}
+
+async function submitFeedback(panel, audioBlob) {
+  const ctx = JSON.parse(panel.dataset.context);
+  const label = panel.querySelector('.fb-label').value;
+  const text = panel.querySelector('.fb-text').value.trim();
+  const assetUrls = Array.from(panel.querySelectorAll('.fb-asset:checked')).map(cb => cb.value);
+  const status = panel.querySelector('.fb-status');
+
+  if (!label) {
+    status.textContent = 'Choose Good or Bad example first.';
+    return;
+  }
+  if (!text && !audioBlob) {
+    status.textContent = 'Add a note or record voice feedback.';
+    return;
+  }
+
+  panel.querySelectorAll('button').forEach(b => b.disabled = true);
+  status.textContent = 'Submitting…';
+
+  try {
+    let res;
+    if (audioBlob) {
+      const form = new FormData();
+      form.append('playgroundSessionId', currentPlaygroundSessionId);
+      form.append('assetType', currentAgent);
+      form.append('label', label);
+      form.append('agentReasoning', ctx.reasoning || '');
+      assetUrls.forEach(u => form.append('assetUrls', u));
+      form.append('audio', audioBlob, 'feedback.webm');
+      res = await fetch(`${API}/api/training/feedback/audio`, {
+        method: 'POST', headers: { 'X-Api-Key': KEY }, body: form
+      });
+    } else {
+      res = await fetch(`${API}/api/training/feedback`, {
+        method: 'POST', headers: HEADERS,
+        body: JSON.stringify({
+          playgroundSessionId: currentPlaygroundSessionId, assetType: currentAgent, label,
+          feedbackText: text, agentReasoning: ctx.reasoning || '', assetUrls
+        })
+      });
+    }
+    if (!res.ok) throw new Error(await res.text());
+    status.textContent = 'Submitted — pending review in Training.';
+  } catch (err) {
+    status.textContent = 'Failed: ' + (err.message || err);
+    panel.querySelectorAll('button').forEach(b => b.disabled = false);
+  }
 }
 </script>
 </body>

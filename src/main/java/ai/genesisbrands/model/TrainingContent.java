@@ -35,8 +35,12 @@ public class TrainingContent {
     @Column(columnDefinition = "TEXT")
     private String transcript;
 
+    @Enumerated(EnumType.STRING)
+    private Label label;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
-    public enum ContentType { TEXT, FILE, AUDIO }
+    public enum ContentType { TEXT, FILE, AUDIO, ASSET }
+    public enum Label { POSITIVE, NEGATIVE }
 }
