@@ -444,6 +444,7 @@ let currentMethod = 'DALLE';
 let resultsTab = 'current';
 let currentPlaygroundSessionId = null;
 let currentRunAssets = [];
+let lastRunArgs = null;
 
 const AGENT_META = {
   'copy': { title: 'Copy Agent', sub: 'Give it a brand context and a creative direction, then run it.' },
@@ -675,6 +676,7 @@ async function runAgent() {
 
   currentPlaygroundSessionId = null;
   currentRunAssets = [];
+  lastRunArgs = null;
 
   const t0 = performance.now();
   try {
@@ -698,6 +700,7 @@ async function runAgent() {
     }
 
     currentRunAssets = collectRunAssets(colsEl);
+    lastRunArgs = { brief, methods, results, compare, evaluate };
     await savePlaygroundSession(brief, methods, results, compare, evaluate);
   } catch (err) {
     status.textContent = '';
@@ -726,9 +729,12 @@ async function savePlaygroundSession(brief, methods, results, compare, evaluate)
     if (res.ok) {
       const saved = await res.json();
       currentPlaygroundSessionId = saved.id;
+    } else {
+      console.warn('Playground session save failed:', res.status, await res.text());
     }
-  } catch (_) {
+  } catch (err) {
     // history/feedback capture is best-effort — a save failure shouldn't disrupt the run
+    console.warn('Playground session save failed:', err);
   }
 }
 
@@ -928,13 +934,34 @@ function toggleFeedbackPanel(btn) {
     slot.innerHTML = '';
     return;
   }
-  if (!currentPlaygroundSessionId) {
-    alert('This run is still saving — try again in a moment.');
-    return;
-  }
   const ctx = JSON.parse(btn.dataset.context);
   slot.innerHTML = feedbackPanelHTML(ctx);
   slot.querySelector('.fb-panel').dataset.context = JSON.stringify(ctx);
+  ensureSessionSaved(slot);
+}
+
+async function ensureSessionSaved(slot) {
+  if (currentPlaygroundSessionId) return;
+  const status = slot.querySelector('.fb-status');
+  const submitBtn = slot.querySelector('.fb-submit');
+  const recordBtn = slot.querySelector('.fb-record');
+  submitBtn.disabled = true;
+  recordBtn.disabled = true;
+  status.textContent = 'Saving run…';
+
+  if (lastRunArgs) {
+    await savePlaygroundSession(
+      lastRunArgs.brief, lastRunArgs.methods, lastRunArgs.results, lastRunArgs.compare, lastRunArgs.evaluate
+    );
+  }
+
+  if (currentPlaygroundSessionId) {
+    submitBtn.disabled = false;
+    recordBtn.disabled = false;
+    status.textContent = '';
+  } else {
+    status.textContent = 'Could not save this run — feedback unavailable. Try running again.';
+  }
 }
 
 function feedbackPanelHTML(ctx) {
@@ -1016,6 +1043,10 @@ async function submitFeedback(panel, audioBlob) {
   const assetUrls = Array.from(panel.querySelectorAll('.fb-asset:checked')).map(cb => cb.value);
   const status = panel.querySelector('.fb-status');
 
+  if (!currentPlaygroundSessionId) {
+    status.textContent = 'Run not saved yet — try again in a moment.';
+    return;
+  }
   if (!label) {
     status.textContent = 'Choose Good or Bad example first.';
     return;
