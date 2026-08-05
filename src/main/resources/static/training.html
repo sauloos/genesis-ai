@@ -15,22 +15,33 @@
     width: 260px; min-width: 260px; background: #111; display: flex;
     flex-direction: column; border-right: 1px solid #222;
   }
-  #sidebar-header { padding: 20px 16px 12px; border-bottom: 1px solid #222; }
+  #sidebar-header { padding: 20px 16px 12px; border-bottom: 1px solid #222; position: relative; }
   #sidebar-header h1 { color: #fff; font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
   #sidebar-header p  { color: #666; font-size: 11px; margin-top: 2px; }
 
-  /* ── Mode switcher ── */
-  #mode-switcher {
-    display: flex; margin: 10px 12px 4px; border-radius: 8px;
-    background: #1a1a1a; border: 1px solid #2a2a2a; overflow: hidden;
+  /* ── Nav menu (hamburger) ── */
+  #nav-toggle {
+    position: absolute; top: 16px; right: 12px; width: 26px; height: 26px;
+    background: none; border: none; color: #888; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; border-radius: 5px;
+    transition: background 0.15s, color 0.15s;
   }
-  .mode-btn {
-    flex: 1; padding: 7px 0; font-size: 12px; font-weight: 500;
-    background: none; border: none; color: #666; cursor: pointer;
-    transition: all 0.15s; letter-spacing: 0.2px;
+  #nav-toggle:hover { background: #1e1e1e; color: #fff; }
+  #nav-menu {
+    display: none; position: absolute; top: 100%; right: 12px; margin-top: 6px;
+    background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px;
+    overflow: hidden; z-index: 20; min-width: 150px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
   }
-  .mode-btn.active { background: #333; color: #fff; }
-  .mode-btn:hover:not(.active) { color: #aaa; }
+  #nav-menu.open { display: block; }
+  #nav-menu .nav-item {
+    display: block; padding: 9px 14px; font-size: 13px; color: #ccc;
+    text-decoration: none; transition: background 0.15s, color 0.15s;
+  }
+  #nav-menu .nav-item:hover { background: #242424; color: #fff; }
+  #nav-menu .nav-item.active {
+    color: #fff; font-weight: 600; background: #222; pointer-events: none;
+  }
 
   #new-session-btn {
     margin: 8px 12px; padding: 10px 14px; background: #1a1a1a; border: 1px solid #333;
@@ -155,6 +166,32 @@
   }
   .asset-chip.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
   .asset-chip:hover:not(.active) { border-color: #bbb; }
+
+  /* ── Source run (feedback review) ── */
+  #source-run {
+    display: none; margin: 0 24px 16px; padding: 14px 16px; border: 1px solid #eee;
+    border-radius: 10px; background: #fafafa;
+  }
+  #source-run.visible { display: block; }
+  #source-run-title {
+    font-size: 11px; font-weight: 700; color: #999; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 10px; display: flex; align-items: center;
+    justify-content: space-between; gap: 10px;
+  }
+  #source-run-title a {
+    font-size: 11px; font-weight: 600; color: #1a1a1a; text-decoration: none;
+    text-transform: none; letter-spacing: 0; white-space: nowrap;
+  }
+  #source-run-title a:hover { text-decoration: underline; }
+  .sr-loading { font-size: 12px; color: #999; }
+  .sr-brief { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; margin-bottom: 12px; }
+  .sr-field { font-size: 12px; line-height: 1.5; }
+  .sr-field-label { color: #999; font-weight: 600; margin-right: 4px; }
+  .sr-field-value { color: #333; }
+  .sr-assets { display: flex; gap: 8px; flex-wrap: wrap; }
+  .sr-asset-thumb {
+    width: 72px; height: 72px; object-fit: cover; border-radius: 6px; border: 1px solid #eee;
+  }
 
   /* ── Content list ── */
   #content-list {
@@ -288,12 +325,16 @@
   <div id="sidebar-header">
     <h1>Genesis AI</h1>
     <p>Brand Intelligence</p>
-  </div>
-
-  <div id="mode-switcher">
-    <button class="mode-btn" onclick="window.location='/console'">Consultant</button>
-    <button class="mode-btn active">Training</button>
-    <button class="mode-btn" onclick="window.location='/playground'">Playground</button>
+    <button id="nav-toggle" onclick="toggleNavMenu(event)" aria-label="Menu">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+        <line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/>
+      </svg>
+    </button>
+    <div id="nav-menu">
+      <a href="/console" class="nav-item">Consultant</a>
+      <a href="/training" class="nav-item active">Training</a>
+      <a href="/playground" class="nav-item">Playground</a>
+    </div>
   </div>
 
   <button id="new-session-btn" onclick="newSession()">
@@ -351,6 +392,8 @@
         <button class="asset-chip" data-value="brand-book"      onclick="toggleAsset(this)">Brand Book</button>
       </div>
     </div>
+
+    <div id="source-run"></div>
 
     <div id="content-list"></div>
 
@@ -487,6 +530,65 @@ async function openSession(id) {
   if (detail.session.intent !== 'FEEDBACK') renderClassification(detail.session);
   renderContent(detail.content);
   updateDetailActions(detail.session);
+  renderSourceRun(detail.session);
+}
+
+async function renderSourceRun(session) {
+  const el = document.getElementById('source-run');
+  if (session.intent !== 'FEEDBACK' || !session.sourcePlaygroundSessionId) {
+    el.classList.remove('visible');
+    el.innerHTML = '';
+    return;
+  }
+  el.classList.add('visible');
+  el.innerHTML = '<div class="sr-loading">Loading source run…</div>';
+  try {
+    const run = await fetch(`${API}/api/playground/sessions/${session.sourcePlaygroundSessionId}`, { headers: HEADERS })
+      .then(r => { if (!r.ok) throw new Error('not found'); return r.json(); });
+
+    const brief = (run.brief && run.brief.brand) ? run.brief.brand : (run.brief || {});
+    const fields = [
+      ['Brand', brief.name], ['Industry', brief.industry], ['Audience', brief.targetAudience],
+      ['Offer', brief.coreOffer], ['Differentiator', brief.differentiator],
+      ['Personality', Array.isArray(brief.personality) ? brief.personality.join(', ') : brief.personality],
+      ['Tone', brief.tone], ['Direction', run.brief && run.brief.direction]
+    ].filter(([, v]) => v);
+    const briefHtml = fields.map(([k, v]) =>
+      `<div class="sr-field"><span class="sr-field-label">${esc(k)}:</span><span class="sr-field-value">${esc(String(v))}</span></div>`
+    ).join('');
+
+    const assetUrls = collectImageUrls(run.result);
+    const assetsHtml = assetUrls.length
+      ? `<div class="sr-assets">${assetUrls.map(u => `<img class="sr-asset-thumb" src="${esc(u)}" alt="Generated asset">`).join('')}</div>`
+      : '';
+
+    const runUrl = `/playground?agentId=${encodeURIComponent(session.assetTypes || (run.session && run.session.agentId) || '')}&session=${encodeURIComponent(session.sourcePlaygroundSessionId)}`;
+
+    el.innerHTML = `
+      <div id="source-run-title">
+        <span>Source run — original request</span>
+        <a href="${esc(runUrl)}" target="_blank" rel="noopener">Open full run in Playground →</a>
+      </div>
+      <div class="sr-brief">${briefHtml}</div>
+      ${assetsHtml}`;
+  } catch (err) {
+    el.innerHTML = '<div class="sr-loading">Source run no longer available.</div>';
+  }
+}
+
+function collectImageUrls(node, seen) {
+  seen = seen || new Set();
+  if (!node || typeof node !== 'object') return [];
+  let urls = [];
+  if (typeof node.imageUrl === 'string' && !seen.has(node.imageUrl)) {
+    seen.add(node.imageUrl);
+    urls.push(node.imageUrl);
+  }
+  for (const key of Object.keys(node)) {
+    const val = node[key];
+    if (val && typeof val === 'object') urls = urls.concat(collectImageUrls(val, seen));
+  }
+  return urls;
 }
 
 function updateDetailActions(session) {
@@ -801,6 +903,18 @@ function esc(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
            .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+
+function toggleNavMenu(e) {
+  if (e) e.stopPropagation();
+  document.getElementById('nav-menu').classList.toggle('open');
+}
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('nav-menu');
+  const toggle = document.getElementById('nav-toggle');
+  if (menu && menu.classList.contains('open') && !menu.contains(e.target) && !toggle.contains(e.target)) {
+    menu.classList.remove('open');
+  }
+});
 
 boot();
 </script>

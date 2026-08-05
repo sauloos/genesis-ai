@@ -17,23 +17,34 @@
     flex-direction: column; border-right: 1px solid #222;
   }
   #sidebar-header {
-    padding: 20px 16px 12px; border-bottom: 1px solid #222;
+    padding: 20px 16px 12px; border-bottom: 1px solid #222; position: relative;
   }
   #sidebar-header h1 { color: #fff; font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
   #sidebar-header p  { color: #666; font-size: 11px; margin-top: 2px; }
 
-  /* ── Mode switcher ── */
-  #mode-switcher {
-    display: flex; margin: 10px 12px 4px; border-radius: 8px;
-    background: #1a1a1a; border: 1px solid #2a2a2a; overflow: hidden;
+  /* ── Nav menu (hamburger) ── */
+  #nav-toggle {
+    position: absolute; top: 16px; right: 12px; width: 26px; height: 26px;
+    background: none; border: none; color: #888; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; border-radius: 5px;
+    transition: background 0.15s, color 0.15s;
   }
-  .mode-btn {
-    flex: 1; padding: 7px 0; font-size: 12px; font-weight: 500;
-    background: none; border: none; color: #666; cursor: pointer;
-    transition: all 0.15s; letter-spacing: 0.2px;
+  #nav-toggle:hover { background: #1e1e1e; color: #fff; }
+  #nav-menu {
+    display: none; position: absolute; top: 100%; right: 12px; margin-top: 6px;
+    background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px;
+    overflow: hidden; z-index: 20; min-width: 150px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
   }
-  .mode-btn.active { background: #333; color: #fff; }
-  .mode-btn:hover:not(.active) { color: #aaa; }
+  #nav-menu.open { display: block; }
+  #nav-menu .nav-item {
+    display: block; padding: 9px 14px; font-size: 13px; color: #ccc;
+    text-decoration: none; transition: background 0.15s, color 0.15s;
+  }
+  #nav-menu .nav-item:hover { background: #242424; color: #fff; }
+  #nav-menu .nav-item.active {
+    color: #fff; font-weight: 600; background: #222; pointer-events: none;
+  }
 
   #new-chat-btn {
     margin: 8px 12px; padding: 10px 14px; background: #1a1a1a; border: 1px solid #333;
@@ -193,12 +204,16 @@
   <div id="sidebar-header">
     <h1>Genesis AI</h1>
     <p>Brand Intelligence</p>
-  </div>
-
-  <div id="mode-switcher">
-    <button class="mode-btn active">Consultant</button>
-    <button class="mode-btn" onclick="window.location='/training'">Training</button>
-    <button class="mode-btn" onclick="window.location='/playground'">Playground</button>
+    <button id="nav-toggle" onclick="toggleNavMenu(event)" aria-label="Menu">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+        <line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/>
+      </svg>
+    </button>
+    <div id="nav-menu">
+      <a href="/console" class="nav-item active">Consultant</a>
+      <a href="/training" class="nav-item">Training</a>
+      <a href="/playground" class="nav-item">Playground</a>
+    </div>
   </div>
 
   <button id="new-chat-btn" onclick="newChat()">
@@ -488,6 +503,18 @@ function esc(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
            .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+
+function toggleNavMenu(e) {
+  if (e) e.stopPropagation();
+  document.getElementById('nav-menu').classList.toggle('open');
+}
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('nav-menu');
+  const toggle = document.getElementById('nav-toggle');
+  if (menu && menu.classList.contains('open') && !menu.contains(e.target) && !toggle.contains(e.target)) {
+    menu.classList.remove('open');
+  }
+});
 
 boot();
 </script>
