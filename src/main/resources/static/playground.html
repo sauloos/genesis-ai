@@ -255,11 +255,12 @@
   /* ── Feedback capture ── */
   .result-card-actions { display: flex; align-items: center; gap: 8px; }
   .fb-btn {
-    background: none; border: 1px solid rgba(255,255,255,0.25); color: inherit; opacity: 0.75;
+    background: none; opacity: 0.85;
     font-size: 10px; font-weight: 600; padding: 3px 9px; border-radius: 12px; cursor: pointer;
     transition: opacity 0.15s; font-family: inherit;
   }
-  .result-card-header.baseline .fb-btn { border-color: #ccc; }
+  .result-card-header.genesis .fb-btn { color: #6fe0a5; border: 1px solid rgba(111,224,165,0.45); }
+  .result-card-header.baseline .fb-btn { color: #555; border: 1px solid #ccc; }
   .fb-btn:hover { opacity: 1; }
 
   .fb-panel-slot:empty { display: none; }
@@ -501,7 +502,10 @@ async function loadHistory() {
     div.className = 'history-item';
     div.dataset.id = s.id;
     const when = new Date(s.createdAt).toLocaleString();
-    const badges = [s.method, s.compareMode ? 'Compare' : null, s.evaluateMode ? 'Eval loop' : null]
+    const roundsBadge = s.rounds != null
+      ? (s.accepted ? `Accepted (${s.rounds}r)` : `Exhausted (${s.rounds}r)`)
+      : null;
+    const badges = [s.method, s.compareMode ? 'Compare' : null, s.evaluateMode ? 'Eval loop' : null, roundsBadge]
       .filter(Boolean).join(' · ');
     div.innerHTML = `
       <div class="history-meta">

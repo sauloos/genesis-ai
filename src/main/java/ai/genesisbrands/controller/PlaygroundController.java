@@ -23,7 +23,9 @@ public class PlaygroundController {
     @GetMapping("/sessions")
     @Operation(summary = "List playground run history for an agent")
     public List<PlaygroundSessionSummary> listSessions(@RequestParam String agentId) {
-        return playgroundService.list(agentId).stream().map(PlaygroundSessionSummary::of).toList();
+        return playgroundService.list(agentId).stream()
+            .map(s -> PlaygroundSessionSummary.of(s, playgroundService.roundsInfoOf(s)))
+            .toList();
     }
 
     @GetMapping("/sessions/{id}")
@@ -31,7 +33,7 @@ public class PlaygroundController {
     public PlaygroundSessionDetail getSession(@PathVariable String id) {
         PlaygroundSession session = playgroundService.get(id);
         return new PlaygroundSessionDetail(
-            PlaygroundSessionSummary.of(session),
+            PlaygroundSessionSummary.of(session, playgroundService.roundsInfoOf(session)),
             playgroundService.briefOf(session),
             playgroundService.resultOf(session)
         );
@@ -44,7 +46,7 @@ public class PlaygroundController {
         PlaygroundSession session = playgroundService.save(
             req.agentId(), req.method(), req.compare(), req.evaluate(), req.brief(), req.result()
         );
-        return PlaygroundSessionSummary.of(session);
+        return PlaygroundSessionSummary.of(session, playgroundService.roundsInfoOf(session));
     }
 
     @DeleteMapping("/sessions/{id}")
@@ -60,12 +62,13 @@ public class PlaygroundController {
 
     public record PlaygroundSessionSummary(
         String id, String agentId, String method, boolean compareMode, boolean evaluateMode,
-        String label, Instant createdAt
+        String label, Instant createdAt, Integer rounds, Boolean accepted
     ) {
-        static PlaygroundSessionSummary of(PlaygroundSession s) {
+        static PlaygroundSessionSummary of(PlaygroundSession s, PlaygroundSessionService.RoundsInfo ri) {
             return new PlaygroundSessionSummary(
                 s.getId(), s.getAgentId(), s.getMethod(), s.isCompareMode(), s.isEvaluateMode(),
-                s.getLabel(), s.getCreatedAt()
+                s.getLabel(), s.getCreatedAt(),
+                ri != null ? ri.rounds() : null, ri != null ? ri.accepted() : null
             );
         }
     }

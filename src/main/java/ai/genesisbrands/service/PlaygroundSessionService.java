@@ -53,6 +53,17 @@ public class PlaygroundSessionService {
         return parse(session.getResultJson());
     }
 
+    /** Round count + accept/exhausted verdict for an evaluate-mode run, or null if not applicable. */
+    public RoundsInfo roundsInfoOf(PlaygroundSession session) {
+        if (!session.isEvaluateMode()) return null;
+        JsonNode result = resultOf(session);
+        JsonNode target = result.has("results") ? result.path("results").path(0) : result;
+        if (!target.has("rounds")) return null;
+        return new RoundsInfo(target.path("rounds").size(), target.path("accepted").asBoolean(false));
+    }
+
+    public record RoundsInfo(int rounds, boolean accepted) {}
+
     private JsonNode parse(String json) {
         try {
             return objectMapper.readTree(json);
