@@ -49,8 +49,9 @@ dependencies {
     // API docs
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
 
-    // Database — H2 for demo (swap for PostgreSQL in production)
+    // Database — H2 for local dev, PostgreSQL in production (Azure Database for PostgreSQL)
     runtimeOnly 'com.h2database:h2'
+    runtimeOnly 'org.postgresql:postgresql'
 
     // Lombok
     compileOnly 'org.projectlombok:lombok'

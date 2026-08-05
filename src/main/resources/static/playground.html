@@ -937,6 +937,7 @@ function toggleFeedbackPanel(btn) {
   const ctx = JSON.parse(btn.dataset.context);
   slot.innerHTML = feedbackPanelHTML(ctx);
   slot.querySelector('.fb-panel').dataset.context = JSON.stringify(ctx);
+  slot.scrollIntoView({ behavior: 'smooth', block: 'center' });
   ensureSessionSaved(slot);
 }
 
