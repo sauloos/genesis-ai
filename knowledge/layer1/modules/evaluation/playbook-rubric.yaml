@@ -1,0 +1,47 @@
+module: playbook-evaluation-rubric
+version: 1.0
+description: Criteria Genesis AI uses to evaluate playbook output from the Playbook Assembly Agent before accepting it.
+
+evaluation_dimensions:
+
+  - name: internal_coherence
+    weight: critical
+    description: Does the playbook read as one brand, not four disconnected sections stitched together?
+    pass_criteria: Strategic summary, brand foundations, verbal identity, visual identity, and logo rationale reinforce a single, recognisable point of view.
+    fail_criteria: Sections contradict each other, or read as independent restatements of the source outputs with no connective narrative.
+
+  - name: direction_fidelity
+    weight: critical
+    description: Does the assembled playbook stay true to the assigned creative direction (ANCHORED, EVOLVED, or DISRUPTIVE)?
+    pass_criteria: The strategic framing and recommended applications are unmistakably the given direction's posture.
+    fail_criteria: The playbook reads as direction-neutral, or drifts toward a different posture than the one assigned.
+
+  - name: groundedness
+    weight: critical
+    description: Does every claim trace back to the brief or one of the three accepted specialist outputs?
+    pass_criteria: Verbal identity reflects the actual Copy Agent output, visual identity summary reflects the actual Visual Identity Agent output, logo rationale reflects the actual Logo Agent output — no invented facts.
+    fail_criteria: The playbook states taglines, colors, fonts, or concepts that do not match the supplied specialist outputs.
+
+  - name: actionability
+    weight: high
+    description: Are the recommended applications concrete enough to brief a designer or marketer against?
+    pass_criteria: Applications name specific touchpoints (e.g. "Instagram Story templates using the secondary palette for seasonal drops") tied to the brand's actual audience and offer.
+    fail_criteria: Applications are generic boilerplate ("use across social media and packaging") with no brand-specific detail.
+
+  - name: strategic_clarity
+    weight: medium
+    description: Does the strategic summary make the case for why this direction serves the brief?
+    pass_criteria: A stakeholder unfamiliar with the process could read the summary and understand why this direction was chosen and what it's betting on.
+    fail_criteria: The summary restates the brief without synthesis, or is vague about the strategic bet being made.
+
+rejection_triggers:
+  # If any of these are present, return the playbook for revision regardless of other scores.
+  - Verbal identity section quotes a tagline that does not match the Copy Agent's actual tagline
+  - Visual identity summary references colors or fonts not present in the Visual Identity Agent's output
+  - Logo rationale contradicts the Logo Agent's stated concept or symbolism
+  - Recommended applications list has fewer than 3 items or is entirely generic
+
+feedback_format: >
+  When returning a playbook for revision, lead with what is working before stating what needs to change.
+  Be specific: name the exact section, state what the problem is (contradiction, ungrounded claim, generic
+  application), and suggest the direction of improvement — not the exact fix.

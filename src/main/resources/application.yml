@@ -101,6 +101,18 @@ genesis:
       model: claude-opus-5
       system-prompt: agents/evaluation/logo-evaluator-svg.md
       max-tokens: 1200
+    playbook:
+      model: claude-sonnet-5
+      system-prompt: agents/playbook/system.md
+      max-tokens: 3500
+      rag:
+        enabled: true
+        top-k: 3
+      max-iterations: 3
+    playbook-evaluator:
+      model: claude-opus-5
+      system-prompt: agents/evaluation/playbook-evaluator.md
+      max-tokens: 1500
 
 azure:
   storage:

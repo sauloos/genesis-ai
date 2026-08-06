@@ -333,6 +333,10 @@
       <div class="agent-name">🔺 Logo</div>
       <div class="agent-desc">Mark concept — DALL-E image or SVG concept</div>
     </div>
+    <div class="agent-item" data-agent="playbook" onclick="selectAgent(this)">
+      <div class="agent-name">📘 Playbook Assembly</div>
+      <div class="agent-desc">Synthesizes accepted Copy/Visual/Logo runs into one brand playbook</div>
+    </div>
   </div>
 
   <div id="method-toggle-wrap" style="display:none">
@@ -367,6 +371,24 @@
   <div id="form-area">
     <h2 id="form-title">Copy Agent</h2>
     <div class="sub" id="form-sub">Give it a brand context and a creative direction, then run it.</div>
+
+    <div id="pb-source-runs" class="form-grid" style="display:none">
+      <div class="field full">
+        <label>Source runs — the accepted Copy / Visual Identity / Logo runs to assemble</label>
+      </div>
+      <div class="field">
+        <label>Copy Agent run</label>
+        <select id="pb-source-copy"></select>
+      </div>
+      <div class="field">
+        <label>Visual Identity run</label>
+        <select id="pb-source-visual-identity"></select>
+      </div>
+      <div class="field">
+        <label>Logo run</label>
+        <select id="pb-source-logo"></select>
+      </div>
+    </div>
 
     <div class="form-grid">
       <div class="field">
@@ -465,7 +487,8 @@ let lastRunArgs = null;
 const AGENT_META = {
   'copy': { title: 'Copy Agent', sub: 'Give it a brand context and a creative direction, then run it.' },
   'visual-identity': { title: 'Visual Identity Agent', sub: 'Give it a brand context and a creative direction, then run it.' },
-  'logo': { title: 'Logo Agent', sub: 'Give it a brand context and a creative direction, then run it.' }
+  'logo': { title: 'Logo Agent', sub: 'Give it a brand context and a creative direction, then run it.' },
+  'playbook': { title: 'Playbook Assembly Agent', sub: 'Pick accepted Copy/Visual Identity/Logo runs, give it the brief, then run it.' }
 };
 
 function selectAgent(el) {
@@ -478,6 +501,8 @@ function selectAgent(el) {
   document.getElementById('form-title').textContent = meta.title;
   document.getElementById('form-sub').textContent = meta.sub;
   document.getElementById('method-toggle-wrap').style.display = currentAgent === 'logo' ? 'block' : 'none';
+  document.getElementById('pb-source-runs').style.display = currentAgent === 'playbook' ? 'grid' : 'none';
+  if (currentAgent === 'playbook') loadPlaybookSourceRuns();
 
   document.getElementById('results-empty').style.display = 'block';
   document.getElementById('results-cols').style.display = 'none';
@@ -487,6 +512,18 @@ function selectAgent(el) {
   currentPlaygroundSessionId = null;
   currentRunAssets = [];
   switchResultsTab('current');
+}
+
+async function loadPlaybookSourceRuns() {
+  for (const a of ['copy', 'visual-identity', 'logo']) {
+    const sel = document.getElementById(`pb-source-${a}`);
+    sel.innerHTML = '<option>Loading…</option>';
+    const sessions = await fetch(`${API}/api/playground/sessions?agentId=${a}`, { headers: HEADERS })
+      .then(r => r.json()).catch(() => []);
+    sel.innerHTML = sessions.length
+      ? sessions.map(s => `<option value="${esc(s.id)}">${esc(s.label)} — ${new Date(s.createdAt).toLocaleString()}</option>`).join('')
+      : '<option value="">No runs yet</option>';
+  }
 }
 
 // ── Current / History tabs ───────────────────────────────────────────────────
@@ -650,6 +687,39 @@ function buildBrief() {
   };
 }
 
+function extractGenesisOutput(session, result) {
+  let r = result;
+  if (session.method === 'BOTH' && r && r.methods && r.results) r = r.results[0];
+  if (session.compareMode) r = r.genesisAi;
+  if (session.evaluateMode) r = r.output;
+  return r;
+}
+
+let lastPlaybookSourceRuns = null;
+
+async function buildPlaybookInput(brief) {
+  const ids = {
+    copy: document.getElementById('pb-source-copy').value,
+    visualIdentity: document.getElementById('pb-source-visual-identity').value,
+    logo: document.getElementById('pb-source-logo').value
+  };
+  if (!ids.copy || !ids.visualIdentity || !ids.logo) {
+    throw new Error('Select a Copy, Visual Identity, and Logo run to assemble the playbook from.');
+  }
+  const [copyDetail, visualDetail, logoDetail] = await Promise.all([
+    fetch(`${API}/api/playground/sessions/${ids.copy}`, { headers: HEADERS }).then(r => r.json()),
+    fetch(`${API}/api/playground/sessions/${ids.visualIdentity}`, { headers: HEADERS }).then(r => r.json()),
+    fetch(`${API}/api/playground/sessions/${ids.logo}`, { headers: HEADERS }).then(r => r.json())
+  ]);
+  lastPlaybookSourceRuns = ids;
+  return {
+    brief,
+    copy: extractGenesisOutput(copyDetail.session, copyDetail.result),
+    visualIdentity: extractGenesisOutput(visualDetail.session, visualDetail.result),
+    logo: extractGenesisOutput(logoDetail.session, logoDetail.result)
+  };
+}
+
 const METHOD_LABELS = { DALLE: 'DALL-E image', SVG_CONCEPT: 'SVG concept' };
 
 async function fetchMethodResult(endpoint, brief, method) {
@@ -696,7 +766,10 @@ async function runAgent() {
 
   const t0 = performance.now();
   try {
-    const results = await Promise.all(methods.map(m => fetchMethodResult(endpoint, brief, m)));
+    let requestPayload = brief;
+    if (currentAgent === 'playbook') requestPayload = await buildPlaybookInput(brief);
+
+    const results = await Promise.all(methods.map(m => fetchMethodResult(endpoint, requestPayload, m)));
     const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
     status.textContent = `Done in ${elapsed}s`;
 
@@ -716,8 +789,11 @@ async function runAgent() {
     }
 
     currentRunAssets = collectRunAssets(colsEl);
-    lastRunArgs = { brief, methods, results, compare, evaluate };
-    await savePlaygroundSession(brief, methods, results, compare, evaluate);
+    const briefToSave = currentAgent === 'playbook' && lastPlaybookSourceRuns
+      ? { ...brief, sourceRuns: lastPlaybookSourceRuns }
+      : brief;
+    lastRunArgs = { brief: briefToSave, methods, results, compare, evaluate };
+    await savePlaygroundSession(briefToSave, methods, results, compare, evaluate);
   } catch (err) {
     status.textContent = '';
     errorEl.textContent = err.message || String(err);
@@ -794,7 +870,29 @@ function genesisCard(o, ms, rounds, accepted) {
 function agentBody(o) {
   if (currentAgent === 'visual-identity') return visualIdentityBody(o);
   if (currentAgent === 'logo') return logoBody(o);
+  if (currentAgent === 'playbook') return playbookBody(o);
   return copyBody(o);
+}
+
+function playbookBody(o) {
+  return `
+    ${block('Strategic summary', o.strategicSummary)}
+    ${block('Brand foundations', o.brandFoundations)}
+    ${block('Verbal identity', o.verbalIdentity)}
+    ${block('Visual identity', o.visualIdentitySummary)}
+    ${block('Logo rationale', o.logoRationale)}
+    ${recommendedApplicationsBlock(o.recommendedApplications)}
+  `;
+}
+
+function recommendedApplicationsBlock(apps) {
+  if (!apps || !apps.length) return '';
+  const items = apps.map(a => `<li>${esc(a)}</li>`).join('');
+  return `
+    <div class="rf-block">
+      <div class="rf-label">Recommended applications</div>
+      <ul class="tone-principles">${items}</ul>
+    </div>`;
 }
 
 function copyBody(o) {
