@@ -95,10 +95,20 @@
   /* ── Main ── */
   #main { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
 
-  #form-area { flex-shrink: 0; padding: 20px 28px; overflow-y: auto; height: 46vh; min-height: 120px; }
+  #view-tabs { display: flex; gap: 28px; padding: 0 28px; border-bottom: 1px solid #eee; flex-shrink: 0; }
+  .view-tab {
+    padding: 14px 0 12px; font-size: 13px; font-weight: 600; color: #888;
+    background: none; border: none; border-bottom: 2px solid transparent;
+    display: inline-flex; align-items: center; gap: 6px;
+    cursor: pointer; transition: all 0.15s; font-family: inherit;
+  }
+  .view-tab.active { color: #1a1a1a; border-bottom-color: #1a1a1a; }
+  .view-tab:hover:not(.active) { color: #333; }
+  .view-tab-dot { width: 7px; height: 7px; border-radius: 50%; background: #4caf7d; }
 
-  #form-resizer { height: 5px; flex-shrink: 0; cursor: row-resize; background: #f0f0f0; }
-  #form-resizer:hover, #form-resizer.dragging { background: #1a1a1a; }
+  #view-parameters { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+
+  #form-area { flex: 1; padding: 20px 28px 20px; overflow-y: auto; }
   #form-area h2 { font-size: 16px; font-weight: 700; margin-bottom: 3px; }
   #form-area .sub { font-size: 12px; color: #888; margin-bottom: 16px; }
 
@@ -122,7 +132,7 @@
   }
   .dir-btn.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
 
-  #run-row { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+  #run-row { flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding: 14px 28px; border-top: 1px solid #eee; }
   #run-btn {
     padding: 10px 22px; background: #1a1a1a; border: none; border-radius: 8px;
     color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.15s;
@@ -388,6 +398,14 @@
 <div id="sidebar-resizer"></div>
 
 <div id="main">
+  <div id="view-tabs">
+    <button class="view-tab active" data-view="parameters" onclick="switchViewTab('parameters')">Parameters</button>
+    <button class="view-tab" data-view="response" onclick="switchViewTab('response')">
+      Response<span id="response-dot" class="view-tab-dot" style="display:none"></span>
+    </button>
+  </div>
+
+  <div id="view-parameters">
   <div id="form-area">
     <h2 id="form-title">Copy Agent</h2>
     <div class="sub" id="form-sub">Give it a brand context and a creative direction, then run it.</div>
@@ -486,16 +504,16 @@ This brand challenges the idea that good coffee has to be precious or intimidati
       </div>
     </div>
 
-    <div id="run-row">
-      <button id="run-btn" onclick="runAgent()">Run agent</button>
-      <span id="run-status"></span>
-      <span id="run-error"></span>
-    </div>
   </div>
 
-  <div id="form-resizer"></div>
+  <div id="run-row">
+    <button id="run-btn" onclick="runAgent()">Run agent</button>
+    <span id="run-status"></span>
+    <span id="run-error"></span>
+  </div>
+  </div>
 
-  <div id="results-area">
+  <div id="results-area" style="display:none">
     <div id="results-tabs">
       <button class="results-tab active" data-tab="current" onclick="switchResultsTab('current')">Current</button>
       <button class="results-tab" data-tab="history" onclick="switchResultsTab('history')">History</button>
@@ -521,6 +539,7 @@ const HEADERS = { 'Content-Type': 'application/json', 'X-Api-Key': KEY };
 let currentDirection = 'DISRUPTIVE';
 let currentAgent = 'copy';
 let currentMethod = 'DALLE';
+let currentView = 'parameters';
 let resultsTab = 'current';
 let currentPlaygroundSessionId = null;
 let currentRunAssets = [];
@@ -557,7 +576,9 @@ function selectAgent(el) {
   currentPlaygroundSessionId = null;
   currentRunAssets = [];
   lastBrandBookInput = null;
+  document.getElementById('response-dot').style.display = 'none';
   switchResultsTab('current');
+  switchViewTab('parameters');
 }
 
 async function loadPlaybookSourceRuns() {
@@ -582,6 +603,15 @@ async function loadBrandBookSourceRuns() {
       ? sessions.map(s => `<option value="${esc(s.id)}">${esc(s.label)} — ${new Date(s.createdAt).toLocaleString()}</option>`).join('')
       : '<option value="">No runs yet</option>';
   }
+}
+
+// ── Parameters / Response tabs ───────────────────────────────────────────────
+function switchViewTab(view) {
+  currentView = view;
+  document.querySelectorAll('.view-tab').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  document.getElementById('view-parameters').style.display = view === 'parameters' ? 'flex' : 'none';
+  document.getElementById('results-area').style.display = view === 'response' ? 'block' : 'none';
+  if (view === 'response') document.getElementById('response-dot').style.display = 'none';
 }
 
 // ── Current / History tabs ───────────────────────────────────────────────────
@@ -725,7 +755,6 @@ function makeResizable(handle, target, axis, min, max) {
 }
 
 makeResizable(document.getElementById('sidebar-resizer'), document.getElementById('sidebar'), 'x', 160, 480);
-makeResizable(document.getElementById('form-resizer'), document.getElementById('form-area'), 'y', 120, window.innerHeight - 160);
 
 function setDirection(btn) {
   document.querySelectorAll('.dir-btn').forEach(b => b.classList.remove('active'));
@@ -850,10 +879,13 @@ async function runAgent() {
   errorEl.textContent = '';
   const runningLabel = compare ? 'Running both agents…' : (evaluate ? 'Running evaluation loop… (can take a few minutes for DALL-E)' : 'Running…');
   status.innerHTML = `<span class="spinner"></span>${runningLabel}`;
-  document.getElementById('results-empty').style.display = 'none';
+  const emptyEl = document.getElementById('results-empty');
+  emptyEl.innerHTML = `<span class="spinner"></span> ${runningLabel}`;
+  emptyEl.style.display = 'block';
   const colsEl = document.getElementById('results-cols');
   colsEl.style.display = 'none';
   colsEl.classList.remove('dual');
+  switchViewTab('response');
 
   const brief = buildBrief();
   const methods = (currentAgent === 'logo' && currentMethod === 'BOTH')
@@ -876,6 +908,7 @@ async function runAgent() {
     const results = await Promise.all(methods.map(m => fetchMethodResult(endpoint, requestPayload, m)));
     const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
     status.textContent = `Done in ${elapsed}s`;
+    emptyEl.style.display = 'none';
 
     if (methods.length > 1) {
       colsEl.innerHTML = methods.map((m, i) => {
@@ -900,9 +933,13 @@ async function runAgent() {
         : brief;
     lastRunArgs = { brief: briefToSave, methods, results, compare, evaluate };
     await savePlaygroundSession(briefToSave, methods, results, compare, evaluate);
+    if (currentView !== 'response') document.getElementById('response-dot').style.display = 'inline-block';
   } catch (err) {
     status.textContent = '';
     errorEl.textContent = err.message || String(err);
+    emptyEl.innerHTML = `Something went wrong: ${esc(err.message || String(err))}`;
+    emptyEl.style.display = 'block';
+    if (currentView !== 'response') document.getElementById('response-dot').style.display = 'inline-block';
   } finally {
     btn.disabled = false;
   }
@@ -1387,6 +1424,7 @@ document.addEventListener('click', (e) => {
     if (el) selectAgent(el);
   }
   if (sessionId) {
+    switchViewTab('response');
     await switchResultsTab('history');
     await openHistoryItem(sessionId);
   }
