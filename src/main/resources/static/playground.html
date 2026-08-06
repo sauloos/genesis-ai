@@ -337,6 +337,10 @@
       <div class="agent-name">📘 Playbook Assembly</div>
       <div class="agent-desc">Synthesizes accepted Copy/Visual/Logo runs into one brand playbook</div>
     </div>
+    <div class="agent-item" data-agent="brand-book" onclick="selectAgent(this)">
+      <div class="agent-name">📗 Brand Book Assembly</div>
+      <div class="agent-desc">Assembles the client-facing brand book PDF from Copy/Visual/Logo/Playbook</div>
+    </div>
   </div>
 
   <div id="method-toggle-wrap" style="display:none">
@@ -387,6 +391,28 @@
       <div class="field">
         <label>Logo run</label>
         <select id="pb-source-logo"></select>
+      </div>
+    </div>
+
+    <div id="bb-source-runs" class="form-grid" style="display:none">
+      <div class="field full">
+        <label>Source runs — the accepted Copy / Visual Identity / Logo / Playbook runs to assemble</label>
+      </div>
+      <div class="field">
+        <label>Copy Agent run</label>
+        <select id="bb-source-copy"></select>
+      </div>
+      <div class="field">
+        <label>Visual Identity run</label>
+        <select id="bb-source-visual-identity"></select>
+      </div>
+      <div class="field">
+        <label>Logo run</label>
+        <select id="bb-source-logo"></select>
+      </div>
+      <div class="field">
+        <label>Playbook run</label>
+        <select id="bb-source-playbook"></select>
       </div>
     </div>
 
@@ -488,7 +514,8 @@ const AGENT_META = {
   'copy': { title: 'Copy Agent', sub: 'Give it a brand context and a creative direction, then run it.' },
   'visual-identity': { title: 'Visual Identity Agent', sub: 'Give it a brand context and a creative direction, then run it.' },
   'logo': { title: 'Logo Agent', sub: 'Give it a brand context and a creative direction, then run it.' },
-  'playbook': { title: 'Playbook Assembly Agent', sub: 'Pick accepted Copy/Visual Identity/Logo runs, give it the brief, then run it.' }
+  'playbook': { title: 'Playbook Assembly Agent', sub: 'Pick accepted Copy/Visual Identity/Logo runs, give it the brief, then run it.' },
+  'brand-book': { title: 'Brand Book Assembly Agent', sub: 'Pick accepted Copy/Visual Identity/Logo/Playbook runs, give it the brief, then run it.' }
 };
 
 function selectAgent(el) {
@@ -503,6 +530,8 @@ function selectAgent(el) {
   document.getElementById('method-toggle-wrap').style.display = currentAgent === 'logo' ? 'block' : 'none';
   document.getElementById('pb-source-runs').style.display = currentAgent === 'playbook' ? 'grid' : 'none';
   if (currentAgent === 'playbook') loadPlaybookSourceRuns();
+  document.getElementById('bb-source-runs').style.display = currentAgent === 'brand-book' ? 'grid' : 'none';
+  if (currentAgent === 'brand-book') loadBrandBookSourceRuns();
 
   document.getElementById('results-empty').style.display = 'block';
   document.getElementById('results-cols').style.display = 'none';
@@ -511,12 +540,25 @@ function selectAgent(el) {
   document.getElementById('run-error').textContent = '';
   currentPlaygroundSessionId = null;
   currentRunAssets = [];
+  lastBrandBookInput = null;
   switchResultsTab('current');
 }
 
 async function loadPlaybookSourceRuns() {
   for (const a of ['copy', 'visual-identity', 'logo']) {
     const sel = document.getElementById(`pb-source-${a}`);
+    sel.innerHTML = '<option>Loading…</option>';
+    const sessions = await fetch(`${API}/api/playground/sessions?agentId=${a}`, { headers: HEADERS })
+      .then(r => r.json()).catch(() => []);
+    sel.innerHTML = sessions.length
+      ? sessions.map(s => `<option value="${esc(s.id)}">${esc(s.label)} — ${new Date(s.createdAt).toLocaleString()}</option>`).join('')
+      : '<option value="">No runs yet</option>';
+  }
+}
+
+async function loadBrandBookSourceRuns() {
+  for (const a of ['copy', 'visual-identity', 'logo', 'playbook']) {
+    const sel = document.getElementById(`bb-source-${a}`);
     sel.innerHTML = '<option>Loading…</option>';
     const sessions = await fetch(`${API}/api/playground/sessions?agentId=${a}`, { headers: HEADERS })
       .then(r => r.json()).catch(() => []);
@@ -583,6 +625,17 @@ async function openHistoryItem(id) {
   detailEl.style.display = 'block';
 
   const s = detail.session;
+
+  if (s.agentId === 'brand-book' && detail.brief && detail.brief.sourceRuns) {
+    const { sourceRuns, ...briefRest } = detail.brief;
+    try {
+      lastBrandBookInput = await resolveBrandBookInput(briefRest, sourceRuns);
+    } catch (err) {
+      console.warn('Failed to reconstruct brand book input for PDF download:', err);
+      lastBrandBookInput = null;
+    }
+  }
+
   const isMulti = s.method === 'BOTH';
   const methods = isMulti ? detail.result.methods : [s.method];
   const resultsList = isMulti ? detail.result.results : [detail.result];
@@ -720,6 +773,40 @@ async function buildPlaybookInput(brief) {
   };
 }
 
+let lastBrandBookSourceRuns = null;
+let lastBrandBookInput = null;
+
+async function resolveBrandBookInput(brief, ids) {
+  const [copyDetail, visualDetail, logoDetail, playbookDetail] = await Promise.all([
+    fetch(`${API}/api/playground/sessions/${ids.copy}`, { headers: HEADERS }).then(r => r.json()),
+    fetch(`${API}/api/playground/sessions/${ids.visualIdentity}`, { headers: HEADERS }).then(r => r.json()),
+    fetch(`${API}/api/playground/sessions/${ids.logo}`, { headers: HEADERS }).then(r => r.json()),
+    fetch(`${API}/api/playground/sessions/${ids.playbook}`, { headers: HEADERS }).then(r => r.json())
+  ]);
+  return {
+    brief,
+    copy: extractGenesisOutput(copyDetail.session, copyDetail.result),
+    visualIdentity: extractGenesisOutput(visualDetail.session, visualDetail.result),
+    logo: extractGenesisOutput(logoDetail.session, logoDetail.result),
+    playbook: extractGenesisOutput(playbookDetail.session, playbookDetail.result)
+  };
+}
+
+async function buildBrandBookInput(brief) {
+  const ids = {
+    copy: document.getElementById('bb-source-copy').value,
+    visualIdentity: document.getElementById('bb-source-visual-identity').value,
+    logo: document.getElementById('bb-source-logo').value,
+    playbook: document.getElementById('bb-source-playbook').value
+  };
+  if (!ids.copy || !ids.visualIdentity || !ids.logo || !ids.playbook) {
+    throw new Error('Select a Copy, Visual Identity, Logo, and Playbook run to assemble the brand book from.');
+  }
+  lastBrandBookSourceRuns = ids;
+  lastBrandBookInput = await resolveBrandBookInput(brief, ids);
+  return lastBrandBookInput;
+}
+
 const METHOD_LABELS = { DALLE: 'DALL-E image', SVG_CONCEPT: 'SVG concept' };
 
 async function fetchMethodResult(endpoint, brief, method) {
@@ -768,6 +855,7 @@ async function runAgent() {
   try {
     let requestPayload = brief;
     if (currentAgent === 'playbook') requestPayload = await buildPlaybookInput(brief);
+    else if (currentAgent === 'brand-book') requestPayload = await buildBrandBookInput(brief);
 
     const results = await Promise.all(methods.map(m => fetchMethodResult(endpoint, requestPayload, m)));
     const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
@@ -791,7 +879,9 @@ async function runAgent() {
     currentRunAssets = collectRunAssets(colsEl);
     const briefToSave = currentAgent === 'playbook' && lastPlaybookSourceRuns
       ? { ...brief, sourceRuns: lastPlaybookSourceRuns }
-      : brief;
+      : currentAgent === 'brand-book' && lastBrandBookSourceRuns
+        ? { ...brief, sourceRuns: lastBrandBookSourceRuns }
+        : brief;
     lastRunArgs = { brief: briefToSave, methods, results, compare, evaluate };
     await savePlaygroundSession(briefToSave, methods, results, compare, evaluate);
   } catch (err) {
@@ -871,7 +961,21 @@ function agentBody(o) {
   if (currentAgent === 'visual-identity') return visualIdentityBody(o);
   if (currentAgent === 'logo') return logoBody(o);
   if (currentAgent === 'playbook') return playbookBody(o);
+  if (currentAgent === 'brand-book') return brandBookBody(o);
   return copyBody(o);
+}
+
+function brandBookBody(o) {
+  return `
+    ${block('Welcome note', o.welcomeNote)}
+    ${block('How to use this guide', o.howToUseThisGuide)}
+    ${block('Logo usage guidelines', o.logoUsageGuidelines)}
+    ${bulletBlock('Logo don’ts', o.logoDonts)}
+    ${block('Color usage guidelines', o.colorUsageGuidelines)}
+    ${block('Typography usage guidelines', o.typographyUsageGuidelines)}
+    ${block('Closing note', o.closingNote)}
+    ${downloadPdfButtonHTML(o)}
+  `;
 }
 
 function playbookBody(o) {
@@ -886,13 +990,54 @@ function playbookBody(o) {
 }
 
 function recommendedApplicationsBlock(apps) {
-  if (!apps || !apps.length) return '';
-  const items = apps.map(a => `<li>${esc(a)}</li>`).join('');
+  return bulletBlock('Recommended applications', apps);
+}
+
+function bulletBlock(label, items) {
+  if (!items || !items.length) return '';
+  const li = items.map(a => `<li>${esc(a)}</li>`).join('');
   return `
     <div class="rf-block">
-      <div class="rf-label">Recommended applications</div>
-      <ul class="tone-principles">${items}</ul>
+      <div class="rf-label">${label}</div>
+      <ul class="tone-principles">${li}</ul>
     </div>`;
+}
+
+function downloadPdfButtonHTML(o) {
+  return `
+    <div class="rf-block">
+      <button class="fb-btn" data-bb-output="${esc(JSON.stringify(o))}" onclick="downloadBrandBookPdf(this)">Download PDF</button>
+    </div>`;
+}
+
+async function downloadBrandBookPdf(btn) {
+  if (!lastBrandBookInput) {
+    alert('Run the agent (or reopen it from History) before downloading the PDF.');
+    return;
+  }
+  const output = JSON.parse(btn.dataset.bbOutput);
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Rendering…';
+  try {
+    const res = await fetch(`${API}/api/agents/brand-book/render-pdf`, {
+      method: 'POST', headers: HEADERS,
+      body: JSON.stringify({ input: lastBrandBookInput, output })
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'brand-book.pdf';
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    alert('PDF render failed: ' + (err.message || err));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
 }
 
 function copyBody(o) {

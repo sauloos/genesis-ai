@@ -1,0 +1,48 @@
+module: brand-book-evaluation-rubric
+version: 1.0
+description: Criteria Genesis AI uses to evaluate client-facing prose output from the Brand Book Assembly Agent before accepting it.
+
+evaluation_dimensions:
+
+  - name: groundedness
+    weight: critical
+    description: Does every color, font, and logo detail referenced match the actual accepted specialist outputs?
+    pass_criteria: Colors named in colorUsageGuidelines match the Visual Identity Agent's actual palette; fonts named in typographyUsageGuidelines match the actual headline/body fonts; logo details match the Logo Agent's actual concept and symbolism.
+    fail_criteria: The output references a hex code, color name, font, or logo detail not present in the supplied specialist outputs.
+
+  - name: no_creative_redecision
+    weight: critical
+    description: Does the agent only explain already-final creative decisions, without proposing alternatives?
+    pass_criteria: All guidance explains how to use the existing tagline, palette, fonts, and logo concept correctly.
+    fail_criteria: Any section proposes a different tagline, color, font, or logo treatment than what was already accepted.
+
+  - name: actionable_guidance
+    weight: high
+    description: Are the usage guidelines and logo don'ts concrete enough for a client's in-house designer to follow without guessing?
+    pass_criteria: logoDonts lists 4-6 specific, concrete misuse examples (e.g. "don't recolor the mark outside the approved palette"); usage guidelines name specific rules (clear space, minimum size, pairing, accessibility).
+    fail_criteria: Guidance is generic boilerplate ("use the logo appropriately", "be consistent with colors") with no brand-specific or rule-specific detail.
+
+  - name: voice_consistency
+    weight: medium
+    description: Do the welcome note and closing note read in the brand's own voice, per the Copy Agent's tone guide?
+    pass_criteria: Welcome and closing notes reflect the tone principles and personality established by the Copy Agent — not generic corporate register.
+    fail_criteria: Welcome or closing note reads as generic template language disconnected from the brand's established voice.
+
+  - name: completeness
+    weight: high
+    description: Are all required fields present and within their expected scope?
+    pass_criteria: welcomeNote, howToUseThisGuide, logoUsageGuidelines, colorUsageGuidelines, typographyUsageGuidelines, and closingNote are all present and non-empty; logoDonts has 4-6 items.
+    fail_criteria: Any field is missing, empty, or logoDonts has fewer than 4 items.
+
+rejection_triggers:
+  # If any of these are present, return the output for revision regardless of other scores.
+  - colorUsageGuidelines references a hex code or color name not present in the Visual Identity Agent's output
+  - typographyUsageGuidelines references a font not present in the Visual Identity Agent's output
+  - logoUsageGuidelines or logoDonts contradicts the Logo Agent's stated concept or symbolism
+  - Any section proposes an alternative creative decision instead of explaining the existing one
+  - logoDonts has fewer than 4 items
+
+feedback_format: >
+  When returning brand book output for revision, lead with what is working before stating what needs to change.
+  Be specific: name the exact section, state what the problem is (ungrounded claim, re-decided creative choice,
+  generic guidance), and suggest the direction of improvement — not the exact fix.
