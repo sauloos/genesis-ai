@@ -23,6 +23,12 @@
   #sidebar-header { padding: 20px 16px 12px; border-bottom: 1px solid #222; position: relative; }
   #sidebar-header h1 { color: #fff; font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
   #sidebar-header p  { color: #666; font-size: 11px; margin-top: 2px; }
+  .mode-badge {
+    display: inline-block; margin-top: 8px; padding: 3px 9px;
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+    color: #6fe0a5; background: rgba(111,224,165,0.12); border: 1px solid rgba(111,224,165,0.3);
+    border-radius: 20px;
+  }
 
   /* ── Nav menu (hamburger) ── */
   #nav-toggle {
@@ -137,9 +143,18 @@
   #results-empty { color: #bbb; font-size: 14px; text-align: center; margin-top: 60px; }
 
   .results-cols { display: grid; grid-template-columns: 1fr; gap: 20px; }
-  .results-cols.dual { grid-template-columns: 1fr 1fr; }
+  .results-cols.dual { grid-template-columns: 1fr 1fr; position: relative; }
+  .results-cols.dual::after {
+    content: 'VS'; position: absolute; top: 22px; left: 50%; transform: translate(-50%, -50%);
+    width: 28px; height: 28px; border-radius: 50%; z-index: 2;
+    background: #fff; border: 1px solid #eee; box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 800; letter-spacing: 0.3px; color: #aaa;
+  }
 
   .result-card { border: 1px solid #eee; border-radius: 12px; overflow: hidden; }
+  .result-card-genesis { border-left: 3px solid #4caf7d; }
+  .result-card-baseline { border-left: 3px solid #ccc; }
   .result-card-header {
     padding: 10px 16px; display: flex; align-items: center; justify-content: space-between;
     border-bottom: 1px solid #eee;
@@ -307,6 +322,7 @@
   <div id="sidebar-header">
     <h1>Genesis AI</h1>
     <p>Brand Intelligence</p>
+    <div class="mode-badge">Playground</div>
     <button id="nav-toggle" onclick="toggleNavMenu(event)" aria-label="Menu">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
         <line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/>
@@ -943,7 +959,7 @@ function genesisCard(o, ms, rounds, accepted) {
         : `<span class="eval-badge exhausted">Budget exhausted (${rounds.length} rounds)</span>`)
     : '';
   return `
-    <div class="result-card">
+    <div class="result-card result-card-genesis">
       <div class="result-card-header genesis">
         <span class="result-card-title">GENESIS AI — Brain-orchestrated${badge}</span>
         <span class="result-card-actions">${latency}${feedbackButtonHTML(o, 'Genesis AI')}</span>
@@ -1129,7 +1145,7 @@ function evalTrailBlock(rounds) {
 function baselineCard(o, ms) {
   const latency = ms != null ? `<span class="result-card-latency">${(ms/1000).toFixed(1)}s</span>` : '';
   return `
-    <div class="result-card">
+    <div class="result-card result-card-baseline">
       <div class="result-card-header baseline">
         <span class="result-card-title">GENERIC AI REQUEST</span>
         <span class="result-card-actions">${latency}${feedbackButtonHTML(o, 'Generic AI')}</span>

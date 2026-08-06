@@ -18,6 +18,12 @@
   #sidebar-header { padding: 20px 16px 12px; border-bottom: 1px solid #222; position: relative; }
   #sidebar-header h1 { color: #fff; font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
   #sidebar-header p  { color: #666; font-size: 11px; margin-top: 2px; }
+  .mode-badge {
+    display: inline-block; margin-top: 8px; padding: 3px 9px;
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+    color: #6fe0a5; background: rgba(111,224,165,0.12); border: 1px solid rgba(111,224,165,0.3);
+    border-radius: 20px;
+  }
 
   /* ── Nav menu (hamburger) ── */
   #nav-toggle {
@@ -325,6 +331,7 @@
   <div id="sidebar-header">
     <h1>Genesis AI</h1>
     <p>Brand Intelligence</p>
+    <div class="mode-badge">Training</div>
     <button id="nav-toggle" onclick="toggleNavMenu(event)" aria-label="Menu">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
         <line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/>
