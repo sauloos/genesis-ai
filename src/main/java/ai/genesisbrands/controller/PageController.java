@@ -30,4 +30,9 @@ public class PageController {
     public String questionnaireRunPage() {
         return "forward:/questionnaire-run.html";
     }
+
+    @GetMapping("/discover")
+    public String discoverPage() {
+        return "forward:/questionnaire-run.html";
+    }
 }

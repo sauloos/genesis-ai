@@ -125,6 +125,8 @@
   .status-pill.st-published { background: #e3f6ea; color: #1e8a4c; }
   .status-pill.st-archived  { background: #eee; color: #999; }
   #publish-detail { font-size: 12px; color: #999; flex: 1; }
+  #live-link { font-size: 12px; color: #1e8a4c; font-weight: 600; text-decoration: none; }
+  #live-link:hover { text-decoration: underline; }
   .pbtn {
     padding: 6px 14px; border-radius: 7px; border: none; font-size: 12px; font-weight: 600;
     cursor: pointer; transition: background 0.15s; letter-spacing: 0.2px;
@@ -276,6 +278,7 @@
     <div id="publish-bar">
       <span class="status-pill" id="status-pill">Draft</span>
       <span id="publish-detail"></span>
+      <a id="live-link" href="/discover" target="_blank" style="display:none">Open live URL ↗</a>
       <button class="pbtn pbtn-ghost" id="preview-btn" onclick="previewQuestionnaire()">Preview</button>
       <input type="datetime-local" id="schedule-at">
       <button class="pbtn pbtn-ghost" onclick="schedulePublish()">Schedule</button>
@@ -423,6 +426,7 @@ function renderPublishBar() {
   document.getElementById('unpublish-btn').style.display =
     (q.status === 'PUBLISHED' || q.status === 'SCHEDULED') ? 'inline-block' : 'none';
   document.getElementById('publish-btn').textContent = q.status === 'PUBLISHED' ? 'Republish' : 'Publish now';
+  document.getElementById('live-link').style.display = q.status === 'PUBLISHED' ? 'inline' : 'none';
 }
 
 async function publishNow() {

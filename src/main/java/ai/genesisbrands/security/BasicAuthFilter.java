@@ -27,7 +27,8 @@ public class BasicAuthFilter extends OncePerRequestFilter {
         "/training", "/training.html",
         "/playground", "/playground.html",
         "/questionnaires", "/questionnaires.html",
-        "/questionnaire-run", "/questionnaire-run.html"
+        "/questionnaire-run", "/questionnaire-run.html",
+        "/discover"
     );
 
     @Value("${genesis.basic-auth.username}")
