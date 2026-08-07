@@ -25,7 +25,9 @@ public class BasicAuthFilter extends OncePerRequestFilter {
     private static final Set<String> PROTECTED_PATHS = Set.of(
         "/console", "/console.html",
         "/training", "/training.html",
-        "/playground", "/playground.html"
+        "/playground", "/playground.html",
+        "/questionnaires", "/questionnaires.html",
+        "/questionnaire-run", "/questionnaire-run.html"
     );
 
     @Value("${genesis.basic-auth.username}")

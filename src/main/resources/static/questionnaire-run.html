@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Genesis AI — Questionnaire</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #fafafa; color: #1a1a1a; min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+  }
+
+  #topbar {
+    width: 100%; max-width: 640px; padding: 20px 20px 0; display: flex;
+    align-items: center; justify-content: space-between;
+  }
+  #topbar .brand { font-size: 13px; font-weight: 700; letter-spacing: 0.4px; color: #999; }
+  #back-link { font-size: 12px; color: #999; text-decoration: none; }
+  #back-link:hover { color: #333; }
+
+  #card {
+    width: 100%; max-width: 640px; margin: 24px auto 60px; background: #fff;
+    border: 1px solid #eee; border-radius: 16px; padding: 40px 44px;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.04);
+  }
+
+  #progress-wrap { margin-bottom: 28px; }
+  #progress-label { font-size: 11px; color: #aaa; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 8px; font-weight: 600; }
+  #progress-track { height: 4px; background: #eee; border-radius: 2px; overflow: hidden; }
+  #progress-fill { height: 100%; background: #1a1a1a; border-radius: 2px; transition: width 0.3s ease; }
+
+  #q-title { font-size: 22px; font-weight: 700; line-height: 1.35; margin-bottom: 8px;
+    text-wrap: balance; }
+  #q-help { font-size: 13px; color: #999; margin-bottom: 24px; line-height: 1.5; }
+
+  #q-body { min-height: 120px; }
+
+  /* text inputs */
+  .text-input-row { display: flex; gap: 8px; align-items: flex-start; }
+  #q-body input[type=text], #q-body textarea {
+    flex: 1; padding: 12px 14px; border: 1px solid #ddd; border-radius: 10px;
+    font-size: 15px; font-family: inherit; outline: none; color: #1a1a1a; resize: vertical;
+  }
+  #q-body textarea { min-height: 110px; line-height: 1.5; }
+  #q-body input[type=text]:focus, #q-body textarea:focus { border-color: #1a1a1a; }
+
+  .cap-btn {
+    width: 42px; height: 42px; flex-shrink: 0; border-radius: 10px; border: 1px solid #ddd;
+    background: #fff; color: #666; cursor: pointer; display: flex; align-items: center;
+    justify-content: center; transition: all 0.15s;
+  }
+  .cap-btn:hover { border-color: #bbb; color: #333; }
+  .cap-btn.recording { background: #fdeaea; border-color: #e88; color: #d33; animation: pulse 1.2s infinite; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(211,51,51,0.3); } 50% { box-shadow: 0 0 0 6px rgba(211,51,51,0); } }
+  #voice-status { font-size: 12px; color: #999; margin-top: 8px; min-height: 16px; }
+
+  /* image upload */
+  #drop-zone {
+    border: 2px dashed #ddd; border-radius: 12px; padding: 32px; text-align: center;
+    cursor: pointer; transition: border-color 0.15s; color: #999; font-size: 13px;
+  }
+  #drop-zone:hover { border-color: #bbb; }
+  #drop-zone svg { margin-bottom: 8px; opacity: 0.5; }
+  #image-preview-wrap { display: none; }
+  #image-preview { max-width: 100%; max-height: 260px; border-radius: 10px; display: block; margin: 0 auto 12px; }
+  .image-actions { display: flex; gap: 8px; justify-content: center; }
+
+  /* slider */
+  #slider-wrap { padding: 20px 4px 0; }
+  #slider-input { width: 100%; accent-color: #1a1a1a; }
+  #slider-labels { display: flex; justify-content: space-between; font-size: 12px; color: #999; margin-top: 6px; }
+  #slider-value { text-align: center; font-size: 28px; font-weight: 700; margin-top: 14px; font-variant-numeric: tabular-nums; }
+
+  /* choices */
+  .choice-list { display: flex; flex-direction: column; gap: 8px; }
+  .choice-btn {
+    text-align: left; padding: 13px 16px; border: 1px solid #e5e5e5; border-radius: 10px;
+    background: #fff; font-size: 14px; color: #333; cursor: pointer; transition: all 0.15s;
+    font-family: inherit;
+  }
+  .choice-btn:hover { border-color: #bbb; background: #fafafa; }
+  .choice-btn.selected { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+
+  #q-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 32px; }
+  .nav-btn {
+    padding: 11px 22px; border-radius: 10px; border: none; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: background 0.15s; font-family: inherit;
+  }
+  .nav-btn-primary { background: #1a1a1a; color: #fff; }
+  .nav-btn-primary:hover { background: #333; }
+  .nav-btn-primary:disabled { background: #ccc; cursor: default; }
+  .nav-btn-ghost { background: none; color: #999; }
+  .nav-btn-ghost:hover { color: #333; }
+  .nav-btn-ghost:disabled { opacity: 0.3; cursor: default; }
+
+  #state-screen {
+    width: 100%; max-width: 640px; margin: 80px auto; text-align: center;
+    display: none; flex-direction: column; align-items: center; gap: 10px;
+  }
+  #state-screen h2 { font-size: 20px; color: #333; }
+  #state-screen p { font-size: 14px; color: #999; max-width: 400px; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="brand">GENESIS AI</div>
+  <a id="back-link" href="/questionnaires" style="display:none">← Back to Questionnaires</a>
+</div>
+
+<div id="card">
+  <div id="progress-wrap">
+    <div id="progress-label">Question <span id="q-index">1</span> of <span id="q-total">1</span></div>
+    <div id="progress-track"><div id="progress-fill" style="width:0%"></div></div>
+  </div>
+  <div id="q-title"></div>
+  <div id="q-help"></div>
+  <div id="q-body"></div>
+  <div id="q-footer">
+    <button class="nav-btn nav-btn-ghost" id="back-btn" onclick="goBack()">Back</button>
+    <button class="nav-btn nav-btn-primary" id="next-btn" onclick="goNext()">Next</button>
+  </div>
+</div>
+
+<div id="state-screen">
+  <h2 id="state-title"></h2>
+  <p id="state-message"></p>
+</div>
+
+<script>
+const API     = '';
+const KEY     = 'genesis-ai-key';
+const HEADERS = { 'Content-Type': 'application/json', 'X-Api-Key': KEY };
+
+let questionnaire = null;
+let questions = [];
+let responseId = null;
+let currentIndex = 0;
+let answers = {}; // questionId -> value (in-memory mirror)
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
+let pendingImageFile = null;
+
+async function boot() {
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get('id');
+
+  if (id) {
+    document.getElementById('back-link').style.display = 'inline';
+  }
+
+  try {
+    const detail = id
+      ? await fetch(`${API}/api/questionnaires/${id}`, { headers: HEADERS }).then(r => r.json())
+      : await fetchLive();
+
+    questionnaire = detail.questionnaire;
+    questions = detail.questions;
+
+    if (!questions.length) {
+      showState('Nothing to show yet', 'This questionnaire has no questions configured.');
+      return;
+    }
+
+    const startRes = await fetch(`${API}/api/questionnaires/${questionnaire.id}/responses`, {
+      method: 'POST', headers: HEADERS
+    }).then(r => r.json());
+    responseId = startRes.id;
+
+    document.getElementById('q-total').textContent = questions.length;
+    renderQuestion(0);
+  } catch (e) {
+    showState('No live questionnaire', 'There is no published questionnaire available right now.');
+  }
+}
+
+async function fetchLive() {
+  const questionnaire = await fetch(`${API}/api/questionnaires/live`, { headers: HEADERS }).then(r => {
+    if (!r.ok) throw new Error('no live questionnaire');
+    return r.json();
+  });
+  const questions = await fetch(`${API}/api/questionnaires/${questionnaire.id}`, { headers: HEADERS })
+    .then(r => r.json()).then(d => d.questions);
+  return { questionnaire, questions };
+}
+
+function showState(title, message) {
+  document.getElementById('card').style.display = 'none';
+  document.getElementById('topbar').style.display = 'none';
+  const s = document.getElementById('state-screen');
+  s.style.display = 'flex';
+  document.getElementById('state-title').textContent = title;
+  document.getElementById('state-message').textContent = message;
+}
+
+function renderQuestion(idx) {
+  currentIndex = idx;
+  const q = questions[idx];
+  document.getElementById('q-index').textContent = idx + 1;
+  document.getElementById('progress-fill').style.width = ((idx) / questions.length * 100) + '%';
+  document.getElementById('q-title').textContent = q.prompt + (q.required ? ' *' : '');
+  document.getElementById('q-help').textContent = q.helpText || '';
+
+  const body = document.getElementById('q-body');
+  const existing = answers[q.id];
+  const config = q.configJson ? JSON.parse(q.configJson) : {};
+
+  if (q.type === 'SHORT_TEXT' || q.type === 'LONG_TEXT') {
+    const isLong = q.type === 'LONG_TEXT';
+    body.innerHTML = `
+      <div class="text-input-row">
+        ${isLong
+          ? `<textarea id="text-field">${esc(existing || '')}</textarea>`
+          : `<input type="text" id="text-field" value="${esc(existing || '')}">`}
+        ${q.allowVoice ? `<button class="cap-btn" id="mic-btn" onclick="toggleRecording()" title="Record answer">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <rect x="5" y="1" width="6" height="9" rx="3" fill="currentColor"/>
+            <path d="M3 7v1a5 5 0 0010 0V7M8 13v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>` : ''}
+      </div>
+      ${q.allowVoice ? '<div id="voice-status"></div>' : ''}
+    `;
+  } else if (q.type === 'IMAGE_UPLOAD') {
+    pendingImageFile = null;
+    const existingBlob = existing && existing.blobPath;
+    body.innerHTML = `
+      <input type="file" id="image-input" accept="image/*" style="display:none" onchange="onImageSelected(event)">
+      <div id="drop-zone" onclick="document.getElementById('image-input').click()" style="${existingBlob ? 'display:none' : ''}">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><rect x="3" y="5" width="22" height="18" rx="3" stroke="#999" stroke-width="1.6"/><circle cx="10" cy="12" r="2" stroke="#999" stroke-width="1.6"/><path d="M3 19l6-6 4 4 5-5 7 7" stroke="#999" stroke-width="1.6"/></svg>
+        <div>Click to upload an image</div>
+      </div>
+      <div id="image-preview-wrap" style="${existingBlob ? 'display:block' : ''}">
+        <img id="image-preview" src="${existingBlob || ''}">
+        <div class="image-actions">
+          <button class="nav-btn nav-btn-ghost" onclick="removeImage()">Remove</button>
+        </div>
+      </div>
+    `;
+  } else if (q.type === 'SLIDER') {
+    const min = config.min ?? 0, max = config.max ?? 100, step = config.step ?? 1;
+    const val = existing !== undefined ? existing : Math.round((min + max) / 2);
+    body.innerHTML = `
+      <div id="slider-wrap">
+        <input type="range" id="slider-input" min="${min}" max="${max}" step="${step}" value="${val}"
+               oninput="document.getElementById('slider-value').textContent = this.value">
+        <div id="slider-labels"><span>${esc(config.minLabel || min)}</span><span>${esc(config.maxLabel || max)}</span></div>
+        <div id="slider-value">${val}</div>
+      </div>
+    `;
+  } else if (q.type === 'SINGLE_SELECT' || q.type === 'MULTI_SELECT') {
+    const options = config.options || [];
+    const selected = q.type === 'MULTI_SELECT' ? (existing || []) : [existing];
+    body.innerHTML = `<div class="choice-list">${options.map(opt => `
+      <button type="button" class="choice-btn ${selected.includes(opt) ? 'selected' : ''}"
+              data-opt="${esc(opt)}" onclick="toggleChoice(this, '${q.type}')">${esc(opt)}</button>
+    `).join('')}</div>`;
+  }
+
+  document.getElementById('back-btn').disabled = idx === 0;
+  document.getElementById('next-btn').textContent = idx === questions.length - 1 ? 'Submit' : 'Next';
+}
+
+function toggleChoice(btn, type) {
+  if (type === 'SINGLE_SELECT') {
+    btn.parentElement.querySelectorAll('.choice-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  } else {
+    btn.classList.toggle('selected');
+  }
+}
+
+function onImageSelected(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  pendingImageFile = file;
+  const reader = new FileReader();
+  reader.onload = () => {
+    document.getElementById('image-preview').src = reader.result;
+    document.getElementById('drop-zone').style.display = 'none';
+    document.getElementById('image-preview-wrap').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeImage() {
+  pendingImageFile = null;
+  delete answers[questions[currentIndex].id];
+  document.getElementById('image-input').value = '';
+  document.getElementById('drop-zone').style.display = 'block';
+  document.getElementById('image-preview-wrap').style.display = 'none';
+}
+
+async function toggleRecording() {
+  const micBtn = document.getElementById('mic-btn');
+  const statusEl = document.getElementById('voice-status');
+
+  if (!isRecording) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+      mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(audioChunks, { type: 'audio/webm' });
+        statusEl.textContent = 'Transcribing…';
+        const q = questions[currentIndex];
+        const form = new FormData();
+        form.append('audio', blob, 'answer.webm');
+        try {
+          const res = await fetch(`${API}/api/questionnaires/responses/${responseId}/answers/${q.id}/voice`, {
+            method: 'POST', headers: { 'X-Api-Key': KEY }, body: form
+          }).then(r => r.json());
+          const transcript = JSON.parse(res.valueJson);
+          document.getElementById('text-field').value = transcript;
+          answers[q.id] = transcript;
+          statusEl.textContent = 'Transcribed — feel free to edit before continuing.';
+        } catch (err) {
+          statusEl.textContent = 'Transcription failed — you can type your answer instead.';
+        }
+      };
+      mediaRecorder.start();
+      isRecording = true;
+      micBtn.classList.add('recording');
+      statusEl.textContent = 'Recording… click to stop.';
+    } catch (err) {
+      statusEl.textContent = 'Microphone access denied.';
+    }
+  } else {
+    mediaRecorder.stop();
+    isRecording = false;
+    micBtn.classList.remove('recording');
+  }
+}
+
+async function persistCurrentAnswer() {
+  const q = questions[currentIndex];
+
+  if (q.type === 'SHORT_TEXT' || q.type === 'LONG_TEXT') {
+    const value = document.getElementById('text-field').value.trim();
+    if (q.required && !value) { alert('This question requires an answer.'); return false; }
+    if (value) {
+      answers[q.id] = value;
+      await saveAnswer(q.id, value);
+    }
+  } else if (q.type === 'IMAGE_UPLOAD') {
+    if (pendingImageFile) {
+      const form = new FormData();
+      form.append('image', pendingImageFile);
+      const res = await fetch(`${API}/api/questionnaires/responses/${responseId}/answers/${q.id}/image`, {
+        method: 'POST', headers: { 'X-Api-Key': KEY }, body: form
+      }).then(r => r.json());
+      answers[q.id] = JSON.parse(res.valueJson);
+      pendingImageFile = null;
+    } else if (q.required && !answers[q.id]) {
+      alert('This question requires an image.'); return false;
+    }
+  } else if (q.type === 'SLIDER') {
+    const value = Number(document.getElementById('slider-input').value);
+    answers[q.id] = value;
+    await saveAnswer(q.id, value);
+  } else if (q.type === 'SINGLE_SELECT') {
+    const btn = document.querySelector('.choice-btn.selected');
+    if (q.required && !btn) { alert('Please choose an option.'); return false; }
+    if (btn) {
+      const value = btn.dataset.opt;
+      answers[q.id] = value;
+      await saveAnswer(q.id, value);
+    }
+  } else if (q.type === 'MULTI_SELECT') {
+    const selected = [...document.querySelectorAll('.choice-btn.selected')].map(b => b.dataset.opt);
+    if (q.required && !selected.length) { alert('Please choose at least one option.'); return false; }
+    answers[q.id] = selected;
+    await saveAnswer(q.id, selected);
+  }
+  return true;
+}
+
+async function saveAnswer(questionId, value) {
+  await fetch(`${API}/api/questionnaires/responses/${responseId}/answers/${questionId}`, {
+    method: 'PUT', headers: HEADERS, body: JSON.stringify({ value })
+  });
+}
+
+async function goNext() {
+  const ok = await persistCurrentAnswer();
+  if (!ok) return;
+
+  if (currentIndex === questions.length - 1) {
+    await fetch(`${API}/api/questionnaires/responses/${responseId}/submit`, { method: 'POST', headers: HEADERS });
+    document.getElementById('progress-fill').style.width = '100%';
+    showState('Thank you.', 'Your answers have been recorded — Genesis AI will take it from here.');
+    return;
+  }
+  renderQuestion(currentIndex + 1);
+}
+
+function goBack() {
+  if (currentIndex === 0) return;
+  renderQuestion(currentIndex - 1);
+}
+
+function esc(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+           .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+boot();
+</script>
+</body>
+</html>

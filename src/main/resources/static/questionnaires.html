@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Genesis AI — Questionnaires</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+         background: #fff; display: flex; height: 100vh; overflow: hidden; color: #1a1a1a; }
+
+  /* ── Sidebar ── */
+  #sidebar {
+    width: 260px; min-width: 260px; background: #111; display: flex;
+    flex-direction: column; border-right: 1px solid #222;
+  }
+  #sidebar-header { padding: 20px 16px 12px; border-bottom: 1px solid #222; position: relative; }
+  #sidebar-header h1 { color: #fff; font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
+  #sidebar-header p  { color: #666; font-size: 11px; margin-top: 2px; }
+  .mode-badge {
+    display: inline-block; margin-top: 8px; padding: 3px 9px;
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+    color: #6fe0a5; background: rgba(111,224,165,0.12); border: 1px solid rgba(111,224,165,0.3);
+    border-radius: 20px;
+  }
+
+  /* ── Nav menu (hamburger) ── */
+  #nav-toggle {
+    position: absolute; top: 16px; right: 12px; width: 26px; height: 26px;
+    background: none; border: none; color: #888; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; border-radius: 5px;
+    transition: background 0.15s, color 0.15s;
+  }
+  #nav-toggle:hover { background: #1e1e1e; color: #fff; }
+  #nav-menu {
+    display: none; position: absolute; top: 100%; right: 12px; margin-top: 6px;
+    background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px;
+    overflow: hidden; z-index: 20; min-width: 150px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  }
+  #nav-menu.open { display: block; }
+  #nav-menu .nav-item {
+    display: block; padding: 9px 14px; font-size: 13px; color: #ccc;
+    text-decoration: none; transition: background 0.15s, color 0.15s;
+  }
+  #nav-menu .nav-item:hover { background: #242424; color: #fff; }
+  #nav-menu .nav-item.active {
+    color: #fff; font-weight: 600; background: #222; pointer-events: none;
+  }
+
+  #new-q-btn {
+    margin: 8px 12px; padding: 10px 14px; background: #1a1a1a; border: 1px solid #333;
+    border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500;
+    cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background 0.15s;
+  }
+  #new-q-btn:hover { background: #222; }
+
+  #q-list { flex: 1; overflow-y: auto; padding: 4px 8px 12px; }
+  #q-list::-webkit-scrollbar { width: 4px; }
+  #q-list::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+  .q-item {
+    padding: 9px 10px; border-radius: 7px; cursor: pointer; margin-bottom: 2px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .q-item:hover { background: #1c1c1c; }
+  .q-item.active { background: #222; }
+  .q-meta { flex: 1; min-width: 0; }
+  .q-name { color: #ccc; font-size: 13px; white-space: nowrap; overflow: hidden;
+                  text-overflow: ellipsis; }
+  .q-item.active .q-name { color: #fff; }
+  .pill {
+    font-size: 10px; padding: 1px 5px; border-radius: 3px; margin-top: 3px;
+    display: inline-block; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  .pill-draft     { background: #2a2a2a; color: #999; }
+  .pill-scheduled { background: #2a2a1a; color: #c8a84b; }
+  .pill-published { background: #1a3a2a; color: #4caf7d; }
+  .pill-archived  { background: #262626; color: #666; }
+  .q-delete {
+    opacity: 0; background: none; border: none; color: #666; cursor: pointer;
+    padding: 2px 4px; border-radius: 4px; font-size: 14px; flex-shrink: 0;
+    transition: opacity 0.15s, color 0.15s;
+  }
+  .q-item:hover .q-delete { opacity: 1; }
+  .q-delete:hover { color: #ff6b6b; }
+
+  /* ── Main ── */
+  #main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+  #empty {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 12px; color: #aaa;
+  }
+  #empty svg { opacity: 0.3; }
+  #empty h2  { font-size: 18px; font-weight: 600; color: #555; }
+  #empty p   { font-size: 14px; text-align: center; max-width: 360px; line-height: 1.5; }
+
+  #detail { flex: 1; display: none; flex-direction: column; min-height: 0; overflow-y: auto; }
+
+  #detail-header { padding: 20px 28px 12px; border-bottom: 1px solid #f0f0f0; flex-shrink: 0; }
+  #title-input {
+    width: 100%; font-size: 20px; font-weight: 700; border: none; outline: none;
+    font-family: inherit; color: #1a1a1a; background: transparent; margin-bottom: 6px;
+  }
+  #title-input::placeholder { color: #ccc; font-weight: 400; }
+  #desc-input {
+    width: 100%; font-size: 13px; border: none; outline: none; resize: none;
+    font-family: inherit; color: #666; background: transparent; line-height: 1.5;
+  }
+  #desc-input::placeholder { color: #ccc; }
+
+  /* ── Publish bar ── */
+  #publish-bar {
+    padding: 12px 28px; border-bottom: 1px solid #f5f5f5; background: #fafafa;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex-shrink: 0;
+  }
+  .status-pill {
+    font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px;
+    text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .status-pill.st-draft     { background: #f0f0f0; color: #888; }
+  .status-pill.st-scheduled { background: #fbf1d8; color: #a3800f; }
+  .status-pill.st-published { background: #e3f6ea; color: #1e8a4c; }
+  .status-pill.st-archived  { background: #eee; color: #999; }
+  #publish-detail { font-size: 12px; color: #999; flex: 1; }
+  .pbtn {
+    padding: 6px 14px; border-radius: 7px; border: none; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: background 0.15s; letter-spacing: 0.2px;
+  }
+  .pbtn-primary { background: #1a1a1a; color: #fff; }
+  .pbtn-primary:hover { background: #333; }
+  .pbtn-ghost { background: #fff; color: #666; border: 1px solid #ddd; }
+  .pbtn-ghost:hover { border-color: #bbb; color: #333; }
+  #schedule-at {
+    font-size: 12px; padding: 5px 8px; border: 1px solid #ddd; border-radius: 7px;
+    font-family: inherit; color: #333;
+  }
+
+  /* ── Questions ── */
+  #questions-area { flex: 1; padding: 20px 28px 40px; }
+  #questions-header {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
+  }
+  #questions-header h3 { font-size: 13px; color: #999; text-transform: uppercase; letter-spacing: 0.5px; }
+  #add-q-btn {
+    padding: 7px 14px; background: #1a1a1a; border: none; border-radius: 8px;
+    color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s;
+  }
+  #add-q-btn:hover { background: #333; }
+
+  .qc-item {
+    border: 1px solid #f0f0f0; border-radius: 10px; padding: 14px 16px; margin-bottom: 10px;
+    background: #fafafa; display: flex; gap: 12px; align-items: flex-start;
+  }
+  .qc-type-icon {
+    width: 30px; height: 30px; border-radius: 8px; background: #1a1a1a; color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;
+  }
+  .qc-body { flex: 1; min-width: 0; }
+  .qc-prompt { font-size: 14px; font-weight: 600; color: #1a1a1a; margin-bottom: 2px; }
+  .qc-help { font-size: 12px; color: #999; margin-bottom: 6px; }
+  .qc-flags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .qc-flag {
+    font-size: 10px; padding: 1px 6px; border-radius: 3px; background: #eee; color: #777;
+    text-transform: uppercase; letter-spacing: 0.3px; font-weight: 600;
+  }
+  .qc-actions { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+  .qc-btn-row { display: flex; gap: 4px; }
+  .qc-btn {
+    width: 26px; height: 26px; background: #fff; border: 1px solid #e5e5e5; border-radius: 6px;
+    color: #888; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; transition: all 0.15s;
+  }
+  .qc-btn:hover { border-color: #bbb; color: #333; }
+  .qc-btn:disabled { opacity: 0.3; cursor: default; }
+  .qc-btn.danger:hover { color: #e53935; border-color: #e53935; }
+
+  .empty-q { color: #bbb; font-size: 13px; padding: 20px 0; text-align: center; }
+
+  /* ── Add/edit question form ── */
+  #q-form {
+    display: none; border: 1px solid #e5e5e5; border-radius: 12px; padding: 18px;
+    margin-top: 8px; background: #fff;
+  }
+  #q-form.visible { display: block; }
+  #q-form h4 { font-size: 12px; color: #999; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+
+  .type-picker { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+  .asset-chip {
+    padding: 5px 11px; border-radius: 12px; border: 1px solid #e5e5e5;
+    background: #fff; font-size: 12px; color: #666; cursor: pointer;
+    transition: all 0.15s; font-family: inherit;
+  }
+  .asset-chip.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+  .asset-chip:hover:not(.active) { border-color: #bbb; }
+
+  .form-field { margin-bottom: 12px; }
+  .form-field label { display: block; font-size: 11px; font-weight: 600; color: #999;
+    text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
+  .form-field input[type=text], .form-field textarea, .form-field input[type=number] {
+    width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 7px;
+    font-size: 13px; font-family: inherit; outline: none; color: #1a1a1a;
+  }
+  .form-field input:focus, .form-field textarea:focus { border-color: #1a1a1a; }
+  .form-row { display: flex; gap: 12px; }
+  .form-row .form-field { flex: 1; }
+  .seg-btn {
+    padding: 5px 12px; border-radius: 6px; border: 1px solid #e5e5e5;
+    background: #fff; font-size: 12px; color: #666; cursor: pointer;
+    transition: all 0.15s; font-family: inherit; margin-right: 6px;
+  }
+  .seg-btn.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+
+  #options-list { display: flex; flex-direction: column; gap: 6px; }
+  .option-row { display: flex; gap: 6px; align-items: center; }
+  .option-row input { flex: 1; }
+  .option-remove { background: none; border: none; color: #bbb; cursor: pointer; font-size: 14px; }
+  .option-remove:hover { color: #e53935; }
+  #add-option-btn {
+    align-self: flex-start; margin-top: 4px; background: none; border: none;
+    color: #666; font-size: 12px; cursor: pointer; text-decoration: underline;
+  }
+
+  .form-actions { display: flex; gap: 8px; margin-top: 16px; }
+
+  .hint-text { font-size: 11px; color: #bbb; margin-top: 12px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div id="sidebar-header">
+    <h1>Genesis AI</h1>
+    <p>Brand Intelligence</p>
+    <div class="mode-badge">Questionnaires</div>
+    <button id="nav-toggle" onclick="toggleNavMenu(event)" aria-label="Menu">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+        <line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/>
+      </svg>
+    </button>
+    <div id="nav-menu">
+      <a href="/console" class="nav-item">Consultant</a>
+      <a href="/training" class="nav-item">Training</a>
+      <a href="/playground" class="nav-item">Playground</a>
+      <a href="/questionnaires" class="nav-item active">Questionnaires</a>
+    </div>
+  </div>
+
+  <button id="new-q-btn" onclick="newQuestionnaire()">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    New questionnaire
+  </button>
+  <div id="q-list"></div>
+</div>
+
+<div id="main">
+  <div id="empty">
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <rect x="6" y="8" width="36" height="32" rx="6" stroke="#999" stroke-width="2"/>
+      <path d="M14 18h20M14 24h20M14 30h12" stroke="#999" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <h2>Build a questionnaire</h2>
+    <p>Create a new questionnaire, add questions of any type, and publish it to make it the live client intake flow.</p>
+  </div>
+
+  <div id="detail">
+    <div id="detail-header">
+      <input id="title-input" type="text" placeholder="Questionnaire title…" oninput="debounceSaveMeta()">
+      <textarea id="desc-input" rows="1" placeholder="Short description (optional)…" oninput="autoResize(this); debounceSaveMeta()"></textarea>
+    </div>
+
+    <div id="publish-bar">
+      <span class="status-pill" id="status-pill">Draft</span>
+      <span id="publish-detail"></span>
+      <button class="pbtn pbtn-ghost" id="preview-btn" onclick="previewQuestionnaire()">Preview</button>
+      <input type="datetime-local" id="schedule-at">
+      <button class="pbtn pbtn-ghost" onclick="schedulePublish()">Schedule</button>
+      <button class="pbtn pbtn-primary" id="publish-btn" onclick="publishNow()">Publish now</button>
+      <button class="pbtn pbtn-ghost" id="unpublish-btn" onclick="unpublish()" style="display:none">Unpublish</button>
+    </div>
+
+    <div id="questions-area">
+      <div id="questions-header">
+        <h3>Questions</h3>
+        <button id="add-q-btn" onclick="showAddForm()">+ Add question</button>
+      </div>
+      <div id="qc-list"></div>
+
+      <div id="q-form">
+        <h4 id="q-form-title">Add a question</h4>
+        <div class="type-picker" id="type-picker"></div>
+        <div id="q-fields"></div>
+        <div class="form-actions">
+          <button class="pbtn pbtn-primary" onclick="saveQuestion()">Save</button>
+          <button class="pbtn pbtn-ghost" onclick="hideAddForm()">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API     = '';
+const KEY     = 'genesis-ai-key';
+const HEADERS = { 'Content-Type': 'application/json', 'X-Api-Key': KEY };
+
+const TYPES = [
+  { value: 'SHORT_TEXT',    label: 'Short text', icon: 'Aa' },
+  { value: 'LONG_TEXT',     label: 'Long text',  icon: '¶'  },
+  { value: 'IMAGE_UPLOAD',  label: 'Image',      icon: '🖼' },
+  { value: 'SLIDER',        label: 'Slider',     icon: '↔'  },
+  { value: 'SINGLE_SELECT', label: 'Single choice', icon: '◉' },
+  { value: 'MULTI_SELECT',  label: 'Multi choice',  icon: '☑' },
+];
+
+let currentId = null;
+let currentQuestionnaire = null;
+let currentQuestions = [];
+let saveTimer = null;
+let editingQuestionId = null;
+let formType = 'SHORT_TEXT';
+
+async function boot() {
+  await loadQuestionnaires();
+}
+
+// ── Questionnaires ───────────────────────────────────────────────────────────
+async function loadQuestionnaires() {
+  const list = await fetch(`${API}/api/questionnaires`, { headers: HEADERS }).then(r => r.json()).catch(() => []);
+  const el = document.getElementById('q-list');
+  el.innerHTML = '';
+  for (const q of list) {
+    const div = document.createElement('div');
+    div.className = 'q-item' + (q.id === currentId ? ' active' : '');
+    div.dataset.id = q.id;
+    div.innerHTML = `
+      <div class="q-meta">
+        <div class="q-name">${esc(q.title || 'Untitled')}</div>
+        <span class="pill pill-${q.status.toLowerCase()}">${q.status}</span>
+      </div>
+      <button class="q-delete" onclick="deleteQuestionnaire(event,'${q.id}')" title="Delete">✕</button>`;
+    div.addEventListener('click', () => openQuestionnaire(q.id));
+    el.appendChild(div);
+  }
+}
+
+async function newQuestionnaire() {
+  const q = await fetch(`${API}/api/questionnaires`, {
+    method: 'POST', headers: HEADERS,
+    body: JSON.stringify({ title: 'New questionnaire', description: '' })
+  }).then(r => r.json());
+  await loadQuestionnaires();
+  openQuestionnaire(q.id);
+}
+
+async function openQuestionnaire(id) {
+  const detail = await fetch(`${API}/api/questionnaires/${id}`, { headers: HEADERS }).then(r => r.json());
+  currentId = id;
+  currentQuestionnaire = detail.questionnaire;
+  currentQuestions = detail.questions;
+
+  document.getElementById('empty').style.display = 'none';
+  document.getElementById('detail').style.display = 'flex';
+  document.querySelectorAll('.q-item').forEach(el => el.classList.toggle('active', el.dataset.id === id));
+
+  document.getElementById('title-input').value = currentQuestionnaire.title || '';
+  document.getElementById('desc-input').value = currentQuestionnaire.description || '';
+  autoResize(document.getElementById('desc-input'));
+
+  hideAddForm();
+  renderPublishBar();
+  renderQuestions();
+}
+
+async function deleteQuestionnaire(e, id) {
+  e.stopPropagation();
+  if (!confirm('Delete this questionnaire and all its responses?')) return;
+  await fetch(`${API}/api/questionnaires/${id}`, { method: 'DELETE', headers: HEADERS });
+  if (currentId === id) {
+    currentId = null;
+    document.getElementById('detail').style.display = 'none';
+    document.getElementById('empty').style.display = 'flex';
+  }
+  await loadQuestionnaires();
+}
+
+function debounceSaveMeta() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveMeta, 600);
+}
+
+async function saveMeta() {
+  if (!currentId) return;
+  const title = document.getElementById('title-input').value.trim() || 'Untitled';
+  const description = document.getElementById('desc-input').value;
+  await fetch(`${API}/api/questionnaires/${currentId}`, {
+    method: 'PUT', headers: HEADERS, body: JSON.stringify({ title, description })
+  });
+  await loadQuestionnaires();
+  document.querySelectorAll('.q-item').forEach(el => el.classList.toggle('active', el.dataset.id === currentId));
+}
+
+// ── Publishing ────────────────────────────────────────────────────────────────
+function renderPublishBar() {
+  const q = currentQuestionnaire;
+  const pill = document.getElementById('status-pill');
+  pill.textContent = q.status.charAt(0) + q.status.slice(1).toLowerCase();
+  pill.className = 'status-pill st-' + q.status.toLowerCase();
+
+  const detailEl = document.getElementById('publish-detail');
+  if (q.status === 'PUBLISHED') {
+    detailEl.textContent = 'Live since ' + new Date(q.publishedAt).toLocaleString();
+  } else if (q.status === 'SCHEDULED') {
+    detailEl.textContent = 'Scheduled for ' + new Date(q.publishAt).toLocaleString();
+  } else {
+    detailEl.textContent = '';
+  }
+
+  document.getElementById('unpublish-btn').style.display =
+    (q.status === 'PUBLISHED' || q.status === 'SCHEDULED') ? 'inline-block' : 'none';
+  document.getElementById('publish-btn').textContent = q.status === 'PUBLISHED' ? 'Republish' : 'Publish now';
+}
+
+async function publishNow() {
+  await fetch(`${API}/api/questionnaires/${currentId}/publish`, {
+    method: 'POST', headers: HEADERS, body: JSON.stringify({ publishAt: null })
+  });
+  await openQuestionnaire(currentId);
+  await loadQuestionnaires();
+}
+
+async function schedulePublish() {
+  const input = document.getElementById('schedule-at');
+  if (!input.value) { alert('Pick a date and time first.'); return; }
+  const publishAt = new Date(input.value).toISOString();
+  await fetch(`${API}/api/questionnaires/${currentId}/publish`, {
+    method: 'POST', headers: HEADERS, body: JSON.stringify({ publishAt })
+  });
+  await openQuestionnaire(currentId);
+  await loadQuestionnaires();
+}
+
+async function unpublish() {
+  await fetch(`${API}/api/questionnaires/${currentId}/unpublish`, { method: 'POST', headers: HEADERS });
+  await openQuestionnaire(currentId);
+  await loadQuestionnaires();
+}
+
+function previewQuestionnaire() {
+  window.open(`/questionnaire-run?id=${encodeURIComponent(currentId)}`, '_blank');
+}
+
+// ── Questions list ────────────────────────────────────────────────────────────
+function renderQuestions() {
+  const el = document.getElementById('qc-list');
+  if (!currentQuestions.length) {
+    el.innerHTML = '<div class="empty-q">No questions yet — add one below.</div>';
+    return;
+  }
+  el.innerHTML = '';
+  currentQuestions.forEach((q, i) => {
+    const typeInfo = TYPES.find(t => t.value === q.type) || TYPES[0];
+    const flags = [];
+    if (q.required) flags.push('Required');
+    if (q.allowVoice) flags.push('Voice enabled');
+    flags.push(typeInfo.label);
+
+    const div = document.createElement('div');
+    div.className = 'qc-item';
+    div.innerHTML = `
+      <div class="qc-type-icon">${typeInfo.icon}</div>
+      <div class="qc-body">
+        <div class="qc-prompt">${esc(q.prompt)}</div>
+        ${q.helpText ? `<div class="qc-help">${esc(q.helpText)}</div>` : ''}
+        <div class="qc-flags">${flags.map(f => `<span class="qc-flag">${esc(f)}</span>`).join('')}</div>
+      </div>
+      <div class="qc-actions">
+        <div class="qc-btn-row">
+          <button class="qc-btn" title="Move up" ${i === 0 ? 'disabled' : ''} onclick="moveQuestion('${q.id}',-1)">↑</button>
+          <button class="qc-btn" title="Move down" ${i === currentQuestions.length - 1 ? 'disabled' : ''} onclick="moveQuestion('${q.id}',1)">↓</button>
+        </div>
+        <div class="qc-btn-row">
+          <button class="qc-btn" title="Edit" onclick="editQuestion('${q.id}')">✎</button>
+          <button class="qc-btn danger" title="Delete" onclick="deleteQuestion('${q.id}')">✕</button>
+        </div>
+      </div>`;
+    el.appendChild(div);
+  });
+}
+
+async function moveQuestion(id, delta) {
+  const idx = currentQuestions.findIndex(q => q.id === id);
+  const newIdx = idx + delta;
+  if (newIdx < 0 || newIdx >= currentQuestions.length) return;
+  const reordered = [...currentQuestions];
+  const [item] = reordered.splice(idx, 1);
+  reordered.splice(newIdx, 0, item);
+  currentQuestions = reordered;
+  renderQuestions();
+  await fetch(`${API}/api/questionnaires/${currentId}/questions/reorder`, {
+    method: 'POST', headers: HEADERS,
+    body: JSON.stringify({ orderedQuestionIds: reordered.map(q => q.id) })
+  });
+}
+
+async function deleteQuestion(id) {
+  if (!confirm('Delete this question?')) return;
+  await fetch(`${API}/api/questionnaires/${currentId}/questions/${id}`, { method: 'DELETE', headers: HEADERS });
+  currentQuestions = currentQuestions.filter(q => q.id !== id);
+  renderQuestions();
+}
+
+// ── Add/edit question form ───────────────────────────────────────────────────
+function showAddForm() {
+  editingQuestionId = null;
+  formType = 'SHORT_TEXT';
+  document.getElementById('q-form-title').textContent = 'Add a question';
+  document.getElementById('q-form').classList.add('visible');
+  renderTypePicker();
+  renderFormFields({});
+  document.getElementById('q-form').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function editQuestion(id) {
+  const q = currentQuestions.find(q => q.id === id);
+  if (!q) return;
+  editingQuestionId = id;
+  formType = q.type;
+  document.getElementById('q-form-title').textContent = 'Edit question';
+  document.getElementById('q-form').classList.add('visible');
+  renderTypePicker();
+  renderFormFields(q);
+  document.getElementById('q-form').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function hideAddForm() {
+  editingQuestionId = null;
+  document.getElementById('q-form').classList.remove('visible');
+}
+
+function renderTypePicker() {
+  const el = document.getElementById('type-picker');
+  el.innerHTML = TYPES.map(t =>
+    `<button type="button" class="asset-chip ${t.value === formType ? 'active' : ''}" onclick="pickType('${t.value}')">${t.icon} ${t.label}</button>`
+  ).join('');
+}
+
+function pickType(type) {
+  formType = type;
+  renderTypePicker();
+  const existing = editingQuestionId ? currentQuestions.find(q => q.id === editingQuestionId) : {};
+  renderFormFields(type === (existing && existing.type) ? existing : {});
+}
+
+function renderFormFields(q) {
+  const config = q.configJson ? JSON.parse(q.configJson) : {};
+  const el = document.getElementById('q-fields');
+
+  let extra = '';
+  if (formType === 'SLIDER') {
+    extra = `
+      <div class="form-row">
+        <div class="form-field"><label>Min</label><input type="number" id="f-min" value="${config.min ?? 0}"></div>
+        <div class="form-field"><label>Max</label><input type="number" id="f-max" value="${config.max ?? 100}"></div>
+        <div class="form-field"><label>Step</label><input type="number" id="f-step" value="${config.step ?? 1}"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-field"><label>Min label</label><input type="text" id="f-minlabel" value="${esc(config.minLabel || '')}"></div>
+        <div class="form-field"><label>Max label</label><input type="text" id="f-maxlabel" value="${esc(config.maxLabel || '')}"></div>
+      </div>`;
+  } else if (formType === 'SINGLE_SELECT' || formType === 'MULTI_SELECT') {
+    const options = config.options && config.options.length ? config.options : ['', ''];
+    extra = `
+      <div class="form-field">
+        <label>Options</label>
+        <div id="options-list">${options.map((o, i) => optionRow(o, i)).join('')}</div>
+        <button type="button" id="add-option-btn" onclick="addOptionRow()">+ Add option</button>
+      </div>`;
+  }
+
+  const showRequired = true;
+  const showVoice = formType === 'SHORT_TEXT' || formType === 'LONG_TEXT';
+
+  el.innerHTML = `
+    <div class="form-field">
+      <label>Prompt</label>
+      <textarea id="f-prompt" rows="2">${esc(q.prompt || '')}</textarea>
+    </div>
+    <div class="form-field">
+      <label>Help text (optional)</label>
+      <input type="text" id="f-help" value="${esc(q.helpText || '')}">
+    </div>
+    ${extra}
+    <div class="form-field">
+      <label>Required</label>
+      <button type="button" class="seg-btn ${q.required ? 'active' : ''}" id="f-required-yes" onclick="toggleSeg('f-required',true)">Yes</button>
+      <button type="button" class="seg-btn ${!q.required ? 'active' : ''}" id="f-required-no" onclick="toggleSeg('f-required',false)">No</button>
+    </div>
+    ${showVoice ? `
+    <div class="form-field">
+      <label>Allow voice input</label>
+      <button type="button" class="seg-btn ${q.allowVoice ? 'active' : ''}" id="f-voice-yes" onclick="toggleSeg('f-voice',true)">Yes</button>
+      <button type="button" class="seg-btn ${!q.allowVoice ? 'active' : ''}" id="f-voice-no" onclick="toggleSeg('f-voice',false)">No</button>
+    </div>` : ''}
+  `;
+}
+
+function optionRow(value, i) {
+  return `<div class="option-row">
+    <input type="text" value="${esc(value)}" data-opt="${i}">
+    <button type="button" class="option-remove" onclick="removeOptionRow(this)">✕</button>
+  </div>`;
+}
+
+function addOptionRow() {
+  const list = document.getElementById('options-list');
+  const div = document.createElement('div');
+  div.className = 'option-row';
+  div.innerHTML = `<input type="text" value=""><button type="button" class="option-remove" onclick="removeOptionRow(this)">✕</button>`;
+  list.appendChild(div);
+}
+
+function removeOptionRow(btn) {
+  btn.parentElement.remove();
+}
+
+function toggleSeg(prefix, value) {
+  document.getElementById(prefix + '-yes').classList.toggle('active', value === true);
+  document.getElementById(prefix + '-no').classList.toggle('active', value === false);
+}
+
+async function saveQuestion() {
+  const prompt = document.getElementById('f-prompt').value.trim();
+  if (!prompt) { alert('A prompt is required.'); return; }
+  const helpText = document.getElementById('f-help').value.trim();
+  const required = document.getElementById('f-required-yes').classList.contains('active');
+  const voiceYes = document.getElementById('f-voice-yes');
+  const allowVoice = voiceYes ? voiceYes.classList.contains('active') : false;
+
+  let config = {};
+  if (formType === 'SLIDER') {
+    config = {
+      min: Number(document.getElementById('f-min').value),
+      max: Number(document.getElementById('f-max').value),
+      step: Number(document.getElementById('f-step').value),
+      minLabel: document.getElementById('f-minlabel').value,
+      maxLabel: document.getElementById('f-maxlabel').value,
+    };
+  } else if (formType === 'SINGLE_SELECT' || formType === 'MULTI_SELECT') {
+    const options = [...document.querySelectorAll('#options-list input')]
+      .map(i => i.value.trim()).filter(Boolean);
+    config = { options };
+  }
+
+  const body = {
+    type: formType, prompt, helpText, required, allowVoice,
+    configJson: JSON.stringify(config)
+  };
+
+  if (editingQuestionId) {
+    await fetch(`${API}/api/questionnaires/${currentId}/questions/${editingQuestionId}`, {
+      method: 'PUT', headers: HEADERS, body: JSON.stringify(body)
+    });
+  } else {
+    await fetch(`${API}/api/questionnaires/${currentId}/questions`, {
+      method: 'POST', headers: HEADERS, body: JSON.stringify(body)
+    });
+  }
+
+  const detail = await fetch(`${API}/api/questionnaires/${currentId}`, { headers: HEADERS }).then(r => r.json());
+  currentQuestions = detail.questions;
+  renderQuestions();
+  hideAddForm();
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+           .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function toggleNavMenu(e) {
+  if (e) e.stopPropagation();
+  document.getElementById('nav-menu').classList.toggle('open');
+}
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('nav-menu');
+  const toggle = document.getElementById('nav-toggle');
+  if (menu && menu.classList.contains('open') && !menu.contains(e.target) && !toggle.contains(e.target)) {
+    menu.classList.remove('open');
+  }
+});
+
+boot();
+</script>
+</body>
+</html>

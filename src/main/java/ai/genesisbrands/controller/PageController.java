@@ -20,4 +20,14 @@ public class PageController {
     public String playgroundPage() {
         return "forward:/playground.html";
     }
+
+    @GetMapping("/questionnaires")
+    public String questionnairesPage() {
+        return "forward:/questionnaires.html";
+    }
+
+    @GetMapping("/questionnaire-run")
+    public String questionnaireRunPage() {
+        return "forward:/questionnaire-run.html";
+    }
 }
