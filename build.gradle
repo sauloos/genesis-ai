@@ -74,6 +74,9 @@ dependencies {
     // HTML parsing (URL fetching)
     implementation 'org.jsoup:jsoup:1.18.3'
 
+    // BCrypt password hashing (no full Spring Security — just the crypto module)
+    implementation 'org.springframework.security:spring-security-crypto'
+
     // Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

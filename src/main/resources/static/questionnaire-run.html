@@ -131,6 +131,31 @@
   <p id="state-message"></p>
 </div>
 
+<!-- Registration step shown only on /discover after questionnaire submit -->
+<div id="register-screen" style="display:none; width:100%; max-width:640px; margin:0 auto; padding:0 20px 60px;">
+  <div id="register-card" style="background:#fff;border:1px solid #eee;border-radius:16px;padding:40px 44px;box-shadow:0 2px 20px rgba(0,0,0,0.04);">
+    <h2 style="font-size:20px;font-weight:700;margin-bottom:8px;">One last step</h2>
+    <p style="font-size:13px;color:#999;margin-bottom:28px;line-height:1.5;">Create an account to see your brand results and download your files when they're ready.</p>
+    <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:14px;">
+      <label style="font-size:11px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.3px;">Name</label>
+      <input id="reg-name" type="text" placeholder="Your name" style="padding:11px 13px;border:1px solid #ddd;border-radius:9px;font-size:14px;font-family:inherit;outline:none;">
+    </div>
+    <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:14px;">
+      <label style="font-size:11px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.3px;">Email</label>
+      <input id="reg-email" type="email" placeholder="your@email.com" style="padding:11px 13px;border:1px solid #ddd;border-radius:9px;font-size:14px;font-family:inherit;outline:none;">
+    </div>
+    <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:14px;">
+      <label style="font-size:11px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.3px;">Password</label>
+      <input id="reg-password" type="password" placeholder="Min 8 characters" style="padding:11px 13px;border:1px solid #ddd;border-radius:9px;font-size:14px;font-family:inherit;outline:none;">
+    </div>
+    <div id="reg-err" style="font-size:12px;color:#d33;min-height:16px;margin-bottom:8px;"></div>
+    <button id="reg-btn" onclick="submitRegistration()" style="width:100%;padding:12px;background:#1a1a1a;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">See my brand results →</button>
+    <div style="text-align:center;margin-top:16px;font-size:12px;color:#bbb;">
+      Already have an account? <a href="/login" style="color:#666;text-decoration:none;font-weight:600;">Sign in</a>
+    </div>
+  </div>
+</div>
+
 <script>
 const API     = '';
 const KEY     = 'genesis-ai-key';
@@ -395,10 +420,58 @@ async function goNext() {
   if (currentIndex === questions.length - 1) {
     await fetch(`${API}/api/questionnaires/responses/${responseId}/submit`, { method: 'POST', headers: HEADERS });
     document.getElementById('progress-fill').style.width = '100%';
-    showState('Thank you.', 'Your answers have been recorded — Genesis AI will take it from here.');
+
+    const isClientJourney = window.location.pathname === '/discover';
+    if (isClientJourney) {
+      // Show registration before creating the engagement
+      document.getElementById('card').style.display = 'none';
+      document.getElementById('topbar').style.display = 'none';
+      document.getElementById('register-screen').style.display = 'block';
+    } else {
+      showState('Thank you.', 'Your answers have been recorded — Genesis AI will take it from here.');
+    }
     return;
   }
   renderQuestion(currentIndex + 1);
+}
+
+async function submitRegistration() {
+  const name     = document.getElementById('reg-name').value.trim();
+  const email    = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const errEl    = document.getElementById('reg-err');
+  errEl.textContent = '';
+
+  if (!name || !email || !password) { errEl.textContent = 'Please fill in all fields.'; return; }
+  if (password.length < 8) { errEl.textContent = 'Password must be at least 8 characters.'; return; }
+
+  const btn = document.getElementById('reg-btn');
+  btn.disabled = true; btn.textContent = 'Creating account…';
+
+  // Register (or if duplicate, just proceed with engagement creation anyway)
+  const regRes = await fetch(`${API}/api/auth/register`, {
+    method: 'POST', headers: HEADERS, body: JSON.stringify({ name, email, password })
+  }).then(r => r.json());
+
+  if (regRes.error && !regRes.error.includes('already exists')) {
+    errEl.textContent = regRes.error; btn.disabled = false; btn.textContent = 'See my brand results →'; return;
+  }
+
+  btn.textContent = 'Generating your brand…';
+
+  const engRes = await fetch(`${API}/api/engagements`, {
+    method: 'POST', headers: HEADERS,
+    body: JSON.stringify({
+      source: 'CLIENT',
+      questionnaireResponseId: responseId,
+      evalMode: false,
+      clientEmail: email,
+      clientName: name,
+      clientUserId: regRes.id || null
+    })
+  }).then(r => r.json());
+
+  window.location.href = '/your-brand/' + engRes.id;
 }
 
 function goBack() {

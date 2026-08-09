@@ -370,6 +370,14 @@
     </div>
   </div>
 
+  <div id="agent-list-journey" style="margin-top:8px;border-top:1px solid #2a2a2a;padding-top:8px;">
+    <div class="side-label">Brand Journey</div>
+    <div class="agent-item" data-agent="journey" onclick="selectAgent(this)">
+      <div class="agent-name">🚀 Full Journey</div>
+      <div class="agent-desc">Run the complete pipeline from questionnaire to brand assets — or audit real client engagements</div>
+    </div>
+  </div>
+
   <div id="method-toggle-wrap" style="display:none">
     <div class="side-label-inline">Generation method</div>
     <div class="method-group">
@@ -514,6 +522,37 @@ This brand challenges the idea that good coffee has to be precious or intimidati
   </div>
   </div>
 
+  <!-- Journey area (shown only when journey agent selected) -->
+  <div id="journey-area" style="display:none; flex:1; overflow:auto; display:flex; flex-direction:column;">
+    <div style="padding:24px 28px 0;">
+      <h2>Full Journey</h2>
+      <div class="sub">Simulate the complete client experience, or audit real engagements.</div>
+      <div style="display:flex;gap:6px;margin-top:16px;margin-bottom:20px;">
+        <button class="results-tab active" id="jtab-simulate" onclick="switchJourneyTab('simulate')">Simulate</button>
+        <button class="results-tab" id="jtab-audit" onclick="switchJourneyTab('audit')">Audit</button>
+      </div>
+    </div>
+
+    <!-- Simulate tab -->
+    <div id="journey-simulate" style="flex:1;overflow:auto;padding:0 28px 28px;">
+      <div id="journey-q-list" style="margin-bottom:16px;"></div>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
+        <label style="font-size:12px;font-weight:600;display:flex;gap:6px;align-items:center;cursor:pointer;">
+          <input type="checkbox" id="journey-eval-toggle"> Evaluation loop
+        </label>
+        <button id="journey-run-btn" onclick="runJourney()" style="padding:9px 20px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Run journey</button>
+        <span id="journey-status" style="font-size:12px;color:#999;"></span>
+      </div>
+      <div id="journey-results" style="display:none;"></div>
+    </div>
+
+    <!-- Audit tab -->
+    <div id="journey-audit" style="display:none;flex:1;overflow:auto;padding:0 28px 28px;">
+      <div id="audit-list"></div>
+      <div id="audit-detail" style="display:none;"></div>
+    </div>
+  </div>
+
   <div id="results-area" style="display:none">
     <div id="results-tabs">
       <button class="results-tab active" data-tab="current" onclick="switchResultsTab('current')">Current</button>
@@ -551,14 +590,394 @@ const AGENT_META = {
   'visual-identity': { title: 'Visual Identity Agent', sub: 'Give it a brand context and a creative direction, then run it.' },
   'logo': { title: 'Logo Agent', sub: 'Give it a brand context and a creative direction, then run it.' },
   'playbook': { title: 'Playbook Assembly Agent', sub: 'Pick accepted Copy/Visual Identity/Logo runs, give it the brief, then run it.' },
-  'brand-book': { title: 'Brand Book Assembly Agent', sub: 'Pick accepted Copy/Visual Identity/Logo/Playbook runs, give it the brief, then run it.' }
+  'brand-book': { title: 'Brand Book Assembly Agent', sub: 'Pick accepted Copy/Visual Identity/Logo/Playbook runs, give it the brief, then run it.' },
+  'journey': { title: 'Full Journey', sub: 'Run the complete pipeline from questionnaire intake to all brand assets.' }
 };
+
+// ── Journey state ─────────────────────────────────────────────────────────────
+let journeyTab = 'simulate';
+let journeyQuestions = [];
+let journeyQAnswers = {};  // questionId -> value
+let journeyEngagementId = null;
+let journeyPollTimer = null;
+
+function switchJourneyTab(tab) {
+  journeyTab = tab;
+  document.getElementById('jtab-simulate').classList.toggle('active', tab === 'simulate');
+  document.getElementById('jtab-audit').classList.toggle('active', tab === 'audit');
+  document.getElementById('journey-simulate').style.display = tab === 'simulate' ? 'block' : 'none';
+  document.getElementById('journey-audit').style.display = tab === 'audit' ? 'block' : 'none';
+  if (tab === 'audit') loadAudit();
+}
+
+async function loadJourneyQuestionnaire() {
+  const statusEl = document.getElementById('journey-status');
+  const listEl = document.getElementById('journey-q-list');
+  statusEl.textContent = '';
+  listEl.innerHTML = '<div style="color:#bbb;font-size:13px;">Loading questionnaire…</div>';
+  journeyQuestions = [];
+  journeyQAnswers = {};
+
+  try {
+    const live = await fetch(`${API}/api/questionnaires/live`, { headers: HEADERS }).then(r => {
+      if (!r.ok) throw new Error('no live questionnaire');
+      return r.json();
+    });
+    const detail = await fetch(`${API}/api/questionnaires/${live.id}`, { headers: HEADERS }).then(r => r.json());
+    journeyQuestions = detail.questions || [];
+
+    if (!journeyQuestions.length) {
+      listEl.innerHTML = '<div style="color:#bbb;font-size:13px;">No questions on the published questionnaire.</div>';
+      return;
+    }
+
+    listEl.innerHTML = `
+      <div style="font-size:11px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:14px;">
+        ${esc(live.title)}
+      </div>
+      ${journeyQuestions.map((q, i) => renderJourneyQuestion(q, i)).join('')}
+    `;
+  } catch(e) {
+    listEl.innerHTML = '<div style="color:#bbb;font-size:13px;">No published questionnaire found. Publish one in Questionnaires.</div>';
+  }
+}
+
+function renderJourneyQuestion(q, i) {
+  const config = q.configJson ? JSON.parse(q.configJson) : {};
+  let input = '';
+  if (q.type === 'SHORT_TEXT') {
+    input = `<input type="text" class="jq-input" data-qid="${esc(q.id)}" placeholder="Your answer…" style="width:100%;padding:9px 11px;border:1px solid #ddd;border-radius:7px;font-size:13px;font-family:inherit;outline:none;">`;
+  } else if (q.type === 'LONG_TEXT') {
+    input = `<textarea class="jq-input" data-qid="${esc(q.id)}" rows="3" placeholder="Your answer…" style="width:100%;padding:9px 11px;border:1px solid #ddd;border-radius:7px;font-size:13px;font-family:inherit;outline:none;resize:vertical;"></textarea>`;
+  } else if (q.type === 'SLIDER') {
+    const min = config.min ?? 0, max = config.max ?? 100, mid = Math.round((min+max)/2);
+    input = `<div style="padding:4px 0;">
+      <input type="range" class="jq-input" data-qid="${esc(q.id)}" min="${min}" max="${max}" value="${mid}"
+             oninput="this.nextElementSibling.textContent=this.value" style="width:100%;accent-color:#1a1a1a;">
+      <div style="text-align:center;font-size:13px;font-weight:600;margin-top:4px;">${mid}</div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#aaa;">
+        <span>${esc(config.minLabel || min)}</span><span>${esc(config.maxLabel || max)}</span>
+      </div>
+    </div>`;
+  } else if (q.type === 'SINGLE_SELECT') {
+    const opts = (config.options || []);
+    input = `<div style="display:flex;flex-direction:column;gap:6px;">${opts.map(opt =>
+      `<label style="display:flex;gap:8px;align-items:center;font-size:13px;cursor:pointer;">
+        <input type="radio" name="jq-${esc(q.id)}" class="jq-input" data-qid="${esc(q.id)}" value="${esc(opt)}">
+        ${esc(opt)}
+      </label>`
+    ).join('')}</div>`;
+  } else if (q.type === 'MULTI_SELECT') {
+    const opts = (config.options || []);
+    input = `<div style="display:flex;flex-direction:column;gap:6px;">${opts.map(opt =>
+      `<label style="display:flex;gap:8px;align-items:center;font-size:13px;cursor:pointer;">
+        <input type="checkbox" class="jq-input" data-qid="${esc(q.id)}" value="${esc(opt)}">
+        ${esc(opt)}
+      </label>`
+    ).join('')}</div>`;
+  } else if (q.type === 'IMAGE_UPLOAD') {
+    input = `<input type="file" accept="image/*" class="jq-input" data-qid="${esc(q.id)}"
+               style="font-size:12px;color:#666;">`;
+  }
+
+  return `
+    <div style="margin-bottom:18px;">
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px;">
+        ${i+1}. ${esc(q.prompt)}${q.required ? ' <span style="color:#d33;">*</span>' : ''}
+      </div>
+      ${q.helpText ? `<div style="font-size:11px;color:#aaa;margin-bottom:6px;">${esc(q.helpText)}</div>` : ''}
+      ${input}
+    </div>
+  `;
+}
+
+function collectJourneyAnswers() {
+  const answers = {};
+  for (const q of journeyQuestions) {
+    if (q.type === 'SHORT_TEXT' || q.type === 'LONG_TEXT' || q.type === 'SLIDER') {
+      const el = document.querySelector(`.jq-input[data-qid="${q.id}"]`);
+      if (el) answers[q.id] = el.type === 'range' ? Number(el.value) : el.value;
+    } else if (q.type === 'SINGLE_SELECT') {
+      const checked = document.querySelector(`input[name="jq-${q.id}"]:checked`);
+      if (checked) answers[q.id] = checked.value;
+    } else if (q.type === 'MULTI_SELECT') {
+      const checked = [...document.querySelectorAll(`.jq-input[data-qid="${q.id}"]:checked`)];
+      answers[q.id] = checked.map(c => c.value);
+    }
+  }
+  return answers;
+}
+
+async function runJourney() {
+  if (!journeyQuestions.length) return;
+  const statusEl = document.getElementById('journey-status');
+  const btn = document.getElementById('journey-run-btn');
+  const resultsEl = document.getElementById('journey-results');
+  const evalMode = document.getElementById('journey-eval-toggle').checked;
+
+  btn.disabled = true; btn.textContent = 'Starting…'; statusEl.textContent = '';
+  resultsEl.style.display = 'none'; resultsEl.innerHTML = '';
+
+  // Create a temporary questionnaire response for the simulation
+  // First we need the live questionnaire ID to create a response
+  let liveId = null;
+  try {
+    const live = await fetch(`${API}/api/questionnaires/live`, { headers: HEADERS }).then(r => r.json());
+    liveId = live.id;
+  } catch(e) {
+    statusEl.textContent = 'Error: no live questionnaire'; btn.disabled = false; btn.textContent = 'Run journey'; return;
+  }
+
+  // Start a questionnaire response, persist answers, submit
+  const startRes = await fetch(`${API}/api/questionnaires/${liveId}/responses`, {
+    method: 'POST', headers: HEADERS
+  }).then(r => r.json());
+  const responseId = startRes.id;
+
+  // Persist text/slider/select answers
+  const collected = collectJourneyAnswers();
+  for (const [qid, val] of Object.entries(collected)) {
+    await fetch(`${API}/api/questionnaires/responses/${responseId}/answers/${qid}`, {
+      method: 'PUT', headers: HEADERS, body: JSON.stringify({ value: val })
+    }).catch(() => {});
+  }
+  await fetch(`${API}/api/questionnaires/responses/${responseId}/submit`, { method: 'POST', headers: HEADERS });
+
+  // Create engagement
+  const eng = await fetch(`${API}/api/engagements`, {
+    method: 'POST', headers: HEADERS,
+    body: JSON.stringify({ source: 'SIMULATION', questionnaireResponseId: responseId, evalMode })
+  }).then(r => r.json());
+  journeyEngagementId = eng.id;
+
+  btn.textContent = 'Run journey';
+  statusEl.textContent = 'Generating… (poll every 5s)';
+  clearTimeout(journeyPollTimer);
+  pollJourney();
+}
+
+async function pollJourney() {
+  try {
+    const data = await fetch(`${API}/api/engagements/${journeyEngagementId}`, { headers: HEADERS }).then(r => r.json());
+    const status = data.summary.status;
+    const statusEl = document.getElementById('journey-status');
+    if (status === 'DONE') {
+      statusEl.textContent = 'Complete.';
+      document.getElementById('journey-run-btn').disabled = false;
+      renderJourneyResults(data);
+    } else if (status === 'FAILED') {
+      statusEl.textContent = 'Failed: ' + (data.summary.errorMessage || 'unknown error');
+      document.getElementById('journey-run-btn').disabled = false;
+    } else {
+      statusEl.textContent = `${status.toLowerCase()}… (refreshes every 5s)`;
+      journeyPollTimer = setTimeout(pollJourney, 5000);
+    }
+  } catch(e) {
+    document.getElementById('journey-status').textContent = 'Poll error — retrying…';
+    journeyPollTimer = setTimeout(pollJourney, 5000);
+  }
+}
+
+function renderJourneyResults(data) {
+  const el = document.getElementById('journey-results');
+  el.style.display = 'block';
+  const dirs = data.results?.directions || [];
+  if (!dirs.length) { el.innerHTML = '<div style="color:#bbb;font-size:13px;">No results.</div>'; return; }
+
+  const tabsHtml = dirs.map((d, i) => {
+    const label = d.direction.charAt(0) + d.direction.slice(1).toLowerCase();
+    return `<button class="results-tab ${i===0?'active':''}" onclick="switchJourneyResultDir(${i},this)">${label}</button>`;
+  }).join('');
+
+  const panelsHtml = dirs.map((d, i) => `
+    <div id="jrdir-${i}" style="display:${i===0?'block':'none'};margin-top:16px;">
+      ${buildJourneyDirPanel(d, data.downloadAllowed)}
+    </div>
+  `).join('');
+
+  el.innerHTML = `
+    <div style="border-top:1px solid #eee;padding-top:16px;margin-top:8px;">
+      <div style="font-size:11px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">
+        Brand — ${esc(dirs[0].brief.brand.name)}
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:16px;">${tabsHtml}</div>
+      ${panelsHtml}
+    </div>
+    <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
+      ${dirs.map(d => `<button onclick="downloadJourneyPdf('${d.direction}')"
+        style="padding:8px 14px;background:#f2f2f2;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">
+        ↓ ${d.direction.charAt(0)+d.direction.slice(1).toLowerCase()} PDF
+      </button>`).join('')}
+      <a href="/your-brand/${journeyEngagementId}" target="_blank"
+         style="padding:8px 14px;background:#1a1a1a;color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;">
+        Open client view ↗
+      </a>
+    </div>
+  `;
+}
+
+function switchJourneyResultDir(idx, btn) {
+  document.querySelectorAll('[id^="jrdir-"]').forEach((el, i) => el.style.display = i === idx ? 'block' : 'none');
+  btn.parentElement.querySelectorAll('button').forEach((b, i) => b.classList.toggle('active', i === idx));
+}
+
+function buildJourneyDirPanel(dir, downloadAllowed) {
+  const swatches = (dir.visualIdentity?.colorPalette || []).map(s =>
+    `<span style="display:inline-block;width:28px;height:28px;background:${esc(s.hex)};border-radius:5px;title='${esc(s.hex)}'"></span>`
+  ).join(' ');
+
+  const logoHtml = dir.logo?.imageUrl
+    ? `<img src="${esc(dir.logo.imageUrl)}" style="max-height:120px;max-width:100%;border-radius:8px;margin-top:4px;">`
+    : `<div style="font-size:12px;color:#aaa;font-style:italic;margin-top:4px;">${esc(dir.logo?.conceptDescription || 'No logo generated')}</div>`;
+
+  return `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div style="background:#fafafa;border-radius:10px;padding:14px;grid-column:1/-1;">
+        <div style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Tagline</div>
+        <div style="font-size:18px;font-weight:700;">${esc(dir.copy?.tagline || '')}</div>
+        <div style="font-size:12px;color:#666;margin-top:6px;line-height:1.5;">${esc(dir.copy?.missionStatement || '')}</div>
+      </div>
+      <div style="background:#fafafa;border-radius:10px;padding:14px;">
+        <div style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Visual Identity</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">${swatches}</div>
+        <div style="font-size:12px;color:#555;margin-top:8px;">
+          ${esc(dir.visualIdentity?.typography?.headlineFont || '')} / ${esc(dir.visualIdentity?.typography?.bodyFont || '')}
+        </div>
+      </div>
+      <div style="background:#fafafa;border-radius:10px;padding:14px;">
+        <div style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Logo</div>
+        ${logoHtml}
+      </div>
+    </div>
+  `;
+}
+
+function downloadJourneyPdf(direction) {
+  if (!journeyEngagementId) return;
+  window.open(`${API}/api/engagements/${journeyEngagementId}/pdf/${direction}`, '_blank');
+}
+
+// ── Audit tab ─────────────────────────────────────────────────────────────────
+async function loadAudit() {
+  const listEl = document.getElementById('audit-list');
+  const detailEl = document.getElementById('audit-detail');
+  detailEl.style.display = 'none';
+  detailEl.innerHTML = '';
+  listEl.style.display = 'block';
+  listEl.innerHTML = '<div style="color:#bbb;font-size:13px;">Loading…</div>';
+
+  const rows = await fetch(`${API}/api/engagements?source=CLIENT`, { headers: HEADERS })
+    .then(r => r.json()).catch(() => []);
+
+  if (!rows.length) {
+    listEl.innerHTML = '<div style="color:#bbb;font-size:13px;">No client engagements yet. Client submissions through /discover appear here.</div>';
+    return;
+  }
+
+  listEl.innerHTML = rows.map(e => `
+    <div class="history-item" onclick="openAuditItem('${esc(e.id)}')" data-id="${esc(e.id)}"
+         style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div class="history-label">${esc(e.clientName || e.clientEmail || 'Anonymous')}</div>
+        <div class="history-sub">
+          ${esc(e.clientEmail || '')} · ${esc(e.status)} · Payment: ${esc(e.paymentStatus)} ·
+          ${new Date(e.createdAt).toLocaleString()}
+        </div>
+      </div>
+      ${e.paymentStatus === 'REQUESTED' ? `<span style="background:#fbf1d8;color:#a3800f;font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;flex-shrink:0;">PAYMENT REQUEST</span>` : ''}
+    </div>
+  `).join('');
+}
+
+async function openAuditItem(id) {
+  document.querySelectorAll('#audit-list .history-item').forEach(el =>
+    el.classList.toggle('active', el.dataset.id === id));
+
+  const listEl = document.getElementById('audit-list');
+  const detailEl = document.getElementById('audit-detail');
+  listEl.style.display = 'none';
+  detailEl.style.display = 'block';
+  detailEl.innerHTML = '<div style="color:#bbb;font-size:13px;padding:12px 0;">Loading…</div>';
+
+  const data = await fetch(`${API}/api/engagements/${id}`, { headers: HEADERS }).then(r => r.json());
+  const e = data.summary;
+
+  let resultsHtml = '';
+  if (data.results?.directions?.length) {
+    const tabsHtml = data.results.directions.map((d, i) => {
+      const label = d.direction.charAt(0) + d.direction.slice(1).toLowerCase();
+      return `<button class="results-tab ${i===0?'active':''}" onclick="switchAuditDir(${i},this)">${label}</button>`;
+    }).join('');
+    const panelsHtml = data.results.directions.map((d, i) => `
+      <div id="audit-dir-${i}" style="display:${i===0?'block':'none'};margin-top:12px;">
+        ${buildJourneyDirPanel(d, true)}
+      </div>
+    `).join('');
+    resultsHtml = `<div style="margin-top:16px;">${tabsHtml}${panelsHtml}</div>`;
+  } else if (e.status === 'RUNNING' || e.status === 'PENDING') {
+    resultsHtml = '<div style="color:#aaa;font-size:13px;margin-top:12px;">Generation in progress…</div>';
+  } else if (e.status === 'FAILED') {
+    resultsHtml = '<div style="color:#d33;font-size:13px;margin-top:12px;">Generation failed.</div>';
+  }
+
+  detailEl.innerHTML = `
+    <button onclick="backToAuditList()" style="background:none;border:none;color:#999;font-size:12px;cursor:pointer;padding:0;margin-bottom:14px;">← Back to list</button>
+    <div style="font-size:16px;font-weight:700;margin-bottom:4px;">${esc(e.clientName || 'Unknown')}</div>
+    <div style="font-size:12px;color:#999;margin-bottom:12px;">${esc(e.clientEmail || '')} · Submitted ${new Date(e.createdAt).toLocaleString()}</div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+      <span style="background:#f0f0f0;color:#555;font-size:11px;padding:3px 9px;border-radius:10px;">Status: ${esc(e.status)}</span>
+      <span style="background:#f0f0f0;color:#555;font-size:11px;padding:3px 9px;border-radius:10px;">Payment: ${esc(e.paymentStatus)}</span>
+      ${e.paymentStatus === 'REQUESTED' ? `<button onclick="markPaid('${esc(id)}')" style="background:#1e8a4c;color:#fff;border:none;border-radius:10px;font-size:11px;padding:3px 10px;cursor:pointer;font-family:inherit;">Mark as paid</button>` : ''}
+      <a href="/your-brand/${esc(id)}" target="_blank" style="background:#1a1a1a;color:#fff;font-size:11px;padding:3px 10px;border-radius:10px;text-decoration:none;">View client page ↗</a>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      ${(data.results?.directions || []).map(d =>
+        `<button onclick="downloadEngPdf('${esc(id)}','${d.direction}')"
+           style="padding:7px 12px;background:#f2f2f2;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;">
+          ↓ ${d.direction.charAt(0)+d.direction.slice(1).toLowerCase()} PDF
+        </button>`
+      ).join('')}
+    </div>
+    ${resultsHtml}
+  `;
+}
+
+function switchAuditDir(idx, btn) {
+  document.querySelectorAll('[id^="audit-dir-"]').forEach((el, i) => el.style.display = i === idx ? 'block' : 'none');
+  btn.parentElement.querySelectorAll('button').forEach((b, i) => b.classList.toggle('active', i === idx));
+}
+
+function backToAuditList() {
+  document.getElementById('audit-list').style.display = 'block';
+  document.getElementById('audit-detail').style.display = 'none';
+}
+
+async function markPaid(id) {
+  await fetch(`${API}/api/engagements/${id}/mark-paid`, { method: 'POST', headers: HEADERS });
+  openAuditItem(id);
+}
+
+function downloadEngPdf(id, direction) {
+  window.open(`${API}/api/engagements/${id}/pdf/${direction}`, '_blank');
+}
 
 function selectAgent(el) {
   if (el.classList.contains('disabled')) return;
   document.querySelectorAll('.agent-item').forEach(a => a.classList.remove('active'));
   el.classList.add('active');
   currentAgent = el.dataset.agent;
+
+  const isJourney = currentAgent === 'journey';
+
+  // Toggle journey vs. normal agent panels
+  document.getElementById('journey-area').style.display = isJourney ? 'flex' : 'none';
+  document.getElementById('view-parameters').style.display = isJourney ? 'none' : 'flex';
+  document.getElementById('view-tabs').style.display = isJourney ? 'none' : 'flex';
+
+  if (isJourney) {
+    loadJourneyQuestionnaire();
+    return;
+  }
 
   const meta = AGENT_META[currentAgent];
   document.getElementById('form-title').textContent = meta.title;

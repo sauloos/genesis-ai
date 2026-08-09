@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your Brand — Genesis AI</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f6f6f4; color: #1a1a1a; min-height: 100vh; }
+
+  /* ── Header ── */
+  #topbar { background: #fff; border-bottom: 1px solid #e8e8e8;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 28px; height: 56px; }
+  .brand { font-size: 13px; font-weight: 800; letter-spacing: 0.8px; color: #1a1a1a; }
+  #user-area { font-size: 12px; color: #999; display: flex; gap: 12px; align-items: center; }
+  #user-area a { color: #666; text-decoration: none; }
+  #user-area a:hover { color: #1a1a1a; }
+
+  /* ── Pending / running state ── */
+  #state-screen { max-width: 540px; margin: 100px auto; text-align: center; padding: 0 24px; }
+  #state-screen h2 { font-size: 22px; font-weight: 700; margin-bottom: 12px; }
+  #state-screen p { color: #666; font-size: 14px; line-height: 1.6; }
+  .spinner { width: 36px; height: 36px; border: 3px solid #eee; border-top-color: #1a1a1a;
+    border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 24px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .progress-steps { margin-top: 28px; text-align: left; display: inline-block; }
+  .step { font-size: 13px; color: #999; margin-bottom: 8px; display: flex; gap: 10px; align-items: center; }
+  .step.done { color: #1e8a4c; }
+  .step.active { color: #1a1a1a; font-weight: 600; }
+
+  /* ── Main content ── */
+  #content { display: none; max-width: 1100px; margin: 0 auto; padding: 32px 24px 80px; }
+  #engagement-header { margin-bottom: 32px; }
+  #engagement-header h1 { font-size: 26px; font-weight: 800; }
+  #engagement-header p { color: #666; font-size: 14px; margin-top: 6px; }
+
+  /* ── Direction tabs ── */
+  .dir-tabs { display: flex; gap: 8px; margin-bottom: 28px; }
+  .dir-tab { padding: 9px 20px; border-radius: 8px; border: 1px solid #ddd; background: #fff;
+    font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; font-family: inherit; }
+  .dir-tab.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+  .dir-tab:hover:not(.active) { border-color: #bbb; }
+
+  /* ── Direction panel ── */
+  .dir-panel { display: none; }
+  .dir-panel.active { display: block; }
+
+  /* ── Brand header ── */
+  .brand-header { background: #fff; border: 1px solid #eee; border-radius: 14px;
+    padding: 28px 32px; margin-bottom: 20px; }
+  .brand-header h2 { font-size: 22px; font-weight: 800; }
+  .brand-header .positioning { font-size: 14px; color: #666; margin-top: 6px; line-height: 1.5; }
+  .direction-tag { display: inline-block; font-size: 10px; font-weight: 700;
+    letter-spacing: 0.6px; text-transform: uppercase; padding: 3px 9px; border-radius: 20px;
+    margin-bottom: 10px; }
+  .tag-anchored { background: #e8f4fd; color: #1a73b5; }
+  .tag-evolved  { background: #f0faf0; color: #1e8a4c; }
+  .tag-disruptive { background: #fdf0f8; color: #8a1e6a; }
+
+  /* ── Grid of agent output cards ── */
+  .outputs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 720px) { .outputs-grid { grid-template-columns: 1fr; } }
+  .output-card { background: #fff; border: 1px solid #eee; border-radius: 14px; padding: 24px 28px; }
+  .output-card.full-width { grid-column: 1 / -1; }
+  .card-label { font-size: 10px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;
+    color: #999; margin-bottom: 14px; }
+  .tagline { font-size: 24px; font-weight: 800; line-height: 1.3; }
+  .mission { font-size: 14px; line-height: 1.6; color: #444; margin-top: 10px; }
+  .story { font-size: 13px; line-height: 1.7; color: #555; margin-top: 8px; }
+  .pitch { font-size: 14px; line-height: 1.6; font-style: italic; color: #444; margin-top: 8px; }
+
+  /* colours */
+  .swatches { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+  .swatch { border-radius: 8px; overflow: hidden; width: 56px; }
+  .swatch-block { height: 40px; }
+  .swatch-label { font-size: 9px; color: #888; text-align: center; padding: 3px 2px; line-height: 1.2; }
+  .typography-row { margin-top: 14px; }
+  .type-item { margin-bottom: 8px; }
+  .type-role { font-size: 10px; color: #aaa; text-transform: uppercase; letter-spacing: 0.4px; }
+  .type-face { font-size: 15px; font-weight: 600; }
+
+  /* logo */
+  .logo-frame { margin-top: 10px; text-align: center; }
+  .logo-frame img { max-width: 100%; max-height: 220px; border-radius: 10px; }
+  .logo-concept { font-size: 13px; line-height: 1.6; color: #555; margin-top: 10px; }
+
+  /* tone */
+  .tone-principles { list-style: none; padding: 0; margin-top: 10px; }
+  .tone-principles li { font-size: 13px; color: #444; padding: 5px 0;
+    border-bottom: 1px solid #f0f0f0; display: flex; align-items: flex-start; gap: 8px; }
+  .tone-principles li:before { content: "→"; color: #ccc; flex-shrink: 0; }
+
+  /* ── Watermark overlay (for non-paid client view) ── */
+  .watermark-wrap { position: relative; }
+  .watermark-wrap.locked::after {
+    content: "PREVIEW"; position: absolute; inset: 0;
+    background: rgba(255,255,255,0.7); display: flex; align-items: center;
+    justify-content: center; font-size: 11px; font-weight: 800; letter-spacing: 2px;
+    color: #ccc; pointer-events: none; border-radius: 10px;
+  }
+
+  /* ── Download / CTA bar ── */
+  #cta-bar { position: sticky; bottom: 0; background: #fff; border-top: 1px solid #eee;
+    padding: 16px 28px; display: none; justify-content: space-between; align-items: center;
+    gap: 16px; z-index: 100; }
+  #cta-bar.visible { display: flex; }
+  #cta-msg { font-size: 13px; color: #666; }
+  #cta-actions { display: flex; gap: 10px; flex-shrink: 0; }
+  .cta-btn { padding: 10px 20px; border-radius: 9px; border: none; font-size: 13px;
+    font-weight: 600; cursor: pointer; font-family: inherit; transition: background 0.15s; }
+  .cta-primary { background: #1a1a1a; color: #fff; }
+  .cta-primary:hover { background: #333; }
+  .cta-ghost { background: #f2f2f2; color: #444; }
+  .cta-ghost:hover { background: #e8e8e8; }
+
+  /* ── Payment request modal ── */
+  #modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    z-index: 200; align-items: center; justify-content: center; }
+  #modal-backdrop.open { display: flex; }
+  #modal { background: #fff; border-radius: 16px; padding: 36px 40px; max-width: 420px;
+    width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+  #modal h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  #modal p { font-size: 13px; color: #666; margin-bottom: 20px; line-height: 1.5; }
+  .modal-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+  .modal-field label { font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase;
+    letter-spacing: 0.3px; }
+  .modal-field input { padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px;
+    font-size: 14px; font-family: inherit; outline: none; }
+  .modal-field input:focus { border-color: #1a1a1a; }
+  .modal-footer { display: flex; gap: 10px; margin-top: 6px; }
+  #modal-success { display: none; text-align: center; }
+  #modal-success h3 { margin-bottom: 8px; color: #1e8a4c; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="brand">GENESIS AI</div>
+  <div id="user-area">
+    <span id="user-name"></span>
+    <a href="#" id="logout-link" style="display:none" onclick="logout()">Sign out</a>
+    <a href="/login" id="login-link" style="display:none">Sign in</a>
+  </div>
+</div>
+
+<div id="state-screen">
+  <div class="spinner" id="spinner"></div>
+  <h2 id="state-title">Building your brand…</h2>
+  <p id="state-msg">Genesis AI is orchestrating your brand strategy. This typically takes 2–4 minutes.</p>
+  <div class="progress-steps" id="progress-steps"></div>
+</div>
+
+<div id="content">
+  <div id="engagement-header">
+    <h1 id="brand-name"></h1>
+    <p id="brand-sub"></p>
+  </div>
+
+  <div class="dir-tabs" id="dir-tabs"></div>
+  <div id="dir-panels"></div>
+</div>
+
+<div id="cta-bar">
+  <div id="cta-msg"></div>
+  <div id="cta-actions"></div>
+</div>
+
+<div id="modal-backdrop" onclick="closeModal(event)">
+  <div id="modal">
+    <div id="modal-form-area">
+      <h3>Request your brand package</h3>
+      <p>We'll reach out to finalise your brand package and provide download access to all files.</p>
+      <div class="modal-field"><label>Name</label><input id="req-name" placeholder="Your name"></div>
+      <div class="modal-field"><label>Email</label><input id="req-email" type="email" placeholder="your@email.com"></div>
+      <div class="modal-footer">
+        <button class="cta-btn cta-primary" onclick="submitPaymentRequest()">Send request</button>
+        <button class="cta-btn cta-ghost" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>
+    <div id="modal-success">
+      <h3>Request received ✓</h3>
+      <p>We'll be in touch within 24 hours to finalise your brand package and share download access.</p>
+      <button class="cta-btn cta-ghost" onclick="closeModal()" style="margin-top:16px">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API     = '';
+const KEY     = 'genesis-ai-key';
+const HEADERS = { 'Content-Type': 'application/json', 'X-Api-Key': KEY };
+
+const engagementId = window.location.pathname.split('/').pop();
+let engagementData = null;
+let pollTimer = null;
+
+async function boot() {
+  // Check client session
+  try {
+    const me = await fetch(`${API}/api/auth/me`, { headers: HEADERS }).then(r => r.json());
+    if (me.id) {
+      document.getElementById('user-name').textContent = me.name || me.email;
+      document.getElementById('logout-link').style.display = 'inline';
+    } else {
+      document.getElementById('login-link').style.display = 'inline';
+    }
+  } catch (_) {
+    document.getElementById('login-link').style.display = 'inline';
+  }
+
+  await poll();
+}
+
+async function poll() {
+  try {
+    const data = await fetch(`${API}/api/engagements/${engagementId}`, { headers: HEADERS }).then(r => {
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    });
+    engagementData = data;
+    const status = data.summary.status;
+
+    if (status === 'DONE') {
+      clearTimeout(pollTimer);
+      render(data);
+    } else if (status === 'FAILED') {
+      clearTimeout(pollTimer);
+      showState('Something went wrong', 'Genesis AI encountered an error generating your brand. Please contact us.', false);
+    } else {
+      updateProgressUI(status);
+      pollTimer = setTimeout(poll, 5000);
+    }
+  } catch (e) {
+    showState('Not found', 'This brand engagement could not be found.', false);
+  }
+}
+
+function updateProgressUI(status) {
+  const steps = [
+    { label: 'Brief derivation', done: status !== 'PENDING' },
+    { label: 'Copy — tagline, mission, brand story', done: false },
+    { label: 'Visual identity — colours & typography', done: false },
+    { label: 'Logo concept', done: false },
+    { label: 'Brand playbook', done: false },
+    { label: 'Brand book', done: false },
+  ];
+  const el = document.getElementById('progress-steps');
+  el.innerHTML = steps.map((s, i) => `
+    <div class="step ${s.done ? 'done' : i === 1 ? 'active' : ''}">
+      <span>${s.done ? '✓' : i === 1 ? '→' : '·'}</span>
+      <span>${s.label}</span>
+    </div>
+  `).join('');
+}
+
+function showState(title, msg, spinner = true) {
+  document.getElementById('spinner').style.display = spinner ? 'block' : 'none';
+  document.getElementById('state-title').textContent = title;
+  document.getElementById('state-msg').textContent = msg;
+}
+
+function render(data) {
+  document.getElementById('state-screen').style.display = 'none';
+  const content = document.getElementById('content');
+  content.style.display = 'block';
+
+  const dirs = data.results.directions;
+  const first = dirs[0];
+  document.getElementById('brand-name').textContent = first.brief.brand.name;
+  document.getElementById('brand-sub').textContent =
+    first.brief.brand.industry + ' · ' + first.brief.brand.coreOffer;
+
+  const tabsEl = document.getElementById('dir-tabs');
+  const panelsEl = document.getElementById('dir-panels');
+
+  dirs.forEach((dir, i) => {
+    const label = dir.direction.charAt(0) + dir.direction.slice(1).toLowerCase();
+    const btn = document.createElement('button');
+    btn.className = 'dir-tab' + (i === 0 ? ' active' : '');
+    btn.textContent = label;
+    btn.onclick = () => switchDir(i);
+    tabsEl.appendChild(btn);
+    panelsEl.appendChild(buildPanel(dir, data.downloadAllowed, data.adminAccess, i));
+  });
+
+  renderCTA(data);
+}
+
+function buildPanel(dir, downloadAllowed, adminAccess, idx) {
+  const panel = document.createElement('div');
+  panel.className = 'dir-panel' + (idx === 0 ? ' active' : '');
+  panel.id = 'panel-' + idx;
+
+  const tagClass = { ANCHORED: 'tag-anchored', EVOLVED: 'tag-evolved', DISRUPTIVE: 'tag-disruptive' }[dir.direction] || '';
+  const dirLabel = dir.direction.charAt(0) + dir.direction.slice(1).toLowerCase();
+
+  const swatches = (dir.visualIdentity.colorPalette || []).map(s =>
+    `<div class="swatch">
+       <div class="swatch-block" style="background:${esc(s.hex)}"></div>
+       <div class="swatch-label">${esc(s.hex)}<br>${esc(s.name)}</div>
+     </div>`
+  ).join('');
+
+  const toneItems = (dir.copy.toneGuide?.principles || []).slice(0, 4).map(p =>
+    `<li>${esc(p)}</li>`
+  ).join('');
+
+  const logoHtml = dir.logo.imageUrl
+    ? `<div class="logo-frame ${downloadAllowed ? '' : 'watermark-wrap locked'}">
+         <img src="${esc(dir.logo.imageUrl)}" alt="Logo concept">
+       </div>`
+    : `<div class="logo-concept">${esc(dir.logo.conceptDescription || '')}</div>`;
+
+  panel.innerHTML = `
+    <div class="brand-header">
+      <div class="direction-tag ${tagClass}">${dirLabel}</div>
+      <h2>${esc(dir.copy.tagline || dir.brief.brand.name)}</h2>
+      <div class="positioning">${esc(dir.brief.additionalContext || '')}</div>
+    </div>
+    <div class="outputs-grid">
+      <div class="output-card full-width">
+        <div class="card-label">Copy</div>
+        <div class="tagline">${esc(dir.copy.tagline)}</div>
+        <div class="mission">${esc(dir.copy.missionStatement)}</div>
+        <div class="story">${esc(dir.copy.brandStory)}</div>
+        <div class="pitch">${esc(dir.copy.elevatorPitch)}</div>
+      </div>
+      <div class="output-card">
+        <div class="card-label">Visual Identity</div>
+        <div class="swatches">${swatches}</div>
+        <div class="typography-row">
+          <div class="type-item">
+            <div class="type-role">Headline</div>
+            <div class="type-face">${esc(dir.visualIdentity.typography?.headlineFont || '')}</div>
+          </div>
+          <div class="type-item">
+            <div class="type-role">Body</div>
+            <div class="type-face">${esc(dir.visualIdentity.typography?.bodyFont || '')}</div>
+          </div>
+        </div>
+      </div>
+      <div class="output-card">
+        <div class="card-label">Logo</div>
+        ${logoHtml}
+      </div>
+      <div class="output-card">
+        <div class="card-label">Tone of Voice</div>
+        <ul class="tone-principles">${toneItems}</ul>
+      </div>
+      <div class="output-card">
+        <div class="card-label">Strategic Summary</div>
+        <div class="story">${esc(dir.playbook.strategicSummary || '')}</div>
+      </div>
+    </div>
+  `;
+  return panel;
+}
+
+function switchDir(idx) {
+  document.querySelectorAll('.dir-tab').forEach((b, i) =>
+    b.classList.toggle('active', i === idx));
+  document.querySelectorAll('.dir-panel').forEach((p, i) =>
+    p.classList.toggle('active', i === idx));
+}
+
+function renderCTA(data) {
+  const bar = document.getElementById('cta-bar');
+  const msg = document.getElementById('cta-msg');
+  const actions = document.getElementById('cta-actions');
+  bar.className = 'cta-bar visible';
+
+  if (data.adminAccess) {
+    msg.textContent = 'Admin mode — full access';
+    actions.innerHTML = `
+      <button class="cta-btn cta-ghost" onclick="downloadPdf('ANCHORED')">↓ Anchored PDF</button>
+      <button class="cta-btn cta-ghost" onclick="downloadPdf('EVOLVED')">↓ Evolved PDF</button>
+      <button class="cta-btn cta-ghost" onclick="downloadPdf('DISRUPTIVE')">↓ Disruptive PDF</button>
+    `;
+  } else if (data.summary.paymentStatus === 'PAID') {
+    msg.textContent = 'Your brand package is unlocked';
+    actions.innerHTML = `
+      <button class="cta-btn cta-ghost" onclick="downloadPdf('ANCHORED')">↓ Anchored PDF</button>
+      <button class="cta-btn cta-ghost" onclick="downloadPdf('EVOLVED')">↓ Evolved PDF</button>
+      <button class="cta-btn cta-ghost" onclick="downloadPdf('DISRUPTIVE')">↓ Disruptive PDF</button>
+    `;
+  } else {
+    msg.textContent = 'Your three brand directions are ready — unlock to download the full package.';
+    actions.innerHTML = `<button class="cta-btn cta-primary" onclick="openPaymentModal()">Request brand package</button>`;
+  }
+}
+
+function openPaymentModal() {
+  if (engagementData?.summary?.clientEmail) {
+    document.getElementById('req-email').value = engagementData.summary.clientEmail;
+  }
+  if (engagementData?.summary?.clientName) {
+    document.getElementById('req-name').value = engagementData.summary.clientName;
+  }
+  document.getElementById('modal-backdrop').classList.add('open');
+}
+
+function closeModal(e) {
+  if (e && e.target !== document.getElementById('modal-backdrop')) return;
+  document.getElementById('modal-backdrop').classList.remove('open');
+  document.getElementById('modal-form-area').style.display = 'block';
+  document.getElementById('modal-success').style.display = 'none';
+}
+
+async function submitPaymentRequest() {
+  const name = document.getElementById('req-name').value.trim();
+  const email = document.getElementById('req-email').value.trim();
+  if (!email) { alert('Please enter your email.'); return; }
+  await fetch(`${API}/api/engagements/${engagementId}/request-payment`, {
+    method: 'POST', headers: HEADERS, body: JSON.stringify({ name, email })
+  });
+  document.getElementById('modal-form-area').style.display = 'none';
+  document.getElementById('modal-success').style.display = 'block';
+}
+
+function downloadPdf(direction) {
+  window.open(`${API}/api/engagements/${engagementId}/pdf/${direction}`, '_blank');
+}
+
+async function logout() {
+  await fetch(`${API}/api/auth/logout`, { method: 'POST', headers: HEADERS });
+  window.location.href = '/login';
+}
+
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+           .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+boot();
+</script>
+</body>
+</html>

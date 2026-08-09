@@ -35,4 +35,19 @@ public class PageController {
     public String discoverPage() {
         return "forward:/questionnaire-run.html";
     }
+
+    @GetMapping("/your-brand/{id}")
+    public String yourBrandPage() {
+        return "forward:/your-brand.html";
+    }
+
+    @GetMapping("/login")
+    public String loginPage() {
+        return "forward:/login.html";
+    }
+
+    @GetMapping("/register")
+    public String registerPage() {
+        return "forward:/register.html";
+    }
 }
