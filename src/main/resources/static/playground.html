@@ -537,9 +537,6 @@ This brand challenges the idea that good coffee has to be precious or intimidati
     <div id="journey-simulate" style="flex:1;overflow:auto;padding:0 28px 28px;">
       <div id="journey-q-list" style="margin-bottom:16px;"></div>
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
-        <label style="font-size:12px;font-weight:600;display:flex;gap:6px;align-items:center;cursor:pointer;">
-          <input type="checkbox" id="journey-eval-toggle"> Evaluation loop
-        </label>
         <button id="journey-run-btn" onclick="runJourney()" style="padding:9px 20px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Run journey</button>
         <span id="journey-status" style="font-size:12px;color:#999;"></span>
       </div>
@@ -713,7 +710,7 @@ async function runJourney() {
   const statusEl = document.getElementById('journey-status');
   const btn = document.getElementById('journey-run-btn');
   const resultsEl = document.getElementById('journey-results');
-  const evalMode = document.getElementById('journey-eval-toggle').checked;
+  const evalMode = document.getElementById('eval-toggle').checked;
 
   btn.disabled = true; btn.textContent = 'Starting…'; statusEl.textContent = '';
   resultsEl.style.display = 'none'; resultsEl.innerHTML = '';
