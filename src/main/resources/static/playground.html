@@ -529,6 +529,7 @@ This brand challenges the idea that good coffee has to be precious or intimidati
       <div class="sub">Simulate the complete client experience, or audit real engagements.</div>
       <div style="display:flex;gap:6px;margin-top:16px;margin-bottom:20px;">
         <button class="results-tab active" id="jtab-simulate" onclick="switchJourneyTab('simulate')">Simulate</button>
+        <button class="results-tab" id="jtab-history" onclick="switchJourneyTab('history')">History</button>
         <button class="results-tab" id="jtab-audit" onclick="switchJourneyTab('audit')">Audit</button>
       </div>
     </div>
@@ -544,6 +545,13 @@ This brand challenges the idea that good coffee has to be precious or intimidati
     </div>
 
     <!-- Audit tab -->
+    <!-- History tab (SIMULATION runs) -->
+    <div id="journey-history" style="display:none;flex:1;overflow:auto;padding:0 28px 28px;">
+      <div id="journey-history-list"></div>
+      <div id="journey-history-detail" style="display:none;"></div>
+    </div>
+
+    <!-- Audit tab (CLIENT engagements) -->
     <div id="journey-audit" style="display:none;flex:1;overflow:auto;padding:0 28px 28px;">
       <div id="audit-list"></div>
       <div id="audit-detail" style="display:none;"></div>
@@ -554,6 +562,7 @@ This brand challenges the idea that good coffee has to be precious or intimidati
     <div id="results-tabs">
       <button class="results-tab active" data-tab="current" onclick="switchResultsTab('current')">Current</button>
       <button class="results-tab" data-tab="history" onclick="switchResultsTab('history')">History</button>
+      <button class="results-tab" data-tab="audit" onclick="switchResultsTab('audit')">Audit</button>
     </div>
 
     <div id="tab-current">
@@ -564,6 +573,11 @@ This brand challenges the idea that good coffee has to be precious or intimidati
     <div id="tab-history" style="display:none">
       <div id="history-list"></div>
       <div id="history-detail" style="display:none"></div>
+    </div>
+
+    <div id="tab-audit" style="display:none">
+      <div id="agent-audit-list"></div>
+      <div id="agent-audit-detail" style="display:none"></div>
     </div>
   </div>
 </div>
@@ -601,9 +615,12 @@ let journeyPollTimer = null;
 function switchJourneyTab(tab) {
   journeyTab = tab;
   document.getElementById('jtab-simulate').classList.toggle('active', tab === 'simulate');
+  document.getElementById('jtab-history').classList.toggle('active', tab === 'history');
   document.getElementById('jtab-audit').classList.toggle('active', tab === 'audit');
   document.getElementById('journey-simulate').style.display = tab === 'simulate' ? 'block' : 'none';
+  document.getElementById('journey-history').style.display = tab === 'history' ? 'block' : 'none';
   document.getElementById('journey-audit').style.display = tab === 'audit' ? 'block' : 'none';
+  if (tab === 'history') loadJourneyHistory();
   if (tab === 'audit') loadAudit();
 }
 
@@ -958,6 +975,203 @@ function downloadEngPdf(id, direction) {
   window.open(`${API}/api/engagements/${id}/pdf/${direction}`, '_blank');
 }
 
+// ── Journey History tab (SIMULATION runs) ────────────────────────────────────
+
+async function loadJourneyHistory() {
+  const listEl = document.getElementById('journey-history-list');
+  const detailEl = document.getElementById('journey-history-detail');
+  detailEl.style.display = 'none'; detailEl.innerHTML = '';
+  listEl.style.display = 'block';
+  listEl.innerHTML = '<div style="color:#bbb;font-size:13px;">Loading…</div>';
+
+  const rows = await fetch(`${API}/api/engagements?source=SIMULATION`, { headers: HEADERS })
+    .then(r => r.json()).catch(() => []);
+
+  if (!rows.length) {
+    listEl.innerHTML = '<div style="color:#bbb;font-size:13px;">No simulation runs yet. Use the Simulate tab to run the full journey.</div>';
+    return;
+  }
+
+  listEl.innerHTML = rows.map(e => `
+    <div class="history-item" onclick="openJourneyHistoryItem('${esc(e.id)}')" data-id="${esc(e.id)}">
+      <div class="history-meta">
+        <div class="history-label">${esc(e.clientName || 'Simulation')}</div>
+        <div class="history-sub">${new Date(e.createdAt).toLocaleString()} · ${esc(e.status)}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function openJourneyHistoryItem(id) {
+  document.querySelectorAll('#journey-history-list .history-item').forEach(el =>
+    el.classList.toggle('active', el.dataset.id === id));
+
+  const listEl = document.getElementById('journey-history-list');
+  const detailEl = document.getElementById('journey-history-detail');
+  listEl.style.display = 'none';
+  detailEl.style.display = 'block';
+  detailEl.innerHTML = '<div style="color:#bbb;font-size:13px;padding:12px 0;">Loading…</div>';
+
+  const data = await fetch(`${API}/api/engagements/${id}`, { headers: HEADERS }).then(r => r.json());
+  const e = data.summary;
+
+  let resultsHtml = '';
+  if (data.results?.directions?.length) {
+    const tabsHtml = data.results.directions.map((d, i) => {
+      const label = d.direction.charAt(0) + d.direction.slice(1).toLowerCase();
+      return `<button class="results-tab ${i===0?'active':''}" onclick="switchJHDir(${i},this)">${label}</button>`;
+    }).join('');
+    const panelsHtml = data.results.directions.map((d, i) => `
+      <div id="jh-dir-${i}" style="display:${i===0?'block':'none'};margin-top:12px;">
+        ${buildJourneyDirPanel(d, true)}
+      </div>
+    `).join('');
+    resultsHtml = `<div style="margin-top:16px;"><div style="display:flex;gap:6px;margin-bottom:4px;">${tabsHtml}</div>${panelsHtml}</div>`;
+  } else {
+    resultsHtml = `<div style="color:#aaa;font-size:13px;margin-top:12px;">${e.status === 'FAILED' ? 'Generation failed.' : 'Generation in progress…'}</div>`;
+  }
+
+  detailEl.innerHTML = `
+    <button onclick="document.getElementById('journey-history-list').style.display='block';document.getElementById('journey-history-detail').style.display='none';"
+            style="background:none;border:none;color:#999;font-size:12px;cursor:pointer;padding:0;margin-bottom:14px;">← Back</button>
+    <div style="font-size:16px;font-weight:700;margin-bottom:4px;">Simulation — ${new Date(e.createdAt).toLocaleString()}</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+      <span style="background:#f0f0f0;color:#555;font-size:11px;padding:3px 9px;border-radius:10px;">${esc(e.status)}</span>
+      ${(data.results?.directions || []).map(d =>
+        `<button onclick="downloadEngPdf('${esc(id)}','${d.direction}')"
+           style="padding:3px 10px;background:#f2f2f2;border:none;border-radius:10px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;">
+          ↓ ${d.direction.charAt(0)+d.direction.slice(1).toLowerCase()} PDF
+        </button>`
+      ).join('')}
+      <a href="/your-brand/${esc(id)}" target="_blank"
+         style="background:#1a1a1a;color:#fff;font-size:11px;padding:3px 10px;border-radius:10px;text-decoration:none;">View results ↗</a>
+    </div>
+    ${resultsHtml}
+  `;
+}
+
+function switchJHDir(idx, btn) {
+  document.querySelectorAll('[id^="jh-dir-"]').forEach((el, i) => el.style.display = i === idx ? 'block' : 'none');
+  btn.parentElement.querySelectorAll('button').forEach((b, i) => b.classList.toggle('active', i === idx));
+}
+
+// ── Per-agent Audit tab ───────────────────────────────────────────────────────
+
+const AGENT_FIELD = {
+  'copy': 'copy',
+  'visual-identity': 'visualIdentity',
+  'logo': 'logo',
+  'playbook': 'playbook',
+  'brand-book': 'brandBook'
+};
+
+async function loadAgentAudit() {
+  const listEl = document.getElementById('agent-audit-list');
+  const detailEl = document.getElementById('agent-audit-detail');
+  detailEl.style.display = 'none'; detailEl.innerHTML = '';
+  listEl.style.display = 'block';
+  listEl.innerHTML = '<div style="color:#bbb;font-size:13px;">Loading…</div>';
+
+  const rows = await fetch(`${API}/api/engagements?source=CLIENT`, { headers: HEADERS })
+    .then(r => r.json()).catch(() => []);
+
+  if (!rows.length) {
+    listEl.innerHTML = '<div style="color:#bbb;font-size:13px;">No client engagements yet. Client submissions through /discover appear here.</div>';
+    return;
+  }
+
+  listEl.innerHTML = rows.map(e => `
+    <div class="history-item" onclick="openAgentAuditItem('${esc(e.id)}')" data-id="${esc(e.id)}"
+         style="display:flex;justify-content:space-between;align-items:center;">
+      <div class="history-meta">
+        <div class="history-label">${esc(e.clientName || e.clientEmail || 'Anonymous')}</div>
+        <div class="history-sub">${esc(e.clientEmail || '')} · ${esc(e.status)} · ${new Date(e.createdAt).toLocaleString()}</div>
+      </div>
+      ${e.paymentStatus === 'REQUESTED' ? `<span style="background:#fbf1d8;color:#a3800f;font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;flex-shrink:0;">PAYMENT REQUEST</span>` : ''}
+    </div>
+  `).join('');
+}
+
+async function openAgentAuditItem(id) {
+  document.querySelectorAll('#agent-audit-list .history-item').forEach(el =>
+    el.classList.toggle('active', el.dataset.id === id));
+
+  const listEl = document.getElementById('agent-audit-list');
+  const detailEl = document.getElementById('agent-audit-detail');
+  listEl.style.display = 'none';
+  detailEl.style.display = 'block';
+  detailEl.innerHTML = '<div style="color:#bbb;font-size:13px;padding:12px 0;">Loading…</div>';
+
+  const data = await fetch(`${API}/api/engagements/${id}`, { headers: HEADERS }).then(r => r.json());
+  const e = data.summary;
+  const field = AGENT_FIELD[currentAgent] || 'copy';
+
+  let dirsHtml = '';
+  if (data.results?.directions?.length) {
+    dirsHtml = data.results.directions.map(d => {
+      const output = d[field];
+      const label = d.direction.charAt(0) + d.direction.slice(1).toLowerCase();
+      return `
+        <div style="background:#fafafa;border-radius:10px;padding:14px;margin-bottom:12px;">
+          <div style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">${label}</div>
+          ${renderAgentAuditOutput(field, output)}
+        </div>`;
+    }).join('');
+  } else {
+    dirsHtml = `<div style="color:#aaa;font-size:13px;margin-top:12px;">${e.status === 'FAILED' ? 'Generation failed.' : 'Generation in progress…'}</div>`;
+  }
+
+  detailEl.innerHTML = `
+    <button onclick="document.getElementById('agent-audit-list').style.display='block';document.getElementById('agent-audit-detail').style.display='none';"
+            style="background:none;border:none;color:#999;font-size:12px;cursor:pointer;padding:0;margin-bottom:14px;">← Back</button>
+    <div style="font-size:15px;font-weight:700;margin-bottom:3px;">${esc(e.clientName || 'Unknown')}</div>
+    <div style="font-size:12px;color:#999;margin-bottom:10px;">${esc(e.clientEmail || '')} · ${new Date(e.createdAt).toLocaleString()}</div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+      <span style="background:#f0f0f0;color:#555;font-size:11px;padding:3px 9px;border-radius:10px;">Payment: ${esc(e.paymentStatus)}</span>
+      ${e.paymentStatus === 'REQUESTED' ? `<button onclick="markPaid('${esc(id)}');loadAgentAudit();" style="background:#1e8a4c;color:#fff;border:none;border-radius:10px;font-size:11px;padding:3px 10px;cursor:pointer;font-family:inherit;">Mark as paid</button>` : ''}
+      <a href="/your-brand/${esc(id)}" target="_blank" style="background:#1a1a1a;color:#fff;font-size:11px;padding:3px 10px;border-radius:10px;text-decoration:none;">View client page ↗</a>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">${esc(AGENT_META[currentAgent]?.title || currentAgent)} output — all directions</div>
+    ${dirsHtml}
+  `;
+}
+
+function renderAgentAuditOutput(field, output) {
+  if (!output) return '<div style="color:#bbb;font-size:12px;font-style:italic;">No output.</div>';
+  if (field === 'copy') {
+    return `
+      <div style="font-size:16px;font-weight:700;margin-bottom:6px;">${esc(output.tagline || '')}</div>
+      <div style="font-size:12px;color:#555;margin-bottom:6px;">${esc(output.missionStatement || '')}</div>
+      ${output.brandStory ? `<div style="font-size:12px;color:#777;line-height:1.5;">${esc(output.brandStory)}</div>` : ''}`;
+  }
+  if (field === 'visualIdentity') {
+    const swatches = (output.colorPalette || []).map(s =>
+      `<span title="${esc(s.hex)}" style="display:inline-block;width:28px;height:28px;background:${esc(s.hex)};border-radius:5px;"></span>`
+    ).join(' ');
+    return `
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">${swatches}</div>
+      <div style="font-size:12px;color:#555;">${esc(output.typography?.headlineFont || '')} / ${esc(output.typography?.bodyFont || '')}</div>`;
+  }
+  if (field === 'logo') {
+    if (output.imageUrl) return `<img src="${esc(output.imageUrl)}" style="max-height:100px;max-width:100%;border-radius:8px;">`;
+    return `<div style="font-size:12px;color:#aaa;font-style:italic;">${esc(output.conceptDescription || 'No image generated')}</div>`;
+  }
+  if (field === 'playbook' || field === 'brandBook') {
+    const sections = output.sections || output.pages || [];
+    if (sections.length) {
+      return sections.slice(0, 2).map(s =>
+        `<div style="margin-bottom:8px;">
+          <div style="font-size:11px;font-weight:700;margin-bottom:2px;">${esc(s.title || s.name || '')}</div>
+          <div style="font-size:12px;color:#555;line-height:1.5;">${esc((s.content || s.body || '').slice(0, 200))}${(s.content || s.body || '').length > 200 ? '…' : ''}</div>
+        </div>`
+      ).join('');
+    }
+    return `<div style="font-size:12px;color:#aaa;font-style:italic;">Output available — open client view to see full document.</div>`;
+  }
+  // fallback: show raw keys
+  return `<pre style="font-size:11px;color:#555;white-space:pre-wrap;">${esc(JSON.stringify(output, null, 2).slice(0, 500))}</pre>`;
+}
+
 function selectAgent(el) {
   if (el.classList.contains('disabled')) return;
   document.querySelectorAll('.agent-item').forEach(a => a.classList.remove('active'));
@@ -1034,10 +1248,12 @@ function switchViewTab(view) {
 // ── Current / History tabs ───────────────────────────────────────────────────
 async function switchResultsTab(tab) {
   resultsTab = tab;
-  document.querySelectorAll('.results-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('#results-tabs .results-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   document.getElementById('tab-current').style.display = tab === 'current' ? 'block' : 'none';
   document.getElementById('tab-history').style.display = tab === 'history' ? 'block' : 'none';
+  document.getElementById('tab-audit').style.display = tab === 'audit' ? 'block' : 'none';
   if (tab === 'history') await loadHistory();
+  if (tab === 'audit') await loadAgentAudit();
 }
 
 async function loadHistory() {
