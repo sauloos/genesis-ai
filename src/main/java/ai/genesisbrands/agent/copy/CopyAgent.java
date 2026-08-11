@@ -5,15 +5,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import ai.genesisbrands.agent.config.AgentProperties;
 import ai.genesisbrands.agent.core.AgentRevision;
 import ai.genesisbrands.agent.core.DirectionBrief;
+import ai.genesisbrands.service.RetrievalService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -26,34 +24,21 @@ public class CopyAgent {
     private static final Logger log = LoggerFactory.getLogger(CopyAgent.class);
     private static final String AGENT_ID = "copy";
 
-    // ── Runtime extraction seam: these fields move to AgentRuntime ────────────
     private final ChatClient chatClient;
-    private final EmbeddingModel embeddingModel;
     private final AgentProperties agentProperties;
     private final ObjectMapper objectMapper;
-    private final RestTemplate restTemplate = new RestTemplate();
-    // ─────────────────────────────────────────────────────────────────────────
-
-    private final String qdrantUrl;
-    private final String qdrantApiKey;
-    private final String collectionName;
+    private final RetrievalService retrievalService;
 
     private String systemPrompt;
 
     public CopyAgent(ChatClient.Builder chatClientBuilder,
-                     EmbeddingModel embeddingModel,
                      AgentProperties agentProperties,
                      ObjectMapper objectMapper,
-                     @org.springframework.beans.factory.annotation.Value("${qdrant.rest.url:http://localhost:6333}") String qdrantUrl,
-                     @org.springframework.beans.factory.annotation.Value("${qdrant.rest.api-key:}") String qdrantApiKey,
-                     @org.springframework.beans.factory.annotation.Value("${spring.ai.vectorstore.qdrant.collection-name:genesis-knowledge}") String collectionName) {
+                     RetrievalService retrievalService) {
         this.chatClient = chatClientBuilder.build();
-        this.embeddingModel = embeddingModel;
         this.agentProperties = agentProperties;
         this.objectMapper = objectMapper;
-        this.qdrantUrl = qdrantUrl;
-        this.qdrantApiKey = qdrantApiKey;
-        this.collectionName = collectionName;
+        this.retrievalService = retrievalService;
         this.systemPrompt = loadSystemPrompt();
     }
 
@@ -102,47 +87,10 @@ public class CopyAgent {
         throw lastFailure;
     }
 
-    // ── Runtime extraction seam: retrievePrecedent moves to AgentRuntime ──────
-
-    @SuppressWarnings("unchecked")
     private List<String> retrievePrecedent(DirectionBrief brief, int topK) {
-        try {
-            DirectionBrief.BrandContext b = brief.brand();
-            String query = String.join(" ", b.name(), b.industry(), b.coreOffer(), b.tone());
-            float[] vector = embeddingModel.embed(query);
-
-            List<Float> vectorList = new ArrayList<>(vector.length);
-            for (float f : vector) vectorList.add(f);
-
-            Map<String, Object> body = Map.of(
-                "vector", vectorList,
-                "limit", topK,
-                "with_payload", true,
-                "filter", Map.of("must", List.of(
-                    Map.of("key", "layer", "match", Map.of("value", "layer2"))
-                ))
-            );
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            if (qdrantApiKey != null && !qdrantApiKey.isBlank())
-                headers.set("api-key", qdrantApiKey);
-
-            String url = qdrantUrl.replaceAll("/$", "") + "/collections/" + collectionName + "/points/search";
-            ResponseEntity<Map> response = restTemplate.exchange(
-                url, HttpMethod.POST, new HttpEntity<>(body, headers), Map.class);
-
-            List<Map<String, Object>> results = (List<Map<String, Object>>) response.getBody().get("result");
-            return results.stream()
-                .map(r -> (Map<String, Object>) r.get("payload"))
-                .filter(p -> p.containsKey("text"))
-                .map(p -> (String) p.get("text"))
-                .collect(Collectors.toList());
-
-        } catch (Exception e) {
-            log.warn("Layer 2 retrieval failed, proceeding without precedent: {}", e.getMessage());
-            return List.of();
-        }
+        DirectionBrief.BrandContext b = brief.brand();
+        String query = String.join(" ", b.name(), b.industry(), b.coreOffer(), b.tone());
+        return retrievalService.retrieveForAgent(query, AGENT_ID, topK);
     }
 
     private String assemblePrompt(DirectionBrief brief, List<String> precedent,

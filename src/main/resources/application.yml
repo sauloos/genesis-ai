@@ -84,14 +84,16 @@ genesis:
       system-prompt: agents/logo/system-dalle.md
       max-tokens: 1500
       rag:
-        enabled: false
+        enabled: true
+        top-k: 3
       max-iterations: 3
     logo-svg:
       model: claude-sonnet-5
       system-prompt: agents/logo/system-svg.md
       max-tokens: 2500
       rag:
-        enabled: false
+        enabled: true
+        top-k: 3
       max-iterations: 3
     logo-dalle-evaluator:
       model: claude-opus-5
@@ -118,7 +120,8 @@ genesis:
       system-prompt: agents/brand-book/system.md
       max-tokens: 3000
       rag:
-        enabled: false
+        enabled: true
+        top-k: 3
       max-iterations: 3
     brand-book-evaluator:
       model: claude-opus-5

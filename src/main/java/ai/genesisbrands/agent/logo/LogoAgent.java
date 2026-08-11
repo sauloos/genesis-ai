@@ -6,6 +6,7 @@ import ai.genesisbrands.agent.config.AgentProperties;
 import ai.genesisbrands.agent.core.AgentRevision;
 import ai.genesisbrands.agent.core.DirectionBrief;
 import ai.genesisbrands.service.BlobStorageService;
+import ai.genesisbrands.service.RetrievalService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -37,6 +39,7 @@ public class LogoAgent {
     private final AgentProperties agentProperties;
     private final ObjectMapper objectMapper;
     private final BlobStorageService blobStorageService;
+    private final RetrievalService retrievalService;
 
     private final String systemPromptDalle;
     private final String systemPromptSvg;
@@ -45,12 +48,14 @@ public class LogoAgent {
                       ImageModel imageModel,
                       AgentProperties agentProperties,
                       ObjectMapper objectMapper,
-                      BlobStorageService blobStorageService) {
+                      BlobStorageService blobStorageService,
+                      RetrievalService retrievalService) {
         this.chatClient = chatClientBuilder.build();
         this.imageModel = imageModel;
         this.agentProperties = agentProperties;
         this.objectMapper = objectMapper;
         this.blobStorageService = blobStorageService;
+        this.retrievalService = retrievalService;
         this.systemPromptDalle = loadPrompt(AGENT_ID_DALLE);
         this.systemPromptSvg = loadPrompt(AGENT_ID_SVG);
     }
@@ -70,7 +75,15 @@ public class LogoAgent {
         String agentId = method == LogoOutput.Method.DALLE ? AGENT_ID_DALLE : AGENT_ID_SVG;
         AgentProperties.AgentConfig config = agentProperties.get(agentId);
         String systemPrompt = method == LogoOutput.Method.DALLE ? systemPromptDalle : systemPromptSvg;
-        String userPrompt = assemblePrompt(brief, previous, revision);
+
+        DirectionBrief.BrandContext b = brief.brand();
+        List<String> precedent = config.getRag().isEnabled()
+            ? retrievalService.retrieveForAgent(
+                String.join(" ", b.name(), b.industry(), b.coreOffer(), b.tone()),
+                "logo", config.getRag().getTopK())
+            : List.of();
+
+        String userPrompt = assemblePrompt(brief, precedent, previous, revision);
 
         // Claude occasionally emits structurally malformed JSON, and DALL-E image
         // generation can fail transiently — retry the whole attempt (fresh concept
@@ -154,7 +167,8 @@ public class LogoAgent {
         }
     }
 
-    private String assemblePrompt(DirectionBrief brief, LogoOutput previous, AgentRevision revision) {
+    private String assemblePrompt(DirectionBrief brief, List<String> precedent,
+                                   LogoOutput previous, AgentRevision revision) {
         StringBuilder sb = new StringBuilder();
 
         sb.append("## Creative Direction: ").append(brief.direction().name()).append("\n\n");
@@ -168,6 +182,11 @@ public class LogoAgent {
         sb.append("Differentiator: ").append(b.differentiator()).append("\n");
         sb.append("Personality: ").append(String.join(", ", b.personality())).append("\n");
         sb.append("Tone: ").append(b.tone()).append("\n\n");
+
+        if (!precedent.isEmpty()) {
+            sb.append("## Knowledge & Precedent\n");
+            precedent.forEach(p -> sb.append(p).append("\n\n"));
+        }
 
         if (!brief.trainingInstructions().isEmpty()) {
             sb.append("## Specific Instructions\n");

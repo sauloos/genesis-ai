@@ -86,6 +86,68 @@ public class RetrievalService {
         }
     }
 
+    /**
+     * Retrieves precedent and training knowledge for a specialist agent.
+     * Combines layer2 client precedent with training content that applies to this
+     * agent — both GLOBAL training (applies to all agents) and content explicitly
+     * scoped to this agent's asset type.
+     */
+    @SuppressWarnings("unchecked")
+    public List<String> retrieveForAgent(String query, String agentType, int topK) {
+        try {
+            List<Float> vector = toList(embeddingModel.embed(query));
+
+            // Fetch layer2 precedent + all training content in one query,
+            // then post-filter training results by scope/asset_types in Java.
+            Map<String, Object> body = Map.of(
+                "vector", vector,
+                "limit", topK * 3, // over-fetch so post-filter leaves enough
+                "with_payload", true,
+                "filter", Map.of("should", List.of(
+                    Map.of("key", "layer", "match", Map.of("value", "layer2")),
+                    Map.of("key", "layer", "match", Map.of("value", "training"))
+                ))
+            );
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            if (qdrantApiKey != null && !qdrantApiKey.isBlank())
+                headers.set("api-key", qdrantApiKey);
+
+            String url = qdrantUrl.replaceAll("/$", "") + "/collections/" + collectionName + "/points/search";
+            Map<String, Object> response = restTemplate.postForObject(
+                url, new HttpEntity<>(body, headers), Map.class);
+
+            if (response == null) return List.of();
+            List<Map<String, Object>> results = (List<Map<String, Object>>) response.get("result");
+            if (results == null || results.isEmpty()) return List.of();
+
+            return results.stream()
+                .map(r -> (Map<String, Object>) r.get("payload"))
+                .filter(p -> p != null && p.containsKey("text"))
+                .filter(p -> {
+                    String layer = str(p, "layer");
+                    if ("layer2".equals(layer)) return true;
+                    if ("training".equals(layer)) {
+                        String scope = str(p, "scope");
+                        if ("GLOBAL".equals(scope)) return true;
+                        if ("ASSET_SCOPED".equals(scope)) {
+                            String assetTypes = str(p, "asset_types");
+                            return assetTypes.contains(agentType);
+                        }
+                    }
+                    return false;
+                })
+                .limit(topK)
+                .map(p -> str(p, "text"))
+                .filter(t -> !t.isBlank())
+                .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
     private static String str(Map<String, Object> map, String key) {
         Object v = map.get(key);
         return v != null ? v.toString() : "";

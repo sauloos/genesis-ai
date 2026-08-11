@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import ai.genesisbrands.agent.config.AgentProperties;
 import ai.genesisbrands.agent.core.AgentRevision;
 import ai.genesisbrands.agent.core.DirectionBrief;
+import ai.genesisbrands.service.RetrievalService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
@@ -34,15 +35,18 @@ public class BrandBookAgent {
     private final ChatClient chatClient;
     private final AgentProperties agentProperties;
     private final ObjectMapper objectMapper;
+    private final RetrievalService retrievalService;
 
     private final String systemPrompt;
 
     public BrandBookAgent(ChatClient.Builder chatClientBuilder,
                            AgentProperties agentProperties,
-                           ObjectMapper objectMapper) {
+                           ObjectMapper objectMapper,
+                           RetrievalService retrievalService) {
         this.chatClient = chatClientBuilder.build();
         this.agentProperties = agentProperties;
         this.objectMapper = objectMapper;
+        this.retrievalService = retrievalService;
         this.systemPrompt = loadSystemPrompt();
     }
 
@@ -58,7 +62,14 @@ public class BrandBookAgent {
         AgentProperties.AgentConfig config = agentProperties.get(AGENT_ID);
         DirectionBrief brief = input.brief();
 
-        String userPrompt = assemblePrompt(input, previous, revision);
+        DirectionBrief.BrandContext b = brief.brand();
+        List<String> precedent = config.getRag().isEnabled()
+            ? retrievalService.retrieveForAgent(
+                String.join(" ", b.name(), b.industry(), b.coreOffer(), b.tone()),
+                AGENT_ID, config.getRag().getTopK())
+            : List.of();
+
+        String userPrompt = assemblePrompt(input, precedent, previous, revision);
 
         // Claude occasionally emits structurally malformed JSON (a dropped comma,
         // stray character) — retry once before failing the request, since a
@@ -84,7 +95,8 @@ public class BrandBookAgent {
         throw lastFailure;
     }
 
-    private String assemblePrompt(BrandBookInput input, BrandBookOutput previous, AgentRevision revision) {
+    private String assemblePrompt(BrandBookInput input, List<String> precedent,
+                                   BrandBookOutput previous, AgentRevision revision) {
         DirectionBrief brief = input.brief();
         StringBuilder sb = new StringBuilder();
 
@@ -99,6 +111,11 @@ public class BrandBookAgent {
         sb.append("Differentiator: ").append(b.differentiator()).append("\n");
         sb.append("Personality: ").append(String.join(", ", b.personality())).append("\n");
         sb.append("Tone: ").append(b.tone()).append("\n\n");
+
+        if (!precedent.isEmpty()) {
+            sb.append("## Knowledge & Precedent\n");
+            precedent.forEach(p -> sb.append(p).append("\n\n"));
+        }
 
         sb.append("## Already-Final Creative Decisions — explain these, never re-decide them\n\n");
         sb.append("### Playbook (strategic narrative)\n").append(toJson(input.playbook())).append("\n\n");
