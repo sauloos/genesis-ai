@@ -186,11 +186,14 @@ public class BrandBookAgent {
             return new BrandBookOutput(
                 engagementId,
                 (String) map.get("welcomeNote"),
+                (String) map.get("welcomeLetterOpening"),
                 (String) map.get("howToUseThisGuide"),
                 (String) map.get("logoUsageGuidelines"),
                 logoDonts,
                 (String) map.get("colorUsageGuidelines"),
                 (String) map.get("typographyUsageGuidelines"),
+                (String) map.get("typefaceRationale"),
+                (String) map.get("imageryGuidance"),
                 (String) map.get("closingNote"),
                 (String) map.get("reasoning"),
                 iteration

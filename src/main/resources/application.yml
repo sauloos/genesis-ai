@@ -128,6 +128,9 @@ genesis:
       system-prompt: agents/evaluation/brand-book-evaluator.md
       max-tokens: 1500
 
+unsplash:
+  access-key: ${UNSPLASH_ACCESS_KEY:}
+
 azure:
   storage:
     account-name: ${AZURE_STORAGE_ACCOUNT:}

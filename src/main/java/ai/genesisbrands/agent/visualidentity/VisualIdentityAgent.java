@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import ai.genesisbrands.agent.config.AgentProperties;
 import ai.genesisbrands.agent.core.AgentRevision;
 import ai.genesisbrands.agent.core.DirectionBrief;
+import ai.genesisbrands.service.ColorSpecificationService;
 import ai.genesisbrands.service.RetrievalService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,17 +29,20 @@ public class VisualIdentityAgent {
     private final AgentProperties agentProperties;
     private final ObjectMapper objectMapper;
     private final RetrievalService retrievalService;
+    private final ColorSpecificationService colorSpec;
 
     private String systemPrompt;
 
     public VisualIdentityAgent(ChatClient.Builder chatClientBuilder,
                                 AgentProperties agentProperties,
                                 ObjectMapper objectMapper,
-                                RetrievalService retrievalService) {
+                                RetrievalService retrievalService,
+                                ColorSpecificationService colorSpec) {
         this.chatClient = chatClientBuilder.build();
         this.agentProperties = agentProperties;
         this.objectMapper = objectMapper;
         this.retrievalService = retrievalService;
+        this.colorSpec = colorSpec;
         this.systemPrompt = loadSystemPrompt();
     }
 
@@ -174,19 +178,42 @@ public class VisualIdentityAgent {
 
             List<Map<String, String>> paletteMaps = (List<Map<String, String>>) map.get("colorPalette");
             List<VisualIdentityOutput.ColorSwatch> palette = paletteMaps.stream()
-                .map(p -> new VisualIdentityOutput.ColorSwatch(
-                    p.get("name"), p.get("hex"), p.get("role"), p.get("rationale")))
+                .map(p -> {
+                    String hex = p.get("hex");
+                    ColorSpecificationService.ColorSpec spec = colorSpec.fullSpec(hex);
+                    return new VisualIdentityOutput.ColorSwatch(
+                        p.get("name"), hex, p.get("role"), p.get("rationale"),
+                        spec.cmyk(), spec.pantone(), spec.rgb());
+                })
                 .collect(Collectors.toList());
 
             Map<String, String> typoMap = (Map<String, String>) map.get("typography");
             VisualIdentityOutput.Typography typography = new VisualIdentityOutput.Typography(
                 typoMap.get("headlineFont"), typoMap.get("bodyFont"), typoMap.get("pairingRationale"));
 
+            List<Map<String, String>> gradMaps = (List<Map<String, String>>) map.getOrDefault("gradients", List.of());
+            List<VisualIdentityOutput.GradientPair> gradients = gradMaps.stream()
+                .map(g -> new VisualIdentityOutput.GradientPair(
+                    g.get("colorA"), g.get("colorB"), g.get("name"), g.get("usage")))
+                .collect(Collectors.toList());
+
+            Map<String, Object> gdMap = (Map<String, Object>) map.getOrDefault("graphicDevices", Map.of());
+            List<String> strokes = (List<String>) gdMap.getOrDefault("strokeVariants", List.of());
+            List<String> boxes   = (List<String>) gdMap.getOrDefault("boxVariants", List.of());
+            VisualIdentityOutput.GraphicDevicesSpec graphicDevices =
+                new VisualIdentityOutput.GraphicDevicesSpec(strokes, boxes,
+                    (String) gdMap.get("iconUsageNote"));
+
+            List<String> keywords = (List<String>) map.getOrDefault("imageKeywords", List.of());
+
             return new VisualIdentityOutput(
                 engagementId,
                 palette,
                 typography,
                 (String) map.get("moodDirection"),
+                gradients,
+                graphicDevices,
+                keywords,
                 (String) map.get("reasoning"),
                 iteration
             );

@@ -97,7 +97,8 @@ public class BaselineVisualIdentityService {
             List<Map<String, String>> paletteMaps = (List<Map<String, String>>) map.get("colorPalette");
             List<VisualIdentityOutput.ColorSwatch> palette = paletteMaps.stream()
                 .map(p -> new VisualIdentityOutput.ColorSwatch(
-                    p.get("name"), p.get("hex"), p.get("role"), p.get("rationale")))
+                    p.get("name"), p.get("hex"), p.get("role"), p.get("rationale"),
+                    null, null, null))
                 .collect(Collectors.toList());
 
             Map<String, String> typoMap = (Map<String, String>) map.get("typography");

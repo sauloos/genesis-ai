@@ -157,6 +157,7 @@ public class CopyAgent {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private CopyOutput parse(String raw, String engagementId, int iteration) {
         try {
             String json = raw.strip();
@@ -177,6 +178,24 @@ public class CopyAgent {
                 .map(e -> new CopyOutput.ToneExample(e.get("principle"), e.get("doThis"), e.get("notThis")))
                 .collect(Collectors.toList());
 
+            Map<String, String> vMap = (Map<String, String>) map.getOrDefault("vision", Map.of());
+            CopyOutput.VisionPillars vision = new CopyOutput.VisionPillars(
+                vMap.get("growth"), vMap.get("environment"), vMap.get("philanthropy"),
+                vMap.get("fame"), vMap.get("productivity"), vMap.get("location"));
+
+            List<Map<String, String>> valMaps = (List<Map<String, String>>) map.getOrDefault("values", List.of());
+            List<CopyOutput.BrandValue> values = valMaps.stream()
+                .map(v -> new CopyOutput.BrandValue(
+                    v.get("name"),
+                    v.get("description"),
+                    parseIconCategory(v.get("iconCategory"))))
+                .collect(Collectors.toList());
+
+            List<Map<String, String>> vocabMaps = (List<Map<String, String>>) map.getOrDefault("vocabulary", List.of());
+            List<CopyOutput.VocabularyEntry> vocabulary = vocabMaps.stream()
+                .map(v -> new CopyOutput.VocabularyEntry(v.get("word"), v.get("meaning")))
+                .collect(Collectors.toList());
+
             return new CopyOutput(
                 engagementId,
                 (String) map.get("tagline"),
@@ -184,11 +203,20 @@ public class CopyAgent {
                 (String) map.get("brandStory"),
                 (String) map.get("elevatorPitch"),
                 new CopyOutput.ToneGuide(principles, examples),
+                vision,
+                values,
+                vocabulary,
                 (String) map.get("reasoning"),
                 iteration
             );
         } catch (Exception e) {
             throw new IllegalStateException("Failed to parse CopyAgent output: " + e.getMessage() + "\nRaw: " + raw, e);
         }
+    }
+
+    private CopyOutput.IconCategory parseIconCategory(String raw) {
+        if (raw == null) return CopyOutput.IconCategory.ACHIEVEMENT;
+        try { return CopyOutput.IconCategory.valueOf(raw.trim().toUpperCase()); }
+        catch (IllegalArgumentException ignored) { return CopyOutput.IconCategory.ACHIEVEMENT; }
     }
 }

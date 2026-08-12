@@ -32,10 +32,35 @@ You must respond with valid JSON only — no preamble, no commentary, no markdow
       }
     ]
   },
+  "vision": {
+    "growth": "string — one sentence: how the brand defines growth for itself or its customers",
+    "environment": "string — one sentence: the brand's relationship to its physical or digital environment",
+    "philanthropy": "string — one sentence: how the brand gives back or contributes to society",
+    "fame": "string — one sentence: what the brand wants to be famous for",
+    "productivity": "string — one sentence: how the brand enables efficiency or achievement",
+    "location": "string — one sentence: the brand's relationship to place, community, or geography"
+  },
+  "values": [
+    {
+      "name": "string — 1 to 3 words",
+      "description": "string — one sentence explaining what this value means for this brand specifically",
+      "iconCategory": "string — exactly one of: ACHIEVEMENT, PERSON, SOCIAL, PLAYFUL, FORMAL, NATURE, STRUCTURE, INNOVATION"
+    }
+  ],
+  "vocabulary": [
+    {
+      "word": "string — a word or short phrase the brand owns",
+      "meaning": "string — one sentence on what it signals and why the brand uses it"
+    }
+  ],
   "reasoning": "string — 2 to 3 sentences explaining the key creative choices and how they embody the direction"
 }
 ```
 
 Produce exactly one example per principle in the tone guide. Three principles, three examples.
+
+Produce exactly 5 values. Choose iconCategory from: ACHIEVEMENT, PERSON, SOCIAL, PLAYFUL, FORMAL, NATURE, STRUCTURE, INNOVATION — pick the one that best matches the value's spirit.
+
+Produce 10 to 15 vocabulary entries — words and short phrases that this brand owns or has adopted. These are not defined elsewhere in the output; they are the language the brand uses that competitors don't.
 
 Do not wrap the JSON in markdown. Return raw JSON only.

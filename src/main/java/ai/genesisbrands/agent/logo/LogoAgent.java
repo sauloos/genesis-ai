@@ -138,6 +138,8 @@ public class LogoAgent {
     }
 
     private LogoOutput buildSvgOutput(DirectionBrief brief, Map<String, Object> concept, int iteration) {
+        String svgMarkup = (String) concept.get("svgMarkup");
+        SvgValidator.validate(svgMarkup);
         return new LogoOutput(
             brief.engagementId(),
             LogoOutput.Method.SVG_CONCEPT,
@@ -145,7 +147,7 @@ public class LogoAgent {
             (String) concept.get("symbolism"),
             null,
             null,
-            (String) concept.get("svgMarkup"),
+            svgMarkup,
             (String) concept.get("reasoning"),
             iteration
         );
