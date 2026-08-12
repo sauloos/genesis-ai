@@ -24,12 +24,24 @@ az acr build \
   -t "genesis-ai:latest" \
   . -o none
 
-# Update Container App with the new tagged image to force a fresh pull
+# Update Container App with the new tagged image to force a fresh pull.
+# Also pass through any API keys from .env that have been set/changed.
 echo "[ 2/2 ] Updating Container App..."
-az containerapp update \
-  -n "$APP_NAME" -g "$RESOURCE_GROUP" \
-  --image "$ACR_SERVER/genesis-ai:$TAG" \
-  -o none
+ENV_OVERRIDES=""
+[ -n "${UNSPLASH_ACCESS_KEY:-}" ] && ENV_OVERRIDES="UNSPLASH_ACCESS_KEY=$UNSPLASH_ACCESS_KEY"
+
+if [ -n "$ENV_OVERRIDES" ]; then
+  az containerapp update \
+    -n "$APP_NAME" -g "$RESOURCE_GROUP" \
+    --image "$ACR_SERVER/genesis-ai:$TAG" \
+    --set-env-vars $ENV_OVERRIDES \
+    -o none
+else
+  az containerapp update \
+    -n "$APP_NAME" -g "$RESOURCE_GROUP" \
+    --image "$ACR_SERVER/genesis-ai:$TAG" \
+    -o none
+fi
 
 echo ""
 echo "Done. Live at: $APP_URL"

@@ -169,9 +169,9 @@ public class BrandBookTemplateRenderer {
         String bodyFontUrl     = bodyFont.replace(" ", "+");
 
         // Logo markup — primary + recoloured variants (SVG only; DALLE falls back to CSS filters)
-        String logoMarkup        = buildLogoMarkup(logo);
-        String logoMarkupWhiteout = buildLogoVariant(logo, "#ffffff");
-        String logoMarkupMono     = buildLogoVariant(logo, primaryHex);
+        String logoMarkup        = buildLogoMarkup(logo, brand.name());
+        String logoMarkupWhiteout = buildLogoVariant(logo, "#ffffff", brand.name());
+        String logoMarkupMono     = buildLogoVariant(logo, primaryHex, brand.name());
 
         // Photo data URIs (empty string = CSS background-color fallback)
         String photoCover   = fetchPhotoDataUri(brief.engagementId(), "cover");
@@ -444,7 +444,7 @@ public class BrandBookTemplateRenderer {
 
     // ── Asset helpers ─────────────────────────────────────────────────────────
 
-    private String buildLogoMarkup(LogoOutput logo) {
+    private String buildLogoMarkup(LogoOutput logo, String brandName) {
         if (logo.method() == LogoOutput.Method.SVG_CONCEPT && logo.svgMarkup() != null) {
             String svg = logo.svgMarkup().strip();
             if (svg.startsWith("<?xml")) {
@@ -462,20 +462,32 @@ public class BrandBookTemplateRenderer {
                 return "<img src=\"data:image/png;base64," + Base64.getEncoder().encodeToString(bytes)
                     + "\" style=\"max-width:100%;max-height:100%;object-fit:contain;\">";
             } catch (Exception e) {
-                log.warn("Cannot load DALLE logo for brand book PDF: {}", e.getMessage());
+                log.warn("Cannot load DALLE logo for brand book PDF (falling back to text logo): {}", e.getMessage());
             }
         }
-        return "";
+        return buildTextLogoSvg(brandName);
     }
 
-    private String buildLogoVariant(LogoOutput logo, String targetColor) {
+    private String buildLogoVariant(LogoOutput logo, String targetColor, String brandName) {
         if (logo.method() == LogoOutput.Method.SVG_CONCEPT && logo.svgMarkup() != null) {
             String svg = logo.svgMarkup().strip();
             if (svg.startsWith("<?xml")) svg = svg.substring(svg.indexOf("?>") + 2).strip();
             return logoVariantService.recolor(svg, targetColor);
         }
         // DALLE PNG — return primary markup; CSS filters in the template handle visual treatment
-        return buildLogoMarkup(logo);
+        return buildLogoMarkup(logo, brandName);
+    }
+
+    private static String buildTextLogoSvg(String brandName) {
+        String safe = brandName
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace("\"", "&quot;");
+        return "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 480 120\" width=\"100%\" height=\"100%\">"
+            + "<text x=\"50%\" y=\"62%\" text-anchor=\"middle\" dominant-baseline=\"middle\" "
+            + "font-size=\"52\" font-weight=\"800\" fill=\"currentColor\" "
+            + "font-family=\"Georgia, 'Times New Roman', serif\" letter-spacing=\"3\">"
+            + safe + "</text></svg>";
     }
 
     private String fetchPhotoDataUri(String engagementId, String slot) {

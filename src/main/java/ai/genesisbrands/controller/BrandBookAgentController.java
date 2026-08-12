@@ -9,6 +9,7 @@ import ai.genesisbrands.agent.brandbook.BrandBookTemplateRenderer;
 import ai.genesisbrands.agent.brandbook.BrandBookRefinementLoop;
 import ai.genesisbrands.agent.core.AgentRevision;
 import ai.genesisbrands.service.BlobStorageService;
+import ai.genesisbrands.service.PhotoSourcingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -17,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/agents/brand-book")
@@ -29,17 +31,20 @@ public class BrandBookAgentController {
     private final BrandBookRefinementLoop brandBookRefinementLoop;
     private final BrandBookTemplateRenderer brandBookTemplateRenderer;
     private final BlobStorageService blobStorageService;
+    private final PhotoSourcingService photoSourcingService;
 
     public BrandBookAgentController(BrandBookAgent brandBookAgent,
                                      BaselineBrandBookService baselineBrandBookService,
                                      BrandBookRefinementLoop brandBookRefinementLoop,
                                      BrandBookTemplateRenderer brandBookTemplateRenderer,
-                                     BlobStorageService blobStorageService) {
+                                     BlobStorageService blobStorageService,
+                                     PhotoSourcingService photoSourcingService) {
         this.brandBookAgent = brandBookAgent;
         this.baselineBrandBookService = baselineBrandBookService;
         this.brandBookRefinementLoop = brandBookRefinementLoop;
         this.brandBookTemplateRenderer = brandBookTemplateRenderer;
         this.blobStorageService = blobStorageService;
+        this.photoSourcingService = photoSourcingService;
     }
 
     @PostMapping("/execute")
@@ -83,6 +88,19 @@ public class BrandBookAgentController {
 
     @PostMapping(value = "/render-pdf", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<byte[]> renderPdf(@RequestBody RenderPdfRequest request) {
+        // Source photos on demand so Playground and direct API calls get imagery too.
+        // Non-fatal: missing Unsplash key or network error just leaves photo slots as colour fills.
+        List<String> keywords = request.input().visualIdentity() != null
+            ? request.input().visualIdentity().imageKeywords()
+            : null;
+        if (keywords != null && !keywords.isEmpty()) {
+            try {
+                photoSourcingService.fetchAndStore(request.input().brief().engagementId(), keywords);
+            } catch (Exception e) {
+                log.warn("Photo sourcing in render-pdf failed (non-fatal): {}", e.getMessage());
+            }
+        }
+
         byte[] pdf = brandBookTemplateRenderer.render(request.input(), request.output());
 
         String blobPath = "assets/brand-books/%s/%s-%d.pdf".formatted(
