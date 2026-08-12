@@ -3,6 +3,7 @@ package ai.genesisbrands.agent.brandbook;
 import ai.genesisbrands.agent.copy.CopyOutput;
 import ai.genesisbrands.agent.core.DirectionBrief;
 import ai.genesisbrands.agent.logo.LogoOutput;
+import ai.genesisbrands.agent.logo.LogoVariantService;
 import ai.genesisbrands.agent.playbook.PlaybookOutput;
 import ai.genesisbrands.agent.visualidentity.VisualIdentityOutput;
 import ai.genesisbrands.service.BlobStorageService;
@@ -49,13 +50,16 @@ public class BrandBookTemplateRenderer {
     private static final String ASSET_URL_PREFIX = "/api/assets/";
 
     private final BlobStorageService blobStorageService;
+    private final LogoVariantService logoVariantService;
 
     private Playwright playwright;
     private Browser browser;
     private String templateHtml;
 
-    public BrandBookTemplateRenderer(BlobStorageService blobStorageService) {
+    public BrandBookTemplateRenderer(BlobStorageService blobStorageService,
+                                     LogoVariantService logoVariantService) {
         this.blobStorageService = blobStorageService;
+        this.logoVariantService = logoVariantService;
     }
 
     @PostConstruct
@@ -109,8 +113,10 @@ public class BrandBookTemplateRenderer {
         String headlineFontUrl = headlineFont.replace(" ", "+");
         String bodyFontUrl     = bodyFont.replace(" ", "+");
 
-        // Logo markup (SVG inline or DALLE base64 img)
-        String logoMarkup = buildLogoMarkup(logo);
+        // Logo markup — primary + recoloured variants (SVG only; DALLE falls back to CSS filters)
+        String logoMarkup        = buildLogoMarkup(logo);
+        String logoMarkupWhiteout = buildLogoVariant(logo, "#ffffff");
+        String logoMarkupMono     = buildLogoVariant(logo, primaryHex);
 
         // Photo data URIs (empty string = CSS background-color fallback)
         String photoCover   = fetchPhotoDataUri(brief.engagementId(), "cover");
@@ -162,8 +168,8 @@ public class BrandBookTemplateRenderer {
         subs.put("{{BRAND_STORY_SNIPPET}}", esc(brandStorySnip));
         subs.put("{{VISION_PILLARS_HTML}}", visionHtml);
         subs.put("{{VALUES_HTML}}",      valuesHtml);
-        subs.put("{{LOGO_WHITEOUT}}",    logoMarkup);
-        subs.put("{{LOGO_MONO}}",        logoMarkup);
+        subs.put("{{LOGO_WHITEOUT}}",    logoMarkupWhiteout);
+        subs.put("{{LOGO_MONO}}",        logoMarkupMono);
         subs.put("{{LOGO_PRIMARY}}",     logoMarkup);
         subs.put("{{LOGO_CLEARANCE_SVG}}", clearanceSvg);
         subs.put("{{LOGO_USAGE}}",       esc(output.logoUsageGuidelines()));
@@ -405,6 +411,16 @@ public class BrandBookTemplateRenderer {
             }
         }
         return "";
+    }
+
+    private String buildLogoVariant(LogoOutput logo, String targetColor) {
+        if (logo.method() == LogoOutput.Method.SVG_CONCEPT && logo.svgMarkup() != null) {
+            String svg = logo.svgMarkup().strip();
+            if (svg.startsWith("<?xml")) svg = svg.substring(svg.indexOf("?>") + 2).strip();
+            return logoVariantService.recolor(svg, targetColor);
+        }
+        // DALLE PNG — return primary markup; CSS filters in the template handle visual treatment
+        return buildLogoMarkup(logo);
     }
 
     private String fetchPhotoDataUri(String engagementId, String slot) {
