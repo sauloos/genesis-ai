@@ -10,6 +10,7 @@ import ai.genesisbrands.agent.copy.CopyOutput;
 import ai.genesisbrands.agent.copy.CopyRefinementLoop;
 import ai.genesisbrands.agent.core.DirectionBrief;
 import ai.genesisbrands.agent.logo.LogoAgent;
+import ai.genesisbrands.agent.logo.LogoExportService;
 import ai.genesisbrands.agent.logo.LogoOutput;
 import ai.genesisbrands.agent.logo.LogoRefinementLoop;
 import ai.genesisbrands.agent.playbook.PlaybookAgent;
@@ -63,6 +64,7 @@ public class EngagementOrchestratorService {
     private final BrandBookRefinementLoop brandBookLoop;
     private final BrandBookTemplateRenderer pdfRenderer;
     private final PhotoSourcingService photoSourcingService;
+    private final LogoExportService logoExportService;
     private final BlobStorageService blobStorageService;
     private final ObjectMapper objectMapper;
 
@@ -112,15 +114,17 @@ public class EngagementOrchestratorService {
                 log.warn("Photo sourcing failed for engagement {} (non-fatal): {}", engagementId, e.getMessage());
             }
 
-            // Render and upload a brand book PDF for each direction.
-            // Non-fatal: agent outputs are the primary record; PDF is a derived deliverable.
-            List<DirectionOutput> withPdfs = new ArrayList<>();
+            // Render screen PDF and export logo ZIP for each direction.
+            // Both are non-fatal: agent outputs are the primary record; derived assets
+            // are best-effort and stored separately in blob.
+            List<DirectionOutput> finalized = new ArrayList<>();
             for (DirectionOutput dir : directionOutputs) {
-                String pdfBlobPath = renderAndStorePdf(dir);
-                withPdfs.add(dir.withPdfBlobPath(pdfBlobPath));
+                String pdfBlobPath     = renderAndStorePdf(dir);
+                String logoZipBlobPath = exportLogoPackage(dir);
+                finalized.add(dir.withPdfBlobPath(pdfBlobPath).withLogoZipBlobPath(logoZipBlobPath));
             }
 
-            EngagementResults results = new EngagementResults(withPdfs);
+            EngagementResults results = new EngagementResults(finalized);
             engagement.setResultsJson(objectMapper.writeValueAsString(results));
             engagement.setStatus(Engagement.Status.DONE);
             engagement.setUpdatedAt(Instant.now());
@@ -161,7 +165,16 @@ public class EngagementOrchestratorService {
             ? brandBookLoop.run(bbIn).output()
             : brandBookAgent.execute(bbIn);
 
-        return new DirectionOutput(brief.direction().name(), brief, copy, visual, logo, playbook, brandBook, null);
+        return new DirectionOutput(brief.direction().name(), brief, copy, visual, logo, playbook, brandBook, null, null);
+    }
+
+    private String exportLogoPackage(DirectionOutput dir) {
+        VisualIdentityOutput visual = dir.visualIdentity();
+        String primaryHex = visual.colorPalette() != null && !visual.colorPalette().isEmpty()
+            ? visual.colorPalette().get(0).hex()
+            : "#000000";
+        return logoExportService.packageLogos(
+            dir.brief().engagementId(), dir.direction(), dir.logo(), primaryHex);
     }
 
     private String renderAndStorePdf(DirectionOutput dir) {
@@ -192,10 +205,14 @@ public class EngagementOrchestratorService {
         LogoOutput logo,
         PlaybookOutput playbook,
         BrandBookOutput brandBook,
-        String pdfBlobPath
+        String pdfBlobPath,
+        String logoZipBlobPath
     ) {
         DirectionOutput withPdfBlobPath(String path) {
-            return new DirectionOutput(direction, brief, copy, visualIdentity, logo, playbook, brandBook, path);
+            return new DirectionOutput(direction, brief, copy, visualIdentity, logo, playbook, brandBook, path, logoZipBlobPath);
+        }
+        DirectionOutput withLogoZipBlobPath(String path) {
+            return new DirectionOutput(direction, brief, copy, visualIdentity, logo, playbook, brandBook, pdfBlobPath, path);
         }
     }
 }

@@ -79,15 +79,70 @@ public class BrandBookTemplateRenderer {
     // ── Public API ────────────────────────────────────────────────────────────
 
     public byte[] render(BrandBookInput input, BrandBookOutput output) {
+        return renderHtml(buildHtml(input, output), false);
+    }
+
+    /**
+     * Print-ready variant: 3 mm bleed on all sides (216×303 mm page) with
+     * corner crop marks rendered as an SVG overlay. Content is identical to
+     * the screen PDF; only the @page size and the crop-mark layer differ.
+     */
+    public byte[] renderPrintReady(BrandBookInput input, BrandBookOutput output) {
         String html = buildHtml(input, output);
+        html = injectPrintBleedCss(html);
+        return renderHtml(html, true);
+    }
+
+    private byte[] renderHtml(String html, boolean printReady) {
         BrowserContext ctx = browser.newContext();
         try {
-            Page page = ctx.newPage();
-            page.setContent(html, new Page.SetContentOptions().setWaitUntil(WaitUntilState.NETWORKIDLE));
-            return page.pdf(new Page.PdfOptions().setFormat("A4").setPrintBackground(true));
+            Page tab = ctx.newPage();
+            tab.setContent(html, new Page.SetContentOptions().setWaitUntil(WaitUntilState.NETWORKIDLE));
+            Page.PdfOptions opts = new Page.PdfOptions().setPrintBackground(true);
+            if (printReady) {
+                opts.setWidth("216mm").setHeight("303mm");
+            } else {
+                opts.setFormat("A4");
+            }
+            return tab.pdf(opts);
         } finally {
             ctx.close();
         }
+    }
+
+    private static String injectPrintBleedCss(String html) {
+        // 3 mm bleed: page grows to 216×303 mm; crop marks are drawn inside the bleed
+        // zone as thin black L-lines at each corner of the 210×297 mm trim box.
+        String cropMarksSvg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 216 303'>"
+            + "<line x1='0' y1='3' x2='2' y2='3' stroke='#000' stroke-width='0.3'/>"
+            + "<line x1='3' y1='0' x2='3' y2='2' stroke='#000' stroke-width='0.3'/>"
+            + "<line x1='214' y1='3' x2='216' y2='3' stroke='#000' stroke-width='0.3'/>"
+            + "<line x1='213' y1='0' x2='213' y2='2' stroke='#000' stroke-width='0.3'/>"
+            + "<line x1='0' y1='300' x2='2' y2='300' stroke='#000' stroke-width='0.3'/>"
+            + "<line x1='3' y1='301' x2='3' y2='303' stroke='#000' stroke-width='0.3'/>"
+            + "<line x1='214' y1='300' x2='216' y2='300' stroke='#000' stroke-width='0.3'/>"
+            + "<line x1='213' y1='301' x2='213' y2='303' stroke='#000' stroke-width='0.3'/>"
+            + "</svg>";
+        String cropMarksB64 = Base64.getEncoder()
+            .encodeToString(cropMarksSvg.getBytes(StandardCharsets.UTF_8));
+
+        String printCss = "\n/* Print-ready: 3 mm bleed + crop marks */\n"
+            + "@page { size: 216mm 303mm; margin: 0; }\n"
+            + ".page { width: 216mm !important; height: 303mm !important; }\n"
+            + ".page::after {\n"
+            + "  content: '';\n"
+            + "  position: absolute;\n"
+            + "  top: 0; left: 0; width: 100%; height: 100%;\n"
+            + "  background: url(\"data:image/svg+xml;base64," + cropMarksB64 + "\") no-repeat 0 0;\n"
+            + "  background-size: 100% 100%;\n"
+            + "  pointer-events: none;\n"
+            + "  z-index: 99999;\n"
+            + "}\n";
+
+        // Inject before the last </style> in the <head> so it overrides the base @page rule
+        int idx = html.lastIndexOf("</style>");
+        if (idx < 0) return html;
+        return html.substring(0, idx) + printCss + html.substring(idx);
     }
 
     // ── HTML builder ──────────────────────────────────────────────────────────

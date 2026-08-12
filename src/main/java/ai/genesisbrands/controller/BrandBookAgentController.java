@@ -102,6 +102,17 @@ public class BrandBookAgentController {
             .body(pdf);
     }
 
+    @PostMapping(value = "/render-pdf-print", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> renderPdfPrint(@RequestBody RenderPdfRequest request) {
+        byte[] pdf = brandBookTemplateRenderer.renderPrintReady(request.input(), request.output());
+        String filename = request.input().brief().brand().name().replaceAll("[^a-zA-Z0-9]+", "-")
+            + "-brand-book-print.pdf";
+        return ResponseEntity.ok()
+            .contentType(MediaType.APPLICATION_PDF)
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+            .body(pdf);
+    }
+
     public record ReviseRequest(
         BrandBookInput input,
         BrandBookOutput previous,
