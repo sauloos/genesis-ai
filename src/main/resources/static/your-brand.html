@@ -377,6 +377,9 @@ function renderCTA(data) {
       <button class="cta-btn cta-ghost" onclick="downloadPdf('ANCHORED')">↓ Anchored PDF</button>
       <button class="cta-btn cta-ghost" onclick="downloadPdf('EVOLVED')">↓ Evolved PDF</button>
       <button class="cta-btn cta-ghost" onclick="downloadPdf('DISRUPTIVE')">↓ Disruptive PDF</button>
+      <button class="cta-btn cta-ghost" onclick="downloadLogos('ANCHORED')" title="SVG logo pack">↓ Anchored Logos</button>
+      <button class="cta-btn cta-ghost" onclick="downloadLogos('EVOLVED')" title="SVG logo pack">↓ Evolved Logos</button>
+      <button class="cta-btn cta-ghost" onclick="downloadLogos('DISRUPTIVE')" title="SVG logo pack">↓ Disruptive Logos</button>
     `;
   } else if (data.summary.paymentStatus === 'PAID') {
     msg.textContent = 'Your brand package is unlocked';
@@ -384,6 +387,9 @@ function renderCTA(data) {
       <button class="cta-btn cta-ghost" onclick="downloadPdf('ANCHORED')">↓ Anchored PDF</button>
       <button class="cta-btn cta-ghost" onclick="downloadPdf('EVOLVED')">↓ Evolved PDF</button>
       <button class="cta-btn cta-ghost" onclick="downloadPdf('DISRUPTIVE')">↓ Disruptive PDF</button>
+      <button class="cta-btn cta-ghost" onclick="downloadLogos('ANCHORED')" title="SVG logo pack">↓ Anchored Logos</button>
+      <button class="cta-btn cta-ghost" onclick="downloadLogos('EVOLVED')" title="SVG logo pack">↓ Evolved Logos</button>
+      <button class="cta-btn cta-ghost" onclick="downloadLogos('DISRUPTIVE')" title="SVG logo pack">↓ Disruptive Logos</button>
     `;
   } else {
     msg.textContent = 'Your three brand directions are ready — unlock to download the full package.';
@@ -421,6 +427,10 @@ async function submitPaymentRequest() {
 
 function downloadPdf(direction) {
   window.open(`${API}/api/engagements/${engagementId}/pdf/${direction}`, '_blank');
+}
+
+function downloadLogos(direction) {
+  window.open(`${API}/api/engagements/${engagementId}/logos/${direction}`, '_blank');
 }
 
 async function logout() {

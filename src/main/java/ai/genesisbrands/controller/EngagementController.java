@@ -6,6 +6,7 @@ import ai.genesisbrands.model.Engagement;
 import ai.genesisbrands.repository.EngagementRepository;
 import ai.genesisbrands.security.AdminAuthHelper;
 import ai.genesisbrands.security.ClientAuthFilter;
+import ai.genesisbrands.service.BlobStorageService;
 import ai.genesisbrands.service.ClientAuthService;
 import ai.genesisbrands.service.EngagementOrchestratorService;
 import ai.genesisbrands.service.EngagementOrchestratorService.DirectionOutput;
@@ -13,6 +14,8 @@ import ai.genesisbrands.service.EngagementOrchestratorService.EngagementResults;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -29,9 +32,12 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class EngagementController {
 
+    private static final Logger log = LoggerFactory.getLogger(EngagementController.class);
+
     private final EngagementRepository engagementRepo;
     private final EngagementOrchestratorService orchestrator;
     private final BrandBookTemplateRenderer pdfRenderer;
+    private final BlobStorageService blobStorageService;
     private final ObjectMapper objectMapper;
     private final AdminAuthHelper adminAuth;
     private final ClientAuthService clientAuthService;
@@ -136,18 +142,71 @@ public class EngagementController {
             .orElse(null);
         if (dir == null) return ResponseEntity.notFound().build();
 
+        String safeName = dir.brief().brand().name().replaceAll("[^a-zA-Z0-9]+", "-");
+        String filename = safeName + "-" + direction.toLowerCase() + "-brand-book.pdf";
+
+        // Fast path: serve the PDF that was already rendered and stored by the pipeline.
+        // Falls back to on-demand Playwright render for Playground sessions or if blob
+        // storage wasn't configured when the engagement ran.
+        if (dir.pdfBlobPath() != null) {
+            try {
+                byte[] stored = blobStorageService.download(dir.pdfBlobPath());
+                return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                    .body(stored);
+            } catch (Exception ex) {
+                log.warn("Stored PDF not found at {} — re-rendering on demand: {}", dir.pdfBlobPath(), ex.getMessage());
+            }
+        }
+
         BrandBookInput input = new BrandBookInput(
             dir.brief(), dir.playbook(), dir.copy(), dir.visualIdentity(), dir.logo()
         );
         byte[] pdf = pdfRenderer.render(input, dir.brandBook());
-
-        String filename = dir.brief().brand().name().replaceAll("[^a-zA-Z0-9]+", "-")
-            + "-" + direction.toLowerCase() + "-brand-book.pdf";
-
         return ResponseEntity.ok()
             .contentType(MediaType.APPLICATION_PDF)
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
             .body(pdf);
+    }
+
+    @GetMapping("/{id}/logos/{direction}")
+    public ResponseEntity<byte[]> downloadLogoZip(@PathVariable String id,
+                                                   @PathVariable String direction,
+                                                   HttpServletRequest req) {
+        Engagement e = engagementRepo.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Engagement not found: " + id));
+
+        boolean adminAccess = adminAuth.isAdminRequest(req);
+        if (!adminAccess && e.getPaymentStatus() != Engagement.PaymentStatus.PAID) {
+            return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).build();
+        }
+
+        EngagementResults results;
+        try {
+            results = objectMapper.readValue(e.getResultsJson(), EngagementResults.class);
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+
+        DirectionOutput dir = results.directions().stream()
+            .filter(d -> d.direction().equalsIgnoreCase(direction))
+            .findFirst()
+            .orElse(null);
+        if (dir == null || dir.logoZipBlobPath() == null) return ResponseEntity.notFound().build();
+
+        try {
+            byte[] zip = blobStorageService.download(dir.logoZipBlobPath());
+            String filename = dir.brief().brand().name().replaceAll("[^a-zA-Z0-9]+", "-")
+                + "-" + direction.toLowerCase() + "-logos.zip";
+            return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/zip"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .body(zip);
+        } catch (Exception ex) {
+            log.warn("Logo ZIP not found at {}: {}", dir.logoZipBlobPath(), ex.getMessage());
+            return ResponseEntity.notFound().build();
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
