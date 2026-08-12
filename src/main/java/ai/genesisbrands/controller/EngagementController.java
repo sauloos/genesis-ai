@@ -1,7 +1,7 @@
 package ai.genesisbrands.controller;
 
 import ai.genesisbrands.agent.brandbook.BrandBookInput;
-import ai.genesisbrands.agent.brandbook.BrandBookPdfRenderer;
+import ai.genesisbrands.agent.brandbook.BrandBookTemplateRenderer;
 import ai.genesisbrands.model.Engagement;
 import ai.genesisbrands.repository.EngagementRepository;
 import ai.genesisbrands.security.AdminAuthHelper;
@@ -31,7 +31,7 @@ public class EngagementController {
 
     private final EngagementRepository engagementRepo;
     private final EngagementOrchestratorService orchestrator;
-    private final BrandBookPdfRenderer pdfRenderer;
+    private final BrandBookTemplateRenderer pdfRenderer;
     private final ObjectMapper objectMapper;
     private final AdminAuthHelper adminAuth;
     private final ClientAuthService clientAuthService;

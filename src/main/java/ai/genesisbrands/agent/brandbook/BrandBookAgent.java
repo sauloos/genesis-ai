@@ -23,7 +23,7 @@ import java.util.Map;
  * note, orientation, and usage guidelines for logo/color/type. All creative decisions
  * (tagline, palette, fonts, logo concept) are already final by the time this agent
  * runs — its job is narrower than Playbook's: explain how to use what's already been
- * decided, never re-decide it. BrandBookPdfRenderer combines this prose with the exact
+ * decided, never re-decide it. BrandBookTemplateRenderer combines this prose with the exact
  * facts from the source specialist outputs to produce the PDF.
  */
 @Service

@@ -5,7 +5,7 @@ import ai.genesisbrands.agent.brandbook.BaselineOutput;
 import ai.genesisbrands.agent.brandbook.BrandBookAgent;
 import ai.genesisbrands.agent.brandbook.BrandBookInput;
 import ai.genesisbrands.agent.brandbook.BrandBookOutput;
-import ai.genesisbrands.agent.brandbook.BrandBookPdfRenderer;
+import ai.genesisbrands.agent.brandbook.BrandBookTemplateRenderer;
 import ai.genesisbrands.agent.brandbook.BrandBookRefinementLoop;
 import ai.genesisbrands.agent.core.AgentRevision;
 import ai.genesisbrands.service.BlobStorageService;
@@ -27,18 +27,18 @@ public class BrandBookAgentController {
     private final BrandBookAgent brandBookAgent;
     private final BaselineBrandBookService baselineBrandBookService;
     private final BrandBookRefinementLoop brandBookRefinementLoop;
-    private final BrandBookPdfRenderer brandBookPdfRenderer;
+    private final BrandBookTemplateRenderer brandBookTemplateRenderer;
     private final BlobStorageService blobStorageService;
 
     public BrandBookAgentController(BrandBookAgent brandBookAgent,
                                      BaselineBrandBookService baselineBrandBookService,
                                      BrandBookRefinementLoop brandBookRefinementLoop,
-                                     BrandBookPdfRenderer brandBookPdfRenderer,
+                                     BrandBookTemplateRenderer brandBookTemplateRenderer,
                                      BlobStorageService blobStorageService) {
         this.brandBookAgent = brandBookAgent;
         this.baselineBrandBookService = baselineBrandBookService;
         this.brandBookRefinementLoop = brandBookRefinementLoop;
-        this.brandBookPdfRenderer = brandBookPdfRenderer;
+        this.brandBookTemplateRenderer = brandBookTemplateRenderer;
         this.blobStorageService = blobStorageService;
     }
 
@@ -83,7 +83,7 @@ public class BrandBookAgentController {
 
     @PostMapping(value = "/render-pdf", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<byte[]> renderPdf(@RequestBody RenderPdfRequest request) {
-        byte[] pdf = brandBookPdfRenderer.render(request.input(), request.output());
+        byte[] pdf = brandBookTemplateRenderer.render(request.input(), request.output());
 
         String blobPath = "assets/brand-books/%s/%s-%d.pdf".formatted(
             request.input().brief().engagementId(),

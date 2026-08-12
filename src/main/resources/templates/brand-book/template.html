@@ -1,0 +1,1652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{HEADLINE_FONT_URL}}:ital,wght@0,300;0,400;0,700;1,400&family={{BODY_FONT_URL}}:wght@400;600;700&display=swap">
+<title>{{BRAND_NAME}} Brand Identity Guidelines</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   RESET + VARIABLES
+═══════════════════════════════════════════════════════════════ */
+:root {
+  --primary:       {{PRIMARY_HEX}};
+  --primary-dark:  {{PRIMARY_DARK_HEX}};
+  --primary-light: {{PRIMARY_LIGHT_HEX}};
+  --secondary:     {{SECONDARY_HEX}};
+  --accent:        {{ACCENT_HEX}};
+  --neutral:       {{NEUTRAL_HEX}};
+  --white:         #ffffff;
+  --off-white:     #f7f7f5;
+  --text-dark:     #1a1a1a;
+  --text-mid:      #555555;
+  --font-heading:  '{{HEADLINE_FONT}}', Georgia, serif;
+  --font-body:     '{{BODY_FONT}}', Arial, sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font-body);
+  color: var(--text-dark);
+  background: #ccc;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+@page { size: A4; margin: 0; }
+
+/* ═══════════════════════════════════════════════════════════════
+   PAGE STRUCTURE
+═══════════════════════════════════════════════════════════════ */
+.page {
+  width: 210mm;
+  height: 297mm;
+  position: relative;
+  overflow: hidden;
+  page-break-after: always;
+  background: var(--white);
+  display: flex;
+  flex-direction: column;
+}
+.page:last-of-type { page-break-after: auto; }
+
+/* Content pages use a standard top-bar header */
+.page-header {
+  background: var(--primary);
+  padding: 18mm 18mm 10mm;
+  flex-shrink: 0;
+}
+.page-header-label {
+  font-family: var(--font-body);
+  font-size: 7pt;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.6);
+  margin-bottom: 4mm;
+}
+.page-header-title {
+  font-family: var(--font-heading);
+  font-size: 22pt;
+  font-weight: 700;
+  color: var(--white);
+  line-height: 1.1;
+}
+.page-body {
+  flex: 1;
+  padding: 12mm 18mm;
+  overflow: hidden;
+}
+
+/* Shared utilities */
+.brand-name-label {
+  font-family: var(--font-body);
+  font-size: 6.5pt;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+.eyebrow {
+  font-family: var(--font-body);
+  font-size: 6.5pt;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.55);
+  margin-bottom: 2mm;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PAGE 1 — COVER
+═══════════════════════════════════════════════════════════════ */
+.page-cover {
+  background: var(--primary);
+  background-image: url("{{PHOTO_COVER_DATA}}");
+  background-size: cover;
+  background-position: center;
+  justify-content: flex-end;
+}
+.cover-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    150deg,
+    var(--primary-dark) 0%,
+    rgba(0,0,0,0.35) 60%,
+    transparent 100%
+  );
+}
+.cover-top-bar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  padding: 10mm 14mm;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  z-index: 2;
+}
+.cover-logo {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: brightness(0) invert(1);
+  opacity: 0.92;
+}
+.cover-logo svg, .cover-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.cover-guide-label {
+  font-family: var(--font-body);
+  font-size: 6pt;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.55);
+  text-align: right;
+  padding-top: 4mm;
+}
+.cover-bottom {
+  position: relative;
+  z-index: 2;
+  padding: 12mm 14mm 14mm;
+}
+.cover-brand-name {
+  font-family: var(--font-heading);
+  font-size: 42pt;
+  font-weight: 700;
+  color: var(--white);
+  line-height: 1.05;
+  margin-bottom: 3mm;
+  letter-spacing: -0.01em;
+}
+.cover-tagline {
+  font-family: var(--font-body);
+  font-size: 11pt;
+  color: rgba(255,255,255,0.75);
+  font-style: italic;
+  margin-bottom: 6mm;
+}
+.cover-direction-pill {
+  display: inline-block;
+  font-family: var(--font-body);
+  font-size: 6pt;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--primary);
+  background: var(--white);
+  padding: 2mm 4mm;
+  border-radius: 1mm;
+}
+.cover-diagonal {
+  position: absolute;
+  bottom: 0; right: 0;
+  width: 55%;
+  height: 100%;
+  background: rgba(255,255,255,0.06);
+  clip-path: polygon(30% 0%, 100% 0%, 100% 100%, 0% 100%);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PAGE 2 — BRAND STATEMENT
+═══════════════════════════════════════════════════════════════ */
+.page-brand-statement {
+  flex-direction: row;
+}
+.statement-left {
+  width: 42%;
+  background: var(--primary);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 12mm 10mm 12mm 14mm;
+  position: relative;
+}
+.statement-left::after {
+  content: '';
+  position: absolute;
+  right: -24mm;
+  top: 0; bottom: 0;
+  width: 30mm;
+  background: var(--primary);
+  clip-path: polygon(0 0, 45% 0, 100% 100%, 0 100%);
+}
+.statement-brand-name {
+  font-family: var(--font-heading);
+  font-size: 18pt;
+  font-weight: 700;
+  color: var(--white);
+  line-height: 1.2;
+  margin-bottom: 3mm;
+}
+.statement-year {
+  font-family: var(--font-body);
+  font-size: 7pt;
+  font-weight: 400;
+  color: rgba(255,255,255,0.5);
+  letter-spacing: 0.1em;
+}
+.statement-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 16mm 14mm 16mm 28mm;
+}
+.statement-quote-mark {
+  font-family: var(--font-heading);
+  font-size: 72pt;
+  color: var(--primary);
+  opacity: 0.15;
+  line-height: 0.6;
+  margin-bottom: 4mm;
+}
+.statement-tagline {
+  font-family: var(--font-heading);
+  font-size: 24pt;
+  font-weight: 700;
+  color: var(--text-dark);
+  line-height: 1.2;
+  margin-bottom: 7mm;
+}
+.statement-body {
+  font-family: var(--font-body);
+  font-size: 9pt;
+  color: var(--text-mid);
+  line-height: 1.6;
+  max-width: 70mm;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PAGE 3 — WELCOME & CONTENTS
+═══════════════════════════════════════════════════════════════ */
+.welcome-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10mm;
+  height: 100%;
+}
+.welcome-text h2 {
+  font-family: var(--font-heading);
+  font-size: 16pt;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 5mm;
+}
+.welcome-text p {
+  font-family: var(--font-body);
+  font-size: 9pt;
+  line-height: 1.7;
+  color: var(--text-dark);
+  margin-bottom: 4mm;
+}
+.contents-list {
+  border-left: 3px solid var(--primary);
+  padding-left: 6mm;
+}
+.contents-list h3 {
+  font-family: var(--font-body);
+  font-size: 7.5pt;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--primary);
+  margin-bottom: 5mm;
+}
+.contents-item {
+  display: flex;
+  align-items: baseline;
+  gap: 3mm;
+  padding: 2mm 0;
+  border-bottom: 1px solid rgba(0,0,0,0.07);
+}
+.contents-num {
+  font-family: var(--font-heading);
+  font-size: 8pt;
+  font-weight: 700;
+  color: var(--primary);
+  width: 5mm;
+  flex-shrink: 0;
+}
+.contents-name {
+  font-family: var(--font-body);
+  font-size: 8.5pt;
+  color: var(--text-dark);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PAGE 4 — MISSION
+═══════════════════════════════════════════════════════════════ */
+.page-mission {
+  flex-direction: column;
+}
+.mission-photo {
+  height: 40%;
+  flex-shrink: 0;
+  background-color: var(--primary-dark);
+  background-image: url("{{PHOTO_MISSION_DATA}}");
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+.mission-photo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.4) 100%);
+}
+.mission-content {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+}
+.mission-stripe {
+  width: 8mm;
+  background: var(--primary);
+  flex-shrink: 0;
+}
+.mission-text {
+  flex: 1;
+  padding: 10mm 14mm;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.mission-text blockquote {
+  font-family: var(--font-heading);
+  font-size: 15pt;
+  font-weight: 700;
+  color: var(--text-dark);
+  line-height: 1.35;
+  border: none;
+  margin-bottom: 6mm;
+}
+.mission-text p {
+  font-family: var(--font-body);
+  font-size: 8.5pt;
+  color: var(--text-mid);
+  line-height: 1.65;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PAGE 5 — VISION
+═══════════════════════════════════════════════════════════════ */
+.vision-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5mm;
+  margin-top: 2mm;
+}
+.vision-pillar {
+  background: var(--off-white);
+  border-radius: 2mm;
+  padding: 6mm 7mm;
+  border-top: 3px solid var(--primary);
+}
+.vision-pillar-label {
+  font-family: var(--font-body);
+  font-size: 6.5pt;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--primary);
+  margin-bottom: 2.5mm;
+}
+.vision-pillar-text {
+  font-family: var(--font-body);
+  font-size: 8.5pt;
+  color: var(--text-dark);
+  line-height: 1.55;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PAGE 6 — VALUES
+═══════════════════════════════════════════════════════════════ */
+.values-row {
+  display: flex;
+  gap: 5mm;
+  flex-wrap: nowrap;
+  margin-top: 3mm;
+}
+.value-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 6mm 5mm;
+  background: var(--off-white);
+  border-radius: 2mm;
+}
+.value-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4mm;
+  flex-shrink: 0;
+}
+.value-icon span {
+  font-family: var(--font-heading);
+  font-size: 13pt;
+  font-weight: 700;
+  color: var(--white);
+  line-height: 1;
+}
+.value-name {
+  font-family: var(--font-heading);
+  font-size: 9pt;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 2mm;
+  line-height: 1.2;
+}
+.value-desc {
+  font-family: var(--font-body);
+  font-size: 7.5pt;
+  color: var(--text-mid);
+  line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PAGES 7–10 — LOGO SYSTEM
+═══════════════════════════════════════════════════════════════ */
+.logo-display-primary {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--white);
+  gap: 8mm;
+}
+.logo-mark-area {
+  width: 120px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.logo-mark-area svg, .logo-mark-area img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.logo-display-name {
+  font-family: var(--font-heading);
+  font-size: 22pt;
+  font-weight: 700;
+  color: var(--text-dark);
+  letter-spacing: 0.04em;
+}
+.logo-display-type {
+  font-family: var(--font-body);
+  font-size: 7pt;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-mid);
+}
+
+.logo-variants-row {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+.logo-variant-primary-bg {
+  flex: 1;
+  background: var(--primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5mm;
+}
+.logo-variant-white-bg {
+  flex: 1;
+  background: var(--off-white);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5mm;
+  border-left: 1px solid #ddd;
+}
+.logo-variant-area {
+  width: 90px;
+  height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.logo-variant-area svg, .logo-variant-area img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  filter: brightness(0) invert(1); /* white-out for primary-bg */
+}
+.logo-variant-white-bg .logo-variant-area svg,
+.logo-variant-white-bg .logo-variant-area img {
+  filter: grayscale(1) brightness(0); /* mono for white-bg */
+}
+.variant-label {
+  font-family: var(--font-body);
+  font-size: 6.5pt;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+.logo-variant-primary-bg .variant-label { color: rgba(255,255,255,0.6); }
+.logo-variant-white-bg .variant-label { color: var(--text-mid); }
+
+/* Logo clearance zone */
+.clearance-page { display: flex; flex-direction: column; }
+.clearance-diagram {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6mm;
+}
+.clearance-diagram svg { max-width: 130mm; max-height: 90mm; }
+
+/* Logo do's & don'ts */
+.donts-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4mm;
+  margin-top: 3mm;
+}
+.dont-card {
+  background: var(--off-white);
+  border-radius: 2mm;
+  padding: 4mm;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2mm;
+}
+.dont-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+}
+.dont-mark svg, .dont-mark img { width: 100%; height: 100%; object-fit: contain; }
+.dont-label {
+  font-family: var(--font-body);
+  font-size: 6.5pt;
+  color: #cc3300;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.3;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PAGE 11 — COLOUR PALETTE
+═══════════════════════════════════════════════════════════════ */
+.swatch-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4mm;
+}
+.swatch-card {
+  border-radius: 2mm;
+  overflow: hidden;
+  border: 1px solid rgba(0,0,0,0.08);
+}
+.swatch-color-block {
+  height: 22mm;
+}
+.swatch-specs {
+  padding: 4mm 5mm;
+  background: var(--white);
+}
+.swatch-spec-name {
+  font-family: var(--font-heading);
+  font-size: 9.5pt;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: 2mm;
+}
+.swatch-spec-row {
+  display: flex;
+  gap: 3mm;
+  flex-wrap: wrap;
+  margin-top: 1.5mm;
+}
+.swatch-spec-pill {
+  font-family: var(--font-body);
+  font-size: 6.5pt;
+  font-weight: 600;
+  color: var(--text-mid);
+  background: var(--off-white);
+  padding: 0.8mm 2.5mm;
+  border-radius: 1mm;
+}
+.swatch-spec-pill strong {
+  color: var(--text-dark);
+  margin-right: 0.5mm;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PAGE 12 — GRADIENTS
+═══════════════════════════════════════════════════════════════ */
+.gradient-items { display: flex; flex-direction: column; gap: 7mm; margin-top: 2mm; }
+.gradient-bar-wrap { display: flex; flex-direction: column; gap: 2mm; }
+.gradient-bar {
+  height: 18mm;
+  border-radius: 2mm;
+}
+.gradient-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.gradient-name {
+  font-family: var(--font-heading);
+  font-size: 9pt;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+.gradient-usage {
+  font-family: var(--font-body);
+  font-size: 7.5pt;
+  color: var(--text-mid);
+  max-width: 60%;
+  text-align: right;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PAGE 13 — GRAPHIC DEVICES
+═══════════════════════════════════════════════════════════════ */
+.page-devices {
+  background: var(--primary-dark);
+}
+.page-devices .page-header {
+  background: transparent;
+}
+.page-devices .page-header-label,
+.page-devices .page-header-title { color: var(--white); }
+.page-devices .page-body { padding: 6mm 18mm 12mm; }
+
+.devices-icon {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 8mm;
+}
+.devices-icon svg, .devices-icon img {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+  opacity: 0.85;
+}
+.devices-section-label {
+  font-family: var(--font-body);
+  font-size: 6.5pt;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.5);
+  margin-bottom: 4mm;
+}
+.stroke-variants, .box-variants {
+  display: flex;
+  flex-direction: column;
+  gap: 3mm;
+  margin-bottom: 7mm;
+}
+.stroke-item, .box-item {
+  font-family: var(--font-body);
+  font-size: 7.5pt;
+  color: rgba(255,255,255,0.75);
+  padding: 2mm 0;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PAGE 14 — PHOTOGRAPHY
+═══════════════════════════════════════════════════════════════ */
+.imagery-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5mm;
+  height: 100%;
+}
+.imagery-text p {
+  font-family: var(--font-body);
+  font-size: 8.5pt;
+  line-height: 1.65;
+  color: var(--text-dark);
+}
+.imagery-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+  gap: 3mm;
+}
+.imagery-photo {
+  background-color: var(--primary-light);
+  background-size: cover;
+  background-position: center;
+  border-radius: 1.5mm;
+  aspect-ratio: 1;
+}
+.imagery-photo:first-child { grid-column: 1 / 3; aspect-ratio: 2; }
+
+/* ═══════════════════════════════════════════════════════════════
+   PAGES 15–16 — TYPOGRAPHY
+═══════════════════════════════════════════════════════════════ */
+.typeface-section { margin-bottom: 9mm; }
+.typeface-font-name {
+  font-family: var(--font-heading);
+  font-size: 30pt;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1;
+  margin-bottom: 1mm;
+}
+.typeface-role {
+  font-family: var(--font-body);
+  font-size: 7pt;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-mid);
+  margin-bottom: 4mm;
+}
+.typeface-weights {
+  display: flex;
+  gap: 6mm;
+  flex-wrap: wrap;
+  margin-bottom: 3mm;
+}
+.typeface-weight-sample {
+  display: flex;
+  flex-direction: column;
+  gap: 1mm;
+}
+.tw-label {
+  font-family: var(--font-body);
+  font-size: 6pt;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-mid);
+}
+.tw-sample-h {
+  font-family: var(--font-heading);
+  font-size: 18pt;
+  line-height: 1;
+  color: var(--text-dark);
+}
+.tw-sample-h.w300 { font-weight: 300; }
+.tw-sample-h.w400 { font-weight: 400; }
+.tw-sample-h.w700 { font-weight: 700; }
+.tw-sample-b {
+  font-family: var(--font-body);
+  font-size: 14pt;
+  line-height: 1;
+  color: var(--text-dark);
+}
+.tw-sample-b.w400 { font-weight: 400; }
+.tw-sample-b.w600 { font-weight: 600; }
+.tw-sample-b.w700 { font-weight: 700; }
+.typeface-divider {
+  height: 1px;
+  background: var(--primary);
+  opacity: 0.2;
+  margin: 7mm 0;
+}
+.typeface-rationale-box {
+  background: var(--off-white);
+  border-left: 3px solid var(--primary);
+  padding: 4mm 6mm;
+  font-family: var(--font-body);
+  font-size: 8.5pt;
+  color: var(--text-dark);
+  line-height: 1.6;
+}
+
+/* Typography hierarchy page */
+.typo-hierarchy { display: flex; flex-direction: column; gap: 5mm; }
+.typo-row { display: flex; gap: 4mm; align-items: baseline; border-bottom: 1px solid rgba(0,0,0,0.07); padding-bottom: 4mm; }
+.typo-tag {
+  font-family: var(--font-body);
+  font-size: 6pt;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--primary);
+  width: 16mm;
+  flex-shrink: 0;
+  padding-top: 1mm;
+}
+.typo-h1 { font-family: var(--font-heading); font-size: 28pt; font-weight: 700; color: var(--text-dark); line-height: 1.1; }
+.typo-h2 { font-family: var(--font-heading); font-size: 18pt; font-weight: 700; color: var(--text-dark); line-height: 1.2; }
+.typo-h3 { font-family: var(--font-heading); font-size: 13pt; font-weight: 700; color: var(--text-dark); }
+.typo-body { font-family: var(--font-body); font-size: 9.5pt; color: var(--text-dark); line-height: 1.6; }
+.typo-caption { font-family: var(--font-body); font-size: 7.5pt; color: var(--text-mid); }
+
+/* ═══════════════════════════════════════════════════════════════
+   PAGES 17–18 — GRIDS
+═══════════════════════════════════════════════════════════════ */
+.page-grid-bg {
+  background: var(--off-white);
+}
+.grid-diagram {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8mm;
+}
+.grid-diagram svg {
+  max-width: 120mm;
+  max-height: 160mm;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PAGES 19–21 — APPLICATION EXAMPLES
+═══════════════════════════════════════════════════════════════ */
+.page-application {
+  flex-direction: row;
+}
+.app-sidebar {
+  width: 18mm;
+  background: var(--primary);
+  display: flex;
+  align-items: flex-end;
+  padding: 10mm 5mm;
+  flex-shrink: 0;
+}
+.app-sidebar-text {
+  font-family: var(--font-body);
+  font-size: 6pt;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.5);
+  writing-mode: vertical-lr;
+  transform: rotate(180deg);
+}
+.app-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.app-photo {
+  flex: 1;
+  background-color: var(--primary-light);
+  background-image: url("{{PHOTO_APP_DATA}}");
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+.app-photo-overlay {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 10mm 12mm;
+  background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%);
+}
+.app-brand-name {
+  font-family: var(--font-heading);
+  font-size: 20pt;
+  font-weight: 700;
+  color: var(--white);
+  line-height: 1.1;
+}
+.app-logo {
+  position: absolute;
+  top: 10mm;
+  right: 10mm;
+  width: 40px;
+  height: 40px;
+  filter: brightness(0) invert(1);
+  opacity: 0.9;
+}
+.app-logo svg, .app-logo img { width: 100%; height: 100%; object-fit: contain; }
+
+/* ═══════════════════════════════════════════════════════════════
+   PAGES 22–23 — STATIONERY
+═══════════════════════════════════════════════════════════════ */
+.stationery-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 8mm;
+  height: 100%;
+}
+.card-mockup {
+  width: 85mm;
+  height: 50mm;
+  border-radius: 2.5mm;
+  overflow: hidden;
+  display: flex;
+  position: relative;
+  box-shadow: 0 2mm 8mm rgba(0,0,0,0.15);
+}
+.card-front {
+  background: var(--primary);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 6mm;
+}
+.card-front-logo {
+  width: 30px;
+  height: 30px;
+  filter: brightness(0) invert(1);
+  opacity: 0.9;
+}
+.card-front-logo svg, .card-front-logo img { width: 100%; height: 100%; object-fit: contain; }
+.card-brand {
+  font-family: var(--font-heading);
+  font-size: 10pt;
+  font-weight: 700;
+  color: var(--white);
+}
+
+.letterhead-mockup {
+  background: var(--white);
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 1mm;
+  padding: 8mm 10mm;
+  box-shadow: 0 1mm 4mm rgba(0,0,0,0.08);
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+.letterhead-bar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 8mm;
+  background: var(--primary);
+}
+.letterhead-content {
+  margin-top: 10mm;
+}
+.letterhead-logo-row {
+  display: flex;
+  align-items: center;
+  gap: 4mm;
+  margin-bottom: 5mm;
+}
+.letterhead-logo-area {
+  width: 28px;
+  height: 28px;
+}
+.letterhead-logo-area svg, .letterhead-logo-area img { width: 100%; height: 100%; object-fit: contain; }
+.letterhead-brand-name {
+  font-family: var(--font-heading);
+  font-size: 10pt;
+  font-weight: 700;
+  color: var(--primary);
+}
+.letterhead-lines {
+  border-top: 1px solid rgba(0,0,0,0.1);
+  padding-top: 4mm;
+}
+.letterhead-line {
+  height: 2mm;
+  background: rgba(0,0,0,0.07);
+  border-radius: 1mm;
+  margin-bottom: 3mm;
+}
+.letterhead-line:nth-child(1) { width: 60%; }
+.letterhead-line:nth-child(2) { width: 85%; }
+.letterhead-line:nth-child(3) { width: 75%; }
+.letterhead-line:nth-child(4) { width: 40%; }
+
+/* ═══════════════════════════════════════════════════════════════
+   PAGE 24 — VOCABULARY
+═══════════════════════════════════════════════════════════════ */
+.vocabulary-grid {
+  columns: 2;
+  column-gap: 8mm;
+  margin-top: 2mm;
+}
+.vocab-item {
+  break-inside: avoid;
+  margin-bottom: 5mm;
+  padding-bottom: 5mm;
+  border-bottom: 1px solid rgba(0,0,0,0.07);
+}
+.vocab-word {
+  font-family: var(--font-heading);
+  font-size: 10pt;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 1mm;
+}
+.vocab-meaning {
+  font-family: var(--font-body);
+  font-size: 7.5pt;
+  color: var(--text-dark);
+  line-height: 1.55;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PAGE 25 — CLOSING
+═══════════════════════════════════════════════════════════════ */
+.page-closing {
+  background: var(--primary);
+  justify-content: center;
+  align-items: center;
+}
+.closing-inner {
+  text-align: center;
+  padding: 16mm 20mm;
+  max-width: 140mm;
+}
+.closing-logo {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 8mm;
+  filter: brightness(0) invert(1);
+  opacity: 0.8;
+}
+.closing-logo svg, .closing-logo img { width: 100%; height: 100%; object-fit: contain; }
+.closing-note {
+  font-family: var(--font-heading);
+  font-size: 13pt;
+  font-weight: 400;
+  font-style: italic;
+  color: rgba(255,255,255,0.9);
+  line-height: 1.6;
+  margin-bottom: 8mm;
+}
+.closing-brand {
+  font-family: var(--font-heading);
+  font-size: 10pt;
+  font-weight: 700;
+  color: rgba(255,255,255,0.5);
+  letter-spacing: 0.1em;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PAGE 26 — BACK COVER
+═══════════════════════════════════════════════════════════════ */
+.page-back {
+  background: var(--primary-dark);
+  justify-content: center;
+  align-items: center;
+}
+.back-content {
+  text-align: center;
+}
+.back-logo {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 6mm;
+  filter: brightness(0) invert(1);
+  opacity: 0.6;
+}
+.back-logo svg, .back-logo img { width: 100%; height: 100%; object-fit: contain; }
+.back-brand {
+  font-family: var(--font-heading);
+  font-size: 11pt;
+  font-weight: 700;
+  color: rgba(255,255,255,0.35);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.back-year {
+  font-family: var(--font-body);
+  font-size: 7pt;
+  color: rgba(255,255,255,0.2);
+  margin-top: 2mm;
+  letter-spacing: 0.1em;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 1 — COVER
+═══════════════════════════════════════════════════════════════ -->
+<section class="page page-cover">
+  <div class="cover-diagonal"></div>
+  <div class="cover-overlay"></div>
+  <div class="cover-top-bar">
+    <div class="cover-logo">{{LOGO_PRIMARY}}</div>
+    <div class="cover-guide-label">Brand Identity<br>Guidelines</div>
+  </div>
+  <div class="cover-bottom">
+    <div class="cover-brand-name">{{BRAND_NAME}}</div>
+    <div class="cover-tagline">{{TAGLINE}}</div>
+    <div class="cover-direction-pill">{{DIRECTION}}</div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 2 — BRAND STATEMENT
+═══════════════════════════════════════════════════════════════ -->
+<section class="page page-brand-statement">
+  <div class="statement-left">
+    <div class="statement-brand-name">{{BRAND_NAME}}</div>
+    <div class="statement-year">{{YEAR}}</div>
+  </div>
+  <div class="statement-right">
+    <div class="statement-quote-mark">"</div>
+    <div class="statement-tagline">{{TAGLINE}}</div>
+    <div class="statement-body">{{ELEVATOR_PITCH}}</div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 3 — WELCOME & CONTENTS
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-label">{{BRAND_NAME}}</div>
+    <div class="page-header-title">Welcome</div>
+  </div>
+  <div class="page-body">
+    <div class="welcome-layout">
+      <div class="welcome-text">
+        <h2>A new chapter begins.</h2>
+        <p>{{WELCOME_LETTER}}</p>
+        <p style="margin-top:5mm; font-size:8pt; color:var(--text-mid);">{{HOW_TO_USE}}</p>
+      </div>
+      <div class="contents-list">
+        <h3>Contents</h3>
+        {{CONTENTS_HTML}}
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 4 — MISSION
+═══════════════════════════════════════════════════════════════ -->
+<section class="page page-mission">
+  <div class="mission-photo"></div>
+  <div class="mission-content">
+    <div class="mission-stripe"></div>
+    <div class="mission-text">
+      <div class="brand-name-label" style="margin-bottom:3mm;">Our Mission</div>
+      <blockquote>{{MISSION_STATEMENT}}</blockquote>
+      <p>{{BRAND_STORY_SNIPPET}}</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 5 — VISION
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-label">{{BRAND_NAME}}</div>
+    <div class="page-header-title">Our Vision</div>
+  </div>
+  <div class="page-body">
+    <div class="vision-grid">
+      {{VISION_PILLARS_HTML}}
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 6 — VALUES
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-label">{{BRAND_NAME}}</div>
+    <div class="page-header-title">Our Values</div>
+  </div>
+  <div class="page-body">
+    <div class="values-row">
+      {{VALUES_HTML}}
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 7 — LOGO: PRIMARY
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-label">{{BRAND_NAME}}</div>
+    <div class="page-header-title">Logo System</div>
+  </div>
+  <div class="logo-display-primary">
+    <div class="logo-mark-area">{{LOGO_PRIMARY}}</div>
+    <div>
+      <div class="logo-display-name">{{BRAND_NAME}}</div>
+      <div class="logo-display-type">Primary Logo Mark</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 8 — LOGO: WHITE-OUT & MONO VARIANTS
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-label">Logo Variants</div>
+    <div class="page-header-title">Colour Versions</div>
+  </div>
+  <div class="logo-variants-row">
+    <div class="logo-variant-primary-bg">
+      <div class="logo-variant-area">{{LOGO_WHITEOUT}}</div>
+      <div class="variant-label">Reversed / White</div>
+    </div>
+    <div class="logo-variant-white-bg">
+      <div class="logo-variant-area">{{LOGO_MONO}}</div>
+      <div class="variant-label">Single Colour / Mono</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 9 — LOGO: PLACEMENT DIAGRAM
+═══════════════════════════════════════════════════════════════ -->
+<section class="page clearance-page">
+  <div class="page-header">
+    <div class="page-header-label">Logo Usage</div>
+    <div class="page-header-title">Clear Space &amp; Sizing</div>
+  </div>
+  <div class="clearance-diagram">
+    {{LOGO_CLEARANCE_SVG}}
+  </div>
+  <div style="padding: 0 18mm 8mm; font-family:var(--font-body); font-size:8pt; color:var(--text-mid); line-height:1.6;">
+    {{LOGO_USAGE}}
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 10 — LOGO: DO'S & DON'TS
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-label">Logo Usage</div>
+    <div class="page-header-title">What Not To Do</div>
+  </div>
+  <div class="page-body">
+    <div class="donts-grid">
+      {{LOGO_DONTS_HTML}}
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 11 — COLOUR PALETTE
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-label">{{BRAND_NAME}}</div>
+    <div class="page-header-title">Brand Colours</div>
+  </div>
+  <div class="page-body">
+    <div class="swatch-grid">
+      {{SWATCH_SECTION_HTML}}
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 12 — GRADIENTS
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-label">Colour System</div>
+    <div class="page-header-title">Brand Gradients</div>
+  </div>
+  <div class="page-body">
+    <div class="gradient-items">
+      {{GRADIENT_SECTION_HTML}}
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 13 — GRAPHIC DEVICES
+═══════════════════════════════════════════════════════════════ -->
+<section class="page page-devices">
+  <div class="page-header">
+    <div class="page-header-label" style="color:rgba(255,255,255,0.5);">Visual System</div>
+    <div class="page-header-title" style="color:white;">Graphic Devices</div>
+  </div>
+  <div class="page-body">
+    <div class="devices-icon">{{LOGO_PRIMARY}}</div>
+    <div class="devices-section-label">Stroke Variants</div>
+    <div class="stroke-variants">{{STROKE_VARIANTS_HTML}}</div>
+    <div class="devices-section-label">Box Variants</div>
+    <div class="box-variants">{{BOX_VARIANTS_HTML}}</div>
+    <div style="font-family:var(--font-body);font-size:7.5pt;color:rgba(255,255,255,0.55);margin-top:3mm;font-style:italic;">{{ICON_USAGE_NOTE}}</div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 14 — PHOTOGRAPHY & IMAGERY
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-label">Visual Identity</div>
+    <div class="page-header-title">Photography Direction</div>
+  </div>
+  <div class="page-body">
+    <div class="imagery-layout">
+      <div class="imagery-text">
+        <p>{{IMAGERY_GUIDANCE}}</p>
+      </div>
+      <div class="imagery-grid">
+        <div class="imagery-photo" style="background-image:url('{{PHOTO_IMAGERY_1_DATA}}');"></div>
+        <div class="imagery-photo" style="background-image:url('{{PHOTO_IMAGERY_2_DATA}}');"></div>
+        <div class="imagery-photo" style="background-image:url('{{PHOTO_IMAGERY_3_DATA}}');"></div>
+        <div class="imagery-photo" style="background-image:url('{{PHOTO_IMAGERY_4_DATA}}');"></div>
+        <div class="imagery-photo" style="background-image:url('{{PHOTO_IMAGERY_5_DATA}}');"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 15 — TYPEFACE SPECIMENS
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-label">{{BRAND_NAME}}</div>
+    <div class="page-header-title">Typography</div>
+  </div>
+  <div class="page-body">
+    <div class="typeface-section">
+      <div class="typeface-font-name">{{HEADLINE_FONT}}</div>
+      <div class="typeface-role">Display / Heading Typeface</div>
+      <div class="typeface-weights">
+        <div class="typeface-weight-sample">
+          <div class="tw-label">Light</div>
+          <div class="tw-sample-h w300">Aa Bb Cc</div>
+        </div>
+        <div class="typeface-weight-sample">
+          <div class="tw-label">Regular</div>
+          <div class="tw-sample-h w400">Aa Bb Cc</div>
+        </div>
+        <div class="typeface-weight-sample">
+          <div class="tw-label">Bold</div>
+          <div class="tw-sample-h w700">Aa Bb Cc</div>
+        </div>
+      </div>
+    </div>
+    <div class="typeface-divider"></div>
+    <div class="typeface-section">
+      <div class="typeface-font-name" style="font-family:var(--font-body);">{{BODY_FONT}}</div>
+      <div class="typeface-role">Body / Supporting Typeface</div>
+      <div class="typeface-weights">
+        <div class="typeface-weight-sample">
+          <div class="tw-label">Regular</div>
+          <div class="tw-sample-b w400">Aa Bb Cc</div>
+        </div>
+        <div class="typeface-weight-sample">
+          <div class="tw-label">Semibold</div>
+          <div class="tw-sample-b w600">Aa Bb Cc</div>
+        </div>
+        <div class="typeface-weight-sample">
+          <div class="tw-label">Bold</div>
+          <div class="tw-sample-b w700">Aa Bb Cc</div>
+        </div>
+      </div>
+    </div>
+    <div class="typeface-divider"></div>
+    <div class="typeface-rationale-box">{{TYPEFACE_RATIONALE}}</div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 16 — TYPOGRAPHY HIERARCHY
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-label">Typography</div>
+    <div class="page-header-title">Type in Use</div>
+  </div>
+  <div class="page-body">
+    <div class="typo-hierarchy">
+      <div class="typo-row">
+        <div class="typo-tag">Heading 1</div>
+        <div class="typo-h1">{{BRAND_NAME}}</div>
+      </div>
+      <div class="typo-row">
+        <div class="typo-tag">Heading 2</div>
+        <div class="typo-h2">{{TAGLINE}}</div>
+      </div>
+      <div class="typo-row">
+        <div class="typo-tag">Heading 3</div>
+        <div class="typo-h3">{{MISSION_STATEMENT_TRUNCATED}}</div>
+      </div>
+      <div class="typo-row">
+        <div class="typo-tag">Body</div>
+        <div class="typo-body">{{BRAND_STORY_SNIPPET}}</div>
+      </div>
+      <div class="typo-row">
+        <div class="typo-tag">Caption</div>
+        <div class="typo-caption">{{YEAR}} · {{BRAND_NAME}} Brand Identity Guidelines · {{DIRECTION}}</div>
+      </div>
+    </div>
+    <div style="margin-top:8mm;">
+      <div class="typeface-rationale-box">{{TYPOGRAPHY_USAGE}}</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 17 — PORTRAIT GRID
+═══════════════════════════════════════════════════════════════ -->
+<section class="page page-grid-bg">
+  <div class="page-header" style="background:var(--primary);">
+    <div class="page-header-label">Layout System</div>
+    <div class="page-header-title">Portrait Grid</div>
+  </div>
+  <div class="grid-diagram">
+    <svg viewBox="0 0 240 320" xmlns="http://www.w3.org/2000/svg" width="240" height="320">
+      <rect width="240" height="320" fill="white" stroke="#e0e0e0" stroke-width="1"/>
+      <!-- margins -->
+      <rect x="16" y="16" width="208" height="288" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="0.5" stroke-dasharray="2,2"/>
+      <!-- column guides -->
+      <line x1="73" y1="16" x2="73" y2="304" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
+      <line x1="130" y1="16" x2="130" y2="304" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
+      <line x1="187" y1="16" x2="187" y2="304" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
+      <!-- row guides -->
+      <line x1="16" y1="112" x2="224" y2="112" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
+      <line x1="16" y1="208" x2="224" y2="208" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
+      <!-- accent corner marks -->
+      <path d="M16,26 L16,16 L26,16" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
+      <path d="M214,16 L224,16 L224,26" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
+      <path d="M16,294 L16,304 L26,304" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
+      <path d="M214,304 L224,304 L224,294" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
+      <text x="120" y="170" text-anchor="middle" font-family="sans-serif" font-size="8" fill="{{PRIMARY_HEX}}" opacity="0.5">Portrait Layout Grid</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 18 — LANDSCAPE GRID
+═══════════════════════════════════════════════════════════════ -->
+<section class="page page-grid-bg">
+  <div class="page-header" style="background:var(--primary);">
+    <div class="page-header-label">Layout System</div>
+    <div class="page-header-title">Landscape Grid</div>
+  </div>
+  <div class="grid-diagram">
+    <svg viewBox="0 0 320 220" xmlns="http://www.w3.org/2000/svg" width="320" height="220">
+      <rect width="320" height="220" fill="white" stroke="#e0e0e0" stroke-width="1"/>
+      <rect x="16" y="14" width="288" height="192" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="0.5" stroke-dasharray="2,2"/>
+      <line x1="88" y1="14" x2="88" y2="206" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
+      <line x1="160" y1="14" x2="160" y2="206" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
+      <line x1="232" y1="14" x2="232" y2="206" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
+      <line x1="16" y1="78" x2="304" y2="78" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
+      <line x1="16" y1="142" x2="304" y2="142" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
+      <path d="M16,24 L16,14 L26,14" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
+      <path d="M294,14 L304,14 L304,24" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
+      <path d="M16,196 L16,206 L26,206" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
+      <path d="M294,206 L304,206 L304,196" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
+      <text x="160" y="118" text-anchor="middle" font-family="sans-serif" font-size="8" fill="{{PRIMARY_HEX}}" opacity="0.5">Landscape Layout Grid</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 19 — APPLICATION EXAMPLE 1
+═══════════════════════════════════════════════════════════════ -->
+<section class="page page-application">
+  <div class="app-sidebar">
+    <div class="app-sidebar-text">Brand Application</div>
+  </div>
+  <div class="app-content">
+    <div class="app-photo" style="background-image:url('{{PHOTO_EXAMPLES_1_DATA}}');">
+      <div class="app-logo">{{LOGO_PRIMARY}}</div>
+      <div class="app-photo-overlay">
+        <div class="app-brand-name">{{BRAND_NAME}}</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 20 — APPLICATION EXAMPLE 2
+═══════════════════════════════════════════════════════════════ -->
+<section class="page page-application">
+  <div class="app-sidebar">
+    <div class="app-sidebar-text">Brand Application</div>
+  </div>
+  <div class="app-content">
+    <div class="app-photo" style="background-image:url('{{PHOTO_EXAMPLES_2_DATA}}');">
+      <div class="app-logo">{{LOGO_PRIMARY}}</div>
+      <div class="app-photo-overlay">
+        <div class="app-brand-name">{{TAGLINE}}</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 21 — APPLICATION EXAMPLE 3
+═══════════════════════════════════════════════════════════════ -->
+<section class="page page-application">
+  <div class="app-sidebar">
+    <div class="app-sidebar-text">Brand Application</div>
+  </div>
+  <div class="app-content">
+    <div class="app-photo" style="background-image:url('{{PHOTO_EXAMPLES_3_DATA}}');">
+      <div class="app-logo">{{LOGO_PRIMARY}}</div>
+      <div class="app-photo-overlay">
+        <div class="app-brand-name">{{MISSION_STATEMENT_TRUNCATED}}</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 22 — STATIONERY
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-label">Brand Applications</div>
+    <div class="page-header-title">Stationery</div>
+  </div>
+  <div class="page-body">
+    <div class="stationery-layout">
+      <div>
+        <div class="brand-name-label" style="margin-bottom:4mm;">Business Card</div>
+        <div class="card-mockup">
+          <div class="card-front">
+            <div class="card-front-logo">{{LOGO_PRIMARY}}</div>
+            <div>
+              <div class="card-brand">{{BRAND_NAME}}</div>
+              <div style="font-family:var(--font-body);font-size:6pt;color:rgba(255,255,255,0.6);margin-top:1mm;">{{TAGLINE}}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="flex:1;">
+        <div class="brand-name-label" style="margin-bottom:4mm;">Letterhead</div>
+        <div class="letterhead-mockup">
+          <div class="letterhead-bar"></div>
+          <div class="letterhead-content">
+            <div class="letterhead-logo-row">
+              <div class="letterhead-logo-area">{{LOGO_PRIMARY}}</div>
+              <div class="letterhead-brand-name">{{BRAND_NAME}}</div>
+            </div>
+            <div class="letterhead-lines">
+              <div class="letterhead-line"></div>
+              <div class="letterhead-line"></div>
+              <div class="letterhead-line"></div>
+              <div class="letterhead-line"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 23 — BRAND LANGUAGE / VOCABULARY
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-label">Verbal Identity</div>
+    <div class="page-header-title">Brand Language</div>
+  </div>
+  <div class="page-body">
+    <div class="vocabulary-grid">
+      {{VOCABULARY_HTML}}
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 24 — TONE OF VOICE GUIDE
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-label">Verbal Identity</div>
+    <div class="page-header-title">Tone of Voice</div>
+  </div>
+  <div class="page-body">
+    {{TONE_GUIDE_HTML}}
+    <div style="margin-top:6mm; font-family:var(--font-body); font-size:8pt; color:var(--text-mid); line-height:1.6;">
+      {{COLOR_USAGE}}
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 25 — CLOSING
+═══════════════════════════════════════════════════════════════ -->
+<section class="page page-closing">
+  <div class="closing-inner">
+    <div class="closing-logo">{{LOGO_PRIMARY}}</div>
+    <div class="closing-note">{{CLOSING_NOTE}}</div>
+    <div class="closing-brand">{{BRAND_NAME_UPPER}}</div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 26 — BACK COVER
+═══════════════════════════════════════════════════════════════ -->
+<section class="page page-back">
+  <div class="back-content">
+    <div class="back-logo">{{LOGO_PRIMARY}}</div>
+    <div class="back-brand">{{BRAND_NAME}}</div>
+    <div class="back-year">{{YEAR}} · Brand Identity Guidelines</div>
+  </div>
+</section>
+
+</body>
+</html>

@@ -60,16 +60,14 @@ dependencies {
     // Azure Blob Storage
     implementation 'com.azure:azure-storage-blob:12.28.1'
 
-    // PDF text extraction (attachments). Pinned to 2.0.24, not the newer 3.x line —
-    // openhtmltopdf-pdfbox 1.0.10 is compiled against PDFBox 2.0.24's PDType1Font API
-    // (removed in 3.x) and both share the org.apache.pdfbox:pdfbox coordinate, so a
-    // single classpath can only carry one version. Loader/PDDocument/PDFTextStripper,
-    // the only PDFBox APIs this project reads from, are present unchanged in 2.0.24.
+    // PDF text extraction (attachments)
     implementation 'org.apache.pdfbox:pdfbox:2.0.24'
 
-    // PDF generation (Brand Book Assembly deliverable) — HTML+CSS to PDF
-    implementation 'com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10'
-    implementation 'com.openhtmltopdf:openhtmltopdf-svg-support:1.0.10'
+    // PDF generation (Brand Book Assembly deliverable) — Playwright renders the HTML/CSS
+    // template via headless Chromium. Browsers must be installed separately:
+    //   ./gradlew playwright-install   (local dev)
+    //   In Docker: RUN java -cp app.jar com.microsoft.playwright.CLI install chromium
+    implementation 'com.microsoft.playwright:playwright:1.47.0'
 
     // HTML parsing (URL fetching)
     implementation 'org.jsoup:jsoup:1.18.3'
@@ -84,4 +82,14 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+// Install Playwright browser binaries for local development.
+// Run once after adding this dependency: ./gradlew playwright-install
+tasks.register('playwright-install', JavaExec) {
+    group = 'playwright'
+    description = 'Install Playwright Chromium browser binaries for local development'
+    classpath = configurations.runtimeClasspath
+    mainClass = 'com.microsoft.playwright.CLI'
+    args = ['install', 'chromium']
 }
