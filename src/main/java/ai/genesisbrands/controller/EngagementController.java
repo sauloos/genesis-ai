@@ -9,6 +9,7 @@ import ai.genesisbrands.security.ClientAuthFilter;
 import ai.genesisbrands.service.BlobStorageService;
 import ai.genesisbrands.service.ClientAuthService;
 import ai.genesisbrands.service.EngagementOrchestratorService;
+import ai.genesisbrands.service.PhotoSourcingService;
 import ai.genesisbrands.service.EngagementOrchestratorService.DirectionOutput;
 import ai.genesisbrands.service.EngagementOrchestratorService.EngagementResults;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,6 +22,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.List;
@@ -38,6 +40,7 @@ public class EngagementController {
     private final EngagementOrchestratorService orchestrator;
     private final BrandBookTemplateRenderer pdfRenderer;
     private final BlobStorageService blobStorageService;
+    private final PhotoSourcingService photoSourcingService;
     private final ObjectMapper objectMapper;
     private final AdminAuthHelper adminAuth;
     private final ClientAuthService clientAuthService;
@@ -58,6 +61,25 @@ public class EngagementController {
         engagementRepo.save(e);
         orchestrator.runEngagement(e.getId());
         return EngagementSummary.of(e);
+    }
+
+    // ── Import (admin only) ───────────────────────────────────────────────────
+
+    @PostMapping("/import")
+    @ResponseStatus(HttpStatus.CREATED)
+    public EngagementSummary importResults(@RequestBody ImportRequest req) {
+        Engagement e = new Engagement();
+        e.setId(UUID.randomUUID().toString());
+        e.setSource(req.source() != null ? req.source() : Engagement.Source.SIMULATION);
+        e.setClientEmail(req.clientEmail());
+        e.setClientName(req.clientName());
+        e.setStatus(Engagement.Status.DONE);
+        try {
+            e.setResultsJson(objectMapper.writeValueAsString(req.results()));
+        } catch (Exception ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid results JSON: " + ex.getMessage());
+        }
+        return EngagementSummary.of(engagementRepo.save(e));
     }
 
     // ── Read ──────────────────────────────────────────────────────────────────
@@ -160,6 +182,18 @@ public class EngagementController {
             }
         }
 
+        // Source photos before re-rendering so the PDF gets imagery even when blob
+        // storage wasn't available when the engagement originally ran.
+        List<String> keywords = dir.visualIdentity() != null
+            ? dir.visualIdentity().imageKeywords() : null;
+        if (keywords != null && !keywords.isEmpty()) {
+            try {
+                photoSourcingService.fetchAndStore(dir.brief().engagementId(), keywords);
+            } catch (Exception ex) {
+                log.warn("Photo sourcing before re-render failed (non-fatal): {}", ex.getMessage());
+            }
+        }
+
         BrandBookInput input = new BrandBookInput(
             dir.brief(), dir.playbook(), dir.copy(), dir.visualIdentity(), dir.logo()
         );
@@ -230,6 +264,13 @@ public class EngagementController {
     ) {}
 
     public record PaymentRequest(String email, String name) {}
+
+    public record ImportRequest(
+        Engagement.Source source,
+        String clientEmail,
+        String clientName,
+        EngagementResults results
+    ) {}
 
     public record EngagementSummary(
         String id,
