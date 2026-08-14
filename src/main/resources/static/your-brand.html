@@ -425,12 +425,36 @@ async function submitPaymentRequest() {
   document.getElementById('modal-success').style.display = 'block';
 }
 
-function downloadPdf(direction) {
-  window.open(`${API}/api/engagements/${engagementId}/pdf/${direction}`, '_blank');
+async function downloadPdf(direction) {
+  const btn = event && event.target;
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+  try {
+    const res = await fetch(`${API}/api/engagements/${engagementId}/pdf/${direction}`, { headers: HEADERS });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `brand-book-${direction.toLowerCase()}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    alert('PDF download failed: ' + (err.message || err));
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = `↓ ${direction.charAt(0) + direction.slice(1).toLowerCase()} PDF`; }
+  }
 }
 
-function downloadLogos(direction) {
-  window.open(`${API}/api/engagements/${engagementId}/logos/${direction}`, '_blank');
+async function downloadLogos(direction) {
+  const res = await fetch(`${API}/api/engagements/${engagementId}/logos/${direction}`, { headers: HEADERS });
+  if (!res.ok) { alert('Logos not available yet.'); return; }
+  const blob = await res.blob();
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `logos-${direction.toLowerCase()}.zip`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 async function logout() {
