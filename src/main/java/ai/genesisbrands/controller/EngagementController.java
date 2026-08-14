@@ -28,6 +28,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @RestController
 @RequestMapping("/api/engagements")
@@ -184,8 +186,17 @@ public class EngagementController {
 
         // Source photos before re-rendering so the PDF gets imagery even when blob
         // storage wasn't available when the engagement originally ran.
+        // Falls back to brand-context keywords when imageKeywords is absent (older sessions).
         List<String> keywords = dir.visualIdentity() != null
             ? dir.visualIdentity().imageKeywords() : null;
+        if (keywords == null || keywords.isEmpty()) {
+            var brand = dir.brief() != null ? dir.brief().brand() : null;
+            if (brand != null) {
+                keywords = Stream.of(brand.industry(), brand.coreOffer(), brand.differentiator(), brand.tone())
+                    .filter(s -> s != null && !s.isBlank())
+                    .collect(Collectors.toList());
+            }
+        }
         if (keywords != null && !keywords.isEmpty()) {
             try {
                 photoSourcingService.fetchAndStore(dir.brief().engagementId(), keywords);

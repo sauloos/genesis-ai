@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @RestController
 @RequestMapping("/api/agents/brand-book")
@@ -90,9 +92,18 @@ public class BrandBookAgentController {
     public ResponseEntity<byte[]> renderPdf(@RequestBody RenderPdfRequest request) {
         // Source photos on demand so Playground and direct API calls get imagery too.
         // Non-fatal: missing Unsplash key or network error just leaves photo slots as colour fills.
+        // Falls back to brand-context keywords when imageKeywords is absent (older saved sessions).
         List<String> keywords = request.input().visualIdentity() != null
             ? request.input().visualIdentity().imageKeywords()
             : null;
+        if (keywords == null || keywords.isEmpty()) {
+            var brand = request.input().brief() != null ? request.input().brief().brand() : null;
+            if (brand != null) {
+                keywords = Stream.of(brand.industry(), brand.coreOffer(), brand.differentiator(), brand.tone())
+                    .filter(s -> s != null && !s.isBlank())
+                    .collect(Collectors.toList());
+            }
+        }
         if (keywords != null && !keywords.isEmpty()) {
             try {
                 photoSourcingService.fetchAndStore(request.input().brief().engagementId(), keywords);

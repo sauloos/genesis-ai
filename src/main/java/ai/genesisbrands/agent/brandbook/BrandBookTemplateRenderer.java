@@ -249,6 +249,7 @@ public class BrandBookTemplateRenderer {
         for (int i = 1; i <= 3; i++) {
             subs.put("{{PHOTO_EXAMPLES_" + i + "_DATA}}", fetchPhotoDataUri(brief.engagementId(), "examples-" + i));
         }
+        subs.put("{{PHOTO_APP_DATA}}",      fetchPhotoDataUri(brief.engagementId(), "stationery"));
 
         String result = templateHtml;
         for (Map.Entry<String, String> e : subs.entrySet()) {
