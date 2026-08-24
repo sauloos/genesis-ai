@@ -26,6 +26,11 @@ public class PageController {
         return "forward:/questionnaires.html";
     }
 
+    @GetMapping("/templates")
+    public String templatesPage() {
+        return "forward:/templates.html";
+    }
+
     @GetMapping("/questionnaire-run")
     public String questionnaireRunPage() {
         return "forward:/questionnaire-run.html";

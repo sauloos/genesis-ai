@@ -6,7 +6,9 @@ import ai.genesisbrands.agent.logo.LogoOutput;
 import ai.genesisbrands.agent.logo.LogoVariantService;
 import ai.genesisbrands.agent.playbook.PlaybookOutput;
 import ai.genesisbrands.agent.visualidentity.VisualIdentityOutput;
+import ai.genesisbrands.model.BrandBookTemplate;
 import ai.genesisbrands.service.BlobStorageService;
+import ai.genesisbrands.service.BrandBookTemplateService;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.BrowserType;
@@ -17,7 +19,6 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -27,6 +28,8 @@ import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * Playwright/Chromium-based PDF renderer for the brand book. Loads a fixed
@@ -46,27 +49,27 @@ import java.util.Map;
 public class BrandBookTemplateRenderer {
 
     private static final Logger log = LoggerFactory.getLogger(BrandBookTemplateRenderer.class);
-    private static final String TEMPLATE_PATH = "templates/brand-book/template.html";
     private static final String ASSET_URL_PREFIX = "/api/assets/";
 
     private final BlobStorageService blobStorageService;
     private final LogoVariantService logoVariantService;
+    private final BrandBookTemplateService brandBookTemplateService;
 
     private Playwright playwright;
     private Browser browser;
-    private String templateHtml;
 
     public BrandBookTemplateRenderer(BlobStorageService blobStorageService,
-                                     LogoVariantService logoVariantService) {
+                                     LogoVariantService logoVariantService,
+                                     BrandBookTemplateService brandBookTemplateService) {
         this.blobStorageService = blobStorageService;
         this.logoVariantService = logoVariantService;
+        this.brandBookTemplateService = brandBookTemplateService;
     }
 
     @PostConstruct
-    void init() throws IOException {
+    void init() {
         playwright = Playwright.create();
         browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));
-        templateHtml = new ClassPathResource(TEMPLATE_PATH).getContentAsString(StandardCharsets.UTF_8);
         log.info("BrandBookTemplateRenderer: Playwright Chromium browser started");
     }
 
@@ -79,7 +82,21 @@ public class BrandBookTemplateRenderer {
     // ── Public API ────────────────────────────────────────────────────────────
 
     public byte[] render(BrandBookInput input, BrandBookOutput output) {
-        return renderHtml(buildHtml(input, output), false);
+        BrandBookTemplate template = brandBookTemplateService.select(
+            input.brief().brand(), input.brief().direction());
+        Set<String> includedSections = brandBookTemplateService.resolveIncludedSections(template);
+        String templateHtml = brandBookTemplateService.loadHtml(template);
+        return renderHtml(buildHtml(input, output, templateHtml, includedSections), false);
+    }
+
+    /**
+     * Render with an explicit template rather than auto-selection.
+     * Used by the admin template preview endpoint.
+     */
+    public byte[] renderWithTemplate(BrandBookInput input, BrandBookOutput output, BrandBookTemplate template) {
+        Set<String> includedSections = brandBookTemplateService.resolveIncludedSections(template);
+        String templateHtml = brandBookTemplateService.loadHtml(template);
+        return renderHtml(buildHtml(input, output, templateHtml, includedSections), false);
     }
 
     /**
@@ -88,9 +105,43 @@ public class BrandBookTemplateRenderer {
      * the screen PDF; only the @page size and the crop-mark layer differ.
      */
     public byte[] renderPrintReady(BrandBookInput input, BrandBookOutput output) {
-        String html = buildHtml(input, output);
+        BrandBookTemplate template = brandBookTemplateService.select(
+            input.brief().brand(), input.brief().direction());
+        Set<String> includedSections = brandBookTemplateService.resolveIncludedSections(template);
+        String templateHtml = brandBookTemplateService.loadHtml(template);
+        String html = buildHtml(input, output, templateHtml, includedSections);
         html = injectPrintBleedCss(html);
         return renderHtml(html, true);
+    }
+
+    // ── Section filtering ─────────────────────────────────────────────────────
+
+    /**
+     * Remove optional sections not present in includedSectionIds from the HTML.
+     * Sections are delimited by <!-- BEGIN-SECTION:id --> and <!-- END-SECTION:id -->.
+     * If includedSectionIds is empty we skip filtering (backward compat with templates
+     * that have no section markers).
+     */
+    private static String filterSections(String html, Set<String> includedSectionIds) {
+        if (includedSectionIds.isEmpty()) return html;
+        // Match BEGIN-SECTION:id ... END-SECTION:id blocks (including the markers)
+        Pattern p = Pattern.compile(
+            "<!-- BEGIN-SECTION:([^-]+) -->\\n?(.+?)<!-- END-SECTION:\\1 -->\\n?",
+            Pattern.DOTALL);
+        java.util.regex.Matcher m = p.matcher(html);
+        StringBuffer sb = new StringBuffer();
+        while (m.find()) {
+            String sectionId = m.group(1);
+            if (includedSectionIds.contains(sectionId)) {
+                // Keep content between markers (strip the markers themselves)
+                m.appendReplacement(sb, java.util.regex.Matcher.quoteReplacement(m.group(2)));
+            } else {
+                m.appendReplacement(sb, "");
+                log.debug("filterSections: stripped section '{}'", sectionId);
+            }
+        }
+        m.appendTail(sb);
+        return sb.toString();
     }
 
     private byte[] renderHtml(String html, boolean printReady) {
@@ -147,7 +198,8 @@ public class BrandBookTemplateRenderer {
 
     // ── HTML builder ──────────────────────────────────────────────────────────
 
-    private String buildHtml(BrandBookInput input, BrandBookOutput output) {
+    private String buildHtml(BrandBookInput input, BrandBookOutput output,
+                             String templateHtml, Set<String> includedSections) {
         DirectionBrief brief = input.brief();
         DirectionBrief.BrandContext brand = brief.brand();
         CopyOutput copy = input.copy();
@@ -251,11 +303,12 @@ public class BrandBookTemplateRenderer {
         }
         subs.put("{{PHOTO_APP_DATA}}",      fetchPhotoDataUri(brief.engagementId(), "stationery"));
 
-        String result = templateHtml;
+        // Apply section filter before substitution so excluded section HTML is never processed
+        String filtered = filterSections(templateHtml, includedSections);
         for (Map.Entry<String, String> e : subs.entrySet()) {
-            result = result.replace(e.getKey(), e.getValue() != null ? e.getValue() : "");
+            filtered = filtered.replace(e.getKey(), e.getValue() != null ? e.getValue() : "");
         }
-        return result;
+        return filtered;
     }
 
     // ── HTML snippet builders ─────────────────────────────────────────────────
