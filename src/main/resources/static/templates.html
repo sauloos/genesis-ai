@@ -251,8 +251,8 @@
 
 <script>
   const API = '/api/brand-book-templates';
-  const KEY = localStorage.getItem('genesisApiKey') || '';
-  const HEADERS = { 'Content-Type': 'application/json', 'X-API-Key': KEY };
+  const KEY = 'genesis-ai-key';
+  const HEADERS = { 'Content-Type': 'application/json', 'X-Api-Key': KEY };
 
   let templates = [];
   let selectedId = null;
