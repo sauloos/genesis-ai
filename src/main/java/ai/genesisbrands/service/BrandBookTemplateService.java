@@ -38,6 +38,9 @@ public class BrandBookTemplateService {
 
     @PostConstruct
     void seed() {
+        boolean hasMeridian = templateRepo.findAll().stream().anyMatch(t -> "Meridian".equals(t.getName()));
+        boolean hasEmber    = templateRepo.findAll().stream().anyMatch(t -> "Ember".equals(t.getName()));
+
         if (templateRepo.count() == 0) {
             BrandBookTemplate classic = new BrandBookTemplate();
             classic.setId(UUID.randomUUID().toString());
@@ -52,7 +55,41 @@ public class BrandBookTemplateService {
                 {"format":"PORTRAIT","suitableFor":["all"],"archetypes":["ANCHORED","EVOLVED","DISRUPTIVE"],"selectionWeight":0}
                 """.strip());
             templateRepo.save(classic);
-            log.info("BrandBookTemplateService: seeded Classic (deprecated) template");
+            log.info("BrandBookTemplateService: seeded Classic (deprecated)");
+        }
+
+        if (!hasMeridian) {
+            BrandBookTemplate meridian = new BrandBookTemplate();
+            meridian.setId(UUID.randomUUID().toString());
+            meridian.setName("Meridian");
+            meridian.setDescription(
+                "Landscape A4 format with a structured left sidebar and horizontal grid layout. " +
+                "Clean and corporate — suited to B2B, professional services, and tech brands.");
+            meridian.setStatus(BrandBookTemplate.Status.CURRENT);
+            meridian.setClasspathPath("templates/brand-book/template-meridian.html");
+            meridian.setSectionManifestJson(MERIDIAN_MANIFEST);
+            meridian.setSelectionHintsJson("""
+                {"format":"LANDSCAPE","suitableFor":["b2b","tech","finance","professional-services"],"archetypes":["ANCHORED","EVOLVED"],"selectionWeight":5}
+                """.strip());
+            templateRepo.save(meridian);
+            log.info("BrandBookTemplateService: seeded Meridian (current)");
+        }
+
+        if (!hasEmber) {
+            BrandBookTemplate ember = new BrandBookTemplate();
+            ember.setId(UUID.randomUUID().toString());
+            ember.setName("Ember");
+            ember.setDescription(
+                "Portrait A4 format with expressive section openers, bold typography, and warm layouts. " +
+                "Suited to consumer, lifestyle, wellness, and creative brands.");
+            ember.setStatus(BrandBookTemplate.Status.CURRENT);
+            ember.setClasspathPath("templates/brand-book/template-ember.html");
+            ember.setSectionManifestJson(EMBER_MANIFEST);
+            ember.setSelectionHintsJson("""
+                {"format":"PORTRAIT","suitableFor":["consumer","lifestyle","wellness","creative","retail"],"archetypes":["EVOLVED","DISRUPTIVE"],"selectionWeight":5}
+                """.strip());
+            templateRepo.save(ember);
+            log.info("BrandBookTemplateService: seeded Ember (current)");
         }
     }
 
@@ -211,6 +248,66 @@ public class BrandBookTemplateService {
           {"id":"typography",      "name":"Typography",               "required":true,  "defaultIncluded":true},
           {"id":"type-in-use",     "name":"Type in Use",              "required":false, "defaultIncluded":true},
           {"id":"grid-portrait",   "name":"Portrait Grid",            "required":false, "defaultIncluded":false},
+          {"id":"grid-landscape",  "name":"Landscape Grid",           "required":false, "defaultIncluded":false},
+          {"id":"brand-application","name":"Brand Application",       "required":false, "defaultIncluded":true},
+          {"id":"stationery",      "name":"Stationery",               "required":false, "defaultIncluded":true},
+          {"id":"brand-language",  "name":"Brand Language",           "required":false, "defaultIncluded":true},
+          {"id":"tone-of-voice",   "name":"Tone of Voice",            "required":false, "defaultIncluded":true},
+          {"id":"closing",         "name":"Closing",                  "required":true,  "defaultIncluded":true},
+          {"id":"back-cover",      "name":"Back Cover",               "required":true,  "defaultIncluded":true}
+        ]
+        """.strip();
+
+    // ── Section manifest for the Meridian template (landscape) ───────────────
+
+    private static final String MERIDIAN_MANIFEST = """
+        [
+          {"id":"cover",           "name":"Cover",                   "required":true,  "defaultIncluded":true},
+          {"id":"toc",             "name":"Table of Contents",        "required":true,  "defaultIncluded":true},
+          {"id":"welcome",         "name":"Welcome Letter",           "required":true,  "defaultIncluded":true},
+          {"id":"vision",          "name":"Vision",                   "required":false, "defaultIncluded":true},
+          {"id":"values",          "name":"Values",                   "required":false, "defaultIncluded":true},
+          {"id":"logo-system",     "name":"Logo System",              "required":true,  "defaultIncluded":true},
+          {"id":"logo-variants",   "name":"Logo Colour Versions",     "required":false, "defaultIncluded":true},
+          {"id":"logo-usage",      "name":"Logo Clear Space",         "required":false, "defaultIncluded":false},
+          {"id":"logo-donts",      "name":"Logo Do's & Don'ts",       "required":false, "defaultIncluded":false},
+          {"id":"colours",         "name":"Brand Colours",            "required":true,  "defaultIncluded":true},
+          {"id":"gradients",       "name":"Brand Gradients",          "required":false, "defaultIncluded":true},
+          {"id":"graphic-devices", "name":"Graphic Devices",          "required":false, "defaultIncluded":true},
+          {"id":"photography",     "name":"Photography Direction",    "required":false, "defaultIncluded":true},
+          {"id":"typography",      "name":"Typography",               "required":true,  "defaultIncluded":true},
+          {"id":"type-in-use",     "name":"Type in Use",              "required":false, "defaultIncluded":true},
+          {"id":"grid-portrait",   "name":"Portrait Grid",            "required":false, "defaultIncluded":false},
+          {"id":"grid-landscape",  "name":"Landscape Grid",           "required":false, "defaultIncluded":true},
+          {"id":"brand-application","name":"Brand Application",       "required":false, "defaultIncluded":true},
+          {"id":"stationery",      "name":"Stationery",               "required":false, "defaultIncluded":true},
+          {"id":"brand-language",  "name":"Brand Language",           "required":false, "defaultIncluded":true},
+          {"id":"tone-of-voice",   "name":"Tone of Voice",            "required":false, "defaultIncluded":true},
+          {"id":"closing",         "name":"Closing",                  "required":true,  "defaultIncluded":true},
+          {"id":"back-cover",      "name":"Back Cover",               "required":true,  "defaultIncluded":true}
+        ]
+        """.strip();
+
+    // ── Section manifest for the Ember template (portrait, expressive) ────────
+
+    private static final String EMBER_MANIFEST = """
+        [
+          {"id":"cover",           "name":"Cover",                   "required":true,  "defaultIncluded":true},
+          {"id":"toc",             "name":"Table of Contents",        "required":true,  "defaultIncluded":true},
+          {"id":"welcome",         "name":"Welcome Letter",           "required":true,  "defaultIncluded":true},
+          {"id":"vision",          "name":"Vision",                   "required":false, "defaultIncluded":true},
+          {"id":"values",          "name":"Values",                   "required":false, "defaultIncluded":true},
+          {"id":"logo-system",     "name":"Logo System",              "required":true,  "defaultIncluded":true},
+          {"id":"logo-variants",   "name":"Logo Colour Versions",     "required":false, "defaultIncluded":true},
+          {"id":"logo-usage",      "name":"Logo Clear Space",         "required":false, "defaultIncluded":false},
+          {"id":"logo-donts",      "name":"Logo Do's & Don'ts",       "required":false, "defaultIncluded":false},
+          {"id":"colours",         "name":"Brand Colours",            "required":true,  "defaultIncluded":true},
+          {"id":"gradients",       "name":"Brand Gradients",          "required":false, "defaultIncluded":true},
+          {"id":"graphic-devices", "name":"Graphic Devices",          "required":false, "defaultIncluded":true},
+          {"id":"photography",     "name":"Photography Direction",    "required":false, "defaultIncluded":true},
+          {"id":"typography",      "name":"Typography",               "required":true,  "defaultIncluded":true},
+          {"id":"type-in-use",     "name":"Type in Use",              "required":false, "defaultIncluded":true},
+          {"id":"grid-portrait",   "name":"Portrait Grid",            "required":false, "defaultIncluded":true},
           {"id":"grid-landscape",  "name":"Landscape Grid",           "required":false, "defaultIncluded":false},
           {"id":"brand-application","name":"Brand Application",       "required":false, "defaultIncluded":true},
           {"id":"stationery",      "name":"Stationery",               "required":false, "defaultIncluded":true},

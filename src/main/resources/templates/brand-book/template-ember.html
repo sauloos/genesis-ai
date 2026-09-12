@@ -1,0 +1,1673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{HEADLINE_FONT_URL}}:ital,wght@0,300;0,400;0,700;1,400&family={{BODY_FONT_URL}}:wght@400;600;700&display=swap">
+<title>{{BRAND_NAME}} Brand Identity Guidelines</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   EMBER — Portrait A4 Brand Book Template
+   Expressive, bold typography, warm layout for consumer & lifestyle brands
+═══════════════════════════════════════════════════════════════ */
+
+:root {
+  --primary:       {{PRIMARY_HEX}};
+  --primary-dark:  {{PRIMARY_DARK_HEX}};
+  --primary-light: {{PRIMARY_LIGHT_HEX}};
+  --secondary:     {{SECONDARY_HEX}};
+  --accent:        {{ACCENT_HEX}};
+  --neutral:       {{NEUTRAL_HEX}};
+  --white:         #ffffff;
+  --warm-off:      #faf9f7;
+  --text-dark:     #1c1c1c;
+  --text-mid:      #5c5c5c;
+  --text-faint:    #aaaaaa;
+  --font-heading:  '{{HEADLINE_FONT}}', Georgia, serif;
+  --font-body:     '{{BODY_FONT}}', Arial, sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font-body);
+  color: var(--text-dark);
+  background: #a8a8a8;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+@page { size: A4; margin: 0; }
+
+/* ── PAGE BASE ── */
+.page {
+  width: 210mm;
+  height: 297mm;
+  position: relative;
+  overflow: hidden;
+  page-break-after: always;
+  background: var(--white);
+  display: flex;
+  flex-direction: column;
+}
+.page:last-of-type { page-break-after: auto; }
+
+/* ── SHARED: page-number ghost ── */
+.e-num-ghost {
+  position: absolute;
+  right: -6mm;
+  bottom: 8mm;
+  font-family: var(--font-heading);
+  font-size: 120pt;
+  font-weight: 700;
+  color: var(--primary);
+  opacity: 0.055;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ── SHARED: section opener band ── */
+.e-band {
+  background: var(--primary);
+  padding: 14mm 16mm 10mm;
+  flex-shrink: 0;
+  position: relative;
+}
+.e-band-eyebrow {
+  font-family: var(--font-body);
+  font-size: 6pt;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.45);
+  margin-bottom: 3mm;
+}
+.e-band-title {
+  font-family: var(--font-heading);
+  font-size: 26pt;
+  font-weight: 700;
+  color: var(--white);
+  line-height: 1.05;
+}
+.e-band-ghost {
+  position: absolute;
+  right: 6mm;
+  bottom: -10mm;
+  font-family: var(--font-heading);
+  font-size: 100pt;
+  font-weight: 700;
+  color: rgba(255,255,255,0.06);
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* ── SHARED: content area ── */
+.e-body {
+  flex: 1;
+  padding: 12mm 16mm 14mm;
+  overflow: hidden;
+  position: relative;
+  background: var(--warm-off);
+}
+.e-body-white { background: var(--white); }
+
+.e-label {
+  font-family: var(--font-body);
+  font-size: 5.5pt;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--primary);
+  margin-bottom: 2.5mm;
+}
+.e-rule {
+  height: 1px;
+  background: #e5e5e2;
+  margin: 5mm 0;
+}
+
+/* ── FOOTER STRIP ── */
+.e-footer {
+  height: 7mm;
+  background: var(--primary-dark);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16mm;
+  flex-shrink: 0;
+}
+.e-footer-brand {
+  font-family: var(--font-body);
+  font-size: 5.5pt;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.35);
+}
+.e-footer-page {
+  font-family: var(--font-body);
+  font-size: 5.5pt;
+  color: rgba(255,255,255,0.2);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   COVER — full bleed, centered, bold
+═══════════════════════════════════════════════════════════════ */
+.page-cover { background: var(--primary); }
+.e-cover-photo {
+  position: absolute;
+  inset: 0;
+  background-image: url("{{PHOTO_COVER_DATA}}");
+  background-size: cover;
+  background-position: center;
+  opacity: 0.25;
+}
+.e-cover-content {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 16mm;
+}
+.e-cover-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.e-cover-logo svg, .e-cover-logo img {
+  max-width: 55mm;
+  max-height: 18mm;
+  filter: brightness(0) invert(1);
+}
+.e-cover-guide {
+  font-family: var(--font-body);
+  font-size: 6.5pt;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.35);
+}
+.e-cover-mid {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+.e-cover-headline {
+  font-family: var(--font-heading);
+  font-size: 48pt;
+  font-weight: 700;
+  color: var(--white);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+}
+.e-cover-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 3mm;
+}
+.e-cover-tagline {
+  font-family: var(--font-heading);
+  font-size: 11pt;
+  color: rgba(255,255,255,0.65);
+  font-style: italic;
+  line-height: 1.4;
+  max-width: 120mm;
+}
+.e-cover-pill {
+  display: inline-block;
+  padding: 2mm 5mm;
+  border: 1px solid rgba(255,255,255,0.2);
+  font-family: var(--font-body);
+  font-size: 5.5pt;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.45);
+  align-self: flex-start;
+}
+.e-cover-accent-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4mm;
+  background: var(--accent);
+  z-index: 2;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BRAND STATEMENT
+═══════════════════════════════════════════════════════════════ */
+.e-statement-block {
+  position: relative;
+  z-index: 1;
+}
+.e-statement-pullquote {
+  font-family: var(--font-heading);
+  font-size: 17pt;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1.3;
+  font-style: italic;
+  margin-bottom: 6mm;
+  border-left: 3px solid var(--accent);
+  padding-left: 6mm;
+}
+.e-statement-divider {
+  display: flex;
+  align-items: center;
+  gap: 4mm;
+  margin-bottom: 6mm;
+}
+.e-statement-divider-line { flex: 1; height: 1px; background: #e0e0dc; }
+.e-statement-divider-dot {
+  width: 5mm; height: 5mm;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.e-statement-body {
+  font-family: var(--font-body);
+  font-size: 9pt;
+  color: var(--text-mid);
+  line-height: 1.75;
+  columns: 2;
+  column-gap: 8mm;
+}
+.e-statement-meta {
+  margin-top: 8mm;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.e-statement-brand {
+  font-family: var(--font-heading);
+  font-size: 11pt;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+.e-statement-year {
+  font-family: var(--font-body);
+  font-size: 7pt;
+  color: var(--text-faint);
+  letter-spacing: 0.15em;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   WELCOME / CONTENTS
+═══════════════════════════════════════════════════════════════ */
+.e-welcome-cols {
+  display: flex;
+  flex-direction: column;
+  gap: 6mm;
+}
+.e-welcome-intro {
+  font-family: var(--font-heading);
+  font-size: 13pt;
+  font-weight: 700;
+  color: var(--text-dark);
+  line-height: 1.35;
+  margin-bottom: 2mm;
+}
+.e-welcome-body {
+  font-family: var(--font-body);
+  font-size: 8.5pt;
+  color: var(--text-mid);
+  line-height: 1.7;
+}
+.e-contents-box {
+  background: var(--white);
+  border: 1px solid #e8e8e4;
+  border-top: 3px solid var(--primary);
+  padding: 6mm;
+}
+.e-contents-box h3 {
+  font-family: var(--font-body);
+  font-size: 6pt;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 4mm;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MISSION — full-bleed photo page
+═══════════════════════════════════════════════════════════════ */
+.page-mission {
+  background: var(--primary-dark);
+}
+.e-mission-photo {
+  flex: 1;
+  background-image: url("{{PHOTO_MISSION_DATA}}");
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+.e-mission-photo::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 60%;
+  background: linear-gradient(to top, rgba(0,0,0,0.75), transparent);
+}
+.e-mission-text {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 10mm 16mm;
+  z-index: 1;
+}
+.e-mission-label {
+  font-family: var(--font-body);
+  font-size: 6pt;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.45);
+  margin-bottom: 3mm;
+}
+.e-mission-quote {
+  font-family: var(--font-heading);
+  font-size: 14pt;
+  font-weight: 700;
+  color: var(--white);
+  line-height: 1.35;
+  font-style: italic;
+  margin-bottom: 3mm;
+}
+.e-mission-body {
+  font-family: var(--font-body);
+  font-size: 8pt;
+  color: rgba(255,255,255,0.6);
+  line-height: 1.65;
+}
+.e-mission-footer {
+  height: 7mm;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   VISION / VALUES — card grid
+═══════════════════════════════════════════════════════════════ */
+.e-card-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5mm;
+}
+.e-card {
+  flex: 1 1 calc(50% - 5mm);
+  background: var(--white);
+  border-radius: 4px;
+  padding: 6mm;
+  border-bottom: 3px solid var(--accent);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+.e-card-name {
+  font-family: var(--font-heading);
+  font-size: 10.5pt;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: 2.5mm;
+}
+.e-card-body {
+  font-family: var(--font-body);
+  font-size: 7.5pt;
+  color: var(--text-mid);
+  line-height: 1.6;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LOGO PAGES
+═══════════════════════════════════════════════════════════════ */
+.e-logo-stage {
+  flex: 1;
+  background: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  margin-bottom: 4mm;
+  min-height: 55mm;
+  border: 1px solid #f0f0ee;
+}
+.e-logo-stage svg, .e-logo-stage img { max-width: 80mm; max-height: 45mm; }
+.e-logo-caption {
+  font-family: var(--font-body);
+  font-size: 6.5pt;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+
+.e-variants-cols {
+  display: flex;
+  gap: 5mm;
+  flex: 1;
+}
+.e-variant-block {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3mm;
+}
+.e-variant-stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  min-height: 40mm;
+}
+.e-variant-stage.on-primary { background: var(--primary); }
+.e-variant-stage.on-light   { background: #f4f4f2; }
+.e-variant-stage svg, .e-variant-stage img { max-width: 60mm; max-height: 28mm; }
+.e-variant-label {
+  font-family: var(--font-body);
+  font-size: 6pt;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+
+.e-clearance-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5mm;
+}
+.e-clearance-center svg { max-width: 120mm; }
+.e-clearance-note {
+  font-family: var(--font-body);
+  font-size: 7.5pt;
+  color: var(--text-mid);
+  line-height: 1.65;
+  max-width: 130mm;
+}
+
+.e-donts-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4mm;
+}
+.e-dont-item {
+  flex: 1 1 calc(50% - 4mm);
+  background: #fff8f8;
+  border: 1px solid #f0c8c8;
+  border-radius: 3px;
+  padding: 5mm;
+}
+.e-dont-label {
+  font-family: var(--font-body);
+  font-size: 5.5pt;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #cc4444;
+  margin-bottom: 2mm;
+}
+.e-dont-text {
+  font-family: var(--font-body);
+  font-size: 7.5pt;
+  color: var(--text-mid);
+  line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   COLOUR PALETTE
+═══════════════════════════════════════════════════════════════ */
+.e-swatch-row {
+  display: flex;
+  gap: 4mm;
+  height: calc(100% - 5mm);
+}
+.e-swatch-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.e-swatch-chip {
+  flex: 1;
+  border-radius: 3px 3px 0 0;
+}
+.e-swatch-info {
+  background: var(--white);
+  padding: 3mm;
+  border-radius: 0 0 3px 3px;
+  border: 1px solid #f0f0ee;
+  border-top: none;
+}
+.e-swatch-name {
+  font-family: var(--font-heading);
+  font-size: 7.5pt;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+.e-swatch-hex {
+  font-family: monospace;
+  font-size: 6.5pt;
+  color: var(--text-faint);
+}
+
+.e-gradient-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 4mm;
+  flex: 1;
+}
+.e-gradient-bar {
+  flex: 1;
+  border-radius: 3px;
+  display: flex;
+  align-items: flex-end;
+  padding: 4mm 5mm;
+}
+.e-gradient-label {
+  font-family: var(--font-body);
+  font-size: 7pt;
+  font-weight: 700;
+  color: rgba(255,255,255,0.75);
+  letter-spacing: 0.1em;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GRAPHIC DEVICES
+═══════════════════════════════════════════════════════════════ */
+.page-devices {
+  background: var(--primary-dark);
+}
+.e-devices-content {
+  flex: 1;
+  padding: 12mm 16mm 14mm;
+  display: flex;
+  flex-direction: column;
+  gap: 6mm;
+  position: relative;
+}
+.e-devices-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 6mm;
+}
+.e-devices-icon { max-height: 20mm; }
+.e-devices-icon svg, .e-devices-icon img { max-height: 20mm; max-width: 35mm; }
+.e-devices-desc {
+  font-family: var(--font-body);
+  font-size: 8pt;
+  color: rgba(255,255,255,0.5);
+  line-height: 1.65;
+  flex: 1;
+}
+.e-devices-section-label {
+  font-family: var(--font-body);
+  font-size: 6pt;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.35);
+  margin-bottom: 3mm;
+}
+.e-devices-row { display: flex; flex-wrap: wrap; gap: 3mm; }
+.e-device-note {
+  font-family: var(--font-body);
+  font-size: 7pt;
+  color: rgba(255,255,255,0.3);
+  font-style: italic;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PHOTOGRAPHY
+═══════════════════════════════════════════════════════════════ */
+.e-photo-mosaic {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 3mm;
+  flex: 1;
+  margin-bottom: 4mm;
+}
+.e-photo-tile {
+  background-size: cover;
+  background-position: center;
+  border-radius: 3px;
+}
+.e-photo-tile:first-child {
+  grid-row: 1 / 3;
+}
+.e-photo-caption {
+  font-family: var(--font-body);
+  font-size: 7.5pt;
+  color: var(--text-mid);
+  line-height: 1.65;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TYPOGRAPHY
+═══════════════════════════════════════════════════════════════ */
+.e-type-specimen {
+  display: flex;
+  flex-direction: column;
+  gap: 3mm;
+  margin-bottom: 5mm;
+}
+.e-type-face-name {
+  font-size: 15pt;
+  font-weight: 700;
+  color: var(--text-dark);
+  line-height: 1;
+}
+.e-type-role {
+  font-family: var(--font-body);
+  font-size: 6pt;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+.e-type-weights {
+  display: flex;
+  gap: 6mm;
+  align-items: baseline;
+}
+.e-type-weight-group { display: flex; flex-direction: column; gap: 1mm; }
+.e-type-wt-label {
+  font-family: var(--font-body);
+  font-size: 5.5pt;
+  color: var(--text-faint);
+  letter-spacing: 0.12em;
+}
+.e-type-sample-h { font-family: var(--font-heading); font-size: 20pt; color: var(--text-dark); }
+.e-type-sample-b { font-family: var(--font-body);    font-size: 20pt; color: var(--text-dark); }
+.w300 { font-weight: 300; }
+.w400 { font-weight: 400; }
+.w600 { font-weight: 600; }
+.w700 { font-weight: 700; }
+
+.e-type-divider { height: 1px; background: #e8e8e4; margin: 3mm 0; }
+.e-type-rationale {
+  background: var(--white);
+  border-left: 3px solid var(--accent);
+  padding: 4mm 5mm;
+  border-radius: 0 3px 3px 0;
+  font-family: var(--font-body);
+  font-size: 7.5pt;
+  color: var(--text-mid);
+  line-height: 1.65;
+}
+
+.e-type-hier { display: flex; flex-direction: column; gap: 5mm; }
+.e-type-hier-row {
+  display: flex;
+  align-items: baseline;
+  gap: 5mm;
+  border-bottom: 1px solid #f0f0ec;
+  padding-bottom: 4mm;
+}
+.e-type-hier-tag {
+  width: 18mm;
+  font-family: var(--font-body);
+  font-size: 6pt;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+.e-h1 { font-family: var(--font-heading); font-size: 24pt; font-weight: 700; color: var(--text-dark); line-height: 1; }
+.e-h2 { font-family: var(--font-heading); font-size: 14pt; font-weight: 400; color: var(--text-dark); font-style: italic; }
+.e-h3 { font-family: var(--font-heading); font-size: 10pt; font-weight: 700; color: var(--primary); }
+.e-body-type { font-family: var(--font-body); font-size: 8.5pt; color: var(--text-mid); line-height: 1.65; }
+.e-caption { font-family: var(--font-body); font-size: 6.5pt; color: var(--text-faint); letter-spacing: 0.08em; }
+
+/* ═══════════════════════════════════════════════════════════════
+   GRID DIAGRAM PAGES
+═══════════════════════════════════════════════════════════════ */
+.e-grid-diagram {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BRAND APPLICATION
+═══════════════════════════════════════════════════════════════ -->
+.page-application { background: var(--primary-dark); }
+.e-app-photo {
+  flex: 1;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+.e-app-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.1) 50%);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 14mm 16mm;
+}
+.e-app-logo { max-height: 14mm; }
+.e-app-logo svg, .e-app-logo img { max-height: 14mm; max-width: 40mm; filter: brightness(0) invert(1); }
+.e-app-bottom {}
+.e-app-label {
+  font-family: var(--font-body);
+  font-size: 6pt;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 2mm;
+}
+.e-app-brand {
+  font-family: var(--font-heading);
+  font-size: 22pt;
+  font-weight: 700;
+  color: rgba(255,255,255,0.9);
+  line-height: 1.1;
+}
+.e-app-accent-stripe {
+  height: 4mm;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   STATIONERY
+═══════════════════════════════════════════════════════════════ */
+.e-stationery-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6mm;
+  flex: 1;
+}
+.e-card-mock {
+  height: 42mm;
+  background: var(--primary);
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6mm 8mm;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.12);
+}
+.e-card-logo { max-height: 12mm; }
+.e-card-logo svg, .e-card-logo img { max-height: 12mm; max-width: 30mm; filter: brightness(0) invert(1); }
+.e-card-info { text-align: right; }
+.e-card-name {
+  font-family: var(--font-heading);
+  font-size: 10pt;
+  font-weight: 700;
+  color: white;
+}
+.e-card-tag {
+  font-family: var(--font-body);
+  font-size: 6pt;
+  color: rgba(255,255,255,0.45);
+  letter-spacing: 0.1em;
+  margin-top: 1mm;
+}
+.e-letterhead-mock {
+  flex: 1;
+  border: 1px solid #e8e8e4;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.e-lh-top { height: 9mm; background: var(--primary); }
+.e-lh-body { padding: 5mm 6mm; }
+.e-lh-row {
+  display: flex;
+  align-items: center;
+  gap: 4mm;
+  margin-bottom: 3mm;
+}
+.e-lh-logo-area { max-height: 8mm; }
+.e-lh-logo-area svg, .e-lh-logo-area img { max-height: 8mm; max-width: 22mm; }
+.e-lh-name {
+  font-family: var(--font-heading);
+  font-size: 9pt;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+.e-lh-line { height: 2mm; background: #f0f0ee; border-radius: 1px; margin-bottom: 2mm; }
+
+/* ═══════════════════════════════════════════════════════════════
+   VERBAL IDENTITY
+═══════════════════════════════════════════════════════════════ */
+.e-vocab-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3mm;
+}
+.e-vocab-item {
+  background: var(--white);
+  border-radius: 3px;
+  padding: 4mm 5mm;
+  border-left: 3px solid var(--accent);
+  display: flex;
+  align-items: flex-start;
+  gap: 5mm;
+}
+.e-vocab-word {
+  font-family: var(--font-heading);
+  font-size: 9.5pt;
+  font-weight: 700;
+  color: var(--text-dark);
+  min-width: 30mm;
+  padding-top: 0.5mm;
+}
+.e-vocab-def {
+  font-family: var(--font-body);
+  font-size: 8pt;
+  color: var(--text-mid);
+  line-height: 1.6;
+  flex: 1;
+}
+
+.e-tone-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 3.5mm;
+  flex: 1;
+}
+.e-tone-row {
+  display: flex;
+  gap: 5mm;
+}
+.e-tone-do, .e-tone-dont {
+  flex: 1;
+  padding: 4mm 5mm;
+  border-radius: 3px;
+}
+.e-tone-do   { background: #eef7f1; border-left: 2px solid #4caf7d; }
+.e-tone-dont { background: #fdf0f0; border-left: 2px solid #e06060; }
+.e-tone-tag {
+  font-family: var(--font-body);
+  font-size: 5.5pt;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 1.5mm;
+}
+.e-tone-do .e-tone-tag   { color: #2a7a4a; }
+.e-tone-dont .e-tone-tag { color: #b04040; }
+.e-tone-text {
+  font-family: var(--font-body);
+  font-size: 7.5pt;
+  color: var(--text-mid);
+  line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CLOSING & BACK COVER
+═══════════════════════════════════════════════════════════════ */
+.page-closing {
+  background: var(--primary);
+}
+.e-closing-inner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6mm;
+  padding: 18mm;
+  position: relative;
+}
+.e-closing-ghost {
+  position: absolute;
+  font-family: var(--font-heading);
+  font-size: 140pt;
+  font-weight: 700;
+  color: rgba(255,255,255,0.04);
+  line-height: 1;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.e-closing-logo { max-height: 22mm; position: relative; z-index: 1; }
+.e-closing-logo svg, .e-closing-logo img { max-height: 22mm; max-width: 65mm; filter: brightness(0) invert(1); }
+.e-closing-note {
+  font-family: var(--font-body);
+  font-size: 8.5pt;
+  color: rgba(255,255,255,0.45);
+  text-align: center;
+  line-height: 1.7;
+  max-width: 110mm;
+  position: relative;
+  z-index: 1;
+}
+.e-closing-brand {
+  font-family: var(--font-heading);
+  font-size: 10pt;
+  font-weight: 700;
+  color: rgba(255,255,255,0.2);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  position: relative;
+  z-index: 1;
+}
+.e-closing-accent { height: 5mm; background: var(--accent); flex-shrink: 0; }
+
+.page-back { background: var(--primary-dark); }
+.e-back-inner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 16mm;
+  position: relative;
+}
+.e-back-ghost {
+  position: absolute;
+  right: 10mm;
+  top: 14mm;
+  font-family: var(--font-heading);
+  font-size: 120pt;
+  font-weight: 700;
+  color: rgba(255,255,255,0.03);
+  line-height: 1;
+  pointer-events: none;
+}
+.e-back-logo { max-height: 10mm; margin-bottom: 4mm; }
+.e-back-logo svg, .e-back-logo img { max-height: 10mm; max-width: 35mm; filter: brightness(0) invert(0.25); }
+.e-back-meta {
+  font-family: var(--font-body);
+  font-size: 6.5pt;
+  color: rgba(255,255,255,0.18);
+  letter-spacing: 0.12em;
+  line-height: 1.8;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 1 — COVER
+═══════════════════════════════════════════════════════════════ -->
+<section class="page page-cover">
+  <div class="e-cover-accent-bar"></div>
+  <div class="e-cover-photo"></div>
+  <div class="e-cover-content">
+    <div class="e-cover-top">
+      <div class="e-cover-logo">{{LOGO_PRIMARY}}</div>
+      <div class="e-cover-guide">Brand Identity Guidelines</div>
+    </div>
+    <div class="e-cover-mid">
+      <div class="e-cover-headline">{{BRAND_NAME}}</div>
+    </div>
+    <div class="e-cover-bottom">
+      <div class="e-cover-tagline">{{TAGLINE}}</div>
+      <div class="e-cover-pill">{{DIRECTION}}</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 2 — BRAND STATEMENT
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="e-band">
+    <div class="e-band-eyebrow">Brand Identity</div>
+    <div class="e-band-title">The Brand Statement</div>
+    <div class="e-band-ghost">02</div>
+  </div>
+  <div class="e-body">
+    <div class="e-num-ghost">02</div>
+    <div class="e-statement-block">
+      <div class="e-statement-pullquote">{{TAGLINE}}</div>
+      <div class="e-statement-divider">
+        <div class="e-statement-divider-line"></div>
+        <div class="e-statement-divider-dot"></div>
+        <div class="e-statement-divider-line"></div>
+      </div>
+      <div class="e-statement-body">{{ELEVATOR_PITCH}}</div>
+      <div class="e-statement-meta">
+        <div class="e-statement-brand">{{BRAND_NAME}}</div>
+        <div class="e-statement-year">{{YEAR}}</div>
+      </div>
+    </div>
+  </div>
+  <div class="e-footer">
+    <div class="e-footer-brand">{{BRAND_NAME}}</div>
+    <div class="e-footer-page">02</div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 3 — WELCOME & CONTENTS
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="e-band">
+    <div class="e-band-eyebrow">Getting Started</div>
+    <div class="e-band-title">Welcome</div>
+    <div class="e-band-ghost">03</div>
+  </div>
+  <div class="e-body">
+    <div class="e-num-ghost">03</div>
+    <div class="e-welcome-cols">
+      <div class="e-welcome-intro">This is {{BRAND_NAME}}.</div>
+      <div class="e-welcome-body">{{WELCOME_LETTER}}</div>
+      <div class="e-welcome-body" style="font-size:7.5pt; color:var(--text-faint);">{{HOW_TO_USE}}</div>
+      <div class="e-rule"></div>
+      <div class="e-contents-box">
+        <h3>Contents</h3>
+        {{CONTENTS_HTML}}
+      </div>
+    </div>
+  </div>
+  <div class="e-footer">
+    <div class="e-footer-brand">{{BRAND_NAME}}</div>
+    <div class="e-footer-page">03</div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 4 — MISSION (full-bleed photo)
+═══════════════════════════════════════════════════════════════ -->
+<section class="page page-mission">
+  <div class="e-mission-photo">
+    <div class="e-mission-text">
+      <div class="e-mission-label">Our Mission</div>
+      <div class="e-mission-quote">{{MISSION_STATEMENT}}</div>
+      <div class="e-mission-body">{{BRAND_STORY_SNIPPET}}</div>
+    </div>
+  </div>
+  <div class="e-mission-footer"></div>
+</section>
+
+<!-- BEGIN-SECTION:vision -->
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 5 — VISION
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="e-band">
+    <div class="e-band-eyebrow">Strategic Foundation</div>
+    <div class="e-band-title">Our Vision</div>
+    <div class="e-band-ghost">05</div>
+  </div>
+  <div class="e-body">
+    <div class="e-num-ghost">05</div>
+    <div class="e-card-grid">
+      {{VISION_PILLARS_HTML}}
+    </div>
+  </div>
+  <div class="e-footer">
+    <div class="e-footer-brand">{{BRAND_NAME}}</div>
+    <div class="e-footer-page">05</div>
+  </div>
+</section>
+<!-- END-SECTION:vision -->
+
+<!-- BEGIN-SECTION:values -->
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 6 — VALUES
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="e-band">
+    <div class="e-band-eyebrow">What We Stand For</div>
+    <div class="e-band-title">Our Values</div>
+    <div class="e-band-ghost">06</div>
+  </div>
+  <div class="e-body">
+    <div class="e-num-ghost">06</div>
+    <div class="e-card-grid">
+      {{VALUES_HTML}}
+    </div>
+  </div>
+  <div class="e-footer">
+    <div class="e-footer-brand">{{BRAND_NAME}}</div>
+    <div class="e-footer-page">06</div>
+  </div>
+</section>
+<!-- END-SECTION:values -->
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 7 — LOGO: PRIMARY
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="e-band">
+    <div class="e-band-eyebrow">Identity System</div>
+    <div class="e-band-title">Logo System</div>
+    <div class="e-band-ghost">07</div>
+  </div>
+  <div class="e-body e-body-white">
+    <div class="e-num-ghost">07</div>
+    <div class="e-logo-stage">{{LOGO_PRIMARY}}</div>
+    <div class="e-logo-caption">Primary Logo Mark — {{BRAND_NAME}}</div>
+  </div>
+  <div class="e-footer">
+    <div class="e-footer-brand">{{BRAND_NAME}}</div>
+    <div class="e-footer-page">07</div>
+  </div>
+</section>
+
+<!-- BEGIN-SECTION:logo-variants -->
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 8 — LOGO VARIANTS
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="e-band">
+    <div class="e-band-eyebrow">Logo Usage</div>
+    <div class="e-band-title">Colour Versions</div>
+    <div class="e-band-ghost">08</div>
+  </div>
+  <div class="e-body">
+    <div class="e-num-ghost">08</div>
+    <div class="e-variants-cols">
+      <div class="e-variant-block">
+        <div class="e-variant-stage on-primary">{{LOGO_WHITEOUT}}</div>
+        <div class="e-variant-label">Reversed / White</div>
+      </div>
+      <div class="e-variant-block">
+        <div class="e-variant-stage on-light">{{LOGO_MONO}}</div>
+        <div class="e-variant-label">Single Colour / Mono</div>
+      </div>
+    </div>
+  </div>
+  <div class="e-footer">
+    <div class="e-footer-brand">{{BRAND_NAME}}</div>
+    <div class="e-footer-page">08</div>
+  </div>
+</section>
+<!-- END-SECTION:logo-variants -->
+
+<!-- BEGIN-SECTION:logo-usage -->
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 9 — LOGO: CLEAR SPACE
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="e-band">
+    <div class="e-band-eyebrow">Logo Usage</div>
+    <div class="e-band-title">Clear Space &amp; Sizing</div>
+    <div class="e-band-ghost">09</div>
+  </div>
+  <div class="e-body e-body-white">
+    <div class="e-num-ghost">09</div>
+    <div class="e-clearance-center">
+      {{LOGO_CLEARANCE_SVG}}
+      <div class="e-clearance-note">{{LOGO_USAGE}}</div>
+    </div>
+  </div>
+  <div class="e-footer">
+    <div class="e-footer-brand">{{BRAND_NAME}}</div>
+    <div class="e-footer-page">09</div>
+  </div>
+</section>
+<!-- END-SECTION:logo-usage -->
+
+<!-- BEGIN-SECTION:logo-donts -->
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 10 — LOGO: DON'TS
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="e-band">
+    <div class="e-band-eyebrow">Logo Rules</div>
+    <div class="e-band-title">What Not To Do</div>
+    <div class="e-band-ghost">10</div>
+  </div>
+  <div class="e-body">
+    <div class="e-num-ghost">10</div>
+    <div class="e-donts-grid">
+      {{LOGO_DONTS_HTML}}
+    </div>
+  </div>
+  <div class="e-footer">
+    <div class="e-footer-brand">{{BRAND_NAME}}</div>
+    <div class="e-footer-page">10</div>
+  </div>
+</section>
+<!-- END-SECTION:logo-donts -->
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 11 — BRAND COLOURS
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="e-band">
+    <div class="e-band-eyebrow">Colour System</div>
+    <div class="e-band-title">Brand Colours</div>
+    <div class="e-band-ghost">11</div>
+  </div>
+  <div class="e-body e-body-white">
+    <div class="e-num-ghost">11</div>
+    <div class="e-swatch-row">
+      {{SWATCH_SECTION_HTML}}
+    </div>
+  </div>
+  <div class="e-footer">
+    <div class="e-footer-brand">{{BRAND_NAME}}</div>
+    <div class="e-footer-page">11</div>
+  </div>
+</section>
+
+<!-- BEGIN-SECTION:gradients -->
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 12 — GRADIENTS
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="e-band">
+    <div class="e-band-eyebrow">Colour System</div>
+    <div class="e-band-title">Brand Gradients</div>
+    <div class="e-band-ghost">12</div>
+  </div>
+  <div class="e-body e-body-white">
+    <div class="e-num-ghost">12</div>
+    <div class="e-gradient-stack">
+      {{GRADIENT_SECTION_HTML}}
+    </div>
+  </div>
+  <div class="e-footer">
+    <div class="e-footer-brand">{{BRAND_NAME}}</div>
+    <div class="e-footer-page">12</div>
+  </div>
+</section>
+<!-- END-SECTION:gradients -->
+
+<!-- BEGIN-SECTION:graphic-devices -->
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 13 — GRAPHIC DEVICES
+═══════════════════════════════════════════════════════════════ -->
+<section class="page page-devices">
+  <div class="e-band" style="background:rgba(0,0,0,0.3);">
+    <div class="e-band-eyebrow">Visual System</div>
+    <div class="e-band-title">Graphic Devices</div>
+    <div class="e-band-ghost">13</div>
+  </div>
+  <div class="e-devices-content">
+    <div class="e-devices-top">
+      <div class="e-devices-icon">{{LOGO_PRIMARY}}</div>
+      <div class="e-devices-desc">{{ICON_USAGE_NOTE}}</div>
+    </div>
+    <div>
+      <div class="e-devices-section-label">Stroke Variants</div>
+      <div class="e-devices-row">{{STROKE_VARIANTS_HTML}}</div>
+    </div>
+    <div>
+      <div class="e-devices-section-label">Box Variants</div>
+      <div class="e-devices-row">{{BOX_VARIANTS_HTML}}</div>
+    </div>
+  </div>
+</section>
+<!-- END-SECTION:graphic-devices -->
+
+<!-- BEGIN-SECTION:photography -->
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 14 — PHOTOGRAPHY
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="e-band">
+    <div class="e-band-eyebrow">Visual Identity</div>
+    <div class="e-band-title">Photography Direction</div>
+    <div class="e-band-ghost">14</div>
+  </div>
+  <div class="e-body e-body-white">
+    <div class="e-num-ghost">14</div>
+    <div class="e-photo-mosaic">
+      <div class="e-photo-tile" style="background-image:url('{{PHOTO_IMAGERY_1_DATA}}');"></div>
+      <div class="e-photo-tile" style="background-image:url('{{PHOTO_IMAGERY_2_DATA}}');"></div>
+      <div class="e-photo-tile" style="background-image:url('{{PHOTO_IMAGERY_3_DATA}}');"></div>
+      <div class="e-photo-tile" style="background-image:url('{{PHOTO_IMAGERY_4_DATA}}');"></div>
+      <div class="e-photo-tile" style="background-image:url('{{PHOTO_IMAGERY_5_DATA}}');"></div>
+    </div>
+    <div class="e-photo-caption">{{IMAGERY_GUIDANCE}}</div>
+  </div>
+  <div class="e-footer">
+    <div class="e-footer-brand">{{BRAND_NAME}}</div>
+    <div class="e-footer-page">14</div>
+  </div>
+</section>
+<!-- END-SECTION:photography -->
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 15 — TYPOGRAPHY SPECIMENS
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="e-band">
+    <div class="e-band-eyebrow">Type System</div>
+    <div class="e-band-title">Typography</div>
+    <div class="e-band-ghost">15</div>
+  </div>
+  <div class="e-body">
+    <div class="e-num-ghost">15</div>
+    <div class="e-type-specimen">
+      <div class="e-type-face-name" style="font-family:var(--font-heading);">{{HEADLINE_FONT}}</div>
+      <div class="e-type-role">Display / Heading Typeface</div>
+      <div class="e-type-weights">
+        <div class="e-type-weight-group">
+          <div class="e-type-wt-label">Light</div>
+          <div class="e-type-sample-h w300">Aa Bb Cc</div>
+        </div>
+        <div class="e-type-weight-group">
+          <div class="e-type-wt-label">Regular</div>
+          <div class="e-type-sample-h w400">Aa Bb Cc</div>
+        </div>
+        <div class="e-type-weight-group">
+          <div class="e-type-wt-label">Bold</div>
+          <div class="e-type-sample-h w700">Aa Bb Cc</div>
+        </div>
+      </div>
+    </div>
+    <div class="e-type-divider"></div>
+    <div class="e-type-specimen">
+      <div class="e-type-face-name" style="font-family:var(--font-body);">{{BODY_FONT}}</div>
+      <div class="e-type-role">Body / Supporting Typeface</div>
+      <div class="e-type-weights">
+        <div class="e-type-weight-group">
+          <div class="e-type-wt-label">Regular</div>
+          <div class="e-type-sample-b w400">Aa Bb Cc</div>
+        </div>
+        <div class="e-type-weight-group">
+          <div class="e-type-wt-label">Semibold</div>
+          <div class="e-type-sample-b w600">Aa Bb Cc</div>
+        </div>
+        <div class="e-type-weight-group">
+          <div class="e-type-wt-label">Bold</div>
+          <div class="e-type-sample-b w700">Aa Bb Cc</div>
+        </div>
+      </div>
+    </div>
+    <div class="e-type-divider"></div>
+    <div class="e-type-rationale">{{TYPEFACE_RATIONALE}}</div>
+  </div>
+  <div class="e-footer">
+    <div class="e-footer-brand">{{BRAND_NAME}}</div>
+    <div class="e-footer-page">15</div>
+  </div>
+</section>
+
+<!-- BEGIN-SECTION:type-in-use -->
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 16 — TYPE IN USE
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="e-band">
+    <div class="e-band-eyebrow">Type System</div>
+    <div class="e-band-title">Type in Use</div>
+    <div class="e-band-ghost">16</div>
+  </div>
+  <div class="e-body">
+    <div class="e-num-ghost">16</div>
+    <div class="e-type-hier">
+      <div class="e-type-hier-row">
+        <div class="e-type-hier-tag">H1</div>
+        <div class="e-h1">{{BRAND_NAME}}</div>
+      </div>
+      <div class="e-type-hier-row">
+        <div class="e-type-hier-tag">H2</div>
+        <div class="e-h2">{{TAGLINE}}</div>
+      </div>
+      <div class="e-type-hier-row">
+        <div class="e-type-hier-tag">H3</div>
+        <div class="e-h3">{{MISSION_STATEMENT_TRUNCATED}}</div>
+      </div>
+      <div class="e-type-hier-row">
+        <div class="e-type-hier-tag">Body</div>
+        <div class="e-body-type">{{BRAND_STORY_SNIPPET}}</div>
+      </div>
+      <div class="e-type-hier-row">
+        <div class="e-type-hier-tag">Caption</div>
+        <div class="e-caption">{{YEAR}} · {{BRAND_NAME}} Brand Identity Guidelines · {{DIRECTION}}</div>
+      </div>
+    </div>
+    <div style="margin-top:5mm;">
+      <div class="e-type-rationale">{{TYPOGRAPHY_USAGE}}</div>
+    </div>
+  </div>
+  <div class="e-footer">
+    <div class="e-footer-brand">{{BRAND_NAME}}</div>
+    <div class="e-footer-page">16</div>
+  </div>
+</section>
+<!-- END-SECTION:type-in-use -->
+
+<!-- BEGIN-SECTION:grid-portrait -->
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 17 — PORTRAIT GRID
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="e-band">
+    <div class="e-band-eyebrow">Layout System</div>
+    <div class="e-band-title">Portrait Grid</div>
+    <div class="e-band-ghost">17</div>
+  </div>
+  <div class="e-body e-body-white">
+    <div class="e-grid-diagram">
+      <svg viewBox="0 0 240 320" xmlns="http://www.w3.org/2000/svg" width="160" height="213">
+        <rect width="240" height="320" fill="white" stroke="#e0e0e0" stroke-width="1"/>
+        <rect x="16" y="16" width="208" height="288" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="0.5" stroke-dasharray="2,2"/>
+        <line x1="73" y1="16" x2="73" y2="304" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
+        <line x1="130" y1="16" x2="130" y2="304" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
+        <line x1="187" y1="16" x2="187" y2="304" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
+        <line x1="16" y1="112" x2="224" y2="112" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
+        <line x1="16" y1="208" x2="224" y2="208" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
+        <path d="M16,26 L16,16 L26,16" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
+        <path d="M214,16 L224,16 L224,26" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
+        <path d="M16,294 L16,304 L26,304" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
+        <path d="M214,304 L224,304 L224,294" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
+        <text x="120" y="170" text-anchor="middle" font-family="sans-serif" font-size="8" fill="{{PRIMARY_HEX}}" opacity="0.4">Portrait Layout Grid</text>
+      </svg>
+    </div>
+  </div>
+  <div class="e-footer">
+    <div class="e-footer-brand">{{BRAND_NAME}}</div>
+    <div class="e-footer-page">17</div>
+  </div>
+</section>
+<!-- END-SECTION:grid-portrait -->
+
+<!-- BEGIN-SECTION:grid-landscape -->
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 18 — LANDSCAPE GRID
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="e-band">
+    <div class="e-band-eyebrow">Layout System</div>
+    <div class="e-band-title">Landscape Grid</div>
+    <div class="e-band-ghost">18</div>
+  </div>
+  <div class="e-body e-body-white">
+    <div class="e-grid-diagram">
+      <svg viewBox="0 0 320 220" xmlns="http://www.w3.org/2000/svg" width="200" height="138">
+        <rect width="320" height="220" fill="white" stroke="#e0e0e0" stroke-width="1"/>
+        <rect x="16" y="14" width="288" height="192" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="0.5" stroke-dasharray="2,2"/>
+        <line x1="88" y1="14" x2="88" y2="206" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
+        <line x1="160" y1="14" x2="160" y2="206" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
+        <line x1="232" y1="14" x2="232" y2="206" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
+        <line x1="16" y1="78" x2="304" y2="78" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
+        <line x1="16" y1="142" x2="304" y2="142" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
+        <path d="M16,24 L16,14 L26,14" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
+        <path d="M294,14 L304,14 L304,24" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
+        <path d="M16,196 L16,206 L26,206" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
+        <path d="M294,206 L304,206 L304,196" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
+        <text x="160" y="118" text-anchor="middle" font-family="sans-serif" font-size="8" fill="{{PRIMARY_HEX}}" opacity="0.4">Landscape Layout Grid</text>
+      </svg>
+    </div>
+  </div>
+  <div class="e-footer">
+    <div class="e-footer-brand">{{BRAND_NAME}}</div>
+    <div class="e-footer-page">18</div>
+  </div>
+</section>
+<!-- END-SECTION:grid-landscape -->
+
+<!-- BEGIN-SECTION:brand-application -->
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 19 — BRAND APPLICATION 1
+═══════════════════════════════════════════════════════════════ -->
+<section class="page page-application">
+  <div class="e-app-photo" style="background-image:url('{{PHOTO_EXAMPLES_1_DATA}}');">
+    <div class="e-app-overlay">
+      <div class="e-app-logo">{{LOGO_PRIMARY}}</div>
+      <div class="e-app-bottom">
+        <div class="e-app-label">Brand Application</div>
+        <div class="e-app-brand">{{BRAND_NAME}}</div>
+      </div>
+    </div>
+  </div>
+  <div class="e-app-accent-stripe"></div>
+</section>
+
+<!-- PAGE 20 — BRAND APPLICATION 2 -->
+<section class="page page-application">
+  <div class="e-app-photo" style="background-image:url('{{PHOTO_EXAMPLES_2_DATA}}');">
+    <div class="e-app-overlay">
+      <div class="e-app-logo">{{LOGO_PRIMARY}}</div>
+      <div class="e-app-bottom">
+        <div class="e-app-label">Brand Application</div>
+        <div class="e-app-brand">{{TAGLINE}}</div>
+      </div>
+    </div>
+  </div>
+  <div class="e-app-accent-stripe"></div>
+</section>
+
+<!-- PAGE 21 — BRAND APPLICATION 3 -->
+<section class="page page-application">
+  <div class="e-app-photo" style="background-image:url('{{PHOTO_APP_DATA}}');">
+    <div class="e-app-overlay">
+      <div class="e-app-logo">{{LOGO_PRIMARY}}</div>
+      <div class="e-app-bottom">
+        <div class="e-app-label">Brand Application</div>
+        <div class="e-app-brand">{{MISSION_STATEMENT_TRUNCATED}}</div>
+      </div>
+    </div>
+  </div>
+  <div class="e-app-accent-stripe"></div>
+</section>
+<!-- END-SECTION:brand-application -->
+
+<!-- BEGIN-SECTION:stationery -->
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 22 — STATIONERY
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="e-band">
+    <div class="e-band-eyebrow">Brand Applications</div>
+    <div class="e-band-title">Stationery</div>
+    <div class="e-band-ghost">22</div>
+  </div>
+  <div class="e-body e-body-white">
+    <div class="e-num-ghost">22</div>
+    <div class="e-stationery-grid">
+      <div>
+        <div class="e-label" style="margin-bottom:3mm;">Business Card</div>
+        <div class="e-card-mock">
+          <div class="e-card-logo">{{LOGO_PRIMARY}}</div>
+          <div class="e-card-info">
+            <div class="e-card-name">{{BRAND_NAME}}</div>
+            <div class="e-card-tag">{{TAGLINE}}</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="e-label" style="margin-bottom:3mm;">Letterhead</div>
+        <div class="e-letterhead-mock">
+          <div class="e-lh-top"></div>
+          <div class="e-lh-body">
+            <div class="e-lh-row">
+              <div class="e-lh-logo-area">{{LOGO_PRIMARY}}</div>
+              <div class="e-lh-name">{{BRAND_NAME}}</div>
+            </div>
+            <div class="e-lh-line"></div>
+            <div class="e-lh-line" style="width:75%;"></div>
+            <div class="e-lh-line" style="width:90%;"></div>
+            <div class="e-lh-line" style="width:55%;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="e-footer">
+    <div class="e-footer-brand">{{BRAND_NAME}}</div>
+    <div class="e-footer-page">22</div>
+  </div>
+</section>
+<!-- END-SECTION:stationery -->
+
+<!-- BEGIN-SECTION:brand-language -->
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 23 — BRAND LANGUAGE
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="e-band">
+    <div class="e-band-eyebrow">Verbal Identity</div>
+    <div class="e-band-title">Brand Language</div>
+    <div class="e-band-ghost">23</div>
+  </div>
+  <div class="e-body">
+    <div class="e-num-ghost">23</div>
+    <div class="e-vocab-list">
+      {{VOCABULARY_HTML}}
+    </div>
+  </div>
+  <div class="e-footer">
+    <div class="e-footer-brand">{{BRAND_NAME}}</div>
+    <div class="e-footer-page">23</div>
+  </div>
+</section>
+<!-- END-SECTION:brand-language -->
+
+<!-- BEGIN-SECTION:tone-of-voice -->
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 24 — TONE OF VOICE
+═══════════════════════════════════════════════════════════════ -->
+<section class="page">
+  <div class="e-band">
+    <div class="e-band-eyebrow">Verbal Identity</div>
+    <div class="e-band-title">Tone of Voice</div>
+    <div class="e-band-ghost">24</div>
+  </div>
+  <div class="e-body">
+    <div class="e-num-ghost">24</div>
+    <div class="e-tone-grid">
+      {{TONE_GUIDE_HTML}}
+    </div>
+    <div style="margin-top:5mm; font-family:var(--font-body); font-size:7.5pt; color:var(--text-mid); line-height:1.65;">
+      {{COLOR_USAGE}}
+    </div>
+  </div>
+  <div class="e-footer">
+    <div class="e-footer-brand">{{BRAND_NAME}}</div>
+    <div class="e-footer-page">24</div>
+  </div>
+</section>
+<!-- END-SECTION:tone-of-voice -->
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 25 — CLOSING
+═══════════════════════════════════════════════════════════════ -->
+<section class="page page-closing">
+  <div class="e-closing-inner">
+    <div class="e-closing-ghost">{{BRAND_NAME_UPPER}}</div>
+    <div class="e-closing-logo">{{LOGO_PRIMARY}}</div>
+    <div class="e-closing-note">{{CLOSING_NOTE}}</div>
+    <div class="e-closing-brand">{{BRAND_NAME_UPPER}}</div>
+  </div>
+  <div class="e-closing-accent"></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PAGE 26 — BACK COVER
+═══════════════════════════════════════════════════════════════ -->
+<section class="page page-back">
+  <div class="e-back-ghost">{{BRAND_NAME_UPPER}}</div>
+  <div class="e-back-inner">
+    <div class="e-back-logo">{{LOGO_PRIMARY}}</div>
+    <div class="e-back-meta">
+      {{BRAND_NAME}} · Brand Identity Guidelines<br>
+      {{YEAR}}
+    </div>
+  </div>
+</section>
+
+</body>
+</html>
