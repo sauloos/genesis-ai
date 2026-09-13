@@ -133,12 +133,20 @@ public class BrandBookTemplateService {
                 .stream().findFirst()
                 .orElseThrow(() -> new IllegalStateException("No brand book templates configured"));
         }
-        if (current.size() == 1) return current.get(0);
+        if (current.size() == 1) {
+            log.info("BrandBookTemplateService: single CURRENT template '{}' selected", current.get(0).getName());
+            return current.get(0);
+        }
 
         // Score each template against the brand context
-        return current.stream()
+        BrandBookTemplate selected = current.stream()
             .max((a, b) -> score(a, brand, direction) - score(b, brand, direction))
             .orElse(current.get(0));
+        log.info("BrandBookTemplateService: selected '{}' (direction={}, scores={})",
+            selected.getName(), direction,
+            current.stream().map(t -> t.getName() + ":" + score(t, brand, direction))
+                .collect(java.util.stream.Collectors.joining(", ")));
+        return selected;
     }
 
     private int score(BrandBookTemplate t, DirectionBrief.BrandContext brand, DirectionBrief.CreativeDirection direction) {
