@@ -8,7 +8,9 @@ import ai.genesisbrands.agent.brandbook.BrandBookOutput;
 import ai.genesisbrands.agent.brandbook.BrandBookTemplateRenderer;
 import ai.genesisbrands.agent.brandbook.BrandBookRefinementLoop;
 import ai.genesisbrands.agent.core.AgentRevision;
+import ai.genesisbrands.model.BrandBookTemplate;
 import ai.genesisbrands.service.BlobStorageService;
+import ai.genesisbrands.service.BrandBookTemplateService;
 import ai.genesisbrands.service.PhotoSourcingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,6 +34,7 @@ public class BrandBookAgentController {
     private final BaselineBrandBookService baselineBrandBookService;
     private final BrandBookRefinementLoop brandBookRefinementLoop;
     private final BrandBookTemplateRenderer brandBookTemplateRenderer;
+    private final BrandBookTemplateService brandBookTemplateService;
     private final BlobStorageService blobStorageService;
     private final PhotoSourcingService photoSourcingService;
 
@@ -39,12 +42,14 @@ public class BrandBookAgentController {
                                      BaselineBrandBookService baselineBrandBookService,
                                      BrandBookRefinementLoop brandBookRefinementLoop,
                                      BrandBookTemplateRenderer brandBookTemplateRenderer,
+                                     BrandBookTemplateService brandBookTemplateService,
                                      BlobStorageService blobStorageService,
                                      PhotoSourcingService photoSourcingService) {
         this.brandBookAgent = brandBookAgent;
         this.baselineBrandBookService = baselineBrandBookService;
         this.brandBookRefinementLoop = brandBookRefinementLoop;
         this.brandBookTemplateRenderer = brandBookTemplateRenderer;
+        this.brandBookTemplateService = brandBookTemplateService;
         this.blobStorageService = blobStorageService;
         this.photoSourcingService = photoSourcingService;
     }
@@ -112,7 +117,9 @@ public class BrandBookAgentController {
             }
         }
 
-        byte[] pdf = brandBookTemplateRenderer.render(request.input(), request.output());
+        BrandBookTemplate template = brandBookTemplateService.select(
+            request.input().brief().brand(), request.input().brief().direction());
+        byte[] pdf = brandBookTemplateRenderer.renderWithTemplate(request.input(), request.output(), template);
 
         String blobPath = "assets/brand-books/%s/%s-%d.pdf".formatted(
             request.input().brief().engagementId(),
@@ -124,7 +131,9 @@ public class BrandBookAgentController {
             log.warn("Brand book PDF blob upload failed (non-fatal): {}", e.getMessage());
         }
 
-        String filename = request.input().brief().brand().name().replaceAll("[^a-zA-Z0-9]+", "-") + "-brand-book.pdf";
+        String brandSlug = request.input().brief().brand().name().replaceAll("[^a-zA-Z0-9]+", "-");
+        String templateSlug = template.getName().toLowerCase();
+        String filename = brandSlug + "-brand-book-" + templateSlug + ".pdf";
         return ResponseEntity.ok()
             .contentType(MediaType.APPLICATION_PDF)
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
