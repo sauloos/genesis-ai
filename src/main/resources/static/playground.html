@@ -1706,10 +1706,13 @@ async function downloadBrandBookPdf(btn) {
   const originalText = btn.textContent;
   btn.disabled = true;
   btn.textContent = 'Rendering…';
+  // Apply the currently selected direction so switching direction without re-running the
+  // agent still picks the right template (content stays the same; only template changes).
+  const input = { ...lastBrandBookInput, brief: { ...lastBrandBookInput.brief, direction: currentDirection } };
   try {
     const res = await fetch(`${API}/api/agents/brand-book/render-pdf`, {
       method: 'POST', headers: HEADERS,
-      body: JSON.stringify({ input: lastBrandBookInput, output })
+      body: JSON.stringify({ input, output })
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const blob = await res.blob();
