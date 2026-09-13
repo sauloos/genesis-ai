@@ -110,8 +110,11 @@ public class BrandBookTemplateService {
     public String loadHtml(BrandBookTemplate template) {
         return htmlCache.computeIfAbsent(template.getId(), k -> {
             try {
-                return new ClassPathResource(template.getClasspathPath())
+                String html = new ClassPathResource(template.getClasspathPath())
                     .getContentAsString(StandardCharsets.UTF_8);
+                log.info("BrandBookTemplateService: loaded '{}' HTML ({} bytes) from classpath:{}",
+                    template.getName(), html.length(), template.getClasspathPath());
+                return html;
             } catch (IOException e) {
                 throw new RuntimeException("Cannot load template HTML: " + template.getClasspathPath(), e);
             }
@@ -133,6 +136,26 @@ public class BrandBookTemplateService {
                 .stream().findFirst()
                 .orElseThrow(() -> new IllegalStateException("No brand book templates configured"));
         }
+
+        // Guard: only consider templates whose HTML is actually in this deployment's classpath.
+        // If the container hasn't been rebuilt after new templates were added, those entries will
+        // be in the DB but their files won't be in the JAR — skip them rather than 500.
+        List<BrandBookTemplate> loadable = current.stream()
+            .filter(t -> new ClassPathResource(t.getClasspathPath()).exists())
+            .collect(Collectors.toList());
+        if (loadable.isEmpty()) {
+            log.warn("No CURRENT templates have loadable HTML (JAR may be stale) — falling back to DEPRECATED");
+            return templateRepo.findByStatusOrderByCreatedAtDesc(BrandBookTemplate.Status.DEPRECATED)
+                .stream().filter(t -> new ClassPathResource(t.getClasspathPath()).exists())
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("No brand book templates have loadable HTML"));
+        }
+        if (loadable.size() < current.size()) {
+            log.warn("BrandBookTemplateService: {} of {} CURRENT templates are missing from classpath and will be skipped",
+                current.size() - loadable.size(), current.size());
+        }
+        current = loadable;
+
         if (current.size() == 1) {
             log.info("BrandBookTemplateService: single CURRENT template '{}' selected", current.get(0).getName());
             return current.get(0);

@@ -153,7 +153,10 @@ public class BrandBookTemplateRenderer {
             if (printReady) {
                 opts.setWidth("216mm").setHeight("303mm");
             } else {
-                opts.setFormat("A4");
+                // Let each template's own @page { size } rule determine dimensions.
+                // This allows landscape templates (e.g. Meridian: A4 landscape) to
+                // render at the correct size without needing explicit width/height here.
+                opts.setPreferCSSPageSize(true);
             }
             return tab.pdf(opts);
         } finally {
