@@ -23,6 +23,8 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Year;
 import java.util.Base64;
 import java.util.LinkedHashMap;
@@ -145,22 +147,33 @@ public class BrandBookTemplateRenderer {
     }
 
     private byte[] renderHtml(String html, boolean printReady) {
+        // Write HTML to a temp file and navigate via file:// rather than using setContent().
+        // setContent() passes the full HTML string over the Playwright IPC pipe; when the
+        // template contains many base64-encoded photos the string can exceed tens of MB and
+        // Chromium crashes with "Page crashed". file:// navigation reads from disk directly
+        // and bypasses the IPC buffer limit entirely.
+        Path tmpFile = null;
         BrowserContext ctx = browser.newContext();
         try {
+            tmpFile = Files.createTempFile("brand-book-", ".html");
+            Files.writeString(tmpFile, html, StandardCharsets.UTF_8);
             Page tab = ctx.newPage();
-            tab.setContent(html, new Page.SetContentOptions().setWaitUntil(WaitUntilState.NETWORKIDLE));
+            tab.navigate("file://" + tmpFile.toAbsolutePath(),
+                new Page.NavigateOptions().setWaitUntil(WaitUntilState.NETWORKIDLE));
             Page.PdfOptions opts = new Page.PdfOptions().setPrintBackground(true);
             if (printReady) {
                 opts.setWidth("216mm").setHeight("303mm");
             } else {
-                // Let each template's own @page { size } rule determine dimensions.
-                // This allows landscape templates (e.g. Meridian: A4 landscape) to
-                // render at the correct size without needing explicit width/height here.
                 opts.setPreferCSSPageSize(true);
             }
             return tab.pdf(opts);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to write temp HTML file for PDF render", e);
         } finally {
             ctx.close();
+            if (tmpFile != null) {
+                try { Files.delete(tmpFile); } catch (IOException ignored) {}
+            }
         }
     }
 
