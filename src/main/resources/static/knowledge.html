@@ -503,8 +503,19 @@ body {
 </head>
 <body>
 
+<!-- Nav (hidden until toggle) -->
+<div id="nav-menu" style="display:none;position:fixed;top:48px;left:0;background:#111318;border:1px solid #2a3145;border-radius:0 0 8px 8px;z-index:50;min-width:160px;padding:4px 0;">
+  <a href="/console"        style="display:block;padding:8px 16px;color:#aaa;text-decoration:none;font-size:13px;" onmouseover="this.style.background='#1e2333'" onmouseout="this.style.background=''">Consultant</a>
+  <a href="/training"       style="display:block;padding:8px 16px;color:#aaa;text-decoration:none;font-size:13px;" onmouseover="this.style.background='#1e2333'" onmouseout="this.style.background=''">Training</a>
+  <a href="/playground"     style="display:block;padding:8px 16px;color:#aaa;text-decoration:none;font-size:13px;" onmouseover="this.style.background='#1e2333'" onmouseout="this.style.background=''">Playground</a>
+  <a href="/questionnaires" style="display:block;padding:8px 16px;color:#aaa;text-decoration:none;font-size:13px;" onmouseover="this.style.background='#1e2333'" onmouseout="this.style.background=''">Questionnaires</a>
+  <a href="/templates"      style="display:block;padding:8px 16px;color:#aaa;text-decoration:none;font-size:13px;" onmouseover="this.style.background='#1e2333'" onmouseout="this.style.background=''">Templates</a>
+  <a href="/knowledge"      style="display:block;padding:8px 16px;color:#4f8ef7;text-decoration:none;font-size:13px;font-weight:600;" onmouseover="this.style.background='#1e2333'" onmouseout="this.style.background=''">Knowledge</a>
+</div>
+
 <!-- Top bar -->
 <div class="topbar">
+  <button onclick="toggleNavMenu(event)" style="background:none;border:1px solid #2a3145;border-radius:5px;width:28px;height:28px;cursor:pointer;color:#8892a8;font-size:14px;display:flex;align-items:center;justify-content:center;" title="Menu">☰</button>
   <span class="topbar-title">Knowledge Explorer</span>
   <div class="topbar-sep"></div>
   <div class="search-wrap">
@@ -978,6 +989,16 @@ function toast(msg, isErr) {
   el.className = 'toast show' + (isErr ? ' err' : '');
   setTimeout(() => el.classList.remove('show'), 3000);
 }
+function toggleNavMenu(e) {
+  e.stopPropagation();
+  const m = document.getElementById('nav-menu');
+  m.style.display = m.style.display === 'none' ? 'block' : 'none';
+}
+document.addEventListener('click', () => {
+  const m = document.getElementById('nav-menu');
+  if (m) m.style.display = 'none';
+});
+
 function toggleTheme() {
   const root = document.documentElement;
   const cur = root.getAttribute('data-theme');
