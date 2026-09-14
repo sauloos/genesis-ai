@@ -31,6 +31,11 @@ public class PageController {
         return "forward:/templates.html";
     }
 
+    @GetMapping("/knowledge")
+    public String knowledgePage() {
+        return "forward:/knowledge.html";
+    }
+
     @GetMapping("/questionnaire-run")
     public String questionnaireRunPage() {
         return "forward:/questionnaire-run.html";

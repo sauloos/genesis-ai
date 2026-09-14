@@ -56,6 +56,10 @@ public class Layer1Service {
         return content;
     }
 
+    public Map<String, String> listModules() {
+        return java.util.Collections.unmodifiableMap(modules);
+    }
+
     public String buildContextBlock() {
         if (modules.isEmpty()) {
             return "";
