@@ -31,6 +31,7 @@ def ingest_youtube(url: str, layer: str = "layer1", force: bool = False) -> None
         text=data["text"],
         source_url=url,
         source_type="youtube",
+        content_category="youtube",
         title=data["title"],
         author=data["author"],
         date=data["date"],
@@ -48,6 +49,7 @@ def ingest_vimeo(url: str, layer: str = "layer1", force: bool = False) -> None:
         text=data["text"],
         source_url=url,
         source_type="vimeo",
+        content_category="video",
         title=data["title"],
         author=data["author"],
         date=data["date"],
@@ -67,6 +69,7 @@ def ingest_pdf(file_path: str, layer: str = "layer1", force: bool = False) -> No
         text=data["text"],
         source_url=source_url,
         source_type="pdf",
+        content_category="document",
         title=data["title"],
         author=data["author"],
         layer=layer,
@@ -85,6 +88,7 @@ def ingest_pptx(file_path: str, layer: str = "layer1", force: bool = False) -> N
         text=data["text"],
         source_url=source_url,
         source_type="pptx",
+        content_category="document",
         title=data["title"],
         author=data["author"],
         layer=layer,
@@ -93,7 +97,8 @@ def ingest_pptx(file_path: str, layer: str = "layer1", force: bool = False) -> N
     print(f"  → {count} chunks ingested\n")
 
 
-def ingest_txt(file_path: str, layer: str = "layer1", force: bool = False, normalise: bool = True) -> None:
+def ingest_txt(file_path: str, layer: str = "layer1", force: bool = False, normalise: bool = True,
+               content_category: str = "document") -> None:
     path = Path(file_path).resolve()
     source_url = f"file://{path}"
     print(f"Text: {path.name}")
@@ -102,6 +107,7 @@ def ingest_txt(file_path: str, layer: str = "layer1", force: bool = False, norma
         text=text,
         source_url=source_url,
         source_type="file",
+        content_category=content_category,
         title=path.stem,
         layer=layer,
         force=force,
@@ -110,7 +116,8 @@ def ingest_txt(file_path: str, layer: str = "layer1", force: bool = False, norma
     print(f"  → {count} chunks ingested\n")
 
 
-def ingest_url(url: str, layer: str = "layer1", force: bool = False) -> None:
+def ingest_url(url: str, layer: str = "layer1", force: bool = False,
+               content_category: str = "web") -> None:
     from extractors.web import extract
     print(f"Web: {url}")
     data = extract(url)
@@ -118,6 +125,7 @@ def ingest_url(url: str, layer: str = "layer1", force: bool = False) -> None:
         text=data["text"],
         source_url=url,
         source_type="web",
+        content_category=content_category,
         title=data["title"],
         author=data["author"],
         date=data["date"],
@@ -220,6 +228,10 @@ def main() -> None:
     parser.add_argument("--layer", default="layer1", choices=["layer1", "layer2"], help="Knowledge layer (default: layer1)")
     parser.add_argument("--force", action="store_true", help="Re-ingest even if source was already ingested")
     parser.add_argument("--no-normalise", dest="no_normalise", action="store_true", help="Skip GPT normalisation (use for already-normalised content)")
+    parser.add_argument("--type", dest="content_type",
+                        choices=["blog", "podcast", "web", "document", "youtube", "video"],
+                        default=None,
+                        help="Content category for display in Knowledge Explorer (used with --url and --txt)")
 
     args = parser.parse_args()
 
@@ -240,9 +252,11 @@ def main() -> None:
     elif args.pptx:
         ingest_pptx(args.pptx, layer=args.layer, force=args.force)
     elif args.url:
-        ingest_url(args.url, layer=args.layer, force=args.force)
+        ingest_url(args.url, layer=args.layer, force=args.force,
+                   content_category=args.content_type or "web")
     elif args.txt:
-        ingest_txt(args.txt, layer=args.layer, force=args.force, normalise=normalise)
+        ingest_txt(args.txt, layer=args.layer, force=args.force, normalise=normalise,
+                   content_category=args.content_type or "document")
     elif args.folder:
         ingest_folder(args.folder, layer=args.layer, force=args.force)
 

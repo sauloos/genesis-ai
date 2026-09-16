@@ -530,25 +530,33 @@ async function fetchJSON(url) {
   return r.json();
 }
 
-// ── Source type inference ────────────────────────────────────────────────
+// ── Source type resolution ───────────────────────────────────────────────
+// Prefer the explicit content_category stored at ingestion time.
+// Fall back to heuristics only for older data that pre-dates the field.
 function inferSourceType(src) {
+  const cat = (src.sourceType || '').toLowerCase(); // content_category comes through as sourceType in SourceSummary
+  // explicit content_category values set at ingestion
+  if (cat === 'youtube') return 'YouTube';
+  if (cat === 'podcast') return 'Podcast';
+  if (cat === 'blog')    return 'Blog';
+  if (cat === 'document' || cat === 'pdf' || cat === 'pptx') return 'Document';
+  if (cat === 'video' || cat === 'vimeo') return 'Video';
+
+  // legacy heuristic fallback for data ingested before content_category existed
   const url = (src.sourceUrl || '').toLowerCase();
-  const raw = (src.sourceType || '').toLowerCase();
   if (url.includes('youtube.com') || url.includes('youtu.be') || url.includes('/youtube/'))
     return 'YouTube';
-  if (url.includes('/podcast') || url.includes('/podcasts/') || raw === 'podcast')
+  if (url.includes('/podcast') || url.includes('/podcasts/'))
     return 'Podcast';
-  if (url.includes('/blogs/') || url.includes('/blog/') || raw === 'blog')
+  if (url.includes('/blogs/') || url.includes('/blog/'))
     return 'Blog';
-  if (raw === 'upload' || url.endsWith('.pdf') || url.includes('/books/') || url.includes('/documents/'))
+  if (url.endsWith('.pdf') || url.includes('/books/') || url.includes('/documents/'))
     return 'Document';
-  if (raw === 'web' || url.startsWith('https://') || url.startsWith('http://'))
-    return 'Web';
-  return 'Other';
+  return 'Web';
 }
 
-const TYPE_ICON = { YouTube: '▶', Podcast: '🎙', Blog: '✍', Document: '📄', Web: '🌐', Other: '📦' };
-const TYPE_ORDER = ['YouTube', 'Podcast', 'Blog', 'Document', 'Web', 'Other'];
+const TYPE_ICON = { YouTube: '▶', Podcast: '🎙', Blog: '✍', Document: '📄', Video: '🎬', Web: '🌐', Other: '📦' };
+const TYPE_ORDER = ['YouTube', 'Podcast', 'Blog', 'Document', 'Video', 'Web', 'Other'];
 
 // ── Update layer counts ───────────────────────────────────────────────────
 function updateLayer1aCount(q = '') {

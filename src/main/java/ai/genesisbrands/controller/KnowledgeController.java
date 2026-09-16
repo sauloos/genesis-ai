@@ -71,7 +71,10 @@ public class KnowledgeController {
                 String url       = (String) payload.getOrDefault("source_url", "");
                 String title     = (String) payload.getOrDefault("title", "");
                 String ingestedAt = (String) payload.getOrDefault("ingested_at", "");
-                String srcType   = (String) payload.getOrDefault("source_type", "");
+                // Prefer explicit content_category (set at ingestion) over source_type (ingestion method)
+                String srcType = payload.containsKey("content_category")
+                    ? (String) payload.get("content_category")
+                    : (String) payload.getOrDefault("source_type", "");
                 Object totalChunks = payload.get("total_chunks");
                 int chunks = totalChunks instanceof Number n ? n.intValue() : 1;
                 String domain = extractDomain(url);

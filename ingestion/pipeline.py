@@ -186,10 +186,15 @@ def process(
     layer: str = "layer1",
     force: bool = False,
     normalise: bool = True,
+    content_category: str = "",
 ) -> int:
     """
     Process extracted text through the full pipeline.
     Returns the number of chunks ingested (0 if skipped as duplicate).
+
+    content_category — semantic type of the source for UI display:
+      "youtube", "podcast", "blog", "document", "video", "web"
+      Defaults to source_type when not provided.
     """
     if not force and _is_already_ingested(source_url, layer):
         print(f"  Already ingested, skipping: {source_url}")
@@ -212,12 +217,15 @@ def process(
         print(f"  Normalising {len(raw_chunks)} chunks...")
         raw_chunks = [_normalise_chunk(c) for c in raw_chunks]
 
+    effective_category = content_category or source_type
+
     chunks_data = [
         {
             "id": str(uuid.uuid4()),
             "source_id": sid,
             "source_url": source_url,
             "source_type": source_type,
+            "content_category": effective_category,
             "layer": layer,
             "title": title,
             "author": author,
