@@ -1,0 +1,44 @@
+# Genesis AI — Engagement Model & Deliverable Principles
+
+playbook:
+  role: primary strategic output of every Genesis AI engagement
+  description: >
+    Comprehensive strategy document containing all brand directions, creative ideas,
+    campaign concepts, and long-term brand development recommendations produced for a client.
+  visibility: internal
+  purpose: >
+    Master reference that drives everything. Does not get handed to the client directly.
+    Sits in the background as the strategic foundation from which all client-facing
+    deliverables are derived and all future upselling opportunities are identified.
+
+brand_book:
+  role: first client-facing deliverable
+  description: >
+    Derived from the Playbook. Contains the essential brand identity outputs: brand story,
+    messaging, visual identity, tone of voice, and usage guidelines.
+  visibility: client-facing
+  purpose: >
+    Polished and presentable. Built for the client's team to use day-to-day.
+
+upsell_model:
+  description: >
+    From the Playbook's strategic ideas, Genesis AI can offer a growing catalogue of
+    downstream assets and services — campaign concepts, content strategies, social media
+    playbooks, pitch decks, naming, sub-brand development, and more.
+  principle: >
+    Each upsell represents a discrete opportunity rooted in work already done.
+    The Playbook is the engine of the ongoing client relationship — it captures more
+    value than is immediately released, creating natural touchpoints for future engagements.
+
+deliverable_flow:
+  steps:
+    - Genesis AI conducts client discovery and produces three brand directions
+    - Specialist agents produce copy, visual identity, and logo concepts for each direction
+    - The Brand Playbook is assembled — comprehensive, internal, the full strategic picture
+    - The Brand Book is derived from the Playbook — the first thing the client receives
+    - Individual assets and services are offered as upsells, drawn from Playbook ideas
+
+principle: >
+  The Playbook holds the full strategic intelligence. The Brand Book surfaces the essentials.
+  Everything else is unlocked progressively — deepening the client relationship and
+  generating ongoing revenue from a single engagement.
