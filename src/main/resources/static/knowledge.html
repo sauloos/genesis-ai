@@ -124,35 +124,66 @@
   #tree::-webkit-scrollbar-track { background: transparent; }
   #tree::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
 
+  /* Layer top-level headers */
+  .layer-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px 5px;
+    cursor: pointer;
+    user-select: none;
+    border-top: 1px solid #1a1a1a;
+  }
+  .layer-header:first-child { border-top: none; }
+  .layer-header:hover .layer-title { color: #fff; }
+  .layer-title {
+    color: #ccc;
+    font-size: 11px;
+    font-weight: 700;
+    flex: 1;
+    transition: color 0.12s;
+  }
+  .layer-sub {
+    color: #555;
+    font-size: 10px;
+    font-weight: 400;
+  }
+  .layer-count { color: #555; font-size: 10px; }
+  .layer-chevron { color: #555; transition: transform 0.2s; flex-shrink: 0; }
+  .layer-chevron.open { transform: rotate(90deg); }
+  .layer-body { display: none; }
+  .layer-body.open { display: block; }
+
+  /* Section sub-headers within a layer */
   .section-header {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 6px 12px 4px;
+    padding: 5px 12px 3px 14px;
     cursor: pointer;
     user-select: none;
   }
-  .section-header:hover .section-title { color: #fff; }
+  .section-header:hover .section-title { color: #ccc; }
   .section-title {
-    color: #888;
+    color: #666;
     font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.8px;
+    letter-spacing: 0.7px;
     flex: 1;
     transition: color 0.12s;
   }
-  .section-count { color: #555; font-size: 10px; }
-  .section-chevron { color: #555; transition: transform 0.2s; flex-shrink: 0; }
+  .section-count { color: #444; font-size: 10px; }
+  .section-chevron { color: #444; transition: transform 0.2s; flex-shrink: 0; }
   .section-chevron.open { transform: rotate(90deg); }
   .section-body { display: none; }
   .section-body.open { display: block; }
 
   .group-header {
-    padding: 5px 12px 3px 16px;
+    padding: 4px 12px 2px 20px;
     font-size: 10px;
     font-weight: 600;
-    color: #555;
+    color: #4a4a4a;
     text-transform: uppercase;
     letter-spacing: 0.6px;
     cursor: pointer;
@@ -161,14 +192,21 @@
     gap: 5px;
     user-select: none;
   }
-  .group-header:hover { color: #888; }
+  .group-header:hover { color: #777; }
   .group-chevron { transition: transform 0.2s; }
   .group-chevron.open { transform: rotate(90deg); }
   .group-items { display: none; }
   .group-items.open { display: block; }
 
+  .layer-placeholder {
+    padding: 8px 16px 10px;
+    font-size: 11px;
+    color: #3a3a3a;
+    font-style: italic;
+  }
+
   .tree-item {
-    padding: 6px 12px 6px 20px;
+    padding: 6px 12px 6px 26px;
     font-size: 12px;
     color: #aaa;
     cursor: pointer;
@@ -364,38 +402,63 @@
   </div>
 
   <div id="tree">
-    <div class="section-header" data-section="modules">
-      <svg class="section-chevron open" width="8" height="8" viewBox="0 0 8 8" fill="none">
+
+    <!-- Layer 1b -->
+    <div class="layer-header" data-layer="layer1b">
+      <svg class="layer-chevron open" width="8" height="8" viewBox="0 0 8 8" fill="none">
         <path d="M2.5 1.5L5.5 4L2.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      <span class="section-title">Modules</span>
-      <span class="section-count" id="modules-count"></span>
+      <span class="layer-title">Layer 1b <span class="layer-sub">Reasoning Modules</span></span>
+      <span class="layer-count" id="modules-count"></span>
     </div>
-    <div class="section-body open" id="modules-body">
+    <div class="layer-body open" id="layer1b-body">
       <div class="sidebar-msg">Loading…</div>
     </div>
 
-    <div class="section-header" data-section="training" style="margin-top:4px">
-      <svg class="section-chevron open" width="8" height="8" viewBox="0 0 8 8" fill="none">
+    <!-- Layer 1a -->
+    <div class="layer-header" data-layer="layer1a">
+      <svg class="layer-chevron open" width="8" height="8" viewBox="0 0 8 8" fill="none">
         <path d="M2.5 1.5L5.5 4L2.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      <span class="section-title">Training</span>
-      <span class="section-count" id="training-count"></span>
+      <span class="layer-title">Layer 1a <span class="layer-sub">Knowledge Sources</span></span>
+      <span class="layer-count" id="layer1a-count"></span>
     </div>
-    <div class="section-body open" id="training-body">
-      <div class="sidebar-msg">Loading…</div>
+    <div class="layer-body open" id="layer1a-body">
+      <!-- Sources sub-section -->
+      <div class="section-header" data-section="sources">
+        <svg class="section-chevron open" width="7" height="7" viewBox="0 0 8 8" fill="none">
+          <path d="M2.5 1.5L5.5 4L2.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="section-title">Sources</span>
+        <span class="section-count" id="sources-count"></span>
+      </div>
+      <div class="section-body open" id="sources-body">
+        <div class="sidebar-msg">Loading…</div>
+      </div>
+      <!-- Training sub-section -->
+      <div class="section-header" data-section="training">
+        <svg class="section-chevron open" width="7" height="7" viewBox="0 0 8 8" fill="none">
+          <path d="M2.5 1.5L5.5 4L2.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="section-title">Training Sessions</span>
+        <span class="section-count" id="training-count"></span>
+      </div>
+      <div class="section-body open" id="training-body">
+        <div class="sidebar-msg">Loading…</div>
+      </div>
     </div>
 
-    <div class="section-header" data-section="sources" style="margin-top:4px">
-      <svg class="section-chevron open" width="8" height="8" viewBox="0 0 8 8" fill="none">
+    <!-- Layer 2 -->
+    <div class="layer-header" data-layer="layer2">
+      <svg class="layer-chevron" width="8" height="8" viewBox="0 0 8 8" fill="none">
         <path d="M2.5 1.5L5.5 4L2.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      <span class="section-title">Sources</span>
-      <span class="section-count" id="sources-count"></span>
+      <span class="layer-title">Layer 2 <span class="layer-sub">Project Memory</span></span>
     </div>
-    <div class="section-body open" id="sources-body">
-      <div class="sidebar-msg">Loading…</div>
+    <div class="layer-body" id="layer2-body">
+      <div class="layer-placeholder">Engagement memory — coming soon</div>
     </div>
+
   </div>
 </div>
 
@@ -487,9 +550,20 @@ function inferSourceType(src) {
 const TYPE_ICON = { YouTube: '▶', Podcast: '🎙', Blog: '✍', Document: '📄', Web: '🌐', Other: '📦' };
 const TYPE_ORDER = ['YouTube', 'Podcast', 'Blog', 'Document', 'Web', 'Other'];
 
+// ── Update layer counts ───────────────────────────────────────────────────
+function updateLayer1aCount(q = '') {
+  const srcFiltered = allSources.filter(s =>
+    matchQ(q, s.title || '', s.sourceUrl || '', s.domain || '', inferSourceType(s)));
+  const trainFiltered = allTraining.filter(s =>
+    matchQ(q, s.name || s.sessionName || '', s.status || '', s.brandName || ''));
+  const total = srcFiltered.length + trainFiltered.length;
+  const el = document.getElementById('layer1a-count');
+  if (el) el.textContent = total;
+}
+
 // ── Render Modules ────────────────────────────────────────────────────────
 function renderModules(q = '') {
-  const body = document.getElementById('modules-body');
+  const body = document.getElementById('layer1b-body');
   const countEl = document.getElementById('modules-count');
   const filtered = allModules.filter(m => matchQ(q, m.name, m.category, m.key));
   countEl.textContent = filtered.length;
@@ -520,12 +594,14 @@ function renderModules(q = '') {
   }
   body.innerHTML = html || '<div class="sidebar-msg">No matches</div>';
   bindItems(body);
+  updateLayer1aCount(q);
 }
 
 // ── Render Training ───────────────────────────────────────────────────────
 function renderTraining(q = '') {
   const body = document.getElementById('training-body');
   const countEl = document.getElementById('training-count');
+  updateLayer1aCount(q);
   const filtered = allTraining.filter(s =>
     matchQ(q, s.name || s.sessionName || '', s.status || '', s.brandName || ''));
   countEl.textContent = filtered.length;
@@ -549,6 +625,7 @@ function renderTraining(q = '') {
 function renderSources(q = '') {
   const body = document.getElementById('sources-body');
   const countEl = document.getElementById('sources-count');
+  updateLayer1aCount(q);
   const filtered = allSources.filter(s =>
     matchQ(q, s.title || '', s.sourceUrl || '', s.domain || '', inferSourceType(s)));
   countEl.textContent = filtered.length;
@@ -700,7 +777,16 @@ document.getElementById('confirm-ok').addEventListener('click', async () => {
   }
 });
 
-// ── Section collapse ──────────────────────────────────────────────────────
+// ── Layer + Section collapse ──────────────────────────────────────────────
+document.querySelectorAll('.layer-header').forEach(el => {
+  el.addEventListener('click', () => {
+    const body = document.getElementById(el.dataset.layer + '-body');
+    const chev = el.querySelector('.layer-chevron');
+    body && body.classList.toggle('open');
+    chev && chev.classList.toggle('open');
+  });
+});
+
 document.querySelectorAll('.section-header').forEach(el => {
   el.addEventListener('click', () => {
     const body = document.getElementById(el.dataset.section + '-body');
