@@ -621,7 +621,7 @@ function renderTraining(q = '') {
 
   let html = '';
   for (const s of filtered) {
-    const label = s.name || s.sessionName || s.id || 'Session';
+    const label = s.topic || s.name || s.sessionName || s.id || 'Session';
     const id = String(s.id || s.sessionId || label);
     const active = selectedType === 'training' && selectedId === id ? ' active' : '';
     html += `<div class="tree-item${active}" data-type="training" data-id="${escAttr(id)}" title="${escAttr(label)}">
@@ -706,18 +706,66 @@ function showModule(key) {
 }
 
 // ── Show Training ─────────────────────────────────────────────────────────
-function showTraining(id) {
+async function showTraining(id) {
   const s = allTraining.find(x => String(x.id || x.sessionId) === id);
   if (!s) return;
-  const label = s.name || s.sessionName || id;
-  setHeader('🎓', label, `Brand: ${s.brandName || '—'}`, []);
+  const label = s.topic || s.name || s.sessionName || id;
+  const statusColor = { INGESTED: '#16a34a', PENDING_REVIEW: '#d97706', REJECTED: '#dc2626', DRAFT: '#6b7280' };
+  const col = statusColor[s.status] || '#6b7280';
+
+  setHeader('🎓', label, `${s.intent || ''} · ${s.scope || ''}`.replace(/^ · | · $/, ''), []);
+
   document.getElementById('detail-body').innerHTML = `
     <div class="meta-row">
-      ${chip('Status', s.status || '—')}
-      ${s.createdAt ? chip('Date', fmtDate(s.createdAt)) : ''}
+      <span class="chip"><strong>Status</strong><span style="color:${col};font-weight:600">${escHtml(s.status || '—')}</span></span>
+      ${chip('Intent', s.intent || '—')}
+      ${chip('Scope', s.scope || '—')}
+      ${s.assetTypes ? chip('Assets', s.assetTypes) : ''}
+      ${s.createdAt ? chip('Created', fmtDate(s.createdAt)) : ''}
+      ${s.updatedAt ? chip('Updated', fmtDate(s.updatedAt)) : ''}
     </div>
-    <div class="content-block"><h3>Session Data</h3><pre>${escHtml(JSON.stringify(s, null, 2))}</pre></div>`;
+    <div class="content-block" id="training-content-block">
+      <h3>Content items</h3>
+      <p style="color:#bbb;font-size:12px">Loading…</p>
+    </div>`;
   showDetail();
+
+  try {
+    const detail = await fetchJSON(`${API}/api/training/sessions/${encodeURIComponent(id)}`);
+    const items = detail.content || [];
+    const contentEl = document.getElementById('training-content-block');
+    if (!contentEl) return;
+    if (!items.length) {
+      contentEl.innerHTML = `<h3>Content items</h3><p style="color:#bbb;font-size:12px">No content added yet</p>`;
+      return;
+    }
+    const rows = items.map(c => {
+      const typeIcon = { TEXT: '📝', FILE: '📎', AUDIO: '🎤', ASSET: '🖼' }[c.contentType] || '📄';
+      const labelBadge = c.label
+        ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600;background:${c.label === 'POSITIVE' ? '#dcfce7' : '#fee2e2'};color:${c.label === 'POSITIVE' ? '#16a34a' : '#dc2626'}">${c.label}</span>`
+        : '';
+      const preview = c.textContent
+        ? `<p style="font-size:12px;color:#555;margin-top:6px;line-height:1.5">${escHtml(c.textContent.slice(0, 200))}${c.textContent.length > 200 ? '…' : ''}</p>`
+        : c.fileName
+        ? `<p style="font-size:12px;color:#888;margin-top:4px">${escHtml(c.fileName)}</p>`
+        : '';
+      return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid #f0f0f0">
+        <span style="font-size:16px;flex-shrink:0;margin-top:1px">${typeIcon}</span>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:12px;font-weight:600;color:#333">${escHtml(c.contentType)}</span>
+            ${labelBadge}
+            <span style="font-size:11px;color:#bbb;margin-left:auto">${fmtDate(c.createdAt)}</span>
+          </div>
+          ${preview}
+        </div>
+      </div>`;
+    }).join('');
+    contentEl.innerHTML = `<h3>Content items (${items.length})</h3>${rows}`;
+  } catch {
+    const contentEl = document.getElementById('training-content-block');
+    if (contentEl) contentEl.innerHTML = `<h3>Content items</h3><p style="color:#c0392b;font-size:12px">Failed to load</p>`;
+  }
 }
 
 // ── Show Source ───────────────────────────────────────────────────────────
