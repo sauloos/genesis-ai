@@ -122,6 +122,30 @@ public class KnowledgeController {
             chunks.size(), chunks.isEmpty() ? "" : chunks.get(0));
     }
 
+    @PostMapping("/admin/reclassify-web-as-blog")
+    public Map<String, Object> reclassifyWebAsBlog() {
+        // Bulk-set content_category=blog for all layer1 points where source_type=web
+        // and content_category is not already set.
+        HttpHeaders headers = qdrantHeaders();
+        Map<String, Object> body = Map.of(
+            "payload", Map.of("content_category", "blog"),
+            "filter", Map.of("must", List.of(
+                Map.of("key", "layer",       "match", Map.of("value", "layer1")),
+                Map.of("key", "source_type", "match", Map.of("value", "web"))
+            ))
+        );
+        try {
+            restTemplate.postForObject(
+                qdrantUrl.replaceAll("/$", "") + "/collections/" + collectionName + "/points/payload",
+                new HttpEntity<>(body, headers), Map.class);
+            log.info("reclassifyWebAsBlog: completed");
+            return Map.of("status", "ok", "message", "All layer1 web points tagged with content_category=blog");
+        } catch (Exception e) {
+            log.warn("reclassifyWebAsBlog failed: {}", e.getMessage());
+            return Map.of("status", "error", "message", e.getMessage());
+        }
+    }
+
     @DeleteMapping("/sources/{sourceId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteSource(@PathVariable String sourceId) {
