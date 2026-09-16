@@ -438,6 +438,10 @@
 
 <script>
 // ── State ────────────────────────────────────────────────────────────────
+const API = '';
+const KEY = 'genesis-ai-key';
+const HEADERS = { 'Content-Type': 'application/json', 'X-Api-Key': KEY };
+
 let allModules = [], allTraining = [], allSources = [];
 let selectedType = null, selectedId = null;
 let pendingDeleteId = null;
@@ -445,9 +449,9 @@ let pendingDeleteId = null;
 // ── Boot ─────────────────────────────────────────────────────────────────
 (async () => {
   const [modules, training, sources] = await Promise.all([
-    fetchJSON('/api/knowledge/modules').catch(() => []),
-    fetchJSON('/api/training/sessions').catch(() => []),
-    fetchJSON('/api/knowledge/sources').catch(() => []),
+    fetchJSON(`${API}/api/knowledge/modules`).catch(() => []),
+    fetchJSON(`${API}/api/training/sessions`).catch(() => []),
+    fetchJSON(`${API}/api/knowledge/sources`).catch(() => []),
   ]);
   allModules  = modules  || [];
   allTraining = training || [];
@@ -458,7 +462,7 @@ let pendingDeleteId = null;
 })();
 
 async function fetchJSON(url) {
-  const r = await fetch(url);
+  const r = await fetch(url, { headers: HEADERS });
   if (!r.ok) throw new Error(r.status);
   return r.json();
 }
@@ -657,7 +661,7 @@ async function showSource(sourceId) {
   showDetail();
 
   try {
-    const detail = await fetchJSON(`/api/knowledge/sources/${encodeURIComponent(sourceId)}`);
+    const detail = await fetchJSON(`${API}/api/knowledge/sources/${encodeURIComponent(sourceId)}`);
     const chunkEl = document.getElementById('chunk-block');
     if (chunkEl) chunkEl.innerHTML = `<h3>First Chunk</h3><pre>${escHtml(detail.firstChunk || '(empty)')}</pre>`;
     if (detail.title) document.getElementById('detail-title').textContent = detail.title;
@@ -686,7 +690,7 @@ document.getElementById('confirm-ok').addEventListener('click', async () => {
   if (!pendingDeleteId) return;
   const id = pendingDeleteId; pendingDeleteId = null;
   try {
-    await fetch(`/api/knowledge/sources/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    await fetch(`${API}/api/knowledge/sources/${encodeURIComponent(id)}`, { method: 'DELETE', headers: { 'X-Api-Key': KEY } });
     allSources = allSources.filter(x => x.sourceId !== id);
     toast('Source deleted');
     if (selectedId === id) { selectedType = null; selectedId = null; hideDetail(); }
