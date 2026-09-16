@@ -71,10 +71,11 @@ public class KnowledgeController {
                 String url       = (String) payload.getOrDefault("source_url", "");
                 String title     = (String) payload.getOrDefault("title", "");
                 String ingestedAt = (String) payload.getOrDefault("ingested_at", "");
+                String srcType   = (String) payload.getOrDefault("source_type", "");
                 Object totalChunks = payload.get("total_chunks");
                 int chunks = totalChunks instanceof Number n ? n.intValue() : 1;
                 String domain = extractDomain(url);
-                return new SourceSummary(id, url, domain, title, ingestedAt, chunks);
+                return new SourceSummary(id, url, domain, title, ingestedAt, chunks, srcType);
             });
         }
         return new ArrayList<>(bySourceId.values());
@@ -245,7 +246,7 @@ public class KnowledgeController {
 
     public record SourceSummary(
         String sourceId, String sourceUrl, String domain,
-        String title, String ingestedAt, int chunkCount) {}
+        String title, String ingestedAt, int chunkCount, String sourceType) {}
 
     public record SourceDetail(
         String sourceId, String sourceUrl, String domain,
