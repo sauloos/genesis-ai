@@ -713,7 +713,10 @@ async function showTraining(id) {
   const statusColor = { INGESTED: '#16a34a', PENDING_REVIEW: '#d97706', REJECTED: '#dc2626', DRAFT: '#6b7280' };
   const col = statusColor[s.status] || '#6b7280';
 
-  setHeader('🎓', label, `${s.intent || ''} · ${s.scope || ''}`.replace(/^ · | · $/, ''), []);
+  setHeader('🎓', label, `${s.intent || ''} · ${s.scope || ''}`.replace(/^ · | · $/, ''), [
+    { label: 'Rename', cls: 'btn-secondary', fn: () => startRenameTraining(id, s) },
+    { label: 'Delete', cls: 'btn-danger',    fn: () => confirmDeleteTraining(id, label) },
+  ]);
 
   document.getElementById('detail-body').innerHTML = `
     <div class="meta-row">
@@ -766,6 +769,52 @@ async function showTraining(id) {
     const contentEl = document.getElementById('training-content-block');
     if (contentEl) contentEl.innerHTML = `<h3>Content items</h3><p style="color:#c0392b;font-size:12px">Failed to load</p>`;
   }
+}
+
+// ── Rename training session ───────────────────────────────────────────────
+function startRenameTraining(id, session) {
+  const titleEl = document.getElementById('detail-title');
+  const current = titleEl.textContent;
+
+  // Replace title with an inline input
+  titleEl.innerHTML = '';
+  const input = document.createElement('input');
+  input.value = current;
+  input.style.cssText = 'font-size:15px;font-weight:700;color:#111;border:none;border-bottom:2px solid #1a1a1a;outline:none;width:100%;background:transparent;padding:0 0 2px';
+  titleEl.appendChild(input);
+  input.focus();
+  input.select();
+
+  const save = async () => {
+    const newTopic = input.value.trim();
+    if (!newTopic || newTopic === current) { titleEl.textContent = current; return; }
+    try {
+      await fetch(`${API}/api/training/sessions/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: { ...HEADERS },
+        body: JSON.stringify({ topic: newTopic, intent: session.intent, scope: session.scope, assetTypes: session.assetTypes }),
+      });
+      // Update local state
+      const s = allTraining.find(x => String(x.id || x.sessionId) === id);
+      if (s) s.topic = newTopic;
+      titleEl.textContent = newTopic;
+      document.getElementById('detail-subtitle').textContent =
+        `${session.intent || ''} · ${session.scope || ''}`.replace(/^ · | · $/, '');
+      renderTraining(document.getElementById('search-input').value);
+      toast('Session renamed');
+    } catch { titleEl.textContent = current; toast('Rename failed'); }
+  };
+
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') { input.value = current; input.blur(); } });
+}
+
+// ── Delete training session ───────────────────────────────────────────────
+function confirmDeleteTraining(id, label) {
+  document.getElementById('confirm-text').textContent =
+    `Delete training session "${label}" and all its content? This cannot be undone.`;
+  pendingDeleteId = 'training:' + id;
+  document.getElementById('confirm-overlay').classList.add('visible');
 }
 
 // ── Show Source ───────────────────────────────────────────────────────────
@@ -824,15 +873,30 @@ document.getElementById('confirm-cancel').addEventListener('click', () => {
 document.getElementById('confirm-ok').addEventListener('click', async () => {
   document.getElementById('confirm-overlay').classList.remove('visible');
   if (!pendingDeleteId) return;
-  const id = pendingDeleteId; pendingDeleteId = null;
-  try {
-    await fetch(`${API}/api/knowledge/sources/${encodeURIComponent(id)}`, { method: 'DELETE', headers: { 'X-Api-Key': KEY } });
-    allSources = allSources.filter(x => x.sourceId !== id);
-    toast('Source deleted');
-    if (selectedId === id) { selectedType = null; selectedId = null; hideDetail(); }
-    renderSources(document.getElementById('search-input').value);
-  } catch (e) {
-    toast('Delete failed: ' + e.message);
+  const raw = pendingDeleteId; pendingDeleteId = null;
+
+  if (raw.startsWith('training:')) {
+    const id = raw.slice('training:'.length);
+    try {
+      await fetch(`${API}/api/training/sessions/${encodeURIComponent(id)}`, { method: 'DELETE', headers: { 'X-Api-Key': KEY } });
+      allTraining = allTraining.filter(x => String(x.id || x.sessionId) !== id);
+      toast('Session deleted');
+      if (selectedId === id) { selectedType = null; selectedId = null; hideDetail(); }
+      renderTraining(document.getElementById('search-input').value);
+    } catch (e) {
+      toast('Delete failed: ' + e.message);
+    }
+  } else {
+    const id = raw;
+    try {
+      await fetch(`${API}/api/knowledge/sources/${encodeURIComponent(id)}`, { method: 'DELETE', headers: { 'X-Api-Key': KEY } });
+      allSources = allSources.filter(x => x.sourceId !== id);
+      toast('Source deleted');
+      if (selectedId === id) { selectedType = null; selectedId = null; hideDetail(); }
+      renderSources(document.getElementById('search-input').value);
+    } catch (e) {
+      toast('Delete failed: ' + e.message);
+    }
   }
 });
 
