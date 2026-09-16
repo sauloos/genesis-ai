@@ -550,7 +550,10 @@ function inferSourceType(src) {
     return 'Podcast';
   if (url.includes('/blogs/') || url.includes('/blog/'))
     return 'Blog';
-  if (url.endsWith('.pdf') || url.includes('/books/') || url.includes('/documents/'))
+  if (url.endsWith('.pdf') || url.includes('/books/') || url.includes('/documents/') || url.includes('/courses/'))
+    return 'Document';
+  // any remaining file:// source is local content → treat as Document
+  if (url.startsWith('file://'))
     return 'Document';
   return 'Web';
 }
