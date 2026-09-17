@@ -6,6 +6,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class PageController {
 
+    @GetMapping("/dashboard")
+    public String dashboardPage() {
+        return "forward:/dashboard.html";
+    }
+
     @GetMapping("/console")
     public String consolePage() {
         return "forward:/console.html";
