@@ -9,7 +9,7 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-         background: #fff; display: flex; height: 100vh; overflow: hidden; color: #1a1a1a; }
+         background: #0a0b12; display: flex; height: 100vh; overflow: hidden; color: #f2f2f2; }
 
   /* ── Sidebar ── */
   #sidebar {
@@ -86,22 +86,22 @@
   #main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 
   #chat-header {
-    padding: 16px 24px; border-bottom: 1px solid #f0f0f0;
+    padding: 16px 24px; border-bottom: 1px solid rgba(255,255,255,0.07);
     display: flex; align-items: center; gap: 12px;
   }
-  #chat-title { font-size: 15px; font-weight: 600; color: #1a1a1a; }
+  #chat-title { font-size: 15px; font-weight: 600; color: #f2f2f2; }
   #clear-btn {
-    margin-left: auto; background: none; border: 1px solid #e5e5e5; color: #888;
+    margin-left: auto; background: none; border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.4);
     font-size: 12px; padding: 5px 10px; border-radius: 6px; cursor: pointer;
     transition: all 0.15s;
   }
-  #clear-btn:hover { border-color: #ccc; color: #555; }
+  #clear-btn:hover { border-color: rgba(255,255,255,0.25); color: rgba(255,255,255,0.7); }
 
   #messages {
     flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 24px;
   }
   #messages::-webkit-scrollbar { width: 6px; }
-  #messages::-webkit-scrollbar-thumb { background: #e5e5e5; border-radius: 3px; }
+  #messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
 
   .msg { display: flex; gap: 12px; max-width: 820px; }
   .msg.user { flex-direction: row-reverse; align-self: flex-end; }
@@ -110,15 +110,15 @@
     width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;
   }
-  .msg.ai   .avatar { background: #1a1a1a; color: #fff; }
-  .msg.user .avatar { background: #f0f0f0; color: #666; }
+  .msg.ai   .avatar { background: rgba(255,255,255,0.1); color: #fff; }
+  .msg.user .avatar { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.5); }
 
   .bubble {
     padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.6;
     max-width: calc(100% - 44px);
   }
-  .msg.ai   .bubble { background: #fafafa; border: 1px solid #f0f0f0; color: #1a1a1a; }
-  .msg.user .bubble { background: #1a1a1a; color: #fff; }
+  .msg.ai   .bubble { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); color: #f2f2f2; }
+  .msg.user .bubble { background: rgba(255,255,255,0.1); color: #fff; }
 
   /* markdown inside bubble */
   .bubble h1,.bubble h2,.bubble h3 { margin: 12px 0 6px; font-size: 15px; }
@@ -129,13 +129,13 @@
   .bubble li { margin-bottom: 3px; }
   .bubble strong { font-weight: 600; }
   .bubble em { font-style: italic; }
-  .bubble code { background: rgba(0,0,0,0.06); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
-  .bubble pre  { background: rgba(0,0,0,0.06); padding: 10px; border-radius: 6px; overflow-x: auto; margin: 8px 0; }
+  .bubble code { background: rgba(255,255,255,0.1); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  .bubble pre  { background: rgba(255,255,255,0.07); padding: 10px; border-radius: 6px; overflow-x: auto; margin: 8px 0; }
   .bubble pre code { background: none; padding: 0; }
-  .bubble hr { border: none; border-top: 1px solid #e5e5e5; margin: 10px 0; }
+  .bubble hr { border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 10px 0; }
   .bubble table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 13px; }
-  .bubble th,.bubble td { border: 1px solid #e5e5e5; padding: 6px 10px; text-align: left; }
-  .bubble th { background: #f5f5f5; font-weight: 600; }
+  .bubble th,.bubble td { border: 1px solid rgba(255,255,255,0.1); padding: 6px 10px; text-align: left; }
+  .bubble th { background: rgba(255,255,255,0.06); font-weight: 600; }
 
   .msg.user .bubble code { background: rgba(255,255,255,0.15); }
   .msg.user .bubble hr   { border-color: rgba(255,255,255,0.2); }
@@ -150,55 +150,57 @@
   /* ── Empty state ── */
   #empty {
     flex: 1; display: flex; flex-direction: column; align-items: center;
-    justify-content: center; gap: 12px; color: #aaa;
+    justify-content: center; gap: 12px; color: rgba(255,255,255,0.35);
   }
-  #empty svg { opacity: 0.3; }
-  #empty h2  { font-size: 18px; font-weight: 600; color: #555; }
+  #empty svg { opacity: 0.25; }
+  #empty h2  { font-size: 18px; font-weight: 600; color: rgba(255,255,255,0.5); }
   #empty p   { font-size: 14px; text-align: center; max-width: 340px; line-height: 1.5; }
 
   /* ── Input ── */
   #input-area {
-    padding: 16px 24px 20px; border-top: 1px solid #f0f0f0;
+    padding: 16px 24px 20px; border-top: 1px solid rgba(255,255,255,0.07);
   }
   #input-wrap {
-    display: flex; align-items: flex-end; gap: 10px; background: #fafafa;
-    border: 1px solid #e5e5e5; border-radius: 12px; padding: 10px 12px;
+    display: flex; align-items: flex-end; gap: 10px; background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 10px 12px;
     transition: border-color 0.15s;
   }
-  #input-wrap:focus-within { border-color: #1a1a1a; background: #fff; }
+  #input-wrap:focus-within { border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.07); }
   #msg-input {
     flex: 1; border: none; background: none; font-size: 14px; line-height: 1.5;
-    resize: none; outline: none; font-family: inherit; color: #1a1a1a;
+    resize: none; outline: none; font-family: inherit; color: #f2f2f2;
     max-height: 160px; overflow-y: auto;
   }
-  #msg-input::placeholder { color: #bbb; }
+  #msg-input::placeholder { color: rgba(255,255,255,0.3); }
   #send-btn {
-    width: 32px; height: 32px; background: #1a1a1a; border: none; border-radius: 8px;
+    width: 32px; height: 32px; background: rgba(255,255,255,0.9); border: none; border-radius: 8px;
     cursor: pointer; display: flex; align-items: center; justify-content: center;
     flex-shrink: 0; transition: background 0.15s; align-self: flex-end;
   }
-  #send-btn:hover:not(:disabled) { background: #333; }
-  #send-btn:disabled { background: #e5e5e5; cursor: not-allowed; }
+  #send-btn svg { filter: invert(1); }
+  #send-btn:hover:not(:disabled) { background: #fff; }
+  #send-btn:disabled { background: rgba(255,255,255,0.12); cursor: not-allowed; }
+  #send-btn:disabled svg { filter: none; opacity: 0.3; }
 
-  .hint { text-align: center; font-size: 11px; color: #ccc; margin-top: 8px; }
+  .hint { text-align: center; font-size: 11px; color: rgba(255,255,255,0.3); margin-top: 8px; }
 
   /* ── Attachment ── */
   #attach-btn {
-    width: 32px; height: 32px; background: none; border: 1px solid #ddd; cursor: pointer;
+    width: 32px; height: 32px; background: none; border: 1px solid rgba(255,255,255,0.1); cursor: pointer;
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    color: #888; border-radius: 8px; transition: color 0.15s, background 0.15s, border-color 0.15s;
+    color: rgba(255,255,255,0.4); border-radius: 8px; transition: color 0.15s, background 0.15s, border-color 0.15s;
     align-self: flex-end;
   }
-  #attach-btn:hover { color: #333; background: #f0f0f0; border-color: #bbb; }
-  #attach-btn.has-file { color: #1a1a1a; border-color: #1a1a1a; }
+  #attach-btn:hover { color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.25); }
+  #attach-btn.has-file { color: #6fe0a5; border-color: #6fe0a5; }
   #attachment-bar {
     display: none; align-items: center; gap: 8px; padding: 6px 12px 0;
-    font-size: 12px; color: #555;
+    font-size: 12px; color: rgba(255,255,255,0.5);
   }
   #attachment-bar.visible { display: flex; }
   #attachment-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #remove-attach {
-    background: none; border: none; color: #aaa; cursor: pointer; font-size: 14px;
+    background: none; border: none; color: rgba(255,255,255,0.35); cursor: pointer; font-size: 14px;
     padding: 0 2px; line-height: 1; transition: color 0.15s;
   }
   #remove-attach:hover { color: #ff6b6b; }

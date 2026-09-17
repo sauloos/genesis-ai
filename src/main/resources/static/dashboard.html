@@ -173,6 +173,25 @@
   }
   .feature-card:hover .card-go { color: #6fe0a5; transform: translateX(3px); }
 
+  /* ── Return link ── */
+  .return-link {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: rgba(255,255,255,0.5);
+    text-decoration: none;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 5px;
+    padding: 4px 12px;
+    white-space: nowrap;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .return-link:hover { color: rgba(255,255,255,0.85); border-color: rgba(255,255,255,0.4); }
+
   /* ── Env badge ── */
   #env-badge {
     position: fixed;
@@ -333,6 +352,8 @@
 
   </div>
 </div>
+
+<a href="/" class="return-link">Return to landing page</a>
 
 <script>
 // Admin env badge
