@@ -12,14 +12,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // Images: cache for 30 days — they change rarely and are large
+        // Images: long cache — they rarely change and are large (bg-earth.jpg etc.)
+        // The global no-store in application.yml is overridden here for image types only.
         registry.addResourceHandler("/*.jpg", "/*.jpeg", "/*.png", "/*.webp", "/*.gif", "/*.svg", "/*.ico")
                 .addResourceLocations("classpath:/static/")
                 .setCacheControl(CacheControl.maxAge(30, TimeUnit.DAYS).cachePublic());
-
-        // Everything else (HTML, JS, CSS, fonts): no-store so code changes land immediately
-        registry.addResourceHandler("/**")
-                .addResourceLocations("classpath:/static/")
-                .setCacheControl(CacheControl.noStore());
+        // All other static files keep the no-store default from application.yml.
+        // No /**  handler here — adding one breaks @RestController routing.
     }
 }
