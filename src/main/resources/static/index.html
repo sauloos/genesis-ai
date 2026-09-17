@@ -113,7 +113,8 @@
   .admin-link {
     position: fixed;
     bottom: 24px;
-    right: 28px;
+    left: 50%;
+    transform: translateX(-50%);
     font-size: 11px;
     color: rgba(255,255,255,0.5);
     text-decoration: none;
@@ -121,7 +122,8 @@
     text-transform: uppercase;
     border: 1px solid rgba(255,255,255,0.18);
     border-radius: 5px;
-    padding: 4px 10px;
+    padding: 4px 12px;
+    white-space: nowrap;
     transition: color 0.15s, border-color 0.15s;
   }
   .admin-link:hover { color: rgba(255,255,255,0.85); border-color: rgba(255,255,255,0.4); }
@@ -148,7 +150,7 @@
   <div id="msg"></div>
 </div>
 
-<a href="/dashboard" class="admin-link">admin</a>
+<a href="/dashboard" class="admin-link">Access admin dashboard</a>
 
 <script>
 const form = document.getElementById('signup-form');
