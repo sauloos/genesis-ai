@@ -110,6 +110,18 @@
   #msg.ok  { color: #6fd08c; }
   #msg.err { color: #e07a7a; }
 
+  .admin-link {
+    position: fixed;
+    bottom: 20px;
+    right: 24px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.18);
+    text-decoration: none;
+    letter-spacing: 0.05em;
+    transition: color 0.15s;
+  }
+  .admin-link:hover { color: rgba(255,255,255,0.5); }
+
   @media (max-width: 480px) {
     form { flex-direction: column; }
     .logo { height: 40px; }
@@ -131,6 +143,8 @@
   </form>
   <div id="msg"></div>
 </div>
+
+<a href="/dashboard" class="admin-link">admin</a>
 
 <script>
 const form = document.getElementById('signup-form');
