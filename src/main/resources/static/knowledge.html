@@ -35,18 +35,18 @@
     position: relative;
   }
 
-  #sidebar-header h1 {
-    color: #fff;
-    font-size: 15px;
-    font-weight: 700;
-    letter-spacing: 0.3px;
-    line-height: 1.2;
-  }
+  .sidebar-logo { height: 22px; width: auto; display: block; margin-bottom: 4px; }
 
   #sidebar-header p {
     color: #666;
     font-size: 11px;
     margin-top: 2px;
+  }
+  .mode-badge {
+    display: inline-block; margin-top: 8px; padding: 3px 9px;
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+    color: #6fe0a5; background: rgba(111,224,165,0.12); border: 1px solid rgba(111,224,165,0.3);
+    border-radius: 20px;
   }
 
   #nav-toggle {
@@ -378,8 +378,9 @@
 
 <div id="sidebar">
   <div id="sidebar-header">
-    <h1>Knowledge Explorer</h1>
-    <p>Layer 1 · Training · Sources</p>
+    <img src="/logo.png" alt="Genesis" class="sidebar-logo">
+    <p>Brand Intelligence</p>
+    <div class="mode-badge">Knowledge</div>
     <button id="nav-toggle" title="Navigation">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
         <rect x="1" y="3" width="12" height="1.5" rx="0.75" fill="currentColor"/>
