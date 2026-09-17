@@ -16,6 +16,7 @@ import java.util.Set;
 public class BasicAuthFilter extends OncePerRequestFilter {
 
     private static final Set<String> PROTECTED_PATHS = Set.of(
+        "/dashboard", "/dashboard.html",
         "/console", "/console.html",
         "/training", "/training.html",
         "/playground", "/playground.html",
