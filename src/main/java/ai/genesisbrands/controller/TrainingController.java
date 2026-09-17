@@ -93,10 +93,18 @@ public class TrainingController {
         trainingService.deleteContent(id, contentId);
     }
 
+    // ── Workflow ──────────────────────────────────────────────────────────────
+
+    @PostMapping("/sessions/{id}/submit")
+    @Operation(summary = "Submit a draft session for review (DRAFT → PENDING_REVIEW)")
+    public TrainingSession submit(@PathVariable String id) {
+        return trainingService.submitSession(id);
+    }
+
     // ── Ingest ────────────────────────────────────────────────────────────────
 
     @PostMapping("/sessions/{id}/ingest")
-    @Operation(summary = "Embed and ingest all session content into Qdrant")
+    @Operation(summary = "Quick-ingest: embed and ingest directly without review (SUPER_ADMIN only)")
     public TrainingSession ingest(@PathVariable String id) {
         trainingService.ingest(id);
         return trainingService.getSession(id);

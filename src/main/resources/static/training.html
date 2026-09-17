@@ -110,6 +110,8 @@
     padding: 1px 5px; border-radius: 8px; line-height: 1.3;
   }
   .badge-feedback { background: #3a1a3a; color: #c07de0; }
+  .badge-pending  { background: #2a2a3a; color: #8a8acf; }
+  .badge-rejected { background: rgba(180,50,50,0.15); color: #e07070; }
 
   /* ── Main ── */
   #main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
@@ -135,23 +137,29 @@
     font-family: inherit; color: #f2f2f2; background: transparent;
   }
   #topic-input::placeholder { color: rgba(255,255,255,0.3); font-weight: 400; }
-  #ingest-btn {
-    padding: 7px 16px; background: #1a1a1a; border: none; border-radius: 8px;
-    color: #fff; font-size: 12px; font-weight: 600; cursor: pointer;
-    transition: background 0.15s; letter-spacing: 0.3px; flex-shrink: 0;
-  }
-  #ingest-btn:hover { background: #333; }
-  #ingest-btn:disabled { background: #4caf7d; cursor: default; }
-  #ingest-btn.ingested { background: #2a4a3a; color: #4caf7d; }
-
-  #approve-btn, #reject-btn {
+  #submit-btn, #quick-ingest-btn, #approve-btn, #reject-btn {
     padding: 7px 16px; border: none; border-radius: 8px; font-size: 12px; font-weight: 600;
     cursor: pointer; transition: background 0.15s; letter-spacing: 0.3px; flex-shrink: 0;
   }
+  #submit-btn { background: rgba(255,255,255,0.12); color: #fff; }
+  #submit-btn:hover:not(:disabled) { background: rgba(255,255,255,0.2); }
+  #submit-btn:disabled { opacity: 0.5; cursor: default; }
+  #quick-ingest-btn { background: #1a1a1a; color: rgba(255,255,255,0.6); border: 1px solid #333; }
+  #quick-ingest-btn:hover { background: #222; color: #fff; }
   #approve-btn { background: #1a3a2a; color: #4caf7d; }
   #approve-btn:hover { background: #234f39; }
+  #approve-btn:disabled { opacity: 0.5; cursor: default; }
   #reject-btn { background: rgba(180,50,50,0.15); color: #e07070; }
   #reject-btn:hover { background: rgba(180,50,50,0.25); }
+  #reject-btn:disabled { opacity: 0.5; cursor: default; }
+
+  .status-badge {
+    padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 600;
+    letter-spacing: 0.3px; flex-shrink: 0;
+  }
+  .status-ingested { background: #2a4a3a; color: #4caf7d; }
+  .status-rejected { background: rgba(180,50,50,0.15); color: #e07070; }
+  .status-pending  { background: #2a2a3a; color: #8a8acf; }
 
   /* ── Classification bar ── */
   #classification {
@@ -387,9 +395,11 @@
   <div id="detail">
     <div id="detail-header">
       <input id="topic-input" type="text" placeholder="Session topic…" oninput="debounceSave()">
-      <button id="ingest-btn" onclick="ingestSession()">Ingest</button>
+      <button id="submit-btn" onclick="submitForReview()" style="display:none">Submit for Review</button>
+      <button id="quick-ingest-btn" onclick="ingestSession()" style="display:none">Quick Ingest</button>
       <button id="approve-btn" onclick="approveSession()" style="display:none">Approve</button>
       <button id="reject-btn" onclick="rejectSession()" style="display:none">Reject</button>
+      <span id="status-indicator" hidden class="status-badge"></span>
     </div>
 
     <div id="classification">
@@ -467,13 +477,18 @@ let pendingFile      = null;
 let mediaRecorder    = null;
 let audioChunks      = [];
 let saveTimer        = null;
-let sessionsTab       = 'all';
-let allSessionsCache   = [];
+let sessionsTab      = 'all';
+let allSessionsCache = [];
+let userRole         = 'SUPER_ADMIN'; // default; overridden by /api/admin/me at boot
 
 const ASSET_TYPES = ['logo', 'copy', 'visual-identity', 'playbook', 'brand-book'];
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 async function boot() {
+  try {
+    const me = await fetch(`${API}/api/admin/me`, { credentials: 'include' }).then(r => r.ok ? r.json() : null);
+    if (me && me.role) userRole = me.role;
+  } catch {}
   await loadSessions();
   document.getElementById('text-input').addEventListener('input', () => {
     document.getElementById('send-btn').disabled =
@@ -487,13 +502,13 @@ async function loadSessions() {
     .then(r => r.json()).catch(() => []);
   allSessionsCache = sessions;
 
-  const reviewCount = sessions.filter(s => s.intent === 'FEEDBACK' && s.status === 'PENDING_REVIEW').length;
+  const reviewCount = sessions.filter(s => s.status === 'PENDING_REVIEW').length;
   const countEl = document.getElementById('review-count');
   countEl.textContent = reviewCount;
   countEl.style.display = reviewCount > 0 ? 'inline-block' : 'none';
 
   const visible = sessionsTab === 'review'
-    ? sessions.filter(s => s.intent === 'FEEDBACK' && s.status === 'PENDING_REVIEW')
+    ? sessions.filter(s => s.status === 'PENDING_REVIEW')
     : sessions.filter(s => s.intent !== 'FEEDBACK');
 
   const el = document.getElementById('sessions');
@@ -507,7 +522,9 @@ async function loadSessions() {
     const intentClass = s.intent === 'FEEDBACK' ? 'badge-feedback' : s.intent === 'GUIDELINES' ? 'badge-guidelines' : 'badge-knowledge';
     const statusBadge = s.status === 'INGESTED'
       ? `<span class="session-badge badge-ingested">Ingested</span>`
-      : s.status === 'REJECTED' ? `<span class="session-badge">Rejected</span>` : '';
+      : s.status === 'PENDING_REVIEW' ? `<span class="session-badge badge-pending">In Review</span>`
+      : s.status === 'REJECTED'       ? `<span class="session-badge badge-rejected">Rejected</span>`
+      : '';
 
     div.innerHTML = `
       <div class="session-meta">
@@ -613,12 +630,35 @@ function collectImageUrls(node, seen) {
   return urls;
 }
 
+function show(id, visible) {
+  document.getElementById(id).style.display = visible ? '' : 'none';
+}
+
 function updateDetailActions(session) {
-  const isPendingFeedback = session.intent === 'FEEDBACK' && session.status === 'PENDING_REVIEW';
-  document.getElementById('ingest-btn').style.display = isPendingFeedback ? 'none' : 'block';
-  document.getElementById('approve-btn').style.display = isPendingFeedback ? 'block' : 'none';
-  document.getElementById('reject-btn').style.display = isPendingFeedback ? 'block' : 'none';
-  if (!isPendingFeedback) updateIngestBtn(session);
+  const isDraft    = session.status === 'DRAFT';
+  const isPending  = session.status === 'PENDING_REVIEW';
+  const isIngested = session.status === 'INGESTED';
+  const isRejected = session.status === 'REJECTED';
+  const isFeedback = session.intent  === 'FEEDBACK';
+
+  show('submit-btn',       isDraft && !isFeedback);
+  show('quick-ingest-btn', isDraft && !isFeedback && userRole === 'SUPER_ADMIN');
+  show('approve-btn',      isPending);
+  show('reject-btn',       isPending);
+
+  const indicator = document.getElementById('status-indicator');
+  const showIndicator = isIngested || isRejected || (isPending && !isFeedback);
+  indicator.hidden = !showIndicator;
+  if (showIndicator) {
+    indicator.textContent = isIngested ? 'Ingested ✓' : isRejected ? 'Rejected' : 'In Review';
+    indicator.className = 'status-badge ' +
+      (isIngested ? 'status-ingested' : isRejected ? 'status-rejected' : 'status-pending');
+  }
+
+  // Lock capture area when session is no longer a draft
+  const captureArea = document.getElementById('capture-area');
+  captureArea.style.opacity       = isDraft ? '' : '0.4';
+  captureArea.style.pointerEvents = isDraft ? '' : 'none';
 }
 
 async function approveSession() {
@@ -770,8 +810,9 @@ async function deleteContent(contentId) {
 async function refreshContent() {
   const detail = await fetch(`${API}/api/training/sessions/${currentSessionId}`, { headers: HEADERS })
     .then(r => r.json());
+  currentSession = detail.session;
   renderContent(detail.content);
-  updateIngestBtn(detail.session);
+  updateDetailActions(detail.session);
   await loadSessions();
 }
 
@@ -882,32 +923,31 @@ async function toggleRecording() {
   }
 }
 
-// ── Ingest ────────────────────────────────────────────────────────────────────
-async function ingestSession() {
+// ── Workflow actions ──────────────────────────────────────────────────────────
+async function submitForReview() {
   if (!currentSessionId) return;
-  const btn = document.getElementById('ingest-btn');
+  const btn = document.getElementById('submit-btn');
   btn.disabled = true;
-  btn.textContent = 'Ingesting…';
-
-  const session = await fetch(`${API}/api/training/sessions/${currentSessionId}/ingest`, {
+  btn.textContent = 'Submitting…';
+  const session = await fetch(`${API}/api/training/sessions/${currentSessionId}/submit`, {
     method: 'POST', headers: HEADERS
   }).then(r => r.json());
-
-  updateIngestBtn(session);
+  currentSession = session;
+  updateDetailActions(session);
   await loadSessions();
 }
 
-function updateIngestBtn(session) {
-  const btn = document.getElementById('ingest-btn');
-  if (session.status === 'INGESTED') {
-    btn.textContent = 'Ingested ✓';
-    btn.classList.add('ingested');
-    btn.disabled = false;
-  } else {
-    btn.textContent = 'Ingest';
-    btn.classList.remove('ingested');
-    btn.disabled = false;
-  }
+async function ingestSession() {
+  if (!currentSessionId) return;
+  const btn = document.getElementById('quick-ingest-btn');
+  btn.disabled = true;
+  btn.textContent = 'Ingesting…';
+  const session = await fetch(`${API}/api/training/sessions/${currentSessionId}/ingest`, {
+    method: 'POST', headers: HEADERS
+  }).then(r => r.json());
+  currentSession = session;
+  updateDetailActions(session);
+  await loadSessions();
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

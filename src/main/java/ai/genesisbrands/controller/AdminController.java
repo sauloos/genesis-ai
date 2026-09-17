@@ -31,4 +31,14 @@ public class AdminController {
         }
         return ResponseEntity.ok(Map.of("env", environment.toUpperCase()));
     }
+
+    @GetMapping("/me")
+    public ResponseEntity<Map<String, String>> me(HttpServletRequest req) {
+        if (!adminAuth.isAdminRequest(req) && !adminSession.hasValidSession(req)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        // Single admin user is always SUPER_ADMIN. When multi-user roles are added,
+        // derive the role from the session principal here instead.
+        return ResponseEntity.ok(Map.of("role", "SUPER_ADMIN"));
+    }
 }

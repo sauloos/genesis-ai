@@ -239,6 +239,16 @@ public class TrainingService {
         return session;
     }
 
+    public TrainingSession submitSession(String id) {
+        TrainingSession session = getSession(id);
+        if (session.getStatus() != Status.DRAFT) {
+            throw new IllegalStateException("Only DRAFT sessions can be submitted for review");
+        }
+        session.setStatus(Status.PENDING_REVIEW);
+        session.setUpdatedAt(Instant.now());
+        return sessionRepo.save(session);
+    }
+
     public void approveSession(String id) {
         TrainingSession session = getSession(id);
         if (session.getStatus() != Status.PENDING_REVIEW) {
