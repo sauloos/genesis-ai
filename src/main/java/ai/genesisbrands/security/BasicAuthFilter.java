@@ -11,11 +11,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.Set;
 
-/**
- * Minimal HTTP Basic Auth gate for admin-only pages. The landing page at "/" and the
- * client-facing /your-brand/* pages stay open (handled by ClientAuthFilter). Deliberately
- * lightweight — temporary until real admin auth ships.
- */
 @Component
 @RequiredArgsConstructor
 public class BasicAuthFilter extends OncePerRequestFilter {
@@ -27,10 +22,12 @@ public class BasicAuthFilter extends OncePerRequestFilter {
         "/questionnaires", "/questionnaires.html",
         "/questionnaire-run", "/questionnaire-run.html",
         "/templates", "/templates.html",
+        "/knowledge", "/knowledge.html",
         "/discover"
     );
 
     private final AdminAuthHelper adminAuth;
+    private final AdminSessionService adminSession;
 
     @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
@@ -38,7 +35,20 @@ public class BasicAuthFilter extends OncePerRequestFilter {
 
         String path = req.getRequestURI();
 
-        if (!PROTECTED_PATHS.contains(path) || adminAuth.isAdminRequest(req)) {
+        if (!PROTECTED_PATHS.contains(path)) {
+            chain.doFilter(req, res);
+            return;
+        }
+
+        // Accept a valid session cookie (set on a previous successful Basic Auth)
+        if (adminSession.hasValidSession(req)) {
+            chain.doFilter(req, res);
+            return;
+        }
+
+        // Accept Basic Auth credentials and issue a session cookie for future requests
+        if (adminAuth.isAdminRequest(req)) {
+            adminSession.setSessionCookie(res);
             chain.doFilter(req, res);
             return;
         }

@@ -931,7 +931,7 @@ boot();
 <script>
 (async () => {
   try {
-    const r = await fetch("/api/admin/env");
+    const r = await fetch("/api/admin/env", { credentials: "include" });
     if (!r.ok) return;
     const { env } = await r.json();
     const col = { PRODUCTION: "#ef4444", QA: "#f59e0b", DEV: "#6b7280" }[env] || "#888";

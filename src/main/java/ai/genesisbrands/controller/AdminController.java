@@ -1,6 +1,7 @@
 package ai.genesisbrands.controller;
 
 import ai.genesisbrands.security.AdminAuthHelper;
+import ai.genesisbrands.security.AdminSessionService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,13 +19,14 @@ import java.util.Map;
 public class AdminController {
 
     private final AdminAuthHelper adminAuth;
+    private final AdminSessionService adminSession;
 
     @Value("${genesis.environment:dev}")
     private String environment;
 
     @GetMapping("/env")
     public ResponseEntity<Map<String, String>> env(HttpServletRequest req) {
-        if (!adminAuth.isAdminRequest(req)) {
+        if (!adminAuth.isAdminRequest(req) && !adminSession.hasValidSession(req)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         return ResponseEntity.ok(Map.of("env", environment.toUpperCase()));
