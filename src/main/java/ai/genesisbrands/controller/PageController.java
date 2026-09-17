@@ -11,32 +11,32 @@ public class PageController {
         return "forward:/dashboard.html";
     }
 
-    @GetMapping("/console")
+    @GetMapping({"/dashboard/console", "/console"})
     public String consolePage() {
         return "forward:/console.html";
     }
 
-    @GetMapping("/training")
+    @GetMapping({"/dashboard/training", "/training"})
     public String trainingPage() {
         return "forward:/training.html";
     }
 
-    @GetMapping("/playground")
+    @GetMapping({"/dashboard/playground", "/playground"})
     public String playgroundPage() {
         return "forward:/playground.html";
     }
 
-    @GetMapping("/questionnaires")
+    @GetMapping({"/dashboard/questionnaires", "/questionnaires"})
     public String questionnairesPage() {
         return "forward:/questionnaires.html";
     }
 
-    @GetMapping("/templates")
+    @GetMapping({"/dashboard/templates", "/templates"})
     public String templatesPage() {
         return "forward:/templates.html";
     }
 
-    @GetMapping("/knowledge")
+    @GetMapping({"/dashboard/knowledge", "/knowledge"})
     public String knowledgePage() {
         return "forward:/knowledge.html";
     }

@@ -17,13 +17,13 @@ public class BasicAuthFilter extends OncePerRequestFilter {
 
     private static final Set<String> PROTECTED_PATHS = Set.of(
         "/dashboard", "/dashboard.html",
-        "/console", "/console.html",
-        "/training", "/training.html",
-        "/playground", "/playground.html",
-        "/questionnaires", "/questionnaires.html",
+        "/dashboard/console", "/console", "/console.html",
+        "/dashboard/training", "/training", "/training.html",
+        "/dashboard/playground", "/playground", "/playground.html",
+        "/dashboard/questionnaires", "/questionnaires", "/questionnaires.html",
+        "/dashboard/templates", "/templates", "/templates.html",
+        "/dashboard/knowledge", "/knowledge", "/knowledge.html",
         "/questionnaire-run", "/questionnaire-run.html",
-        "/templates", "/templates.html",
-        "/knowledge", "/knowledge.html",
         "/discover"
     );
 
