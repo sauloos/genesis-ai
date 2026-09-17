@@ -112,15 +112,19 @@
 
   .admin-link {
     position: fixed;
-    bottom: 20px;
-    right: 24px;
+    bottom: 24px;
+    right: 28px;
     font-size: 11px;
-    color: rgba(255,255,255,0.32);
+    color: rgba(255,255,255,0.5);
     text-decoration: none;
-    letter-spacing: 0.05em;
-    transition: color 0.15s;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 5px;
+    padding: 4px 10px;
+    transition: color 0.15s, border-color 0.15s;
   }
-  .admin-link:hover { color: rgba(255,255,255,0.5); }
+  .admin-link:hover { color: rgba(255,255,255,0.85); border-color: rgba(255,255,255,0.4); }
 
   @media (max-width: 480px) {
     form { flex-direction: column; }
