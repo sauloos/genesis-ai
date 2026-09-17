@@ -771,7 +771,11 @@ function renderContent(items) {
     if (item.contentType === 'TEXT') {
       body = `<div class="content-body">${esc(item.textContent)}</div>`;
     } else if (item.contentType === 'FILE') {
-      body = `<div class="content-filename">${esc(item.fileName)}</div>`;
+      const ext = (item.fileName || '').split('.').pop().toUpperCase();
+      body = `<div style="display:flex;align-items:center;gap:10px;margin-top:2px;">
+        <span style="padding:3px 7px;border-radius:4px;background:rgba(255,255,255,0.08);font-size:10px;font-weight:700;letter-spacing:.4px;color:rgba(255,255,255,.55)">${esc(ext)}</span>
+        <span class="content-filename" style="font-style:normal;color:rgba(255,255,255,.75)">${esc(item.fileName)}</span>
+      </div>`;
     } else if (item.contentType === 'ASSET') {
       body = `<img class="content-asset-thumb" src="/api/assets/${esc(item.blobPath)}" alt="${esc(item.fileName)}">`;
     } else if (item.contentType === 'AUDIO') {
@@ -863,11 +867,32 @@ async function submitFile() {
   removeAttachment();
   document.getElementById('send-btn').disabled = true;
 
-  const form = new FormData();
-  form.append('file', file);
-  await fetch(`${API}/api/training/sessions/${currentSessionId}/content/file`, {
-    method: 'POST', headers: { 'X-Api-Key': KEY }, body: form
-  });
+  // Show loading placeholder
+  const list = document.getElementById('content-list');
+  const placeholder = document.createElement('div');
+  placeholder.id = 'file-processing';
+  placeholder.className = 'content-item processing';
+  placeholder.innerHTML = `
+    <div class="content-type-tag">📎 File</div>
+    <div class="content-filename processing-dots">Uploading ${esc(file.name)}</div>`;
+  const emptyEl = list.querySelector('.empty-content');
+  if (emptyEl) list.innerHTML = '';
+  list.appendChild(placeholder);
+  list.scrollTop = list.scrollHeight;
+
+  try {
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch(`${API}/api/training/sessions/${currentSessionId}/content/file`, {
+      method: 'POST', headers: { 'X-Api-Key': KEY }, body: form
+    });
+    if (!res.ok) throw new Error(`Upload failed (${res.status})`);
+  } catch (err) {
+    placeholder.remove();
+    alert(`File upload failed: ${err.message}`);
+    document.getElementById('send-btn').disabled = false;
+    return;
+  }
   await refreshContent();
 }
 
