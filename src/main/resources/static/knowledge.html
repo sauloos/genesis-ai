@@ -15,6 +15,15 @@
     display: flex;
     overflow: hidden;
   }
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: -2;
+    background: url('/bg-earth.jpg') center center / cover no-repeat;
+    transform: rotate(180deg);
+  }
+  body::after {
+    content: ''; position: fixed; inset: 0; z-index: -1;
+    background: rgba(0, 0, 10, 0.75);
+  }
 
   /* ─── Sidebar ─────────────────────────────────────────────── */
   #sidebar {
