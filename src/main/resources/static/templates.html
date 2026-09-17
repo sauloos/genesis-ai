@@ -407,5 +407,22 @@
 
   load();
 </script>
+<script>
+(async () => {
+  try {
+    const r = await fetch("/api/admin/env");
+    if (!r.ok) return;
+    const { env } = await r.json();
+    const col = { PRODUCTION: "#ef4444", QA: "#f59e0b", DEV: "#6b7280" }[env] || "#888";
+    const el = document.createElement("div");
+    el.id = "env-badge";
+    el.style.cssText = "margin-top:auto;padding:10px 16px;border-top:1px solid #222;display:flex;align-items:center;gap:7px;flex-shrink:0";
+    el.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:${col};flex-shrink:0"></span>`
+      + `<span style="font-size:10px;font-weight:700;letter-spacing:0.5px;color:${col};text-transform:uppercase">${env}</span>`;
+    const sb = document.getElementById("sidebar");
+    if (sb) sb.appendChild(el);
+  } catch {}
+})();
+</script>
 </body>
 </html>
