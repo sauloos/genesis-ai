@@ -28,7 +28,9 @@ az acr build \
 # Also pass through any API keys from .env that have been set/changed.
 echo "[ 2/2 ] Updating Container App..."
 ENV_OVERRIDES=""
-[ -n "${UNSPLASH_ACCESS_KEY:-}" ] && ENV_OVERRIDES="UNSPLASH_ACCESS_KEY=$UNSPLASH_ACCESS_KEY"
+[ -n "${UNSPLASH_ACCESS_KEY:-}" ]  && ENV_OVERRIDES="$ENV_OVERRIDES UNSPLASH_ACCESS_KEY=$UNSPLASH_ACCESS_KEY"
+[ -n "${IDEOGRAM_API_KEY:-}" ]     && ENV_OVERRIDES="$ENV_OVERRIDES IDEOGRAM_API_KEY=$IDEOGRAM_API_KEY"
+ENV_OVERRIDES="${ENV_OVERRIDES# }"   # trim leading space
 
 if [ -n "$ENV_OVERRIDES" ]; then
   az containerapp update \
