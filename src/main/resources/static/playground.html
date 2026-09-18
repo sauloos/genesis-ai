@@ -442,7 +442,6 @@
       <button class="method-btn active" data-value="DALLE" onclick="setMethod(this)">DALL-E image</button>
       <button class="method-btn" data-value="IDEOGRAM" onclick="setMethod(this)">Ideogram</button>
       <button class="method-btn" data-value="SVG_CONCEPT" onclick="setMethod(this)">SVG concept</button>
-      <button class="method-btn" data-value="BOTH" onclick="setMethod(this)">Both</button>
     </div>
   </div>
 
@@ -682,7 +681,7 @@ const HEADERS = { 'Content-Type': 'application/json', 'X-Api-Key': KEY };
 
 let currentDirection = 'DISRUPTIVE';
 let currentAgent = 'copy';
-let currentMethod = 'DALLE';
+let currentMethods = ['DALLE']; // up to 2 selected at once
 let currentView = 'parameters';
 let resultsTab = 'current';
 let currentPlaygroundSessionId = null;
@@ -1455,9 +1454,24 @@ async function deleteHistoryItem(e, id) {
 }
 
 function setMethod(btn) {
-  document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  currentMethod = btn.dataset.value;
+  const val = btn.dataset.value;
+  const isActive = btn.classList.contains('active');
+  if (isActive) {
+    // deselect only if at least one other is selected
+    if (currentMethods.length > 1) {
+      currentMethods = currentMethods.filter(m => m !== val);
+      btn.classList.remove('active');
+    }
+  } else {
+    // select: max 2 at a time
+    if (currentMethods.length >= 2) {
+      // deselect the oldest selection
+      const removed = currentMethods.shift();
+      document.querySelector(`.method-btn[data-value="${removed}"]`)?.classList.remove('active');
+    }
+    currentMethods.push(val);
+    btn.classList.add('active');
+  }
 }
 
 function makeResizable(handle, target, axis, min, max) {
@@ -1837,9 +1851,7 @@ async function runAgent() {
   switchViewTab('response');
 
   const brief = buildBrief();
-  const methods = (currentAgent === 'logo' && currentMethod === 'BOTH')
-    ? ['DALLE', 'SVG_CONCEPT']
-    : [currentMethod];
+  const methods = currentAgent === 'logo' ? currentMethods : [currentMethods[0]];
   const endpoint = compare
     ? (evaluate ? `/api/agents/${currentAgent}/compare-with-evaluation` : `/api/agents/${currentAgent}/compare`)
     : (evaluate ? `/api/agents/${currentAgent}/execute-with-evaluation` : `/api/agents/${currentAgent}/execute`);
@@ -2096,17 +2108,21 @@ function typographyBlock(t) {
 
 function logoBody(o) {
   const method = o.method;
-  const visual = method === 'DALLE'
+  const isImage = method === 'DALLE' || method === 'IDEOGRAM';
+  const visual = isImage
     ? `<div class="logo-image-frame"><img src="${esc(o.imageUrl)}" alt="Generated logo"></div>`
     : `<div class="logo-image-frame">${o.svgMarkup || ''}</div>`;
+  const label = method === 'DALLE' ? 'Generated mark (DALL-E)'
+    : method === 'IDEOGRAM' ? 'Generated mark (Ideogram)'
+    : 'SVG concept';
   return `
     <div class="rf-block">
-      <div class="rf-label">${method === 'DALLE' ? 'Generated mark' : 'SVG concept'}</div>
+      <div class="rf-label">${label}</div>
       ${visual}
     </div>
     ${block('Concept', o.conceptDescription)}
     ${o.symbolism ? block('Symbolism', o.symbolism) : ''}
-    ${method === 'DALLE' && o.imagePrompt ? block('Image prompt used', o.imagePrompt) : ''}
+    ${isImage && o.imagePrompt ? block('Image prompt used', o.imagePrompt) : ''}
   `;
 }
 
