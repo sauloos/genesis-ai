@@ -260,6 +260,50 @@
     letter-spacing: 0.5px; margin-bottom: 10px;
   }
 
+  /* Questionnaire section */
+  #questionnaire-section { margin-bottom: 20px; }
+  .q-section-hdr {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .q-section-title { font-size: 12px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+  .q-mode-link { font-size: 11px; color: #555; text-decoration: none; }
+  .q-mode-link:hover { color: #888; }
+  .q-item { margin-bottom: 14px; }
+  .q-label { font-size: 12px; font-weight: 600; color: #bbb; margin-bottom: 5px; }
+  .q-help { font-size: 11px; color: #555; margin-bottom: 5px; }
+  .q-item input[type=text], .q-item textarea, .q-item select {
+    width: 100%; padding: 8px 10px; background: #111; border: 1px solid #2a2a2a;
+    border-radius: 7px; color: #ddd; font-size: 12px; box-sizing: border-box;
+    font-family: inherit;
+  }
+  .q-item textarea { resize: vertical; min-height: 60px; }
+  .q-item input[type=range] { width: 100%; accent-color: #4caf7d; }
+  .q-slider-val { font-size: 11px; color: #666; margin-top: 3px; }
+  .q-select-option { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 12px; color: #bbb; }
+  .derive-row { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+  #q-derive-btn {
+    padding: 8px 18px; background: #1a3a28; border: 1px solid #2a5a3a; border-radius: 8px;
+    color: #6fe0a5; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.15s;
+  }
+  #q-derive-btn:hover { background: #204830; }
+  #q-derive-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  #q-derive-status { font-size: 11px; color: #555; }
+  #q-no-questionnaire { font-size: 12px; color: #555; padding: 10px 0; }
+  .derived-section { margin-bottom: 16px; }
+  .derived-label { font-size: 11px; color: #666; margin-bottom: 8px; }
+  .derived-chips { display: flex; gap: 8px; margin-bottom: 10px; }
+  .derived-chip {
+    flex: 1; padding: 8px 0; border-radius: 8px; border: 1px solid #2a2a2a;
+    background: #111; font-size: 11px; font-weight: 700; color: #666; cursor: pointer; transition: all 0.15s;
+  }
+  .derived-chip.active { background: #1a3a28; border-color: #2a5a3a; color: #6fe0a5; }
+  .derived-chip:hover:not(.active) { border-color: #444; color: #aaa; }
+  .derived-summary { font-size: 11px; color: #555; line-height: 1.5; margin-bottom: 8px; }
+  .reset-derived { font-size: 11px; color: #444; text-decoration: none; }
+  .reset-derived:hover { color: #666; }
+  .brief-source-label { font-size: 10px; color: #444; margin-bottom: 8px; font-style: italic; }
+
   .logo-image-frame {
     display: flex; justify-content: center; align-items: center; background: rgba(255,255,255,0.04);
     border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 20px; min-height: 200px;
@@ -474,39 +518,73 @@
       </div>
     </div>
 
-    <div class="form-grid">
-      <div class="field">
-        <label>Brand name</label>
-        <input id="f-name" type="text" placeholder="Groundwork" value="Groundwork">
+    <!-- Questionnaire-driven brief derivation -->
+    <div id="questionnaire-section">
+      <div id="q-no-questionnaire" style="display:none">
+        No live questionnaire found — fill in the brand context manually below.
       </div>
-      <div class="field">
-        <label>Industry</label>
-        <input id="f-industry" type="text" placeholder="Specialty coffee roaster" value="Specialty coffee roaster">
+      <div id="q-loaded" style="display:none">
+        <div class="q-section-hdr">
+          <span class="q-section-title" id="q-section-title">Questionnaire</span>
+          <a href="#" class="q-mode-link" onclick="toggleManualMode(event)" id="q-mode-link">Enter manually instead</a>
+        </div>
+        <div id="q-questions-list"></div>
+        <div class="derive-row">
+          <button id="q-derive-btn" onclick="deriveDirections()">Derive directions</button>
+          <span id="q-derive-status"></span>
+        </div>
       </div>
-      <div class="field full">
-        <label>Target audience</label>
-        <input id="f-audience" type="text" placeholder="Urban professionals aged 25-40 who value craft over convenience"
-          value="Urban professionals aged 25-40 who value craft and provenance over convenience">
+      <div id="q-derived-section" class="derived-section" style="display:none">
+        <div class="derived-label">Directions derived — select one to populate the brief below:</div>
+        <div class="derived-chips">
+          <button class="derived-chip active" data-dir="ANCHORED" onclick="selectDerivedDir(this)">Anchored</button>
+          <button class="derived-chip" data-dir="EVOLVED" onclick="selectDerivedDir(this)">Evolved</button>
+          <button class="derived-chip" data-dir="DISRUPTIVE" onclick="selectDerivedDir(this)">Disruptive</button>
+        </div>
+        <div id="derived-brief-summary" class="derived-summary"></div>
+        <a href="#" class="reset-derived" onclick="resetDerived(event)">↩ Re-answer questionnaire</a>
       </div>
-      <div class="field full">
-        <label>Core offer</label>
-        <input id="f-offer" type="text" placeholder="Small-batch roasted specialty coffee, subscription and retail"
-          value="Small-batch roasted specialty coffee, subscription and retail">
-      </div>
-      <div class="field full">
-        <label>Differentiator</label>
-        <input id="f-diff" type="text" placeholder="Exceptional coffee without the snobbery"
-          value="Exceptional coffee without the snobbery">
-      </div>
-      <div class="field">
-        <label>Personality (comma-separated)</label>
-        <input id="f-personality" type="text" placeholder="direct, unpretentious, confident" value="direct, unpretentious, confident">
-      </div>
-      <div class="field">
-        <label>Tone</label>
-        <input id="f-tone" type="text" placeholder="bold, plainspoken, a little irreverent" value="bold, plainspoken, a little irreverent">
-      </div>
+    </div>
 
+    <!-- Brand context — populated by questionnaire derivation or entered manually -->
+    <div id="manual-section">
+      <div class="brief-source-label" id="brief-source-label">Example brief — edit as needed or derive from questionnaire above.</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Brand name</label>
+          <input id="f-name" type="text" placeholder="Groundwork" value="Groundwork">
+        </div>
+        <div class="field">
+          <label>Industry</label>
+          <input id="f-industry" type="text" placeholder="Specialty coffee roaster" value="Specialty coffee roaster">
+        </div>
+        <div class="field full">
+          <label>Target audience</label>
+          <input id="f-audience" type="text" placeholder="Urban professionals aged 25-40 who value craft over convenience"
+            value="Urban professionals aged 25-40 who value craft and provenance over convenience">
+        </div>
+        <div class="field full">
+          <label>Core offer</label>
+          <input id="f-offer" type="text" placeholder="Small-batch roasted specialty coffee, subscription and retail"
+            value="Small-batch roasted specialty coffee, subscription and retail">
+        </div>
+        <div class="field full">
+          <label>Differentiator</label>
+          <input id="f-diff" type="text" placeholder="Exceptional coffee without the snobbery"
+            value="Exceptional coffee without the snobbery">
+        </div>
+        <div class="field">
+          <label>Personality (comma-separated)</label>
+          <input id="f-personality" type="text" placeholder="direct, unpretentious, confident" value="direct, unpretentious, confident">
+        </div>
+        <div class="field">
+          <label>Tone</label>
+          <input id="f-tone" type="text" placeholder="bold, plainspoken, a little irreverent" value="bold, plainspoken, a little irreverent">
+        </div>
+      </div>
+    </div>
+
+    <div class="form-grid">
       <div class="field full">
         <label>Creative direction</label>
         <div class="direction-group">
@@ -610,6 +688,11 @@ let resultsTab = 'current';
 let currentPlaygroundSessionId = null;
 let currentRunAssets = [];
 let lastRunArgs = null;
+
+// Questionnaire-driven brief derivation
+let derivedBriefs = null;      // { ANCHORED: DirectionBrief, EVOLVED: ..., DISRUPTIVE: ... }
+let questionnaireId = null;    // live questionnaire id
+let isManualMode = false;      // true when user clicked "Enter manually instead"
 
 const AGENT_META = {
   'copy': { title: 'Copy Agent', sub: 'Give it a brand context and a creative direction, then run it.' },
@@ -1408,6 +1491,224 @@ function setDirection(btn) {
   document.querySelectorAll('.dir-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   currentDirection = btn.dataset.value;
+  if (derivedBriefs && derivedBriefs[currentDirection]) {
+    populateFormFromBrief(derivedBriefs[currentDirection]);
+  }
+}
+
+// ── Questionnaire-driven brief derivation ────────────────────────────────────
+
+async function loadQuestionnaire() {
+  try {
+    const data = await fetch(`${API}/api/playground/questionnaire`, { headers: HEADERS }).then(r => {
+      if (!r.ok) throw new Error('no questionnaire');
+      return r.json();
+    });
+    questionnaireId = data.id;
+    document.getElementById('q-section-title').textContent = data.title || 'Client questionnaire';
+    renderQuestionnaire(data.questions);
+    document.getElementById('q-loaded').style.display = 'block';
+  } catch {
+    document.getElementById('q-no-questionnaire').style.display = 'block';
+    isManualMode = true;
+  }
+}
+
+function renderQuestionnaire(questions) {
+  const list = document.getElementById('q-questions-list');
+  list.innerHTML = '';
+  questions.forEach(q => {
+    const item = document.createElement('div');
+    item.className = 'q-item';
+    const label = document.createElement('div');
+    label.className = 'q-label';
+    label.textContent = q.orderIndex + '. ' + q.prompt;
+    item.appendChild(label);
+    if (q.helpText) {
+      const help = document.createElement('div');
+      help.className = 'q-help';
+      help.textContent = q.helpText;
+      item.appendChild(help);
+    }
+    const config = q.configJson ? JSON.parse(q.configJson) : {};
+    item.appendChild(buildQuestionInput(q, config));
+    list.appendChild(item);
+  });
+}
+
+function buildQuestionInput(q, config) {
+  const type = q.type;
+  if (type === 'LONG_TEXT') {
+    const ta = document.createElement('textarea');
+    ta.id = 'q-ans-' + q.id;
+    ta.placeholder = q.helpText || '';
+    return ta;
+  }
+  if (type === 'SLIDER') {
+    const wrap = document.createElement('div');
+    const min = config.min ?? 0, max = config.max ?? 100;
+    const mid = Math.round((min + max) / 2);
+    const slider = document.createElement('input');
+    slider.type = 'range'; slider.min = min; slider.max = max; slider.value = mid;
+    slider.id = 'q-ans-' + q.id;
+    const val = document.createElement('div');
+    val.className = 'q-slider-val';
+    val.textContent = (config.minLabel || min) + ' → ' + mid + ' → ' + (config.maxLabel || max);
+    slider.oninput = () => { val.textContent = slider.value; };
+    wrap.appendChild(slider); wrap.appendChild(val);
+    return wrap;
+  }
+  if (type === 'SINGLE_SELECT') {
+    const wrap = document.createElement('div');
+    (config.options || []).forEach((opt, i) => {
+      const lbl = document.createElement('label');
+      lbl.className = 'q-select-option';
+      const rb = document.createElement('input');
+      rb.type = 'radio'; rb.name = 'q-' + q.id; rb.value = opt;
+      rb.id = 'q-ans-' + q.id + '-' + i;
+      if (i === 0) rb.checked = true;
+      lbl.appendChild(rb);
+      lbl.append(opt);
+      wrap.appendChild(lbl);
+    });
+    return wrap;
+  }
+  if (type === 'MULTI_SELECT') {
+    const wrap = document.createElement('div');
+    (config.options || []).forEach((opt, i) => {
+      const lbl = document.createElement('label');
+      lbl.className = 'q-select-option';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.value = opt; cb.id = 'q-ans-' + q.id + '-' + i;
+      lbl.appendChild(cb);
+      lbl.append(opt);
+      wrap.appendChild(lbl);
+    });
+    return wrap;
+  }
+  // SHORT_TEXT and fallback
+  const inp = document.createElement('input');
+  inp.type = 'text'; inp.id = 'q-ans-' + q.id;
+  inp.placeholder = q.helpText || '';
+  return inp;
+}
+
+function collectAnswers() {
+  const answers = [];
+  document.querySelectorAll('[id^="q-ans-"]').forEach(el => {
+    const qId = el.id.replace('q-ans-', '').split('-')[0];
+    let value = null;
+    if (el.type === 'checkbox') {
+      if (!el.checked) return;
+      // multi-select: accumulate
+      const existing = answers.find(a => a.questionId === qId);
+      if (existing) {
+        const arr = JSON.parse(existing.valueJson);
+        arr.push(el.value);
+        existing.valueJson = JSON.stringify(arr);
+        return;
+      }
+      value = JSON.stringify([el.value]);
+    } else if (el.type === 'radio') {
+      if (!el.checked) return;
+      value = JSON.stringify(el.value);
+    } else {
+      if (answers.find(a => a.questionId === qId)) return; // already collected
+      value = JSON.stringify(el.value.trim() || el.placeholder || '');
+    }
+    answers.push({ questionId: qId, valueJson: value });
+  });
+  return answers;
+}
+
+async function deriveDirections() {
+  const btn = document.getElementById('q-derive-btn');
+  const status = document.getElementById('q-derive-status');
+  btn.disabled = true;
+  status.textContent = 'Calling Brain Engine…';
+  try {
+    const answers = collectAnswers();
+    const res = await fetch(`${API}/api/playground/derive-briefs`, {
+      method: 'POST', headers: HEADERS,
+      body: JSON.stringify({ questionnaireId, answers })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    derivedBriefs = {};
+    data.briefs.forEach(b => { derivedBriefs[b.direction] = b; });
+
+    // Show derived section, hide questionnaire form
+    document.getElementById('q-loaded').style.display = 'none';
+    document.getElementById('q-derived-section').style.display = 'block';
+    document.getElementById('brief-source-label').textContent = 'Populated from questionnaire derivation — edit as needed.';
+
+    // Select DISRUPTIVE by default (or first available)
+    const defaultDir = derivedBriefs['DISRUPTIVE'] ? 'DISRUPTIVE'
+      : derivedBriefs['EVOLVED'] ? 'EVOLVED' : 'ANCHORED';
+    const chip = document.querySelector(`.derived-chip[data-dir="${defaultDir}"]`);
+    if (chip) selectDerivedDir(chip);
+
+    status.textContent = '';
+  } catch (err) {
+    status.textContent = 'Error: ' + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function selectDerivedDir(btn) {
+  document.querySelectorAll('.derived-chip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const dir = btn.dataset.dir;
+  currentDirection = dir;
+  // sync the direction buttons in the brief section
+  document.querySelectorAll('.dir-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.value === dir);
+  });
+  if (derivedBriefs && derivedBriefs[dir]) {
+    populateFormFromBrief(derivedBriefs[dir]);
+    const b = derivedBriefs[dir];
+    document.getElementById('derived-brief-summary').textContent =
+      b.brand.name + ' · ' + b.brand.industry + ' · ' + (b.additionalContext || '').substring(0, 120);
+  }
+}
+
+function populateFormFromBrief(brief) {
+  const b = brief.brand;
+  document.getElementById('f-name').value = b.name || '';
+  document.getElementById('f-industry').value = b.industry || '';
+  document.getElementById('f-audience').value = b.targetAudience || '';
+  document.getElementById('f-offer').value = b.coreOffer || '';
+  document.getElementById('f-diff').value = b.differentiator || '';
+  document.getElementById('f-personality').value = (b.personality || []).join(', ');
+  document.getElementById('f-tone').value = b.tone || '';
+  document.getElementById('f-training').value = (brief.trainingInstructions || []).join('\n');
+  document.getElementById('f-context').value = brief.additionalContext || '';
+}
+
+function toggleManualMode(e) {
+  e.preventDefault();
+  isManualMode = !isManualMode;
+  const qLoaded = document.getElementById('q-loaded');
+  const link = document.getElementById('q-mode-link');
+  if (isManualMode) {
+    qLoaded.style.display = 'none';
+    document.getElementById('brief-source-label').textContent = 'Manual brief — edit as needed.';
+    link.textContent = '← Back to questionnaire';
+  } else {
+    qLoaded.style.display = 'block';
+    document.getElementById('brief-source-label').textContent = 'Example brief — edit as needed or derive from questionnaire above.';
+    link.textContent = 'Enter manually instead';
+  }
+}
+
+function resetDerived(e) {
+  e.preventDefault();
+  derivedBriefs = null;
+  document.getElementById('q-derived-section').style.display = 'none';
+  document.getElementById('q-loaded').style.display = 'block';
+  document.getElementById('brief-source-label').textContent = 'Example brief — edit as needed or derive from questionnaire above.';
+  isManualMode = false;
 }
 
 function buildBrief() {
@@ -2079,6 +2380,8 @@ document.addEventListener('click', (e) => {
     await switchResultsTab('history');
     await openHistoryItem(sessionId);
   }
+  // Load live questionnaire for brief derivation
+  await loadQuestionnaire();
 })();
 </script>
 <script>
