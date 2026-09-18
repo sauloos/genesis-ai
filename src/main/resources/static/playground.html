@@ -303,6 +303,12 @@
   .reset-derived { font-size: 11px; color: #444; text-decoration: none; }
   .reset-derived:hover { color: #666; }
   .brief-source-label { font-size: 10px; color: #444; margin-bottom: 8px; font-style: italic; }
+  .derived-foundation { background: rgba(42,90,58,0.1); border: 1px solid rgba(42,90,58,0.25); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; }
+  .derived-foundation-lbl { font-size: 10px; font-weight: 700; color: #6fe0a5; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 7px; }
+  .foundation-grid { display: grid; gap: 4px; }
+  .foundation-row { display: grid; grid-template-columns: 110px 1fr; gap: 8px; align-items: baseline; }
+  .foundation-key { font-size: 10px; color: #4a8a65; font-weight: 600; }
+  .foundation-val { font-size: 11px; color: #9a9a9a; line-height: 1.45; }
 
   .logo-image-frame {
     display: flex; justify-content: center; align-items: center; background: rgba(255,255,255,0.04);
@@ -535,6 +541,15 @@
       </div>
       <div id="q-derived-section" class="derived-section" style="display:none">
         <div class="derived-label">Directions derived — select one to populate the brief below:</div>
+        <div id="derived-foundation" class="derived-foundation" style="display:none">
+          <div class="derived-foundation-lbl">Brand Foundation</div>
+          <div class="foundation-grid">
+            <div class="foundation-row"><span class="foundation-key">Differentiator</span><span id="fd-diff" class="foundation-val"></span></div>
+            <div class="foundation-row"><span class="foundation-key">Audience</span><span id="fd-audience" class="foundation-val"></span></div>
+            <div class="foundation-row"><span class="foundation-key">Positioning</span><span id="fd-positioning" class="foundation-val"></span></div>
+            <div class="foundation-row"><span class="foundation-key">Tone spectrum</span><span id="fd-tone" class="foundation-val"></span></div>
+          </div>
+        </div>
         <div class="derived-chips">
           <button class="derived-chip active" data-dir="ANCHORED" onclick="selectDerivedDir(this)">Anchored</button>
           <button class="derived-chip" data-dir="EVOLVED" onclick="selectDerivedDir(this)">Evolved</button>
@@ -1651,6 +1666,17 @@ async function deriveDirections() {
     derivedBriefs = {};
     data.briefs.forEach(b => { derivedBriefs[b.direction] = b; });
 
+    // Populate foundation card (direction-agnostic — same object in all three briefs)
+    const firstBrief = data.briefs[0];
+    if (firstBrief && firstBrief.foundation) {
+      const f = firstBrief.foundation;
+      document.getElementById('fd-diff').textContent = f.differentiator || '';
+      document.getElementById('fd-audience').textContent = f.targetAudiencePersona || '';
+      document.getElementById('fd-positioning').textContent = f.corePositioning || '';
+      document.getElementById('fd-tone').textContent = f.toneSpectrum || '';
+      document.getElementById('derived-foundation').style.display = 'block';
+    }
+
     // Show derived section, hide questionnaire form
     document.getElementById('q-loaded').style.display = 'none';
     document.getElementById('q-derived-section').style.display = 'block';
@@ -1689,11 +1715,12 @@ function selectDerivedDir(btn) {
 
 function populateFormFromBrief(brief) {
   const b = brief.brand;
+  const f = brief.foundation || {};
   document.getElementById('f-name').value = b.name || '';
   document.getElementById('f-industry').value = b.industry || '';
-  document.getElementById('f-audience').value = b.targetAudience || '';
+  document.getElementById('f-audience').value = f.targetAudiencePersona || b.targetAudience || '';
   document.getElementById('f-offer').value = b.coreOffer || '';
-  document.getElementById('f-diff').value = b.differentiator || '';
+  document.getElementById('f-diff').value = f.differentiator || b.differentiator || '';
   document.getElementById('f-personality').value = (b.personality || []).join(', ');
   document.getElementById('f-tone').value = b.tone || '';
   document.getElementById('f-training').value = (brief.trainingInstructions || []).join('\n');
@@ -1720,6 +1747,7 @@ function resetDerived(e) {
   e.preventDefault();
   derivedBriefs = null;
   document.getElementById('q-derived-section').style.display = 'none';
+  document.getElementById('derived-foundation').style.display = 'none';
   document.getElementById('q-loaded').style.display = 'block';
   document.getElementById('brief-source-label').textContent = 'Example brief — edit as needed or derive from questionnaire above.';
   isManualMode = false;

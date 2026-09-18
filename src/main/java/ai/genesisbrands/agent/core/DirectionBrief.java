@@ -5,6 +5,7 @@ import java.util.List;
 public record DirectionBrief(
     String engagementId,
     BrandContext brand,
+    BrandFoundation foundation,
     CreativeDirection direction,
     List<String> trainingInstructions,
     String additionalContext
@@ -17,6 +18,13 @@ public record DirectionBrief(
         String differentiator,
         List<String> personality,
         String tone
+    ) {}
+
+    public record BrandFoundation(
+        String differentiator,
+        String targetAudiencePersona,
+        String corePositioning,
+        String toneSpectrum
     ) {}
 
     public enum CreativeDirection {
