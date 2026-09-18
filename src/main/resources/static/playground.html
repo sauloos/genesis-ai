@@ -396,6 +396,7 @@
     <div class="side-label-inline">Generation method</div>
     <div class="method-group">
       <button class="method-btn active" data-value="DALLE" onclick="setMethod(this)">DALL-E image</button>
+      <button class="method-btn" data-value="IDEOGRAM" onclick="setMethod(this)">Ideogram</button>
       <button class="method-btn" data-value="SVG_CONCEPT" onclick="setMethod(this)">SVG concept</button>
       <button class="method-btn" data-value="BOTH" onclick="setMethod(this)">Both</button>
     </div>
@@ -1499,7 +1500,7 @@ async function buildBrandBookInput(brief) {
   return lastBrandBookInput;
 }
 
-const METHOD_LABELS = { DALLE: 'DALL-E image', SVG_CONCEPT: 'SVG concept' };
+const METHOD_LABELS = { DALLE: 'DALL-E image', SVG_CONCEPT: 'SVG concept', IDEOGRAM: 'Ideogram' };
 
 async function fetchMethodResult(endpoint, brief, method) {
   const requestBody = currentAgent === 'logo' ? { brief, method } : brief;

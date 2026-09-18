@@ -22,6 +22,7 @@ public class LogoRefinementLoop {
     private static final Logger log = LoggerFactory.getLogger(LogoRefinementLoop.class);
     private static final String AGENT_ID_DALLE = "logo-dalle";
     private static final String AGENT_ID_SVG = "logo-svg";
+    private static final String AGENT_ID_IDEOGRAM = "logo-ideogram";
 
     private final LogoAgent logoAgent;
     private final LogoEvaluator logoEvaluator;
@@ -34,7 +35,11 @@ public class LogoRefinementLoop {
     }
 
     public RefinementResult run(DirectionBrief brief, LogoOutput.Method method) {
-        String agentId = method == LogoOutput.Method.DALLE ? AGENT_ID_DALLE : AGENT_ID_SVG;
+        String agentId = switch (method) {
+            case DALLE -> AGENT_ID_DALLE;
+            case IDEOGRAM -> AGENT_ID_IDEOGRAM;
+            case SVG_CONCEPT -> AGENT_ID_SVG;
+        };
         int maxIterations = agentProperties.get(agentId).getMaxIterations();
 
         LogoOutput current = logoAgent.execute(brief, method);

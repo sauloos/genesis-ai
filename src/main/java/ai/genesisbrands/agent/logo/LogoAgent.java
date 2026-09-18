@@ -15,8 +15,13 @@ import org.springframework.ai.image.ImageModel;
 import org.springframework.ai.image.ImagePrompt;
 import org.springframework.ai.image.ImageResponse;
 import org.springframework.ai.openai.OpenAiImageOptions;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -30,6 +35,8 @@ public class LogoAgent {
     private static final Logger log = LoggerFactory.getLogger(LogoAgent.class);
     private static final String AGENT_ID_DALLE = "logo-dalle";
     private static final String AGENT_ID_SVG = "logo-svg";
+    private static final String AGENT_ID_IDEOGRAM = "logo-ideogram";
+    private static final String IDEOGRAM_API_URL = "https://api.ideogram.ai/generate";
     // OpenAI retired dall-e-3; gpt-image-1 is the current image model. It always returns
     // b64_json (no response_format param) and takes "size" as a string, not width/height.
     private static final String IMAGE_MODEL = "gpt-image-1";
@@ -40,9 +47,14 @@ public class LogoAgent {
     private final ObjectMapper objectMapper;
     private final BlobStorageService blobStorageService;
     private final RetrievalService retrievalService;
+    private final RestTemplate restTemplate = new RestTemplate();
+
+    @Value("${ideogram.api-key:}")
+    private String ideogramApiKey;
 
     private final String systemPromptDalle;
     private final String systemPromptSvg;
+    private final String systemPromptIdeogram;
 
     public LogoAgent(ChatClient.Builder chatClientBuilder,
                       ImageModel imageModel,
@@ -58,6 +70,7 @@ public class LogoAgent {
         this.retrievalService = retrievalService;
         this.systemPromptDalle = loadPrompt(AGENT_ID_DALLE);
         this.systemPromptSvg = loadPrompt(AGENT_ID_SVG);
+        this.systemPromptIdeogram = loadPrompt(AGENT_ID_IDEOGRAM);
     }
 
     // ── Public interface (defines the SpecialistAgent contract) ───────────────
@@ -72,9 +85,17 @@ public class LogoAgent {
 
     private LogoOutput run(DirectionBrief brief, LogoOutput.Method method,
                             LogoOutput previous, AgentRevision revision, int iteration) {
-        String agentId = method == LogoOutput.Method.DALLE ? AGENT_ID_DALLE : AGENT_ID_SVG;
+        String agentId = switch (method) {
+            case DALLE -> AGENT_ID_DALLE;
+            case IDEOGRAM -> AGENT_ID_IDEOGRAM;
+            case SVG_CONCEPT -> AGENT_ID_SVG;
+        };
         AgentProperties.AgentConfig config = agentProperties.get(agentId);
-        String systemPrompt = method == LogoOutput.Method.DALLE ? systemPromptDalle : systemPromptSvg;
+        String systemPrompt = switch (method) {
+            case DALLE -> systemPromptDalle;
+            case IDEOGRAM -> systemPromptIdeogram;
+            case SVG_CONCEPT -> systemPromptSvg;
+        };
 
         DirectionBrief.BrandContext b = brief.brand();
         List<String> precedent = config.getRag().isEnabled()
@@ -101,9 +122,11 @@ public class LogoAgent {
                 .content();
             try {
                 Map<String, Object> concept = parseConcept(raw);
-                return method == LogoOutput.Method.DALLE
-                    ? buildDalleOutput(brief, concept, iteration)
-                    : buildSvgOutput(brief, concept, iteration);
+                return switch (method) {
+                    case DALLE -> buildDalleOutput(brief, concept, iteration);
+                    case IDEOGRAM -> buildIdeogramOutput(brief, concept, iteration);
+                    case SVG_CONCEPT -> buildSvgOutput(brief, concept, iteration);
+                };
             } catch (IllegalStateException e) {
                 lastFailure = e;
                 log.warn("LogoAgent ({}) output failed on attempt {}/2: {}", method, attempt, e.getMessage());
@@ -151,6 +174,73 @@ public class LogoAgent {
             (String) concept.get("reasoning"),
             iteration
         );
+    }
+
+    private LogoOutput buildIdeogramOutput(DirectionBrief brief, Map<String, Object> concept, int iteration) {
+        String imagePrompt = (String) concept.get("imagePrompt");
+        byte[] imageBytes = generateIdeogramImage(imagePrompt);
+
+        String blobPath = "assets/logos/%s/%s-%d-ideogram.png".formatted(
+            brief.engagementId(), brief.direction().name().toLowerCase(), iteration);
+        try {
+            blobStorageService.upload(blobPath, imageBytes);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to store Ideogram logo image: " + e.getMessage(), e);
+        }
+
+        return new LogoOutput(
+            brief.engagementId(),
+            LogoOutput.Method.IDEOGRAM,
+            (String) concept.get("conceptDescription"),
+            (String) concept.get("symbolism"),
+            imagePrompt,
+            "/api/assets/" + blobPath,
+            null,
+            (String) concept.get("reasoning"),
+            iteration
+        );
+    }
+
+    @SuppressWarnings("unchecked")
+    private byte[] generateIdeogramImage(String imagePrompt) {
+        if (ideogramApiKey == null || ideogramApiKey.isBlank()) {
+            throw new IllegalStateException("Ideogram API key not configured (set IDEOGRAM_API_KEY in environment)");
+        }
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Api-Key", ideogramApiKey);
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            Map<String, Object> imageRequest = Map.of(
+                "prompt", imagePrompt,
+                "aspect_ratio", "ASPECT_1_1",
+                "model", "V_2",
+                "style_type", "DESIGN",
+                "magic_prompt_option", "OFF"
+            );
+            Map<String, Object> body = Map.of("image_request", imageRequest);
+
+            Map<String, Object> response = restTemplate.postForObject(
+                IDEOGRAM_API_URL,
+                new HttpEntity<>(body, headers),
+                Map.class
+            );
+
+            if (response == null) throw new IllegalStateException("Ideogram returned null response");
+            List<Map<String, Object>> data = (List<Map<String, Object>>) response.get("data");
+            if (data == null || data.isEmpty()) {
+                throw new IllegalStateException("Ideogram returned no images in response");
+            }
+
+            String imageUrl = (String) data.get(0).get("url");
+            byte[] bytes = restTemplate.getForObject(imageUrl, byte[].class);
+            if (bytes == null) throw new IllegalStateException("Failed to download Ideogram image from URL");
+            return bytes;
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException("Ideogram image generation failed: " + e.getMessage(), e);
+        }
     }
 
     private byte[] generateImage(String imagePrompt) {

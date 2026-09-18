@@ -11,5 +11,5 @@ public record LogoOutput(
     String reasoning,
     int iteration
 ) {
-    public enum Method { DALLE, SVG_CONCEPT }
+    public enum Method { DALLE, SVG_CONCEPT, IDEOGRAM }
 }

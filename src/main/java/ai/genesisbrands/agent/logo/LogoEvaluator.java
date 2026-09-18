@@ -61,12 +61,15 @@ public class LogoEvaluator {
     }
 
     public EvaluationResult evaluate(DirectionBrief brief, LogoOutput output) {
-        boolean isDalle = output.method() == LogoOutput.Method.DALLE;
-        AgentProperties.AgentConfig config = agentProperties.get(isDalle ? AGENT_ID_DALLE : AGENT_ID_SVG);
-        String systemPrompt = isDalle ? systemPromptDalle : systemPromptSvg;
+        // Both DALLE and IDEOGRAM produce raster images — evaluate via Claude Vision.
+        // SVG_CONCEPT is text-only.
+        boolean isImageBased = output.method() == LogoOutput.Method.DALLE
+            || output.method() == LogoOutput.Method.IDEOGRAM;
+        AgentProperties.AgentConfig config = agentProperties.get(isImageBased ? AGENT_ID_DALLE : AGENT_ID_SVG);
+        String systemPrompt = isImageBased ? systemPromptDalle : systemPromptSvg;
         String userPromptText = assemblePrompt(brief, output);
 
-        byte[] imageBytes = isDalle ? fetchImageBytes(output.imageUrl()) : null;
+        byte[] imageBytes = isImageBased ? fetchImageBytes(output.imageUrl()) : null;
 
         IllegalStateException lastFailure = null;
         for (int attempt = 1; attempt <= 2; attempt++) {
@@ -126,11 +129,11 @@ public class LogoEvaluator {
         sb.append("Concept description: ").append(output.conceptDescription()).append("\n\n");
         sb.append("Symbolism: ").append(output.symbolism()).append("\n\n");
 
-        if (output.method() == LogoOutput.Method.DALLE) {
+        if (output.method() == LogoOutput.Method.SVG_CONCEPT) {
+            sb.append("SVG markup:\n").append(output.svgMarkup()).append("\n\n");
+        } else {
             sb.append("Image prompt used: ").append(output.imagePrompt()).append("\n\n");
             sb.append("The generated image is attached below.\n\n");
-        } else {
-            sb.append("SVG markup:\n").append(output.svgMarkup()).append("\n\n");
         }
 
         return sb.toString();

@@ -53,7 +53,8 @@ public class BaselineLogoService {
     }
 
     public BaselineLogoOutput generate(DirectionBrief brief, LogoOutput.Method method) {
-        return method == LogoOutput.Method.DALLE ? generateDalle(brief) : generateSvg(brief);
+        // IDEOGRAM also produces a raster image — use DALL-E as the baseline equivalent.
+        return method == LogoOutput.Method.SVG_CONCEPT ? generateSvg(brief) : generateDalle(brief);
     }
 
     private BaselineLogoOutput generateDalle(DirectionBrief brief) {

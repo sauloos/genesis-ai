@@ -7,12 +7,16 @@ import ai.genesisbrands.agent.logo.BaselineLogoService;
 import ai.genesisbrands.agent.logo.LogoAgent;
 import ai.genesisbrands.agent.logo.LogoOutput;
 import ai.genesisbrands.agent.logo.LogoRefinementLoop;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/agents/logo")
 public class LogoAgentController {
+
+    @Value("${genesis.logo.default-method:DALLE}")
+    private String defaultLogoMethod;
 
     private final LogoAgent logoAgent;
     private final BaselineLogoService baselineLogoService;
@@ -25,9 +29,13 @@ public class LogoAgentController {
         this.logoRefinementLoop = logoRefinementLoop;
     }
 
+    private LogoOutput.Method resolveMethod(LogoOutput.Method method) {
+        return method != null ? method : LogoOutput.Method.valueOf(defaultLogoMethod);
+    }
+
     @PostMapping("/execute")
     public ResponseEntity<LogoOutput> execute(@RequestBody ExecuteRequest request) {
-        return ResponseEntity.ok(logoAgent.execute(request.brief(), request.method()));
+        return ResponseEntity.ok(logoAgent.execute(request.brief(), resolveMethod(request.method())));
     }
 
     @PostMapping("/revise")
@@ -39,10 +47,11 @@ public class LogoAgentController {
 
     @PostMapping("/compare")
     public ResponseEntity<CompareResult> compare(@RequestBody ExecuteRequest request) {
+        LogoOutput.Method method = resolveMethod(request.method());
         long t0 = System.currentTimeMillis();
-        LogoOutput genesisAi = logoAgent.execute(request.brief(), request.method());
+        LogoOutput genesisAi = logoAgent.execute(request.brief(), method);
         long t1 = System.currentTimeMillis();
-        BaselineLogoOutput baselineAi = baselineLogoService.generate(request.brief(), request.method());
+        BaselineLogoOutput baselineAi = baselineLogoService.generate(request.brief(), method);
         long t2 = System.currentTimeMillis();
 
         return ResponseEntity.ok(new CompareResult(genesisAi, baselineAi, t1 - t0, t2 - t1));
@@ -50,25 +59,22 @@ public class LogoAgentController {
 
     @PostMapping("/execute-with-evaluation")
     public ResponseEntity<LogoRefinementLoop.RefinementResult> executeWithEvaluation(@RequestBody ExecuteRequest request) {
-        return ResponseEntity.ok(logoRefinementLoop.run(request.brief(), request.method()));
+        return ResponseEntity.ok(logoRefinementLoop.run(request.brief(), resolveMethod(request.method())));
     }
 
     @PostMapping("/compare-with-evaluation")
     public ResponseEntity<CompareEvaluatedResult> compareWithEvaluation(@RequestBody ExecuteRequest request) {
+        LogoOutput.Method method = resolveMethod(request.method());
         long t0 = System.currentTimeMillis();
-        LogoRefinementLoop.RefinementResult genesisAi = logoRefinementLoop.run(request.brief(), request.method());
+        LogoRefinementLoop.RefinementResult genesisAi = logoRefinementLoop.run(request.brief(), method);
         long t1 = System.currentTimeMillis();
-        BaselineLogoOutput baselineAi = baselineLogoService.generate(request.brief(), request.method());
+        BaselineLogoOutput baselineAi = baselineLogoService.generate(request.brief(), method);
         long t2 = System.currentTimeMillis();
 
         return ResponseEntity.ok(new CompareEvaluatedResult(genesisAi, baselineAi, t1 - t0, t2 - t1));
     }
 
-    public record ExecuteRequest(DirectionBrief brief, LogoOutput.Method method) {
-        public ExecuteRequest {
-            if (method == null) method = LogoOutput.Method.DALLE;
-        }
-    }
+    public record ExecuteRequest(DirectionBrief brief, LogoOutput.Method method) {}
 
     public record ReviseRequest(
         DirectionBrief brief,
