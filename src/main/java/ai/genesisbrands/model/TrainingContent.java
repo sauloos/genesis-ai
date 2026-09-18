@@ -41,6 +41,6 @@ public class TrainingContent {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
-    public enum ContentType { TEXT, FILE, AUDIO, ASSET }
+    public enum ContentType { TEXT, FILE, AUDIO, ASSET, URL }
     public enum Label { POSITIVE, NEGATIVE }
 }

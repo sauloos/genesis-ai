@@ -120,6 +120,250 @@ def _ensure_collection(client: QdrantClient) -> None:
         print(f"Created Qdrant collection: {COLLECTION_NAME}")
 
 
+_IMAGE_VISION_PROMPT = """\
+You are a brand intelligence analyst. Examine this visual asset and produce two outputs.
+
+PART 1 — Prose description (for knowledge retrieval):
+Describe what you see in detail useful for an AI knowledge base. Cover: what type of visual this is,
+visual style and aesthetic, colours (name them with approximate hex values), typography if present
+(style, weight, spacing), composition and layout, any symbols or graphic devices, mood and brand
+personality signals, and industry/audience positioning signals. Be specific. Plain prose, no headers.
+
+PART 2 — Structured classification. Output a JSON block in exactly this format (no other text after):
+```json
+{
+  "visual_type": "...",
+  "logo_subtype": "...",
+  "font_style": "...",
+  "bg_tone": "...",
+  "colour_temperature": "...",
+  "industry_tier": "...",
+  "brand_relevant": true
+}
+```
+visual_type — what this image fundamentally is. Pick one:
+  logo, photograph, illustration, chart_or_infographic, pattern_or_texture,
+  mockup_or_screenshot, mood_board, icon_or_symbol, typography_specimen,
+  colour_palette, product_shot, diagram, other
+
+logo_subtype — only populate if visual_type is "logo", otherwise null. Pick one:
+  icon_only, wordmark, combination_mark, emblem, monogram
+
+font_style — dominant typeface style if text is present, else null. Pick one:
+  geometric_sans, humanist_sans, grotesque_sans, transitional_serif, old_style_serif,
+  slab_serif, script, display, monospace
+
+bg_tone — pick one: light, dark, transparent, gradient, complex
+colour_temperature — pick one: warm, cool, neutral, high_contrast
+industry_tier — pick one: budget, mid_market, premium, luxury, unclear
+
+brand_relevant — true if this image carries brand intelligence worth storing
+  (logos, colour palettes, typography specimens, mood boards, brand photography,
+  illustrations used as brand assets). false for generic stock photos, decorative
+  clip art, UI screenshots with no brand signal, data charts, or filler imagery.\
+"""
+
+_MIN_IMAGE_BYTES = 2_000   # skip tiny icons / decorative blobs below this size
+_MAX_IMAGE_BYTES = 5_000_000  # skip suspiciously large embedded objects
+
+
+def extract_images_from_pdf(pdf_path: str) -> list[tuple[bytes, str]]:
+    """
+    Extract embedded images from a PDF.
+    Returns list of (image_bytes, mime_type) tuples.
+    Only includes images large enough to be meaningful brand assets.
+    """
+    import pymupdf
+    results = []
+    doc = pymupdf.open(pdf_path)
+    seen_xrefs = set()
+    for page in doc:
+        for img in page.get_images(full=True):
+            xref = img[0]
+            if xref in seen_xrefs:
+                continue
+            seen_xrefs.add(xref)
+            try:
+                pix = pymupdf.Pixmap(doc, xref)
+                if pix.n > 4:
+                    pix = pymupdf.Pixmap(pymupdf.csRGB, pix)
+                img_bytes = pix.tobytes("png")
+                if _MIN_IMAGE_BYTES <= len(img_bytes) <= _MAX_IMAGE_BYTES:
+                    results.append((img_bytes, "image/png"))
+            except Exception:
+                pass
+    doc.close()
+    return results
+
+
+_IMAGE_MIME_TYPES = {
+    ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+    ".png": "image/png", ".gif": "image/gif",
+    ".webp": "image/webp", ".avif": "image/avif",
+}
+_MAX_WEB_IMAGES = 12  # cap per page — Vision calls are expensive
+
+
+def extract_images_from_url(page_url: str) -> list[tuple[bytes, str]]:
+    """
+    Fetch a web page and extract meaningful images from it.
+    Downloads each candidate, applies size filters, deduplicates by URL.
+    Returns list of (image_bytes, mime_type) tuples.
+    """
+    import requests
+    from bs4 import BeautifulSoup
+    from urllib.parse import urljoin, urlparse
+
+    try:
+        resp = requests.get(page_url, timeout=15,
+                            headers={"User-Agent": "Mozilla/5.0 (compatible; GenesisAI/1.0)"})
+        resp.raise_for_status()
+    except Exception:
+        return []
+
+    soup = BeautifulSoup(resp.text, "lxml")
+    # Collect candidate src values: <img src>, <source srcset>, og:image meta
+    candidates: list[str] = []
+    for tag in soup.find_all("img", src=True):
+        candidates.append(tag["src"])
+    for tag in soup.find_all("source", srcset=True):
+        # srcset may be "url 2x, url2 1x" — take first entry
+        first = tag["srcset"].split(",")[0].strip().split()[0]
+        candidates.append(first)
+    for tag in soup.find_all("meta", property="og:image"):
+        if tag.get("content"):
+            candidates.insert(0, tag["content"])  # OG image first — usually logo/hero
+
+    seen_urls: set[str] = set()
+    results: list[tuple[bytes, str]] = []
+
+    for src in candidates:
+        if len(results) >= _MAX_WEB_IMAGES:
+            break
+        try:
+            abs_url = urljoin(page_url, src)
+            # Normalise: strip query strings for dedup
+            dedup_key = abs_url.split("?")[0]
+            if dedup_key in seen_urls:
+                continue
+            seen_urls.add(dedup_key)
+
+            # Infer MIME from URL extension; skip obvious non-images
+            ext = "." + dedup_key.rsplit(".", 1)[-1].lower() if "." in dedup_key else ""
+            if ext in (".svg", ".ico"):
+                continue  # vector icons — skip, not suitable for Vision
+            mime = _IMAGE_MIME_TYPES.get(ext, "image/jpeg")
+
+            img_resp = requests.get(abs_url, timeout=10,
+                                    headers={"User-Agent": "Mozilla/5.0 (compatible; GenesisAI/1.0)"})
+            if img_resp.status_code != 200:
+                continue
+            img_bytes = img_resp.content
+            # Re-check MIME from Content-Type if extension was ambiguous
+            ct = img_resp.headers.get("content-type", "")
+            if ct.startswith("image/"):
+                mime = ct.split(";")[0].strip()
+            if not mime.startswith("image/"):
+                continue
+            if _MIN_IMAGE_BYTES <= len(img_bytes) <= _MAX_IMAGE_BYTES:
+                results.append((img_bytes, mime))
+        except Exception:
+            continue
+
+    return results
+
+
+def _extract_dominant_colours(image_bytes: bytes, n: int = 5) -> list[str]:
+    """Extract N dominant hex colours from image bytes using Pillow quantization."""
+    try:
+        from PIL import Image
+        import io
+        img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        img = img.resize((150, 150), Image.LANCZOS)
+        quantized = img.quantize(colors=n, method=Image.Quantize.FASTOCTREE)
+        palette = quantized.getpalette()[:n * 3]
+        return [
+            "#{:02X}{:02X}{:02X}".format(palette[i], palette[i+1], palette[i+2])
+            for i in range(0, len(palette), 3)
+        ]
+    except Exception:
+        return []
+
+
+def describe_image_with_claude(
+    image_bytes: bytes,
+    mime_type: str = "image/png",
+    user_context: Optional[str] = None,
+) -> dict:
+    """
+    Use Claude Vision to classify and describe a visual asset.
+
+    Returns a dict with:
+      description      — prose text (embedded as the searchable chunk)
+      visual_type      — what the image fundamentally is
+      logo_subtype     — populated only when visual_type == "logo"
+      font_style, bg_tone, colour_temperature, industry_tier
+      dominant_colours — top hex values extracted from pixels
+      brand_relevant   — bool; False means skip storing this chunk
+      user_context     — echoed back if provided
+
+    Returns None if the image is not brand-relevant and no user_context override.
+    """
+    import base64
+    import re
+
+    prompt = _IMAGE_VISION_PROMPT
+    if user_context:
+        prompt = (
+            f"Context from the person who shared this image: \"{user_context}\"\n"
+            f"Take this context into account — it may identify the asset's role "
+            f"(e.g. 'this is our logo', 'colour palette reference').\n\n"
+        ) + prompt
+
+    client = _get_anthropic()
+    response = client.messages.create(
+        model="claude-sonnet-5",
+        max_tokens=1200,
+        messages=[{
+            "role": "user",
+            "content": [
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": mime_type,
+                        "data": base64.standard_b64encode(image_bytes).decode("utf-8"),
+                    },
+                },
+                {"type": "text", "text": prompt},
+            ],
+        }],
+    )
+    text_block = next(b for b in response.content if b.type == "text")
+    raw = text_block.text.strip()
+
+    json_match = re.search(r"```json\s*(\{.*?\})\s*```", raw, re.DOTALL)
+    if json_match:
+        prose = raw[:json_match.start()].strip()
+        try:
+            meta = json.loads(json_match.group(1))
+        except json.JSONDecodeError:
+            meta = {}
+    else:
+        prose = raw
+        meta = {}
+
+    # user_context overrides brand_relevant — if the user said what it is, it's relevant
+    if user_context:
+        meta["brand_relevant"] = True
+
+    meta["dominant_colours"] = _extract_dominant_colours(image_bytes)
+    meta["description"] = prose
+    if user_context:
+        meta["user_context"] = user_context
+    return meta
+
+
 _ANONYMISE_SYSTEM = """\
 You are a privacy specialist preparing brand strategy documents for use in an AI knowledge base.
 Your task is to de-identify a document so it contains zero personally identifiable information (PII)
@@ -265,6 +509,7 @@ def process(
     normalise: bool = True,
     anonymise: bool = False,
     content_category: str = "",
+    image_descriptions: Optional[list[str]] = None,
 ) -> int:
     """
     Process extracted text through the full pipeline.
@@ -303,8 +548,11 @@ def process(
         raw_chunks = [_normalise_chunk(c) for c in raw_chunks]
 
     effective_category = content_category or source_type
+    now = datetime.now(timezone.utc).isoformat()
 
-    chunks_data = [
+    # Text chunks
+    all_texts = list(raw_chunks)
+    chunk_meta = [
         {
             "id": str(uuid.uuid4()),
             "source_id": sid,
@@ -319,34 +567,74 @@ def process(
             "total_chunks": len(raw_chunks),
             "text": chunk,
             "embedding_model": EMBEDDING_MODEL,
-            "ingested_at": datetime.now(timezone.utc).isoformat(),
+            "ingested_at": now,
         }
         for i, chunk in enumerate(raw_chunks)
     ]
 
-    # Embed in batches of 100
+    # Image description chunks (one per extracted image, brand-relevant only)
+    if image_descriptions:
+        relevant = []
+        for img_data in image_descriptions:
+            if isinstance(img_data, dict):
+                if img_data.get("brand_relevant", True):  # default True for legacy str
+                    relevant.append(img_data)
+                else:
+                    print(f"    Skipping non-brand-relevant image ({img_data.get('visual_type','?')})")
+            else:
+                relevant.append(img_data)  # legacy plain string — keep
+
+        if relevant:
+            print(f"  Adding {len(relevant)} brand-relevant image description(s)...")
+        for img_idx, img_data in enumerate(relevant):
+            if isinstance(img_data, dict):
+                desc = img_data.get("description", "")
+                img_meta = {k: v for k, v in img_data.items() if k != "description"}
+            else:
+                desc = img_data
+                img_meta = {}
+            all_texts.append(desc)
+            payload = {
+                "id": str(uuid.uuid4()),
+                "source_id": sid,
+                "source_url": source_url,
+                "source_type": "image_description",
+                "content_category": effective_category,
+                "layer": layer,
+                "title": title,
+                "chunk_index": len(raw_chunks) + img_idx,
+                "total_chunks": len(raw_chunks) + len(relevant),
+                "text": desc,
+                "embedding_model": EMBEDDING_MODEL,
+                "ingested_at": now,
+            }
+            payload.update(img_meta)
+            chunk_meta.append(payload)
+        image_descriptions = relevant  # update count for final print
+
+    # Embed all chunks (text + image descriptions) in batches of 100
     batch_size = 100
     all_embeddings = []
-    for i in tqdm(range(0, len(raw_chunks), batch_size), desc="  Embedding", leave=False):
-        batch = raw_chunks[i : i + batch_size]
+    for i in tqdm(range(0, len(all_texts), batch_size), desc="  Embedding", leave=False):
+        batch = all_texts[i : i + batch_size]
         all_embeddings.extend(_embed(batch))
 
-    # Upsert into Qdrant with retries (cloud connections can drop)
+    # Upsert into Qdrant with retries
     points = [
         PointStruct(
             id=chunk["id"],
             vector=embedding,
             payload={k: v for k, v in chunk.items() if k != "id"},
         )
-        for chunk, embedding in zip(chunks_data, all_embeddings)
+        for chunk, embedding in zip(chunk_meta, all_embeddings)
     ]
     _upsert_with_retry(points)
 
-    # Save chunks to disk (backup / re-embed source of truth)
-    _save_chunks(chunks_data)
+    # Save text chunks to disk (image descriptions are ephemeral — re-generated if needed)
+    _save_chunks([c for c in chunk_meta if c["source_type"] != "image_description"])
 
-    print(f"  Ingested {len(chunks_data)} chunks → Qdrant + disk")
-    return len(chunks_data)
+    print(f"  Ingested {len(chunk_meta)} chunks ({len(raw_chunks)} text + {len(image_descriptions or [])} images) → Qdrant + disk")
+    return len(chunk_meta)
 
 
 def reembed(embedding_model: str = EMBEDDING_MODEL) -> None:

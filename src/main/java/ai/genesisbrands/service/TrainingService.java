@@ -10,8 +10,15 @@ import ai.genesisbrands.repository.TrainingContentRepository;
 import ai.genesisbrands.repository.TrainingSessionRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.content.Media;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
@@ -19,6 +26,8 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MimeType;
+import org.springframework.util.MimeTypeUtils;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
@@ -29,6 +38,7 @@ import java.util.*;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class TrainingService {
 
     private final TrainingSessionRepository sessionRepo;
@@ -120,19 +130,42 @@ public class TrainingService {
         return contentRepo.save(content);
     }
 
-    public TrainingContent addFile(String sessionId, MultipartFile file) throws IOException {
+    public TrainingContent addFile(String sessionId, MultipartFile file, String userContext) throws IOException {
         getSession(sessionId);
-        String blobPath = "training/" + sessionId + "/" + UUID.randomUUID() + "_" + file.getOriginalFilename();
-        blob.upload(blobPath, file.getBytes());
+        String originalName = file.getOriginalFilename() != null ? file.getOriginalFilename() : "upload";
+        String blobPath = "training/" + sessionId + "/" + UUID.randomUUID() + "_" + originalName;
+        byte[] bytes = file.getBytes();
+        blob.upload(blobPath, bytes);
 
         TrainingContent content = new TrainingContent();
         content.setId(UUID.randomUUID().toString());
         content.setSessionId(sessionId);
-        content.setContentType(ContentType.FILE);
+        content.setFileName(originalName);
         content.setBlobPath(blobPath);
-        content.setFileName(file.getOriginalFilename());
+
+        String lower = originalName.toLowerCase();
+        boolean isImage = lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png")
+                       || lower.endsWith(".gif") || lower.endsWith(".webp") || lower.endsWith(".avif");
+
+        if (isImage) {
+            // Describe the image directly with Claude Vision
+            content.setContentType(ContentType.ASSET);
+            content.setTextContent(describeImageBytes(bytes, imageMimeType(originalName), userContext));
+        } else if (lower.endsWith(".pdf")) {
+            // Extract text; image extraction happens at ingest time via pipeline
+            content.setContentType(ContentType.FILE);
+            if (!userContext.isBlank()) content.setTextContent(userContext);
+        } else {
+            content.setContentType(ContentType.FILE);
+            if (!userContext.isBlank()) content.setTextContent(userContext);
+        }
+
         touchSession(sessionId);
         return contentRepo.save(content);
+    }
+
+    public TrainingContent addFile(String sessionId, MultipartFile file) throws IOException {
+        return addFile(sessionId, file, "");
     }
 
     public TrainingContent addAudio(String sessionId, MultipartFile audio) throws IOException {
@@ -153,6 +186,168 @@ public class TrainingService {
         content.setTextContent(interpreted);
         touchSession(sessionId);
         return contentRepo.save(content);
+    }
+
+    public TrainingContent addUrl(String sessionId, String url, String userContext) throws IOException {
+        getSession(sessionId);
+
+        UrlContentKind kind = detectUrlKind(url);
+        String extractedText = switch (kind) {
+            case IMAGE -> describeImageUrl(url, userContext);
+            case PDF   -> fetchPdfText(url);
+            default    -> fetchWebContent(url, userContext);
+        };
+
+        TrainingContent content = new TrainingContent();
+        content.setId(UUID.randomUUID().toString());
+        content.setSessionId(sessionId);
+        content.setContentType(ContentType.URL);
+        content.setFileName(url);
+        content.setTextContent(extractedText);
+        touchSession(sessionId);
+        return contentRepo.save(content);
+    }
+
+    public TrainingContent addUrl(String sessionId, String url) throws IOException {
+        return addUrl(sessionId, url, "");
+    }
+
+    private enum UrlContentKind { IMAGE, PDF, WEB }
+
+    private UrlContentKind detectUrlKind(String url) {
+        String lower = url.toLowerCase().split("\\?")[0];
+        for (String ext : new String[]{".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif", ".svg"}) {
+            if (lower.endsWith(ext)) return UrlContentKind.IMAGE;
+        }
+        if (lower.endsWith(".pdf")) return UrlContentKind.PDF;
+        return UrlContentKind.WEB;
+    }
+
+    private MimeType imageMimeType(String url) {
+        String lower = url.toLowerCase();
+        if (lower.contains(".png"))  return MimeTypeUtils.IMAGE_PNG;
+        if (lower.contains(".gif"))  return MimeTypeUtils.IMAGE_GIF;
+        if (lower.contains(".webp")) return MimeType.valueOf("image/webp");
+        if (lower.contains(".svg"))  return MimeType.valueOf("image/svg+xml");
+        return MimeTypeUtils.IMAGE_JPEG;
+    }
+
+    private String describeImageUrl(String imageUrl, String userContext) {
+        try {
+            MimeType mime = imageMimeType(imageUrl);
+            byte[] bytes = restTemplate.getForObject(imageUrl, byte[].class);
+            if (bytes == null || bytes.length == 0) return "Image reference: " + imageUrl;
+            return describeImageBytes(bytes, mime, userContext);
+        } catch (Exception e) {
+            log.warn("Image description failed for {}: {}", imageUrl, e.getMessage());
+            return "Visual reference: " + imageUrl;
+        }
+    }
+
+    private String describeImageBytes(byte[] bytes, MimeType mime, String userContext) {
+        String contextPrefix = (userContext != null && !userContext.isBlank())
+            ? "Context from the person who shared this image: \"" + userContext + "\"\n"
+              + "Take this context into account — it may identify the asset's role "
+              + "(e.g. 'this is our logo', 'colour palette reference').\n\n"
+            : "";
+        String prompt = contextPrefix + """
+            You are a brand intelligence analyst examining a visual asset.
+            First identify what type of visual this is (logo, photograph, illustration,
+            chart, pattern, mood board, icon, typography specimen, colour palette, etc.).
+            Then describe it in detail useful for an AI knowledge base: visual style,
+            colours with approximate hex values, typography if present, composition,
+            iconography, mood, brand personality signals, industry/audience positioning.
+            Be specific. Output plain prose, no bullet headers.""";
+        try {
+            var media = new Media(mime, new ByteArrayResource(bytes));
+            var message = UserMessage.builder().text(prompt).media(media).build();
+            return chatClient.prompt()
+                .messages(message)
+                .options(AnthropicChatOptions.builder().model("claude-sonnet-5").build())
+                .call()
+                .content();
+        } catch (Exception e) {
+            log.warn("Image description failed: {}", e.getMessage());
+            return userContext.isBlank() ? "Visual asset" : "Visual asset: " + userContext;
+        }
+    }
+
+    private String fetchPdfText(String pdfUrl) {
+        try {
+            byte[] bytes = restTemplate.getForObject(pdfUrl, byte[].class);
+            if (bytes == null) return "PDF reference: " + pdfUrl;
+            PDDocument doc = PDDocument.load(bytes);
+            String text = new PDFTextStripper().getText(doc);
+            doc.close();
+            return text;
+        } catch (Exception e) {
+            log.warn("PDF fetch failed for {}: {}", pdfUrl, e.getMessage());
+            return "PDF reference (fetch failed): " + pdfUrl;
+        }
+    }
+
+    private String fetchWebText(String webUrl) {
+        return fetchWebContent(webUrl, "");
+    }
+
+    private String fetchWebContent(String webUrl, String userContext) {
+        try {
+            Document doc = Jsoup.connect(webUrl)
+                .userAgent("Mozilla/5.0 (compatible; GenesisAI/1.0)")
+                .timeout(12_000)
+                .get();
+            String title = doc.title();
+            String body = doc.body().text();
+            if (body.length() > 40_000) body = body.substring(0, 40_000);
+            String text = title.isBlank() ? body : title + "\n\n" + body;
+
+            // Extract and describe images from the page
+            List<String> imageDescriptions = extractWebImageDescriptions(doc, webUrl, userContext);
+            if (!imageDescriptions.isEmpty()) {
+                StringBuilder sb = new StringBuilder(text);
+                for (int i = 0; i < imageDescriptions.size(); i++) {
+                    sb.append("\n\n[Visual asset ").append(i + 1).append("]: ")
+                      .append(imageDescriptions.get(i));
+                }
+                text = sb.toString();
+            }
+            return text;
+        } catch (Exception e) {
+            log.warn("Web fetch failed for {}: {}", webUrl, e.getMessage());
+            return "Web reference (fetch failed): " + webUrl;
+        }
+    }
+
+    private static final int MAX_WEB_IMAGES = 8;
+
+    private List<String> extractWebImageDescriptions(Document doc, String pageUrl, String userContext) {
+        List<String> descriptions = new ArrayList<>();
+        Set<String> seen = new java.util.LinkedHashSet<>();
+
+        // OG image first — usually the logo or hero
+        doc.select("meta[property=og:image]").stream()
+            .map(el -> el.attr("content"))
+            .filter(s -> !s.isBlank())
+            .forEach(seen::add);
+        doc.select("img[src]").stream()
+            .map(el -> el.absUrl("src"))
+            .filter(s -> !s.isBlank())
+            .forEach(seen::add);
+
+        for (String imgUrl : seen) {
+            if (descriptions.size() >= MAX_WEB_IMAGES) break;
+            String lower = imgUrl.toLowerCase().split("\\?")[0];
+            if (lower.endsWith(".svg") || lower.endsWith(".ico")) continue;
+            try {
+                byte[] bytes = restTemplate.getForObject(imgUrl, byte[].class);
+                if (bytes == null || bytes.length < 2_000 || bytes.length > 5_000_000) continue;
+                String desc = describeImageBytes(bytes, imageMimeType(imgUrl), userContext);
+                if (desc != null && !desc.isBlank()) descriptions.add(desc);
+            } catch (Exception e) {
+                log.debug("Skipping web image {}: {}", imgUrl, e.getMessage());
+            }
+        }
+        return descriptions;
     }
 
     public void deleteContent(String sessionId, String contentId) {
@@ -334,6 +529,7 @@ public class TrainingService {
             case AUDIO -> c.getTextContent() != null ? c.getTextContent() : c.getTranscript();
             case FILE  -> null; // file text extraction not yet implemented — future: PDFBox
             case ASSET -> null; // image reference only — carried via asset_paths, not embedded as text
+            case URL   -> c.getTextContent();
         };
     }
 

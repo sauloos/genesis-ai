@@ -304,6 +304,17 @@
     background: none; border: none; color: rgba(255,255,255,0.35); cursor: pointer; font-size: 14px;
     padding: 0 2px; line-height: 1;
   }
+  #context-bar {
+    display: none; padding: 0 12px 6px;
+  }
+  #context-bar.visible { display: block; }
+  #context-input {
+    width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;
+    color: rgba(255,255,255,0.7); font-size: 11px; padding: 5px 9px;
+    outline: none;
+  }
+  #context-input::placeholder { color: rgba(255,255,255,0.25); }
   #remove-attach:hover { color: #ff6b6b; }
 
   #capture-wrap {
@@ -437,13 +448,16 @@
         <span id="attachment-name"></span>
         <button id="remove-attach" onclick="removeAttachment()">✕</button>
       </div>
+      <div id="context-bar">
+        <input id="context-input" type="text" placeholder="What is this? e.g. good logo example, brand colour palette, typography reference… (optional)">
+      </div>
       <div id="capture-wrap">
         <button class="cap-btn" onclick="document.getElementById('file-input').click()" title="Attach file">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66L9.41 17.41a2 2 0 01-2.83-2.83l8.49-8.48"/>
           </svg>
         </button>
-        <input type="file" id="file-input" accept=".pdf,.txt,.md" style="display:none" onchange="onFileSelected(event)">
+        <input type="file" id="file-input" accept=".pdf,.txt,.md,.jpg,.jpeg,.png,.gif,.webp" style="display:none" onchange="onFileSelected(event)">
 
         <button class="cap-btn" id="record-btn" onclick="toggleRecording()" title="Record voice note">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -452,7 +466,7 @@
           </svg>
         </button>
 
-        <textarea id="text-input" rows="1" placeholder="Write a note, guideline, or rule…"
+        <textarea id="text-input" rows="1" placeholder="Write a note, paste a URL, or drop a rule…"
           onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
 
         <button id="send-btn" onclick="submitText()" disabled>
@@ -461,7 +475,7 @@
           </svg>
         </button>
       </div>
-      <div class="hint">Write a note · attach a file · or record your voice</div>
+      <div class="hint">Write a note · paste a URL · attach a file · or record your voice</div>
     </div>
   </div>
 </div>
@@ -491,8 +505,11 @@ async function boot() {
   } catch {}
   await loadSessions();
   document.getElementById('text-input').addEventListener('input', () => {
-    document.getElementById('send-btn').disabled =
-      document.getElementById('text-input').value.trim() === '' && !pendingFile;
+    const text = document.getElementById('text-input').value.trim();
+    document.getElementById('send-btn').disabled = text === '' && !pendingFile;
+    // Show context bar when a URL is typed
+    const isUrl = /^https?:\/\//i.test(text);
+    document.getElementById('context-bar').classList.toggle('visible', isUrl && !pendingFile);
   });
 }
 
@@ -761,8 +778,8 @@ function renderContent(items) {
   for (const item of items) {
     const div = document.createElement('div');
     div.className = 'content-item';
-    const icon = item.contentType === 'AUDIO' ? '🎙' : item.contentType === 'FILE' ? '📎' : item.contentType === 'ASSET' ? '🖼' : '📝';
-    const typeLabel = { TEXT: 'Note', FILE: 'File', AUDIO: 'Voice note', ASSET: 'Asset' }[item.contentType];
+    const icon = item.contentType === 'AUDIO' ? '🎙' : item.contentType === 'FILE' ? '📎' : item.contentType === 'ASSET' ? '🖼' : item.contentType === 'URL' ? '🔗' : '📝';
+    const typeLabel = { TEXT: 'Note', FILE: 'File', AUDIO: 'Voice note', ASSET: 'Asset', URL: 'URL' }[item.contentType];
     const labelBadge = item.label
       ? `<span class="label-badge ${item.label === 'POSITIVE' ? 'label-positive' : 'label-negative'}">${item.label === 'POSITIVE' ? 'Good' : 'Bad'} example</span>`
       : '';
@@ -778,6 +795,12 @@ function renderContent(items) {
       </div>`;
     } else if (item.contentType === 'ASSET') {
       body = `<img class="content-asset-thumb" src="/api/assets/${esc(item.blobPath)}" alt="${esc(item.fileName)}">`;
+    } else if (item.contentType === 'URL') {
+      const preview = item.textContent ? item.textContent.substring(0, 200) + (item.textContent.length > 200 ? '…' : '') : '';
+      body = `<div style="display:flex;flex-direction:column;gap:4px;margin-top:2px;">
+        <a href="${esc(item.fileName)}" target="_blank" rel="noopener" style="color:rgba(255,255,255,.55);font-size:11px;word-break:break-all;text-decoration:underline;text-underline-offset:2px;">${esc(item.fileName)}</a>
+        ${preview ? `<div class="content-body" style="font-size:12px;color:rgba(255,255,255,.5);">${esc(preview)}</div>` : ''}
+      </div>`;
     } else if (item.contentType === 'AUDIO') {
       const hasInterp = !!item.textContent;
       body = `
@@ -836,10 +859,39 @@ async function submitText() {
   autoResize(input);
   document.getElementById('send-btn').disabled = true;
 
-  await fetch(`${API}/api/training/sessions/${currentSessionId}/content/text`, {
-    method: 'POST', headers: HEADERS,
-    body: JSON.stringify({ text })
-  });
+  const isUrl = /^https?:\/\//i.test(text);
+  if (isUrl) {
+    const context = document.getElementById('context-input').value.trim();
+    document.getElementById('context-bar').classList.remove('visible');
+    document.getElementById('context-input').value = '';
+    const list = document.getElementById('content-list');
+    const placeholder = document.createElement('div');
+    placeholder.className = 'content-item processing';
+    placeholder.innerHTML = `<div class="content-type-tag">🔗 URL</div>
+      <div class="content-filename processing-dots">Fetching ${esc(text.length > 60 ? text.substring(0,60)+'…' : text)}${context ? ' — ' + esc(context) : ''}</div>`;
+    const emptyEl = list.querySelector('.empty-content');
+    if (emptyEl) list.innerHTML = '';
+    list.appendChild(placeholder);
+    list.scrollTop = list.scrollHeight;
+    try {
+      const res = await fetch(`${API}/api/training/sessions/${currentSessionId}/content/url`, {
+        method: 'POST', headers: HEADERS,
+        body: JSON.stringify({ url: text, context: context || null })
+      });
+      if (!res.ok) throw new Error(`Fetch failed (${res.status})`);
+    } catch (err) {
+      placeholder.remove();
+      alert(`URL fetch failed: ${err.message}`);
+      document.getElementById('send-btn').disabled = false;
+      return;
+    }
+    placeholder.remove();
+  } else {
+    await fetch(`${API}/api/training/sessions/${currentSessionId}/content/text`, {
+      method: 'POST', headers: HEADERS,
+      body: JSON.stringify({ text })
+    });
+  }
   await refreshContent();
 }
 
@@ -850,6 +902,7 @@ function onFileSelected(e) {
   pendingFile = file;
   document.getElementById('attachment-name').textContent = file.name;
   document.getElementById('attachment-bar').classList.add('visible');
+  document.getElementById('context-bar').classList.add('visible');
   document.getElementById('send-btn').disabled = false;
 }
 
@@ -857,6 +910,8 @@ function removeAttachment() {
   pendingFile = null;
   document.getElementById('file-input').value = '';
   document.getElementById('attachment-bar').classList.remove('visible');
+  document.getElementById('context-bar').classList.remove('visible');
+  document.getElementById('context-input').value = '';
   document.getElementById('send-btn').disabled =
     document.getElementById('text-input').value.trim() === '';
 }
@@ -864,17 +919,19 @@ function removeAttachment() {
 async function submitFile() {
   if (!pendingFile || !currentSessionId) return;
   const file = pendingFile;
+  const context = document.getElementById('context-input').value.trim();
   removeAttachment();
   document.getElementById('send-btn').disabled = true;
 
-  // Show loading placeholder
+  const isImage = /\.(jpe?g|png|gif|webp|avif)$/i.test(file.name);
+  const typeTag = isImage ? '🖼 Image' : '📎 File';
+
   const list = document.getElementById('content-list');
   const placeholder = document.createElement('div');
-  placeholder.id = 'file-processing';
   placeholder.className = 'content-item processing';
   placeholder.innerHTML = `
-    <div class="content-type-tag">📎 File</div>
-    <div class="content-filename processing-dots">Uploading ${esc(file.name)}</div>`;
+    <div class="content-type-tag">${typeTag}</div>
+    <div class="content-filename processing-dots">Uploading ${esc(file.name)}${context ? ' — ' + esc(context) : ''}</div>`;
   const emptyEl = list.querySelector('.empty-content');
   if (emptyEl) list.innerHTML = '';
   list.appendChild(placeholder);
@@ -883,6 +940,7 @@ async function submitFile() {
   try {
     const form = new FormData();
     form.append('file', file);
+    if (context) form.append('context', context);
     const res = await fetch(`${API}/api/training/sessions/${currentSessionId}/content/file`, {
       method: 'POST', headers: { 'X-Api-Key': KEY }, body: form
     });
@@ -893,6 +951,7 @@ async function submitFile() {
     document.getElementById('send-btn').disabled = false;
     return;
   }
+  placeholder.remove();
   await refreshContent();
 }
 

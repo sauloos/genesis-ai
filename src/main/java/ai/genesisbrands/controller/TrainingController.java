@@ -68,12 +68,13 @@ public class TrainingController {
 
     @PostMapping("/sessions/{id}/content/file")
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Upload a file (PDF, txt, md) to a session")
+    @Operation(summary = "Upload a file (PDF, image, txt, md) to a session")
     public TrainingContent addFile(
         @PathVariable String id,
-        @RequestParam("file") MultipartFile file
+        @RequestParam("file") MultipartFile file,
+        @RequestParam(value = "context", required = false, defaultValue = "") String context
     ) throws IOException {
-        return trainingService.addFile(id, file);
+        return trainingService.addFile(id, file, context);
     }
 
     @PostMapping("/sessions/{id}/content/audio")
@@ -84,6 +85,16 @@ public class TrainingController {
         @RequestParam("audio") MultipartFile audio
     ) throws IOException {
         return trainingService.addAudio(id, audio);
+    }
+
+    @PostMapping("/sessions/{id}/content/url")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Fetch and ingest a URL (web page, PDF, or image) into a session")
+    public TrainingContent addUrl(
+        @PathVariable String id,
+        @RequestBody AddUrlRequest req
+    ) throws IOException {
+        return trainingService.addUrl(id, req.url(), req.context() != null ? req.context() : "");
     }
 
     @DeleteMapping("/sessions/{id}/content/{contentId}")
@@ -161,6 +172,7 @@ public class TrainingController {
         String assetTypes
     ) {}
     public record AddTextRequest(String text) {}
+    public record AddUrlRequest(String url, String context) {}
     public record SessionDetail(TrainingSession session, List<TrainingContent> content) {}
     public record SubmitFeedbackRequest(
         String playgroundSessionId,
