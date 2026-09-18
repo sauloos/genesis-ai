@@ -182,7 +182,8 @@ def _anonymise_document(text: str) -> str:
             system=_ANONYMISE_SYSTEM,
             messages=[{"role": "user", "content": section}],
         )
-        anonymised_parts.append(response.content[0].text.strip())
+        text_block = next(b for b in response.content if b.type == "text")
+        anonymised_parts.append(text_block.text.strip())
 
     return "\n\n".join(anonymised_parts)
 
