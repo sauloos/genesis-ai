@@ -287,6 +287,9 @@
     color: #6fe0a5; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.15s;
   }
   #q-derive-btn:hover { background: #204830; }
+  .q-selector-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .q-selector-lbl { font-size: 10px; color: #555; font-weight: 600; white-space: nowrap; }
+  #q-selector { flex: 1; padding: 5px 8px; background: #111; border: 1px solid #2a2a2a; border-radius: 6px; color: #bbb; font-size: 11px; outline: none; }
   #q-derive-btn:disabled { opacity: 0.5; cursor: not-allowed; }
   #q-derive-status { font-size: 11px; color: #555; }
   #q-no-questionnaire { font-size: 12px; color: #555; padding: 10px 0; }
@@ -525,6 +528,10 @@
 
     <!-- Questionnaire-driven brief derivation -->
     <div id="questionnaire-section">
+      <div class="q-selector-row" id="q-selector-row" style="display:none">
+        <span class="q-selector-lbl">Questionnaire</span>
+        <select id="q-selector" onchange="switchQuestionnaire(this.value)"></select>
+      </div>
       <div id="q-no-questionnaire" style="display:none">
         No live questionnaire found — fill in the brand context manually below.
       </div>
@@ -706,6 +713,16 @@ let lastRunArgs = null;
 // Questionnaire-driven brief derivation
 let derivedBriefs = null;      // { ANCHORED: DirectionBrief, EVOLVED: ..., DISRUPTIVE: ... }
 let questionnaireId = null;    // live questionnaire id
+
+// Sample answers for the "Brand Discovery — Quick Start" questionnaire (Groundwork example).
+// Keyed by question UUID — gracefully skipped if IDs change.
+const SAMPLE_ANSWERS = {
+  '76515d36-4618-45d9-a742-20c751cd3053': 'Groundwork builds project management software for small construction businesses — site logs, client updates, and job tracking without the admin overhead.',
+  'c53faefc-816b-4c4e-a136-457bcf6a7ed1': 'I spent years on construction sites watching projects fall apart because of WhatsApp threads and paper forms. Builders were drowning in admin while the actual work suffered. There was no software built for how trades actually work — so I built it.',
+  '0ae69c18-9da2-4095-9fbc-d2a81ddd5ac9': 'Technology',
+  '662d3f01-0ec4-4fbd-9ec5-f49253a82f5a': ['Corporate', 'Cheap'],
+  'f64f85fb-d009-4c8e-a818-c3096a9917a5': 60,
+};
 let isManualMode = false;      // true when user clicked "Enter manually instead"
 
 const AGENT_META = {
@@ -1529,18 +1546,69 @@ function setDirection(btn) {
 
 async function loadQuestionnaire() {
   try {
-    const data = await fetch(`${API}/api/playground/questionnaire`, { headers: HEADERS }).then(r => {
-      if (!r.ok) throw new Error('no questionnaire');
-      return r.json();
-    });
-    questionnaireId = data.id;
-    document.getElementById('q-section-title').textContent = data.title || 'Client questionnaire';
-    renderQuestionnaire(data.questions);
-    document.getElementById('q-loaded').style.display = 'block';
+    const allQs = await fetch(`${API}/api/questionnaires`, { headers: HEADERS }).then(r => r.json());
+    if (allQs.length > 0) {
+      const sel = document.getElementById('q-selector');
+      sel.innerHTML = allQs.map(q =>
+        `<option value="${esc(q.id)}">${esc(q.title)}${q.status !== 'PUBLISHED' ? ' (draft)' : ''}</option>`
+      ).join('');
+      document.getElementById('q-selector-row').style.display = 'flex';
+    }
+    const live = allQs.find(q => q.status === 'PUBLISHED') || allQs[0];
+    if (!live) throw new Error('no questionnaire');
+    document.getElementById('q-selector').value = live.id;
+    await loadQuestionnaireById(live.id);
   } catch {
     document.getElementById('q-no-questionnaire').style.display = 'block';
     isManualMode = true;
   }
+}
+
+async function loadQuestionnaireById(id) {
+  const data = await fetch(`${API}/api/questionnaires/${id}`, { headers: HEADERS }).then(r => r.json());
+  questionnaireId = data.questionnaire.id;
+  document.getElementById('q-section-title').textContent = data.questionnaire.title || 'Client questionnaire';
+  renderQuestionnaire(data.questions);
+  prefillQuestionnaire(data.questions);
+  document.getElementById('q-loaded').style.display = 'block';
+}
+
+async function switchQuestionnaire(id) {
+  derivedBriefs = null;
+  document.getElementById('q-derived-section').style.display = 'none';
+  document.getElementById('derived-foundation').style.display = 'none';
+  document.getElementById('q-loaded').style.display = 'none';
+  await loadQuestionnaireById(id);
+}
+
+function prefillQuestionnaire(questions) {
+  questions.forEach(q => {
+    const sample = SAMPLE_ANSWERS[q.id];
+    if (sample === undefined || sample === null) return;
+    if (q.type === 'SHORT_TEXT' || q.type === 'LONG_TEXT') {
+      const el = document.getElementById('q-ans-' + q.id);
+      if (el) el.value = sample;
+    } else if (q.type === 'SLIDER') {
+      const el = document.getElementById('q-ans-' + q.id);
+      if (el) { el.value = sample; el.dispatchEvent(new Event('input')); }
+    } else if (q.type === 'SINGLE_SELECT') {
+      const rb = document.querySelector(`input[name="q-${q.id}"][value="${CSS.escape(String(sample))}"]`);
+      if (rb) rb.checked = true;
+    } else if (q.type === 'MULTI_SELECT' && Array.isArray(sample)) {
+      sample.forEach(v => {
+        const cb = document.querySelector(`#q-ans-${q.id}-${getOptionIndex(q, v)}`);
+        if (cb) cb.checked = true;
+      });
+    }
+  });
+}
+
+function getOptionIndex(q, value) {
+  try {
+    const config = q.configJson ? JSON.parse(q.configJson) : {};
+    const idx = (config.options || []).indexOf(value);
+    return idx >= 0 ? q.id + '-' + idx : null;
+  } catch { return null; }
 }
 
 function renderQuestionnaire(questions) {
@@ -1625,7 +1693,9 @@ function buildQuestionInput(q, config) {
 function collectAnswers() {
   const answers = [];
   document.querySelectorAll('[id^="q-ans-"]').forEach(el => {
-    const qId = el.id.replace('q-ans-', '').split('-')[0];
+    // IDs are "q-ans-{uuid}" or "q-ans-{uuid}-{index}"; UUIDs are always 36 chars
+    const idSuffix = el.id.replace('q-ans-', '');
+    const qId = idSuffix.length >= 36 ? idSuffix.substring(0, 36) : idSuffix;
     let value = null;
     if (el.type === 'checkbox') {
       if (!el.checked) return;
