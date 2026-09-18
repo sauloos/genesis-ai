@@ -13,12 +13,13 @@ from pathlib import Path
 from typing import Optional
 
 from dotenv import load_dotenv
+import anthropic as _anthropic_module
 from openai import OpenAI
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
 from tqdm import tqdm
 
-load_dotenv()
+load_dotenv(Path(__file__).parent.parent / ".env")
 
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
@@ -31,6 +32,7 @@ _KNOWLEDGE_DIR = Path(__file__).parent.parent / "knowledge"
 
 _openai: Optional[OpenAI] = None
 _qdrant: Optional[QdrantClient] = None
+_anthropic: Optional[_anthropic_module.Anthropic] = None
 
 
 def _chunks_dir(layer: str) -> Path:
@@ -42,6 +44,13 @@ def _get_openai() -> OpenAI:
     if _openai is None:
         _openai = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     return _openai
+
+
+def _get_anthropic() -> _anthropic_module.Anthropic:
+    global _anthropic
+    if _anthropic is None:
+        _anthropic = _anthropic_module.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+    return _anthropic
 
 
 def _get_qdrant() -> QdrantClient:
@@ -109,6 +118,73 @@ def _ensure_collection(client: QdrantClient) -> None:
             vectors_config=VectorParams(size=EMBEDDING_DIM, distance=Distance.COSINE),
         )
         print(f"Created Qdrant collection: {COLLECTION_NAME}")
+
+
+_ANONYMISE_SYSTEM = """\
+You are a privacy specialist preparing brand strategy documents for use in an AI knowledge base.
+Your task is to de-identify a document so it contains zero personally identifiable information (PII)
+and zero company/brand-identifiable information, while preserving every strategic insight intact.
+
+Rules:
+1. Replace ALL personal names (founders, executives, consultants, clients) with their role:
+   "the founder", "the CEO", "the creative director", "the head of marketing", etc.
+   If multiple people share a role, number them: "the co-founder (1)", "the co-founder (2)".
+2. Replace ALL company/brand names with a plain industry descriptor in lowercase:
+   e.g. "DI9ITAL" → "a digital innovation agency", "Learn About Property" → "a property education brand".
+   Derive the descriptor from context clues in the document. Be specific enough to be useful
+   (e.g. "a B2B SaaS platform" not just "a company") but never name the actual entity.
+3. Replace email addresses with [EMAIL], phone numbers with [PHONE], physical addresses with [ADDRESS].
+4. Replace specific identifying URLs or social handles with a generic reference:
+   e.g. "instagram.com/brandname" → "their Instagram", or just omit if it adds nothing.
+5. Keep ALL strategic content: brand values, positioning, tone of voice, colour palettes,
+   typography, messaging pillars, target audiences, competitive context, recommendations.
+6. Keep ALL framework and methodology language intact — this is what makes the document valuable.
+7. The output must read as natural, coherent prose — not obviously redacted.
+   Use smooth replacements that don't interrupt the reader's flow.
+8. Return ONLY the de-identified document text. No preamble, no explanation, no commentary.\
+"""
+
+_ANONYMISE_CHUNK_SIZE = 12_000  # characters — split large docs into overlapping sections
+
+
+def _anonymise_document(text: str) -> str:
+    """
+    Anonymise an entire document using Claude before chunking.
+    Runs on the full text for consistent entity replacement throughout.
+    Splits very large documents into sections to stay within context limits.
+    """
+    client = _get_anthropic()
+
+    # For documents that fit comfortably in one call, process in one shot
+    if len(text) <= _ANONYMISE_CHUNK_SIZE:
+        sections = [text]
+    else:
+        # Split on paragraph boundaries to avoid cutting mid-sentence
+        paragraphs = text.split("\n\n")
+        sections, current = [], ""
+        for para in paragraphs:
+            if len(current) + len(para) + 2 <= _ANONYMISE_CHUNK_SIZE:
+                current += ("\n\n" if current else "") + para
+            else:
+                if current:
+                    sections.append(current)
+                current = para
+        if current:
+            sections.append(current)
+
+    anonymised_parts = []
+    for i, section in enumerate(sections, 1):
+        if len(sections) > 1:
+            print(f"  Anonymising section {i}/{len(sections)}...")
+        response = client.messages.create(
+            model="claude-sonnet-5",
+            max_tokens=16000,
+            system=_ANONYMISE_SYSTEM,
+            messages=[{"role": "user", "content": section}],
+        )
+        anonymised_parts.append(response.content[0].text.strip())
+
+    return "\n\n".join(anonymised_parts)
 
 
 _NORMALISE_PROMPT = """\
@@ -186,6 +262,7 @@ def process(
     layer: str = "layer1",
     force: bool = False,
     normalise: bool = True,
+    anonymise: bool = False,
     content_category: str = "",
 ) -> int:
     """
@@ -193,8 +270,10 @@ def process(
     Returns the number of chunks ingested (0 if skipped as duplicate).
 
     content_category — semantic type of the source for UI display:
-      "youtube", "podcast", "blog", "document", "video", "web"
+      "youtube", "podcast", "blog", "document", "video", "web", "playbook"
       Defaults to source_type when not provided.
+    anonymise — run Claude de-identification on the full document before chunking.
+      Use for client playbooks and any content containing PII or identifying information.
     """
     if not force and _is_already_ingested(source_url, layer):
         print(f"  Already ingested, skipping: {source_url}")
@@ -203,6 +282,11 @@ def process(
     if not text or not text.strip():
         print(f"  Empty text, skipping: {source_url}")
         return 0
+
+    if anonymise:
+        print(f"  Anonymising document ({len(text.split())} words)...")
+        text = _anonymise_document(text)
+        print(f"  Anonymisation complete.")
 
     sid = _source_id(source_url)
     raw_chunks = _chunk_text(text)

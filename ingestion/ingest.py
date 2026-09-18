@@ -59,7 +59,8 @@ def ingest_vimeo(url: str, layer: str = "layer1", force: bool = False) -> None:
     print(f"  → {count} chunks ingested\n")
 
 
-def ingest_pdf(file_path: str, layer: str = "layer1", force: bool = False) -> None:
+def ingest_pdf(file_path: str, layer: str = "layer1", force: bool = False,
+               anonymise: bool = False, content_category: str = "document") -> None:
     from extractors.pdf import extract
     path = Path(file_path).resolve()
     source_url = f"file://{path}"
@@ -69,16 +70,18 @@ def ingest_pdf(file_path: str, layer: str = "layer1", force: bool = False) -> No
         text=data["text"],
         source_url=source_url,
         source_type="pdf",
-        content_category="document",
+        content_category=content_category,
         title=data["title"],
         author=data["author"],
         layer=layer,
         force=force,
+        anonymise=anonymise,
     )
     print(f"  → {count} chunks ingested\n")
 
 
-def ingest_pptx(file_path: str, layer: str = "layer1", force: bool = False) -> None:
+def ingest_pptx(file_path: str, layer: str = "layer1", force: bool = False,
+                anonymise: bool = False, content_category: str = "document") -> None:
     from extractors.pptx import extract
     path = Path(file_path).resolve()
     source_url = f"file://{path}"
@@ -88,11 +91,12 @@ def ingest_pptx(file_path: str, layer: str = "layer1", force: bool = False) -> N
         text=data["text"],
         source_url=source_url,
         source_type="pptx",
-        content_category="document",
+        content_category=content_category,
         title=data["title"],
         author=data["author"],
         layer=layer,
         force=force,
+        anonymise=anonymise,
     )
     print(f"  → {count} chunks ingested\n")
 
@@ -182,7 +186,8 @@ def ingest_crawl(index_url: str, layer: str = "layer1", force: bool = False) -> 
     print(f"\nDone. {total}/{len(urls)} articles ingested.")
 
 
-def ingest_folder(folder_path: str, layer: str = "layer1", force: bool = False) -> None:
+def ingest_folder(folder_path: str, layer: str = "layer1", force: bool = False,
+                  anonymise: bool = False, content_category: str = "") -> None:
     folder = Path(folder_path)
     if not folder.exists() or not folder.is_dir():
         print(f"Folder not found: {folder_path}")
@@ -192,10 +197,12 @@ def ingest_folder(folder_path: str, layer: str = "layer1", force: bool = False) 
     txt_files = list(folder.rglob("*.txt"))
     md_files = list(folder.rglob("*.md"))
 
-    print(f"Folder: {folder_path} — found {len(pdf_files)} PDFs, {len(txt_files)} TXT, {len(md_files)} MD\n")
+    anon_note = " [anonymise=ON]" if anonymise else ""
+    print(f"Folder: {folder_path} — found {len(pdf_files)} PDFs, {len(txt_files)} TXT, {len(md_files)} MD{anon_note}\n")
 
+    pdf_cat = content_category or "document"
     for f in pdf_files:
-        ingest_pdf(str(f), layer=layer, force=force)
+        ingest_pdf(str(f), layer=layer, force=force, anonymise=anonymise, content_category=pdf_cat)
 
     for f in txt_files + md_files:
         text = f.read_text(encoding="utf-8", errors="replace")
@@ -205,9 +212,11 @@ def ingest_folder(folder_path: str, layer: str = "layer1", force: bool = False) 
             text=text,
             source_url=source_url,
             source_type="file",
+            content_category=content_category or "document",
             title=f.stem,
             layer=layer,
             force=force,
+            anonymise=anonymise,
         )
         print(f"  → {count} chunks ingested\n")
 
@@ -229,13 +238,16 @@ def main() -> None:
     parser.add_argument("--force", action="store_true", help="Re-ingest even if source was already ingested")
     parser.add_argument("--no-normalise", dest="no_normalise", action="store_true", help="Skip GPT normalisation (use for already-normalised content)")
     parser.add_argument("--type", dest="content_type",
-                        choices=["blog", "podcast", "web", "document", "youtube", "video"],
+                        choices=["blog", "podcast", "web", "document", "youtube", "video", "playbook", "client"],
                         default=None,
-                        help="Content category for display in Knowledge Explorer (used with --url and --txt)")
+                        help="Content category for display in Knowledge Explorer. "
+                             "Use 'playbook' or 'client' for customer documents — anonymisation is applied automatically.")
 
     args = parser.parse_args()
 
     normalise = not args.no_normalise
+    # Anonymisation is automatic for customer-facing content types
+    anonymise = args.content_type in ("playbook", "client")
 
     if args.channel:
         ingest_channel(args.channel, layer=args.layer, force=args.force)
@@ -248,9 +260,11 @@ def main() -> None:
     elif args.vimeo:
         ingest_vimeo(args.vimeo, layer=args.layer, force=args.force)
     elif args.pdf:
-        ingest_pdf(args.pdf, layer=args.layer, force=args.force)
+        ingest_pdf(args.pdf, layer=args.layer, force=args.force,
+                   anonymise=anonymise, content_category=args.content_type or "document")
     elif args.pptx:
-        ingest_pptx(args.pptx, layer=args.layer, force=args.force)
+        ingest_pptx(args.pptx, layer=args.layer, force=args.force,
+                    anonymise=anonymise, content_category=args.content_type or "document")
     elif args.url:
         ingest_url(args.url, layer=args.layer, force=args.force,
                    content_category=args.content_type or "web")
@@ -258,7 +272,8 @@ def main() -> None:
         ingest_txt(args.txt, layer=args.layer, force=args.force, normalise=normalise,
                    content_category=args.content_type or "document")
     elif args.folder:
-        ingest_folder(args.folder, layer=args.layer, force=args.force)
+        ingest_folder(args.folder, layer=args.layer, force=args.force,
+                      anonymise=anonymise, content_category=args.content_type or "")
 
 
 if __name__ == "__main__":

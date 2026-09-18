@@ -553,6 +553,11 @@ function inferSourceType(src) {
   if (cat === 'blog')    return 'Blog';
   if (cat === 'document' || cat === 'pdf' || cat === 'pptx') return 'Document';
   if (cat === 'video' || cat === 'vimeo') return 'Video';
+  if (cat === 'playbook' || cat === 'client-playbook') return 'Playbook';
+
+  // source_id-based heuristic for layer2 content
+  const sid = (src.sourceId || '').toLowerCase();
+  if (sid.includes('playbook') || sid.includes('client-playbook')) return 'Playbook';
 
   // legacy heuristic fallback for data ingested before content_category existed
   const url = (src.sourceUrl || '').toLowerCase();
@@ -570,8 +575,8 @@ function inferSourceType(src) {
   return 'Web';
 }
 
-const TYPE_ICON = { YouTube: '▶', Podcast: '🎙', Blog: '✍', Document: '📄', Video: '🎬', Web: '🌐', Other: '📦' };
-const TYPE_ORDER = ['YouTube', 'Podcast', 'Blog', 'Document', 'Video', 'Web', 'Other'];
+const TYPE_ICON = { YouTube: '▶', Podcast: '🎙', Blog: '✍', Document: '📄', Video: '🎬', Web: '🌐', Playbook: '📋', Other: '📦' };
+const TYPE_ORDER = ['Playbook', 'YouTube', 'Podcast', 'Blog', 'Document', 'Video', 'Web', 'Other'];
 
 // ── Update layer counts ───────────────────────────────────────────────────
 function updateLayer1aCount(q = '') {

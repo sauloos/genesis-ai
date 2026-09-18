@@ -55,8 +55,16 @@ public class KnowledgeController {
 
     @GetMapping("/sources")
     public List<SourceSummary> listSources() {
-        // Scroll all layer1 points from Qdrant and group by source_id
-        List<Map<String, Object>> allPoints = scrollQdrant("layer1");
+        return listSourcesByLayer("layer1");
+    }
+
+    @GetMapping("/layer2/sources")
+    public List<SourceSummary> listLayer2Sources() {
+        return listSourcesByLayer("layer2");
+    }
+
+    private List<SourceSummary> listSourcesByLayer(String layer) {
+        List<Map<String, Object>> allPoints = scrollQdrant(layer);
 
         Map<String, SourceSummary> bySourceId = new LinkedHashMap<>();
         for (Map<String, Object> point : allPoints) {
