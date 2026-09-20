@@ -4,20 +4,35 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Genesis AI — Templates</title>
-<link rel="stylesheet" href="/api/themes/active/styles.css">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+  :root {
+    --theme-bg-image: url('/bg-earth.jpg');
+    --theme-bg-transform: rotate(180deg);
+    --theme-bg-overlay: rgba(0, 0, 10, 0.75);
+    --theme-body-bg: #0a0b12;
+    --theme-text-primary: #f2f2f2;
+    --theme-text-muted: rgba(255, 255, 255, 0.5);
+    --theme-text-label: rgba(255, 255, 255, 0.4);
+    --theme-card-bg: rgba(255, 255, 255, 0.05);
+    --theme-card-bg-hover: rgba(255, 255, 255, 0.12);
+    --theme-card-border: rgba(255, 255, 255, 0.1);
+    --theme-card-shadow: rgba(0, 0, 0, 0.3);
+    --theme-divider: rgba(255, 255, 255, 0.07);
+    --theme-backdrop: none;
+  }
+
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-         background: #0a0b12; display: flex; height: 100vh; overflow: hidden; color: #f2f2f2; }
+         background: var(--theme-body-bg); display: flex; height: 100vh; overflow: hidden; color: var(--theme-text-primary); }
   body::before {
     content: ''; position: fixed; inset: 0; z-index: -2;
-    background: url('/bg-earth.jpg') center center / cover no-repeat;
-    transform: rotate(180deg);
+    background: var(--theme-bg-image) var(--theme-bg-position, center center) / var(--theme-bg-size, cover) no-repeat;
+    transform: var(--theme-bg-transform, none);
   }
   body::after {
     content: ''; position: fixed; inset: 0; z-index: -1;
-    background: rgba(0, 0, 10, 0.75);
+    background: var(--theme-bg-overlay);
   }
 
   /* ── Sidebar ── */
@@ -96,13 +111,13 @@
   #detail { flex: 1; display: none; flex-direction: column; min-height: 0; overflow-y: auto; }
 
   /* ── Detail header ── */
-  #detail-header { padding: 24px 28px 16px; border-bottom: 1px solid rgba(255,255,255,0.07); flex-shrink: 0; }
-  #detail-header h2 { font-size: 22px; font-weight: 700; color: #f2f2f2; }
-  #desc-text { font-size: 13px; color: rgba(255,255,255,0.5); margin-top: 6px; line-height: 1.6; }
+  #detail-header { padding: 24px 28px 16px; border-bottom: 1px solid var(--theme-divider); flex-shrink: 0; }
+  #detail-header h2 { font-size: 22px; font-weight: 700; color: var(--theme-text-primary); }
+  #desc-text { font-size: 13px; color: var(--theme-text-muted); margin-top: 6px; line-height: 1.6; }
 
   /* ── Status bar ── */
   #status-bar {
-    padding: 12px 28px; border-bottom: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.03);
+    padding: 12px 28px; border-bottom: 1px solid var(--theme-divider); background: var(--theme-card-bg);
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex-shrink: 0;
   }
   .status-pill {
@@ -126,29 +141,29 @@
 
   /* ── Meta grid ── */
   #meta-grid {
-    padding: 20px 28px; border-bottom: 1px solid rgba(255,255,255,0.07); flex-shrink: 0;
+    padding: 20px 28px; border-bottom: 1px solid var(--theme-divider); flex-shrink: 0;
     display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
   }
-  .meta-block label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.4); text-transform: uppercase;
+  .meta-block label { font-size: 11px; font-weight: 600; color: var(--theme-text-label); text-transform: uppercase;
                       letter-spacing: 0.4px; display: block; margin-bottom: 4px; }
-  .meta-block span  { font-size: 13px; color: rgba(255,255,255,0.8); font-family: monospace; word-break: break-all; }
+  .meta-block span  { font-size: 13px; color: var(--theme-text-primary); font-family: monospace; word-break: break-all; }
 
   /* ── Section manifest ── */
   #sections-panel { padding: 20px 28px 32px; flex-shrink: 0; }
-  #sections-panel h3 { font-size: 14px; font-weight: 700; color: rgba(255,255,255,0.8); margin-bottom: 14px; }
+  #sections-panel h3 { font-size: 14px; font-weight: 700; color: var(--theme-text-primary); margin-bottom: 14px; }
 
   .section-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .section-table th {
-    text-align: left; padding: 7px 10px; background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.4);
+    text-align: left; padding: 7px 10px; background: var(--theme-card-bg); color: var(--theme-text-label);
     font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px;
-    border-bottom: 1px solid rgba(255,255,255,0.07);
+    border-bottom: 1px solid var(--theme-divider);
   }
-  .section-table td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
+  .section-table td { padding: 8px 10px; border-bottom: 1px solid var(--theme-divider); vertical-align: middle; }
   .section-table tr:last-child td { border-bottom: none; }
-  .section-table tr:hover td { background: rgba(255,255,255,0.03); }
+  .section-table tr:hover td { background: var(--theme-card-bg); }
 
-  .s-id   { font-family: monospace; color: rgba(255,255,255,0.5); font-size: 12px; }
-  .s-name { color: rgba(255,255,255,0.85); }
+  .s-id   { font-family: monospace; color: var(--theme-text-muted); font-size: 12px; }
+  .s-name { color: var(--theme-text-primary); }
   .tag {
     display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 6px;
     border-radius: 4px; text-transform: uppercase; letter-spacing: 0.3px;
@@ -159,10 +174,10 @@
 
   /* ── Hints panel ── */
   #hints-panel { padding: 0 28px 32px; flex-shrink: 0; }
-  #hints-panel h3 { font-size: 14px; font-weight: 700; color: rgba(255,255,255,0.8); margin-bottom: 12px; }
+  #hints-panel h3 { font-size: 14px; font-weight: 700; color: var(--theme-text-primary); margin-bottom: 12px; }
   #hints-json {
-    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;
-    padding: 14px 16px; font-family: monospace; font-size: 12px; color: rgba(255,255,255,0.75);
+    background: var(--theme-card-bg); border: 1px solid var(--theme-card-border); border-radius: 8px;
+    padding: 14px 16px; font-family: monospace; font-size: 12px; color: var(--theme-text-primary);
     white-space: pre-wrap; word-break: break-all; line-height: 1.6;
   }
 
@@ -177,6 +192,7 @@
   /* ── API key block (hidden, used by fetch calls) ── */
   #api-key-block { display: none; }
 </style>
+<link rel="stylesheet" href="/api/themes/active/styles.css">
 </head>
 <body>
 

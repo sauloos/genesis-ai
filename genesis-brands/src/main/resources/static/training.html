@@ -4,20 +4,35 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Genesis AI — Training</title>
-<link rel="stylesheet" href="/api/themes/active/styles.css">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+  :root {
+    --theme-bg-image: url('/bg-earth.jpg');
+    --theme-bg-transform: rotate(180deg);
+    --theme-bg-overlay: rgba(0, 0, 10, 0.75);
+    --theme-body-bg: #0a0b12;
+    --theme-text-primary: #f2f2f2;
+    --theme-text-muted: rgba(255, 255, 255, 0.5);
+    --theme-text-label: rgba(255, 255, 255, 0.4);
+    --theme-card-bg: rgba(255, 255, 255, 0.05);
+    --theme-card-bg-hover: rgba(255, 255, 255, 0.12);
+    --theme-card-border: rgba(255, 255, 255, 0.1);
+    --theme-card-shadow: rgba(0, 0, 0, 0.3);
+    --theme-divider: rgba(255, 255, 255, 0.07);
+    --theme-backdrop: none;
+  }
+
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-         background: #0a0b12; display: flex; height: 100vh; overflow: hidden; color: #f2f2f2; }
+         background: var(--theme-body-bg); display: flex; height: 100vh; overflow: hidden; color: var(--theme-text-primary); }
   body::before {
     content: ''; position: fixed; inset: 0; z-index: -2;
-    background: url('/bg-earth.jpg') center center / cover no-repeat;
-    transform: rotate(180deg);
+    background: var(--theme-bg-image) var(--theme-bg-position, center center) / var(--theme-bg-size, cover) no-repeat;
+    transform: var(--theme-bg-transform, none);
   }
   body::after {
     content: ''; position: fixed; inset: 0; z-index: -1;
-    background: rgba(0, 0, 10, 0.75);
+    background: var(--theme-bg-overlay);
   }
 
   /* ── Sidebar ── */
@@ -130,12 +145,12 @@
   #detail { flex: 1; display: none; flex-direction: column; min-height: 0; }
 
   #detail-header {
-    padding: 16px 24px; border-bottom: 1px solid rgba(255,255,255,0.07);
+    padding: 16px 24px; border-bottom: 1px solid var(--theme-divider);
     display: flex; align-items: center; gap: 12px; flex-shrink: 0;
   }
   #topic-input {
     flex: 1; font-size: 15px; font-weight: 600; border: none; outline: none;
-    font-family: inherit; color: #f2f2f2; background: transparent;
+    font-family: inherit; color: var(--theme-text-primary); background: transparent;
   }
   #topic-input::placeholder { color: rgba(255,255,255,0.3); font-weight: 400; }
   #submit-btn, #quick-ingest-btn, #approve-btn, #reject-btn {
@@ -164,11 +179,11 @@
 
   /* ── Classification bar ── */
   #classification {
-    padding: 10px 24px; border-bottom: 1px solid rgba(255,255,255,0.06);
+    padding: 10px 24px; border-bottom: 1px solid var(--theme-divider);
     display: flex; align-items: center; gap: 16px; flex-shrink: 0; flex-wrap: wrap;
-    background: rgba(255,255,255,0.03);
+    background: var(--theme-card-bg);
   }
-  .cls-label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.4); text-transform: uppercase;
+  .cls-label { font-size: 11px; font-weight: 600; color: var(--theme-text-label); text-transform: uppercase;
                letter-spacing: 0.5px; }
   .cls-group { display: flex; align-items: center; gap: 8px; }
   .seg-btn {
@@ -193,12 +208,12 @@
 
   /* ── Source run (feedback review) ── */
   #source-run {
-    display: none; margin: 0 24px 16px; padding: 14px 16px; border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 10px; background: rgba(255,255,255,0.04);
+    display: none; margin: 0 24px 16px; padding: 14px 16px; border: 1px solid var(--theme-card-border);
+    border-radius: 10px; background: var(--theme-card-bg);
   }
   #source-run.visible { display: block; }
   #source-run-title {
-    font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.4); text-transform: uppercase;
+    font-size: 11px; font-weight: 700; color: var(--theme-text-label); text-transform: uppercase;
     letter-spacing: 0.5px; margin-bottom: 10px; display: flex; align-items: center;
     justify-content: space-between; gap: 10px;
   }
@@ -226,15 +241,15 @@
   #content-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
 
   .content-item {
-    border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px 14px;
-    background: rgba(255,255,255,0.04); position: relative;
+    border: 1px solid var(--theme-card-border); border-radius: 10px; padding: 12px 14px;
+    background: var(--theme-card-bg); position: relative;
   }
   .content-item:hover { border-color: rgba(255,255,255,0.15); }
   .content-type-tag {
-    font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.4); text-transform: uppercase;
+    font-size: 10px; font-weight: 600; color: var(--theme-text-label); text-transform: uppercase;
     letter-spacing: 0.4px; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;
   }
-  .content-body { font-size: 14px; line-height: 1.6; color: rgba(255,255,255,0.8); white-space: pre-wrap; word-break: break-word; }
+  .content-body { font-size: 14px; line-height: 1.6; color: var(--theme-text-primary); white-space: pre-wrap; word-break: break-word; }
   .content-filename { font-size: 13px; color: rgba(255,255,255,0.55); font-style: italic; }
   .content-transcript { font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.5; margin-top: 4px; }
 
@@ -292,7 +307,7 @@
 
   /* ── Capture bar ── */
   #capture-area {
-    padding: 16px 24px 20px; border-top: 1px solid rgba(255,255,255,0.07); flex-shrink: 0;
+    padding: 16px 24px 20px; border-top: 1px solid var(--theme-divider); flex-shrink: 0;
   }
 
   #attachment-bar {
@@ -319,15 +334,15 @@
   #remove-attach:hover { color: #ff6b6b; }
 
   #capture-wrap {
-    display: flex; align-items: flex-end; gap: 8px; background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 10px 12px;
+    display: flex; align-items: flex-end; gap: 8px; background: var(--theme-card-bg);
+    border: 1px solid var(--theme-card-border); border-radius: 12px; padding: 10px 12px;
     transition: border-color 0.15s;
   }
-  #capture-wrap:focus-within { border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.07); }
+  #capture-wrap:focus-within { border-color: rgba(255,255,255,0.3); background: var(--theme-card-bg-hover); }
 
   #text-input {
     flex: 1; border: none; background: none; font-size: 14px; line-height: 1.5;
-    resize: none; outline: none; font-family: inherit; color: #f2f2f2;
+    resize: none; outline: none; font-family: inherit; color: var(--theme-text-primary);
     max-height: 120px; overflow-y: auto;
   }
   #text-input::placeholder { color: rgba(255,255,255,0.3); }
@@ -355,6 +370,7 @@
 
   @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.6; } }
 </style>
+<link rel="stylesheet" href="/api/themes/active/styles.css">
 </head>
 <body>
 
