@@ -23,6 +23,7 @@ public class BasicAuthFilter extends OncePerRequestFilter {
         "/dashboard/questionnaires", "/questionnaires", "/questionnaires.html",
         "/dashboard/templates", "/templates", "/templates.html",
         "/dashboard/knowledge", "/knowledge", "/knowledge.html",
+        "/dashboard/themes", "/themes", "/themes.html",
         "/questionnaire-run", "/questionnaire-run.html",
         "/discover"
     );

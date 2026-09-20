@@ -377,7 +377,7 @@
 <div id="toast"></div>
 
 <script>
-const API_KEY = localStorage.getItem('genesis_api_key') || '';
+let API_KEY = '';
 
 async function apiFetch(path, opts = {}) {
   const r = await fetch(path, {
@@ -504,10 +504,12 @@ document.getElementById('importSubmit').addEventListener('click', async () => {
   } catch (e) { toast(e.message, false); }
 });
 
-// Load API key from cookie or prompt
+// Fetch the API key from the admin session, then load
 (async () => {
-  const stored = document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('genesis_api_key='));
-  if (stored) localStorage.setItem('genesis_api_key', stored.split('=')[1]);
+  try {
+    const r = await fetch('/api/admin/key', { credentials: 'include' });
+    if (r.ok) { const { key } = await r.json(); API_KEY = key; }
+  } catch {}
   load();
 })();
 </script>

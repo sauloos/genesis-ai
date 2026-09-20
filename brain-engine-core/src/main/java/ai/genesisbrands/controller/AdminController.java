@@ -24,6 +24,9 @@ public class AdminController {
     @Value("${genesis.environment:dev}")
     private String environment;
 
+    @Value("${genesis.api-key}")
+    private String apiKey;
+
     @GetMapping("/env")
     public ResponseEntity<Map<String, String>> env(HttpServletRequest req) {
         if (!adminAuth.isAdminRequest(req) && !adminSession.hasValidSession(req)) {
@@ -37,8 +40,14 @@ public class AdminController {
         if (!adminAuth.isAdminRequest(req) && !adminSession.hasValidSession(req)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        // Single admin user is always SUPER_ADMIN. When multi-user roles are added,
-        // derive the role from the session principal here instead.
         return ResponseEntity.ok(Map.of("role", "SUPER_ADMIN"));
+    }
+
+    @GetMapping("/key")
+    public ResponseEntity<Map<String, String>> key(HttpServletRequest req) {
+        if (!adminAuth.isAdminRequest(req) && !adminSession.hasValidSession(req)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(Map.of("key", apiKey));
     }
 }
