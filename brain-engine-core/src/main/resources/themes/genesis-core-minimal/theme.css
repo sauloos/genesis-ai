@@ -1,0 +1,40 @@
+/* Genesis Core Minimal — warm light */
+:root {
+  --theme-has-bg-image: 0;
+  --theme-bg-image: none;
+  --theme-bg-position: center center;
+  --theme-bg-size: cover;
+  --theme-bg-transform: none;
+  --theme-bg-overlay: transparent;
+  --theme-body-bg: #f5f4f0;
+
+  --theme-text-primary: #18182e;
+  --theme-text-muted: rgba(24, 24, 46, 0.55);
+  --theme-text-label: rgba(24, 24, 46, 0.38);
+  --theme-section-label: rgba(24, 24, 46, 0.3);
+
+  --theme-card-bg: rgba(255, 255, 255, 0.72);
+  --theme-card-bg-hover: rgba(255, 255, 255, 0.95);
+  --theme-card-border: rgba(24, 24, 46, 0.1);
+  --theme-card-icon-bg: rgba(24, 24, 46, 0.06);
+  --theme-card-icon-border: rgba(24, 24, 46, 0.1);
+  --theme-card-shadow: rgba(0, 0, 0, 0.08);
+
+  --theme-divider: rgba(24, 24, 46, 0.1);
+  --theme-backdrop: blur(16px);
+
+  --theme-btn-color: rgba(24, 24, 46, 0.45);
+  --theme-btn-border: rgba(24, 24, 46, 0.15);
+  --theme-btn-color-hover: rgba(24, 24, 46, 0.85);
+  --theme-btn-border-hover: rgba(24, 24, 46, 0.35);
+
+  --theme-env-badge-bg: rgba(255, 255, 255, 0.8);
+  --theme-env-badge-border: rgba(24, 24, 46, 0.12);
+
+  --theme-link-color: rgba(24, 24, 46, 0.45);
+  --theme-link-border: rgba(24, 24, 46, 0.2);
+  --theme-link-color-hover: rgba(24, 24, 46, 0.85);
+  --theme-link-border-hover: rgba(24, 24, 46, 0.4);
+
+  --theme-go-color: rgba(24, 24, 46, 0.3);
+}

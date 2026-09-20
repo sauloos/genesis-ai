@@ -41,6 +41,11 @@ public class PageController {
     @GetMapping("/knowledge")
     public String knowledgeRedirect() { return "redirect:/dashboard/knowledge"; }
 
+    @GetMapping("/dashboard/themes")
+    public String themesPage() { return "forward:/themes.html"; }
+    @GetMapping("/themes")
+    public String themesRedirect() { return "redirect:/dashboard/themes"; }
+
     @GetMapping("/questionnaire-run")
     public String questionnaireRunPage() {
         return "forward:/questionnaire-run.html";
