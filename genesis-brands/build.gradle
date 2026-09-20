@@ -3,6 +3,8 @@ apply plugin: 'org.springframework.boot'
 group = 'ai.genesisbrands'
 version = '0.0.1-SNAPSHOT'
 
+jar.enabled = false   // suppress the plain JAR — only the bootJar is needed
+
 configurations {
     compileOnly { extendsFrom annotationProcessor }
 }

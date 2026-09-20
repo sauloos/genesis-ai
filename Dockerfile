@@ -24,7 +24,7 @@ WORKDIR /app
 # Tell Playwright where to store browser binaries (picked up by both the installer and the app)
 ENV PLAYWRIGHT_BROWSERS_PATH=/app/pw-browsers
 
-COPY --from=build /workspace/genesis-brands/build/libs/*.jar app.jar
+COPY --from=build /workspace/genesis-brands/build/libs/genesis-brands-0.0.1-SNAPSHOT.jar app.jar
 COPY knowledge/layer1/modules knowledge/layer1/modules
 
 # Install Chromium and all its system dependencies via the Playwright CLI bundled inside
