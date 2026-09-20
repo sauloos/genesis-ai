@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Genesis — Themes</title>
-<link rel="stylesheet" href="/api/themes/active/styles.css">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -343,7 +342,30 @@
     .hero { padding: 28px 16px 24px; }
     .main { padding: 0 12px 60px; }
   }
+
+  .hero-logo {
+    height: 52px;
+    width: auto;
+    display: block;
+    margin: 0 auto 20px;
+  }
+
+  #env-badge {
+    position: fixed;
+    bottom: 20px;
+    left: 24px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: var(--theme-env-badge-bg);
+    border: 1px solid var(--theme-env-badge-border);
+    border-radius: 20px;
+    padding: 5px 12px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
 </style>
+<link rel="stylesheet" href="/api/themes/active/styles.css">
 </head>
 <body>
 
@@ -353,9 +375,10 @@
 </header>
 
 <div class="hero">
+  <img src="/logo.png" alt="Genesis" class="hero-logo">
   <div class="hero-label">Brain Engine</div>
   <h1>Themes</h1>
-  <p class="hero-sub">Select and manage the visual theme applied to this tenant. Theme changes take effect on the next page load.</p>
+  <p class="hero-sub">Select and manage the visual theme applied to this tenant. Theme changes take effect immediately.</p>
 </div>
 
 <div class="main">
@@ -511,6 +534,20 @@ document.getElementById('importSubmit').addEventListener('click', async () => {
     if (r.ok) { const { key } = await r.json(); API_KEY = key; }
   } catch {}
   load();
+})();
+
+(async () => {
+  try {
+    const r = await fetch("/api/admin/env", { credentials: "include" });
+    if (!r.ok) return;
+    const { env } = await r.json();
+    const col = { PRODUCTION: "#ef4444", QA: "#f59e0b", DEV: "#6b7280" }[env] || "#888";
+    const el = document.createElement("div");
+    el.id = "env-badge";
+    el.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:${col};flex-shrink:0;display:inline-block"></span>`
+      + `<span style="font-size:10px;font-weight:700;letter-spacing:0.5px;color:${col};text-transform:uppercase">${env}</span>`;
+    document.body.appendChild(el);
+  } catch {}
 })();
 </script>
 </body>
