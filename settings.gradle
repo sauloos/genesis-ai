@@ -1,1 +1,4 @@
-rootProject.name = 'genesis-ai'
+rootProject.name = 'genesis-platform'
+include 'shared-domain'
+include 'brain-engine-core'
+include 'genesis-brands'

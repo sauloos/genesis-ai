@@ -1,95 +1,26 @@
 plugins {
-    id 'java'
-    id 'org.springframework.boot' version '3.5.14'
-    id 'io.spring.dependency-management' version '1.1.7'
+    id 'org.springframework.boot' version '3.5.14' apply false
+    id 'io.spring.dependency-management' version '1.1.7' apply false
 }
 
-group = 'ai.genesisbrands'
-version = '0.0.1-SNAPSHOT'
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'io.spring.dependency-management'
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
-}
-
-configurations {
-    compileOnly {
-        extendsFrom annotationProcessor
+    java {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
-}
 
-repositories {
-    mavenCentral()
-    maven { url 'https://repo.spring.io/milestone' }
-    maven { url 'https://repo.spring.io/snapshot' }
-}
-
-dependencyManagement {
-    imports {
-        mavenBom "org.springframework.ai:spring-ai-bom:1.1.7"
+    repositories {
+        mavenCentral()
+        maven { url 'https://repo.spring.io/milestone' }
+        maven { url 'https://repo.spring.io/snapshot' }
     }
-}
 
-dependencies {
-    // Spring Boot
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.springframework.boot:spring-boot-starter-actuator'
-
-    // Spring AI — Anthropic (Claude)
-    implementation 'org.springframework.ai:spring-ai-starter-model-anthropic'
-
-    // Spring AI — OpenAI (embeddings, and Azure AI Foundry OpenAI-compatible endpoint)
-    implementation 'org.springframework.ai:spring-ai-starter-model-openai'
-
-    // Spring AI — Azure OpenAI (embeddings via Azure OpenAI when azure profile is active)
-    implementation 'org.springframework.ai:spring-ai-starter-model-azure-openai'
-
-
-    // API docs
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
-
-    // Database — H2 for local dev, PostgreSQL in production (Azure Database for PostgreSQL)
-    runtimeOnly 'com.h2database:h2'
-    runtimeOnly 'org.postgresql:postgresql'
-
-    // Lombok
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
-
-    // Azure Blob Storage
-    implementation 'com.azure:azure-storage-blob:12.28.1'
-
-    // PDF text extraction (attachments)
-    implementation 'org.apache.pdfbox:pdfbox:2.0.24'
-
-    // PDF generation (Brand Book Assembly deliverable) — Playwright renders the HTML/CSS
-    // template via headless Chromium. Browsers must be installed separately:
-    //   ./gradlew playwright-install   (local dev)
-    //   In Docker: RUN java -cp app.jar com.microsoft.playwright.CLI install chromium
-    implementation 'com.microsoft.playwright:playwright:1.47.0'
-
-    // HTML parsing (URL fetching)
-    implementation 'org.jsoup:jsoup:1.18.3'
-
-    // BCrypt password hashing (no full Spring Security — just the crypto module)
-    implementation 'org.springframework.security:spring-security-crypto'
-
-    // Test
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-}
-
-tasks.named('test') {
-    useJUnitPlatform()
-}
-
-// Install Playwright browser binaries for local development.
-// Run once after adding this dependency: ./gradlew playwright-install
-tasks.register('playwright-install', JavaExec) {
-    group = 'playwright'
-    description = 'Install Playwright Chromium browser binaries for local development'
-    classpath = configurations.runtimeClasspath
-    mainClass = 'com.microsoft.playwright.CLI'
-    args = ['install', 'chromium']
+    dependencyManagement {
+        imports {
+            mavenBom "org.springframework.ai:spring-ai-bom:1.1.7"
+        }
+    }
 }

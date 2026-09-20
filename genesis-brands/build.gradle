@@ -1,0 +1,45 @@
+apply plugin: 'org.springframework.boot'
+
+group = 'ai.genesisbrands'
+version = '0.0.1-SNAPSHOT'
+
+configurations {
+    compileOnly { extendsFrom annotationProcessor }
+}
+
+dependencies {
+    implementation project(':shared-domain')
+    implementation project(':brain-engine-core')
+
+    // Spring Boot starters used directly in genesis-brands code
+    // (brain-engine-core's implementation deps are not transitively visible)
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+
+    // Spring AI — Anthropic + OpenAI (needed for ChatClient beans in agents/evaluators)
+    implementation 'org.springframework.ai:spring-ai-starter-model-anthropic'
+    implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+
+    // PDF generation via Playwright (brand book assembly)
+    implementation 'com.microsoft.playwright:playwright:1.47.0'
+
+    // Lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // Test
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+tasks.register('playwright-install', JavaExec) {
+    group = 'playwright'
+    description = 'Install Playwright Chromium browser binaries for local development'
+    classpath = configurations.runtimeClasspath
+    mainClass = 'com.microsoft.playwright.CLI'
+    args = ['install', 'chromium']
+}

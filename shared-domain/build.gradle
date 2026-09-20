@@ -1,0 +1,3 @@
+// Pure Java module — no Spring dependencies.
+// Holds shared domain records passed between platform and tenant modules.
+dependencies {}

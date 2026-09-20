@@ -1,0 +1,54 @@
+apply plugin: 'org.springframework.boot'
+
+// Library module — disable fat JAR, produce a regular JAR for genesis-brands to consume
+bootJar.enabled = false
+jar.enabled = true
+
+configurations {
+    compileOnly { extendsFrom annotationProcessor }
+}
+
+dependencies {
+    implementation project(':shared-domain')
+
+    // Spring Boot
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // Spring AI — Anthropic, OpenAI, Azure OpenAI
+    implementation 'org.springframework.ai:spring-ai-starter-model-anthropic'
+    implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+    implementation 'org.springframework.ai:spring-ai-starter-model-azure-openai'
+
+    // API docs
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
+
+    // Database
+    runtimeOnly 'com.h2database:h2'
+    runtimeOnly 'org.postgresql:postgresql'
+
+    // Lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // Azure Blob Storage
+    implementation 'com.azure:azure-storage-blob:12.28.1'
+
+    // PDF text extraction (training attachments)
+    implementation 'org.apache.pdfbox:pdfbox:2.0.24'
+
+    // HTML parsing (URL fetching)
+    implementation 'org.jsoup:jsoup:1.18.3'
+
+    // BCrypt password hashing
+    implementation 'org.springframework.security:spring-security-crypto'
+
+    // Test
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
