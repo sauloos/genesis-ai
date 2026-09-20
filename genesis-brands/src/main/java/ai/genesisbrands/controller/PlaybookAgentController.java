@@ -7,6 +7,7 @@ import ai.genesisbrands.agent.playbook.PlaybookAgent;
 import ai.genesisbrands.agent.playbook.PlaybookInput;
 import ai.genesisbrands.agent.playbook.PlaybookOutput;
 import ai.genesisbrands.agent.playbook.PlaybookRefinementLoop;
+import ai.genesisbrands.agent.core.RefinementLoop;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -49,14 +50,14 @@ public class PlaybookAgentController {
     }
 
     @PostMapping("/execute-with-evaluation")
-    public ResponseEntity<PlaybookRefinementLoop.RefinementResult> executeWithEvaluation(@RequestBody PlaybookInput input) {
+    public ResponseEntity<RefinementLoop.RefinementResult<PlaybookOutput>> executeWithEvaluation(@RequestBody PlaybookInput input) {
         return ResponseEntity.ok(playbookRefinementLoop.run(input));
     }
 
     @PostMapping("/compare-with-evaluation")
     public ResponseEntity<CompareEvaluatedResult> compareWithEvaluation(@RequestBody PlaybookInput input) {
         long t0 = System.currentTimeMillis();
-        PlaybookRefinementLoop.RefinementResult genesisAi = playbookRefinementLoop.run(input);
+        RefinementLoop.RefinementResult<PlaybookOutput> genesisAi = playbookRefinementLoop.run(input);
         long t1 = System.currentTimeMillis();
         BaselineOutput baselineAi = baselinePlaybookService.generate(input);
         long t2 = System.currentTimeMillis();
@@ -78,7 +79,7 @@ public class PlaybookAgentController {
     ) {}
 
     public record CompareEvaluatedResult(
-        PlaybookRefinementLoop.RefinementResult genesisAi,
+        RefinementLoop.RefinementResult<PlaybookOutput> genesisAi,
         BaselineOutput baselineAi,
         long genesisAiMs,
         long baselineAiMs

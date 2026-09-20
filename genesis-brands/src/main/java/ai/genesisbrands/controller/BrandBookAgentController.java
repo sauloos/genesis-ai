@@ -7,6 +7,7 @@ import ai.genesisbrands.agent.brandbook.BrandBookInput;
 import ai.genesisbrands.agent.brandbook.BrandBookOutput;
 import ai.genesisbrands.agent.brandbook.BrandBookTemplateRenderer;
 import ai.genesisbrands.agent.brandbook.BrandBookRefinementLoop;
+import ai.genesisbrands.agent.core.RefinementLoop;
 import ai.genesisbrands.agent.core.AgentRevision;
 import ai.genesisbrands.model.BrandBookTemplate;
 import ai.genesisbrands.service.BlobStorageService;
@@ -78,14 +79,14 @@ public class BrandBookAgentController {
     }
 
     @PostMapping("/execute-with-evaluation")
-    public ResponseEntity<BrandBookRefinementLoop.RefinementResult> executeWithEvaluation(@RequestBody BrandBookInput input) {
+    public ResponseEntity<RefinementLoop.RefinementResult<BrandBookOutput>> executeWithEvaluation(@RequestBody BrandBookInput input) {
         return ResponseEntity.ok(brandBookRefinementLoop.run(input));
     }
 
     @PostMapping("/compare-with-evaluation")
     public ResponseEntity<CompareEvaluatedResult> compareWithEvaluation(@RequestBody BrandBookInput input) {
         long t0 = System.currentTimeMillis();
-        BrandBookRefinementLoop.RefinementResult genesisAi = brandBookRefinementLoop.run(input);
+        RefinementLoop.RefinementResult<BrandBookOutput> genesisAi = brandBookRefinementLoop.run(input);
         long t1 = System.currentTimeMillis();
         BaselineOutput baselineAi = baselineBrandBookService.generate(input);
         long t2 = System.currentTimeMillis();
@@ -170,7 +171,7 @@ public class BrandBookAgentController {
     ) {}
 
     public record CompareEvaluatedResult(
-        BrandBookRefinementLoop.RefinementResult genesisAi,
+        RefinementLoop.RefinementResult<BrandBookOutput> genesisAi,
         BaselineOutput baselineAi,
         long genesisAiMs,
         long baselineAiMs

@@ -7,6 +7,7 @@ import ai.genesisbrands.agent.logo.BaselineLogoService;
 import ai.genesisbrands.agent.logo.LogoAgent;
 import ai.genesisbrands.agent.logo.LogoOutput;
 import ai.genesisbrands.agent.logo.LogoRefinementLoop;
+import ai.genesisbrands.agent.core.RefinementLoop;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -58,7 +59,7 @@ public class LogoAgentController {
     }
 
     @PostMapping("/execute-with-evaluation")
-    public ResponseEntity<LogoRefinementLoop.RefinementResult> executeWithEvaluation(@RequestBody ExecuteRequest request) {
+    public ResponseEntity<RefinementLoop.RefinementResult<LogoOutput>> executeWithEvaluation(@RequestBody ExecuteRequest request) {
         return ResponseEntity.ok(logoRefinementLoop.run(request.brief(), resolveMethod(request.method())));
     }
 
@@ -66,7 +67,7 @@ public class LogoAgentController {
     public ResponseEntity<CompareEvaluatedResult> compareWithEvaluation(@RequestBody ExecuteRequest request) {
         LogoOutput.Method method = resolveMethod(request.method());
         long t0 = System.currentTimeMillis();
-        LogoRefinementLoop.RefinementResult genesisAi = logoRefinementLoop.run(request.brief(), method);
+        RefinementLoop.RefinementResult<LogoOutput> genesisAi = logoRefinementLoop.run(request.brief(), method);
         long t1 = System.currentTimeMillis();
         BaselineLogoOutput baselineAi = baselineLogoService.generate(request.brief(), method);
         long t2 = System.currentTimeMillis();
@@ -90,7 +91,7 @@ public class LogoAgentController {
     ) {}
 
     public record CompareEvaluatedResult(
-        LogoRefinementLoop.RefinementResult genesisAi,
+        RefinementLoop.RefinementResult<LogoOutput> genesisAi,
         BaselineLogoOutput baselineAi,
         long genesisAiMs,
         long baselineAiMs

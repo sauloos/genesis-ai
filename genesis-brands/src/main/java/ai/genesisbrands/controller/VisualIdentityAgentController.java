@@ -7,6 +7,7 @@ import ai.genesisbrands.agent.visualidentity.BaselineVisualIdentityService;
 import ai.genesisbrands.agent.visualidentity.VisualIdentityAgent;
 import ai.genesisbrands.agent.visualidentity.VisualIdentityOutput;
 import ai.genesisbrands.agent.visualidentity.VisualIdentityRefinementLoop;
+import ai.genesisbrands.agent.core.RefinementLoop;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -50,14 +51,14 @@ public class VisualIdentityAgentController {
     }
 
     @PostMapping("/execute-with-evaluation")
-    public ResponseEntity<VisualIdentityRefinementLoop.RefinementResult> executeWithEvaluation(@RequestBody DirectionBrief brief) {
+    public ResponseEntity<RefinementLoop.RefinementResult<VisualIdentityOutput>> executeWithEvaluation(@RequestBody DirectionBrief brief) {
         return ResponseEntity.ok(visualIdentityRefinementLoop.run(brief));
     }
 
     @PostMapping("/compare-with-evaluation")
     public ResponseEntity<CompareEvaluatedResult> compareWithEvaluation(@RequestBody DirectionBrief brief) {
         long t0 = System.currentTimeMillis();
-        VisualIdentityRefinementLoop.RefinementResult genesisAi = visualIdentityRefinementLoop.run(brief);
+        RefinementLoop.RefinementResult<VisualIdentityOutput> genesisAi = visualIdentityRefinementLoop.run(brief);
         long t1 = System.currentTimeMillis();
         BaselineVisualIdentityOutput baselineAi = baselineVisualIdentityService.generate(brief);
         long t2 = System.currentTimeMillis();
@@ -79,7 +80,7 @@ public class VisualIdentityAgentController {
     ) {}
 
     public record CompareEvaluatedResult(
-        VisualIdentityRefinementLoop.RefinementResult genesisAi,
+        RefinementLoop.RefinementResult<VisualIdentityOutput> genesisAi,
         BaselineVisualIdentityOutput baselineAi,
         long genesisAiMs,
         long baselineAiMs

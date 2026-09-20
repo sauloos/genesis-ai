@@ -5,6 +5,7 @@ import ai.genesisbrands.agent.copy.BaselineOutput;
 import ai.genesisbrands.agent.copy.CopyAgent;
 import ai.genesisbrands.agent.copy.CopyOutput;
 import ai.genesisbrands.agent.copy.CopyRefinementLoop;
+import ai.genesisbrands.agent.core.RefinementLoop;
 import ai.genesisbrands.agent.core.AgentRevision;
 import ai.genesisbrands.agent.core.DirectionBrief;
 import org.springframework.http.ResponseEntity;
@@ -49,14 +50,14 @@ public class CopyAgentController {
     }
 
     @PostMapping("/execute-with-evaluation")
-    public ResponseEntity<CopyRefinementLoop.RefinementResult> executeWithEvaluation(@RequestBody DirectionBrief brief) {
+    public ResponseEntity<RefinementLoop.RefinementResult<CopyOutput>> executeWithEvaluation(@RequestBody DirectionBrief brief) {
         return ResponseEntity.ok(copyRefinementLoop.run(brief));
     }
 
     @PostMapping("/compare-with-evaluation")
     public ResponseEntity<CompareEvaluatedResult> compareWithEvaluation(@RequestBody DirectionBrief brief) {
         long t0 = System.currentTimeMillis();
-        CopyRefinementLoop.RefinementResult genesisAi = copyRefinementLoop.run(brief);
+        RefinementLoop.RefinementResult<CopyOutput> genesisAi = copyRefinementLoop.run(brief);
         long t1 = System.currentTimeMillis();
         BaselineOutput baselineAi = baselineCopyService.generate(brief);
         long t2 = System.currentTimeMillis();
@@ -78,7 +79,7 @@ public class CopyAgentController {
     ) {}
 
     public record CompareEvaluatedResult(
-        CopyRefinementLoop.RefinementResult genesisAi,
+        RefinementLoop.RefinementResult<CopyOutput> genesisAi,
         BaselineOutput baselineAi,
         long genesisAiMs,
         long baselineAiMs

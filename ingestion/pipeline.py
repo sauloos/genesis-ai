@@ -79,8 +79,8 @@ def _get_qdrant() -> QdrantClient:
     return _qdrant
 
 
-def _upsert_with_retry(points, max_attempts: int = 3) -> None:
-    """POST points directly via REST — avoids httpx connection-pool staleness."""
+def _upsert_with_retry(points, max_attempts: int = 3, batch_size: int = 50) -> None:
+    """POST points directly via REST in batches — avoids httpx connection-pool staleness."""
     import json as _json
     import time
     import requests
@@ -90,24 +90,25 @@ def _upsert_with_retry(points, max_attempts: int = 3) -> None:
     if QDRANT_API_KEY:
         headers["api-key"] = QDRANT_API_KEY
 
-    payload = {
-        "points": [
-            {"id": p.id, "vector": p.vector, "payload": p.payload}
-            for p in points
-        ]
-    }
-
-    for attempt in range(1, max_attempts + 1):
-        try:
-            resp = requests.put(url, headers=headers, data=_json.dumps(payload), timeout=30)
-            resp.raise_for_status()
-            return
-        except Exception as e:
-            if attempt == max_attempts:
-                raise
-            wait = 5 * attempt
-            print(f"  Qdrant upsert failed (attempt {attempt}/{max_attempts}): {e} — retrying in {wait}s...")
-            time.sleep(wait)
+    for i in range(0, len(points), batch_size):
+        batch = points[i : i + batch_size]
+        payload = {
+            "points": [
+                {"id": p.id, "vector": p.vector, "payload": p.payload}
+                for p in batch
+            ]
+        }
+        for attempt in range(1, max_attempts + 1):
+            try:
+                resp = requests.put(url, headers=headers, data=_json.dumps(payload), timeout=120)
+                resp.raise_for_status()
+                break
+            except Exception as e:
+                if attempt == max_attempts:
+                    raise
+                wait = 5 * attempt
+                print(f"  Qdrant upsert failed (attempt {attempt}/{max_attempts}): {e} — retrying in {wait}s...")
+                time.sleep(wait)
 
 
 def _ensure_collection(client: QdrantClient) -> None:
@@ -322,7 +323,7 @@ def describe_image_with_claude(
 
     client = _get_anthropic()
     response = client.messages.create(
-        model="claude-sonnet-5",
+        model="claude-haiku-4-5-20251001",
         max_tokens=1200,
         messages=[{
             "role": "user",
@@ -421,7 +422,7 @@ def _anonymise_document(text: str) -> str:
         if len(sections) > 1:
             print(f"  Anonymising section {i}/{len(sections)}...")
         response = client.messages.create(
-            model="claude-sonnet-5",
+            model="claude-haiku-4-5-20251001",
             max_tokens=16000,
             system=_ANONYMISE_SYSTEM,
             messages=[{"role": "user", "content": section}],
