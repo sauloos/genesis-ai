@@ -1,11 +1,11 @@
 /* Genesis Core Light — crisp white */
 :root {
-  --theme-has-bg-image: 0;
-  --theme-bg-image: none;
+  --theme-has-bg-image: 1;
+  --theme-bg-image: url('https://images.unsplash.com/photo-1619252584172-a83a949b6efd?q=80&w=2400&auto=format&fit=crop');
   --theme-bg-position: center center;
   --theme-bg-size: cover;
   --theme-bg-transform: none;
-  --theme-bg-overlay: transparent;
+  --theme-bg-overlay: rgba(255, 255, 255, 0.5);
   --theme-body-bg: #ffffff;
 
   --theme-text-primary: #111120;

@@ -64,15 +64,16 @@ public class ThemeService {
         JsonNode meta = objectMapper.readTree(manifest.getInputStream());
         String id = meta.get("id").asText();
 
-        // Already imported — skip, but preserve active state
-        if (themeRepository.existsById(id)) return;
+        boolean existed = themeRepository.existsById(id);
+        Theme theme = themeRepository.findById(id).orElse(new Theme());
+        // Never overwrite a user-imported theme that happens to share an id with a built-in one
+        if (existed && !theme.isBuiltIn()) return;
 
         String cssPath = themeDirPrefix + "theme.css";
         Resource cssResource = new PathMatchingResourcePatternResolver().getResource(cssPath);
         String css = cssResource.exists()
             ? new String(cssResource.getInputStream().readAllBytes(), StandardCharsets.UTF_8) : "";
 
-        Theme theme = new Theme();
         theme.setId(id);
         theme.setName(meta.get("name").asText());
         theme.setVersion(meta.get("version").asText());
@@ -80,7 +81,7 @@ public class ThemeService {
         theme.setBuiltIn(true);
         theme.setCssContent(css);
         themeRepository.save(theme);
-        log.info("Imported built-in theme: {}", id);
+        log.info("Synced built-in theme: {}", id);
     }
 
     public List<Theme> list() {

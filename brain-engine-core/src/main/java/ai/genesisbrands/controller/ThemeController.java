@@ -14,7 +14,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/api/themes")
@@ -35,7 +34,7 @@ public class ThemeController {
     public ResponseEntity<String> activeStyles() {
         return ResponseEntity.ok()
             .contentType(MediaType.parseMediaType("text/css"))
-            .cacheControl(CacheControl.maxAge(30, TimeUnit.SECONDS).cachePublic())
+            .cacheControl(CacheControl.noCache().cachePrivate())
             .body(themeService.getActiveCss());
     }
 

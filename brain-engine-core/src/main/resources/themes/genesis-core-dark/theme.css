@@ -1,11 +1,11 @@
 /* Genesis Core Dark — clean charcoal */
 :root {
-  --theme-has-bg-image: 0;
-  --theme-bg-image: none;
+  --theme-has-bg-image: 1;
+  --theme-bg-image: url('https://images.unsplash.com/photo-1631477076114-9123f721b9dc?q=80&w=2400&auto=format&fit=crop');
   --theme-bg-position: center center;
   --theme-bg-size: cover;
   --theme-bg-transform: none;
-  --theme-bg-overlay: transparent;
+  --theme-bg-overlay: rgba(14, 14, 22, 0.6);
   --theme-body-bg: #0e0e16;
 
   --theme-text-primary: #e4e4f0;

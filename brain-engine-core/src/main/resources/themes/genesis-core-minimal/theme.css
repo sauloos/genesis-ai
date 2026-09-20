@@ -1,11 +1,11 @@
 /* Genesis Core Minimal — warm light */
 :root {
-  --theme-has-bg-image: 0;
-  --theme-bg-image: none;
+  --theme-has-bg-image: 1;
+  --theme-bg-image: url('https://images.unsplash.com/photo-1603484477859-abe6a73f9366?q=80&w=2400&auto=format&fit=crop');
   --theme-bg-position: center center;
   --theme-bg-size: cover;
   --theme-bg-transform: none;
-  --theme-bg-overlay: transparent;
+  --theme-bg-overlay: rgba(245, 244, 240, 0.45);
   --theme-body-bg: #f5f4f0;
 
   --theme-text-primary: #18182e;
