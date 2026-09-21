@@ -9,6 +9,7 @@ COPY settings.gradle .
 COPY shared-domain/build.gradle shared-domain/build.gradle
 COPY brain-engine-core/build.gradle brain-engine-core/build.gradle
 COPY genesis-brands/build.gradle genesis-brands/build.gradle
+COPY genesis-os/build.gradle genesis-os/build.gradle
 # settings.gradle auto-discovers Gradle projects under themes/, so the directory must
 # exist before any ./gradlew invocation — even this dependency-resolution-only one.
 COPY themes themes

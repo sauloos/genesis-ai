@@ -2,6 +2,7 @@ rootProject.name = 'genesis-platform'
 include 'shared-domain'
 include 'brain-engine-core'
 include 'genesis-brands'
+include 'genesis-os'
 
 // Each directory under themes/ is its own buildable, independently zippable theme —
 // dropping in a new folder is enough to pick it up, no edit needed here.

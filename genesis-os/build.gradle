@@ -13,21 +13,14 @@ dependencies {
     implementation project(':shared-domain')
     implementation project(':brain-engine-core')
 
-    // Spring Boot starters used directly in genesis-brands code
+    // Spring Boot starters used directly in this module
     // (brain-engine-core's implementation deps are not transitively visible)
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 
-    // Spring AI — Anthropic + OpenAI (needed for ChatClient beans in agents/evaluators)
+    // Spring AI — Anthropic + OpenAI (needed for ChatClient beans in platform services)
     implementation 'org.springframework.ai:spring-ai-starter-model-anthropic'
     implementation 'org.springframework.ai:spring-ai-starter-model-openai'
-
-    // API docs — used by controllers/services now living in this module
-    // (brain-engine-core's implementation dep is not transitively visible)
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
-
-    // PDF generation via Playwright (brand book assembly)
-    implementation 'com.microsoft.playwright:playwright:1.47.0'
 
     // Lombok
     compileOnly 'org.projectlombok:lombok'
@@ -40,15 +33,4 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
-}
-
-// Tenant default — see the bundleThemes helper in the root build.gradle.
-rootProject.ext.bundleThemes(project, ['genesis-brands'])
-
-tasks.register('playwright-install', JavaExec) {
-    group = 'playwright'
-    description = 'Install Playwright Chromium browser binaries for local development'
-    classpath = configurations.runtimeClasspath
-    mainClass = 'com.microsoft.playwright.CLI'
-    args = ['install', 'chromium']
 }
