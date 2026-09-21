@@ -61,6 +61,51 @@ genesis:
     interpretation:
       enabled: true
       model: claude-haiku-4-5
+  consultant:
+    system-prompt: agents/consultant/system-prompt.md
+    out-of-scope-response: >-
+      That's outside my territory. I'm a brand strategy creative director — if you have
+      a question about your brand, positioning, identity, or marketing, I'm here for that.
+    out-of-scope-keywords:
+      - recipe
+      - ingredient
+      - bake
+      - cook
+      - preheat
+      - tablespoon
+      - teaspoon
+      - flour
+      - butter
+      - "trim()"
+      - ".trim"
+      - "java method"
+      - "python "
+      - "javascript "
+      - "c++ "
+      - "sql query"
+      - "html tag"
+      - "css style"
+      - "git commit"
+      - "docker "
+      - kubernetes
+      - "regex "
+      - "algorithm "
+      - "data structure"
+      - "neural network"
+      - "machine learning model"
+      - "what is rag"
+      - "what is llm"
+      - "what is gpt"
+      - "what is bert"
+      - "transformer model"
+      - "flight to"
+      - "hotel in"
+      - "visa for"
+      - "medical "
+      - "diagnosis "
+      - "symptom "
+      - "medication "
+      - "doctor "
   agents:
     copy:
       model: claude-sonnet-5
