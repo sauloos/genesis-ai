@@ -5,7 +5,10 @@ include 'genesis-brands'
 
 // Each directory under themes/ is its own buildable, independently zippable theme —
 // dropping in a new folder is enough to pick it up, no edit needed here.
-new File(settingsDir, 'themes').eachDir { dir ->
-    include "themes:${dir.name}"
-    project(":themes:${dir.name}").projectDir = dir
+def themesDir = new File(settingsDir, 'themes')
+if (themesDir.exists()) {
+    themesDir.eachDir { dir ->
+        include "themes:${dir.name}"
+        project(":themes:${dir.name}").projectDir = dir
+    }
 }
