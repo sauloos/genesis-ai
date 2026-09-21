@@ -14,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/themes")
@@ -36,6 +37,16 @@ public class ThemeController {
             .contentType(MediaType.parseMediaType("text/css"))
             .cacheControl(CacheControl.noCache().cachePrivate())
             .body(themeService.getActiveCss());
+    }
+
+    @GetMapping("/active/logo")
+    @Operation(summary = "Serve the active theme's logo — falls back to the platform default when the theme has none")
+    public ResponseEntity<byte[]> activeLogo() {
+        Map.Entry<byte[], String> logo = themeService.getActiveLogo();
+        return ResponseEntity.ok()
+            .contentType(MediaType.parseMediaType(logo.getValue()))
+            .cacheControl(CacheControl.noCache().cachePrivate())
+            .body(logo.getKey());
     }
 
     @PutMapping("/{id}/activate")

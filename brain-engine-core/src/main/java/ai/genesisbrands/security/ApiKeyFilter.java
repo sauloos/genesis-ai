@@ -32,8 +32,11 @@ public class ApiKeyFilter extends OncePerRequestFilter {
         // it's loaded via plain <img> tags (Playground, Training review), which can't
         // attach a custom header — the paths themselves are unguessable UUID/engagement-id
         // based, and the pages that reference them already sit behind BasicAuthFilter.
+        // /api/themes/active/logo is excluded for the same reason as styles.css: it's
+        // loaded via a CSS mask-image url(), which can't attach a custom header either.
         if (!path.startsWith("/api/") || path.equals("/api/waitlist") || path.startsWith("/api/assets/")
-                || path.startsWith("/api/admin/") || path.equals("/api/themes/active/styles.css")) {
+                || path.startsWith("/api/admin/") || path.equals("/api/themes/active/styles.css")
+                || path.equals("/api/themes/active/logo")) {
             chain.doFilter(req, res);
             return;
         }

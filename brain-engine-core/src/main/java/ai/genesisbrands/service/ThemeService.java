@@ -8,6 +8,7 @@ import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Service;
@@ -16,7 +17,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.AbstractMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -80,8 +84,47 @@ public class ThemeService {
         theme.setDescription(meta.has("description") ? meta.get("description").asText() : "");
         theme.setBuiltIn(true);
         theme.setCssContent(css);
+
+        findLogoResource(themeDirPrefix).ifPresent(logo -> {
+            try {
+                theme.setLogoContent(logo.getInputStream().readAllBytes());
+                theme.setLogoContentType(logo.getFilename().endsWith(".svg") ? "image/svg+xml" : "image/png");
+            } catch (IOException e) {
+                log.warn("Failed to read logo for theme {}: {}", id, e.getMessage());
+            }
+        });
+
         themeRepository.save(theme);
         log.info("Synced built-in theme: {}", id);
+    }
+
+    private Optional<Resource> findLogoResource(String themeDirPrefix) {
+        PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+        for (String filename : List.of("logo.svg", "logo.png")) {
+            Resource candidate = resolver.getResource(themeDirPrefix + filename);
+            if (candidate.exists()) return Optional.of(candidate);
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * The active theme's logo, or the platform default when the theme doesn't ship its own —
+     * a theme becomes fully self-contained (colors + logo) only when it chooses to override this.
+     */
+    public Map.Entry<byte[], String> getActiveLogo() {
+        return themeRepository.findByActiveTrue()
+            .filter(t -> t.getLogoContent() != null)
+            .map(t -> (Map.Entry<byte[], String>) new AbstractMap.SimpleEntry<>(t.getLogoContent(), t.getLogoContentType()))
+            .orElseGet(this::loadDefaultLogo);
+    }
+
+    private Map.Entry<byte[], String> loadDefaultLogo() {
+        try {
+            byte[] bytes = new ClassPathResource("static/logo.png").getInputStream().readAllBytes();
+            return new AbstractMap.SimpleEntry<>(bytes, "image/png");
+        } catch (IOException e) {
+            throw new IllegalStateException("Default platform logo is missing from classpath", e);
+        }
     }
 
     public List<Theme> list() {
@@ -110,6 +153,8 @@ public class ThemeService {
         String themeVersion = null;
         String themeDescription = "";
         String themeCss = "";
+        byte[] logoPng = null;
+        byte[] logoSvg = null;
 
         try (ZipInputStream zis = new ZipInputStream(file.getInputStream())) {
             ZipEntry entry;
@@ -123,10 +168,17 @@ public class ThemeService {
                     themeDescription = meta.has("description") ? meta.get("description").asText() : "";
                 } else if (name.endsWith("theme.css")) {
                     themeCss = new String(zis.readAllBytes(), StandardCharsets.UTF_8);
+                } else if (name.endsWith("logo.svg")) {
+                    logoSvg = zis.readAllBytes();
+                } else if (name.endsWith("logo.png")) {
+                    logoPng = zis.readAllBytes();
                 }
                 zis.closeEntry();
             }
         }
+
+        byte[] logoContent = logoSvg != null ? logoSvg : logoPng;
+        String logoContentType = logoSvg != null ? "image/svg+xml" : (logoPng != null ? "image/png" : null);
 
         if (themeId == null) throw new IllegalArgumentException("Invalid theme zip: missing theme.json");
 
@@ -137,6 +189,10 @@ public class ThemeService {
         theme.setDescription(themeDescription);
         theme.setCssContent(themeCss);
         theme.setBuiltIn(false);
+        if (logoContent != null) {
+            theme.setLogoContent(logoContent);
+            theme.setLogoContentType(logoContentType);
+        }
         return themeRepository.save(theme);
     }
 

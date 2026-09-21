@@ -34,6 +34,13 @@ public class Theme {
     @Column(name = "css_content", nullable = false, columnDefinition = "TEXT")
     private String cssContent = "";
 
+    @Lob
+    @Column(name = "logo_content")
+    private byte[] logoContent;
+
+    @Column(name = "logo_content_type", length = 64)
+    private String logoContentType;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 }

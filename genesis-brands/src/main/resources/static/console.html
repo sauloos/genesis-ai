@@ -44,7 +44,15 @@
   #sidebar-header {
     padding: 20px 16px 12px; border-bottom: 1px solid #222; position: relative;
   }
-  .sidebar-logo { height: 22px; width: auto; display: block; margin-bottom: 4px; }
+  .sidebar-logo {
+    height: 22px; width: auto; aspect-ratio: 805 / 220; display: block; margin-bottom: 4px;
+    background-color: var(--theme-text-primary, currentColor);
+    -webkit-mask-image: url(/api/themes/active/logo);
+    mask-image: url(/api/themes/active/logo);
+    -webkit-mask-size: contain; mask-size: contain;
+    -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+    -webkit-mask-position: center; mask-position: center;
+  }
   #sidebar-header p  { color: #666; font-size: 11px; margin-top: 2px; }
   .mode-badge {
     display: inline-block; margin-top: 8px; padding: 3px 9px;
@@ -236,7 +244,7 @@
 
 <div id="sidebar">
   <div id="sidebar-header">
-    <a href="/dashboard"><img src="/logo.png" alt="Genesis" class="sidebar-logo"></a>
+    <a href="/dashboard"><div class="sidebar-logo" role="img" aria-label="Genesis"></div></a>
 
     <div class="mode-badge">Consultant</div>
     <button id="nav-toggle" onclick="toggleNavMenu(event)" aria-label="Menu">

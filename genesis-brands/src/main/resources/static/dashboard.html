@@ -92,8 +92,18 @@
   .hero-logo {
     height: 52px;
     width: auto;
+    aspect-ratio: 805 / 220;
     display: block;
     margin: 0 auto 20px;
+    background-color: var(--theme-text-primary, currentColor);
+    -webkit-mask-image: url(/api/themes/active/logo);
+    mask-image: url(/api/themes/active/logo);
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
   }
   .hero-label {
     font-size: 11px;
@@ -305,7 +315,7 @@
 </header>
 
 <div class="hero">
-  <img src="/logo.png" alt="Genesis" class="hero-logo">
+  <div class="hero-logo" role="img" aria-label="Genesis"></div>
   <div class="hero-label">Admin</div>
   <h1>Brand Intelligence System</h1>
 </div>
