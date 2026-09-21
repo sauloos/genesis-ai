@@ -10,17 +10,16 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 /**
- * Core Genesis AI consultant — builds prompts, retrieves context, streams responses.
+ * Platform consultant facade — builds prompts, retrieves context, streams responses.
+ * Persona (system prompt, scope guardrails) is owned by the tenant via {@link TenantConsultantConfig}.
  */
 @Service
 public class ConsultantService {
@@ -33,40 +32,22 @@ public class ConsultantService {
     private final Layer1Service layer1;
     private final BrandRepository brandRepo;
     private final ConversationMessageRepository messageRepo;
-
-    @Value("${genesis.agent.system-prompt-path:agents/genesis-ai/system-prompt.md}")
-    private String systemPromptPath;
+    private final TenantConsultantConfig tenantConfig;
 
     public ConsultantService(
         ChatModel chatModel,
         RetrievalService retrieval,
         Layer1Service layer1,
         BrandRepository brandRepo,
-        ConversationMessageRepository messageRepo
+        ConversationMessageRepository messageRepo,
+        TenantConsultantConfig tenantConfig
     ) {
         this.chatModel = chatModel;
         this.retrieval = retrieval;
         this.layer1 = layer1;
         this.brandRepo = brandRepo;
         this.messageRepo = messageRepo;
-    }
-
-    private static final String OUT_OF_SCOPE_RESPONSE =
-        "That's outside my territory. I'm a brand strategy creative director — " +
-        "if you have a question about your brand, positioning, identity, or marketing, I'm here for that.";
-
-    private static final List<String> OUT_OF_SCOPE_PATTERNS = List.of(
-        "recipe", "ingredient", "bake", "cook", "preheat", "tablespoon", "teaspoon", "flour", "butter",
-        "trim()", ".trim", "java method", "python ", "javascript ", "c++ ", "sql query", "html tag",
-        "css style", "git commit", "docker ", "kubernetes", "regex ", "algorithm ", "data structure",
-        "neural network", "machine learning model", "what is rag", "what is llm", "what is gpt",
-        "what is bert", "transformer model", "flight to", "hotel in", "visa for",
-        "medical ", "diagnosis ", "symptom ", "medication ", "doctor "
-    );
-
-    private boolean isOutOfScope(String message) {
-        String lower = message.toLowerCase();
-        return OUT_OF_SCOPE_PATTERNS.stream().anyMatch(lower::contains);
+        this.tenantConfig = tenantConfig;
     }
 
     public Flux<String> chat(String brandId, String userMessage) {
@@ -81,9 +62,10 @@ public class ConsultantService {
 
         save(brandId, "user", userMessage);
 
-        if (isOutOfScope(userMessage)) {
-            save(brandId, "assistant", OUT_OF_SCOPE_RESPONSE);
-            return Flux.just(OUT_OF_SCOPE_RESPONSE);
+        if (tenantConfig.isOutOfScope(userMessage)) {
+            String response = tenantConfig.outOfScopeResponse();
+            save(brandId, "assistant", response);
+            return Flux.just(response);
         }
 
         List<Message> messages = buildMessages(brand, userMessage, attachmentText, urlContents);
@@ -136,7 +118,7 @@ public class ConsultantService {
                                       List<ContextEnrichmentService.UrlContent> urlContents) {
         var sb = new StringBuilder();
 
-        sb.append(loadSystemPrompt()).append("\n\n");
+        sb.append(tenantConfig.systemPrompt()).append("\n\n");
 
         sb.append("# Current Brand Context\n\n");
         sb.append("**Brand:** ").append(brand.getName()).append("\n");
@@ -177,14 +159,6 @@ public class ConsultantService {
         }
 
         return sb.toString();
-    }
-
-    private String loadSystemPrompt() {
-        try {
-            return java.nio.file.Files.readString(java.nio.file.Path.of(systemPromptPath));
-        } catch (IOException e) {
-            return "You are Genesis AI, a brand strategy creative director.";
-        }
     }
 
     private void save(String brandId, String role, String content) {
