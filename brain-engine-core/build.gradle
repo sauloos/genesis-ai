@@ -52,3 +52,6 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
 }
+
+// Platform defaults — see the bundleThemes helper in the root build.gradle.
+rootProject.ext.bundleThemes(project, ['genesis-core-light', 'genesis-core-dark', 'genesis-core-minimal'])

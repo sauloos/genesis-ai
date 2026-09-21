@@ -38,6 +38,9 @@ tasks.named('test') {
     useJUnitPlatform()
 }
 
+// Tenant default — see the bundleThemes helper in the root build.gradle.
+rootProject.ext.bundleThemes(project, ['genesis-brands'])
+
 tasks.register('playwright-install', JavaExec) {
     group = 'playwright'
     description = 'Install Playwright Chromium browser binaries for local development'

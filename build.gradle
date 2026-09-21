@@ -3,7 +3,10 @@ plugins {
     id 'io.spring.dependency-management' version '1.1.7' apply false
 }
 
-subprojects {
+def themeProjects = subprojects.findAll { it.path.startsWith(':themes:') }
+def javaProjects = subprojects - themeProjects
+
+configure(javaProjects) {
     apply plugin: 'java'
     apply plugin: 'io.spring.dependency-management'
 
@@ -23,4 +26,49 @@ subprojects {
             mavenBom "org.springframework.ai:spring-ai-bom:1.1.7"
         }
     }
+}
+
+// Themes are plain content (theme.json + theme.css + optional logo.*), no compilation —
+// each one just packages itself into a zip that ThemeService's admin zip-import already
+// knows how to consume. A theme never has to be added here or to any app module's
+// dependencies to be built: it only needs to exist under themes/ (see settings.gradle).
+configure(themeProjects) {
+    apply plugin: 'base'
+
+    tasks.register('themeZip', Zip) {
+        archiveFileName = "${project.name}.zip"
+        destinationDirectory = layout.buildDirectory.dir('distributions')
+        from(projectDir) {
+            include 'theme.json', 'theme.css', 'logo.png', 'logo.svg'
+        }
+    }
+    tasks.named('assemble') { dependsOn 'themeZip' }
+}
+
+// Lets an app module declare which themes it ships by default — e.g. brain-engine-core
+// bundles the platform's own core themes, genesis-brands bundles just its own. Bundling
+// copies each theme's source files straight into that module's classpath resources
+// (under themes/<name>/, matching ThemeService's classpath*:/themes/*/theme.json scan),
+// while still depending on that theme's own themeZip task so its standalone zip is
+// produced too whenever the app builds.
+ext.bundleThemes = { Project target, List<String> themeNames ->
+    // The srcDir added to resources must be the PARENT of "themes/" — each theme is
+    // copied into <srcDir>/themes/<name>/ so it lands on the classpath at themes/<name>/,
+    // matching ThemeService's classpath*:/themes/*/theme.json scan. Nesting the copy
+    // destination one level too shallow silently drops that "themes/" prefix.
+    def genResourcesDir = target.layout.buildDirectory.dir('generated-resources')
+
+    def unpackTask = target.tasks.register('unpackBundledThemes', Copy) {
+        dependsOn themeNames.collect { ":themes:${it}:themeZip" }
+        themeNames.each { name ->
+            from(rootProject.file("themes/${name}")) {
+                include 'theme.json', 'theme.css', 'logo.png', 'logo.svg'
+                into "themes/${name}"
+            }
+        }
+        into genResourcesDir
+    }
+
+    target.sourceSets.main.resources.srcDir genResourcesDir
+    target.tasks.named('processResources') { dependsOn unpackTask }
 }
