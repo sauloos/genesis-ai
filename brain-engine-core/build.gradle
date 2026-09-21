@@ -54,4 +54,4 @@ tasks.named('test') {
 }
 
 // Platform defaults — see the bundleThemes helper in the root build.gradle.
-rootProject.ext.bundleThemes(project, ['genesis-core-light', 'genesis-core-dark', 'genesis-core-minimal'])
+rootProject.ext.bundleThemes(project, ['genesis-core-light', 'genesis-core-dark', 'genesis-core-minimal', 'genesis-core-emerald'])
