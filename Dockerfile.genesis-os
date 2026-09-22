@@ -1,0 +1,32 @@
+FROM eclipse-temurin:21-jdk-alpine AS build
+WORKDIR /workspace
+
+# Copy build files first — Docker caches this layer so deps only re-download when build files change
+COPY gradle gradle
+COPY gradlew .
+COPY build.gradle .
+COPY settings.gradle .
+COPY shared-domain/build.gradle shared-domain/build.gradle
+COPY brain-engine-core/build.gradle brain-engine-core/build.gradle
+COPY genesis-brands/build.gradle genesis-brands/build.gradle
+COPY genesis-os/build.gradle genesis-os/build.gradle
+# settings.gradle auto-discovers Gradle projects under themes/, so the directory must
+# exist before any ./gradlew invocation — even this dependency-resolution-only one.
+COPY themes themes
+RUN ./gradlew dependencies --no-daemon -q
+
+# Copy source and build — genesis-os depends on brain-engine-core only, not genesis-brands
+COPY shared-domain shared-domain
+COPY brain-engine-core brain-engine-core
+COPY genesis-os genesis-os
+RUN ./gradlew :genesis-os:bootJar --no-daemon -q
+
+# No Playwright/Chromium here — genesis-os has no brand-book PDF assembly, so a plain
+# Alpine JRE (unlike genesis-brands' Ubuntu-jammy runtime) is enough.
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+
+COPY --from=build /workspace/genesis-os/build/libs/genesis-os-0.0.1-SNAPSHOT.jar app.jar
+
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]
