@@ -1,0 +1,38 @@
+.git
+.gitignore
+
+# Build output (regenerated inside the image; az acr build does not honor .gitignore)
+build/
+*/build/
+*/*/build/
+.gradle/
+bin/
+*/bin/
+*/*/bin/
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Python ingestion pipeline — not part of either Docker build
+ingestion/.venv/
+ingestion/__pycache__/
+ingestion/**/__pycache__/
+ingestion/*.egg-info/
+
+# Local data / large raw corpus — not needed inside the image
+data/
+*/data/
+knowledge/assets/
+knowledge/layer1/sources/
+knowledge/layer1/chunks/
+knowledge/layer2/chunks/
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# Docs and deploy scripts — not referenced by any Dockerfile
+docs/
+deploy/
+.claude/

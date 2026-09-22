@@ -57,4 +57,4 @@ comparison_*.png
 make_comparison*.py
 make_images.py
 make_all_comparisons.py
-.azure-config
+.azure-config*
