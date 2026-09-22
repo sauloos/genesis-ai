@@ -16,8 +16,10 @@ public class ConversationMessage {
     @Column(length = 36)
     private String id;
 
+    // Physical column name kept as brand_id — predates the platform/tenant split and
+    // renaming it would require a migration for no functional benefit.
     @Column(name = "brand_id", nullable = false, length = 36)
-    private String brandId;
+    private String subjectId;
 
     @Column(nullable = false, length = 10)
     private String role;  // "user" or "assistant"

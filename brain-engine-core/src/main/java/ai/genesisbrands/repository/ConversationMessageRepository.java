@@ -7,5 +7,5 @@ import java.util.List;
 
 public interface ConversationMessageRepository extends JpaRepository<ConversationMessage, String> {
 
-    List<ConversationMessage> findByBrandIdOrderByCreatedAtAsc(String brandId);
+    List<ConversationMessage> findBySubjectIdOrderByCreatedAtAsc(String subjectId);
 }

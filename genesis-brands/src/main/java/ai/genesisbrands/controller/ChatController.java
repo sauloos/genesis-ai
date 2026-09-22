@@ -44,13 +44,13 @@ public class ChatController {
     @GetMapping("/history")
     @Operation(summary = "Get conversation history for a brand")
     public List<ConversationMessage> history(@PathVariable String brandId) {
-        return messageRepo.findByBrandIdOrderByCreatedAtAsc(brandId);
+        return messageRepo.findBySubjectIdOrderByCreatedAtAsc(brandId);
     }
 
     @DeleteMapping("/history")
     @Operation(summary = "Clear conversation history for a brand")
     public void clearHistory(@PathVariable String brandId) {
-        var messages = messageRepo.findByBrandIdOrderByCreatedAtAsc(brandId);
+        var messages = messageRepo.findBySubjectIdOrderByCreatedAtAsc(brandId);
         messageRepo.deleteAll(messages);
     }
 }

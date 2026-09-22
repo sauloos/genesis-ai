@@ -1,8 +1,6 @@
 package ai.genesisbrands.service;
 
-import ai.genesisbrands.model.Brand;
 import ai.genesisbrands.model.ConversationMessage;
-import ai.genesisbrands.repository.BrandRepository;
 import ai.genesisbrands.repository.ConversationMessageRepository;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -10,7 +8,6 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import java.util.ArrayList;
@@ -19,9 +16,11 @@ import java.util.UUID;
 
 /**
  * Platform consultant facade — builds prompts, retrieves context, streams responses.
- * Persona (system prompt, scope guardrails) is owned by the tenant via {@link TenantConsultantConfig}.
+ * Persona (system prompt, scope guardrails) is owned by the tenant via {@link TenantConsultantConfig};
+ * what a conversation is scoped to is owned by the tenant via {@link ConsultantSubjectProvider}.
+ * Registered as a bean only when a tenant supplies a {@link ConsultantSubjectProvider}
+ * (see {@code ConsultantServiceConfiguration}) — a bare platform deployment has none.
  */
-@Service
 public class ConsultantService {
 
     private static final int HISTORY_TURNS = 20;
@@ -30,7 +29,7 @@ public class ConsultantService {
     private final ChatModel chatModel;
     private final RetrievalService retrieval;
     private final Layer1Service layer1;
-    private final BrandRepository brandRepo;
+    private final ConsultantSubjectProvider subjectProvider;
     private final ConversationMessageRepository messageRepo;
     private final TenantConsultantConfig tenantConfig;
 
@@ -38,37 +37,36 @@ public class ConsultantService {
         ChatModel chatModel,
         RetrievalService retrieval,
         Layer1Service layer1,
-        BrandRepository brandRepo,
+        ConsultantSubjectProvider subjectProvider,
         ConversationMessageRepository messageRepo,
         TenantConsultantConfig tenantConfig
     ) {
         this.chatModel = chatModel;
         this.retrieval = retrieval;
         this.layer1 = layer1;
-        this.brandRepo = brandRepo;
+        this.subjectProvider = subjectProvider;
         this.messageRepo = messageRepo;
         this.tenantConfig = tenantConfig;
     }
 
-    public Flux<String> chat(String brandId, String userMessage) {
-        return chat(brandId, userMessage, null, List.of());
+    public Flux<String> chat(String subjectId, String userMessage) {
+        return chat(subjectId, userMessage, null, List.of());
     }
 
-    public Flux<String> chat(String brandId, String userMessage,
+    public Flux<String> chat(String subjectId, String userMessage,
                              String attachmentText,
                              List<ContextEnrichmentService.UrlContent> urlContents) {
-        Brand brand = brandRepo.findById(brandId)
-            .orElseThrow(() -> new IllegalArgumentException("Brand not found: " + brandId));
+        ConsultantSubject subject = subjectProvider.find(subjectId);
 
-        save(brandId, "user", userMessage);
+        save(subjectId, "user", userMessage);
 
         if (tenantConfig.isOutOfScope(userMessage)) {
             String response = tenantConfig.outOfScopeResponse();
-            save(brandId, "assistant", response);
+            save(subjectId, "assistant", response);
             return Flux.just(response);
         }
 
-        List<Message> messages = buildMessages(brand, userMessage, attachmentText, urlContents);
+        List<Message> messages = buildMessages(subject, userMessage, attachmentText, urlContents);
         Prompt prompt = new Prompt(messages);
 
         StringBuilder responseBuffer = new StringBuilder();
@@ -86,20 +84,20 @@ public class ConsultantService {
             .doOnComplete(() -> {
                 String fullResponse = responseBuffer.toString();
                 if (!fullResponse.isBlank()) {
-                    save(brandId, "assistant", fullResponse);
+                    save(subjectId, "assistant", fullResponse);
                 }
             });
     }
 
-    private List<Message> buildMessages(Brand brand, String userMessage,
+    private List<Message> buildMessages(ConsultantSubject subject, String userMessage,
                                         String attachmentText,
                                         List<ContextEnrichmentService.UrlContent> urlContents) {
         List<Message> messages = new ArrayList<>();
 
-        String systemContent = buildSystemContent(brand, userMessage, attachmentText, urlContents);
+        String systemContent = buildSystemContent(subject, userMessage, attachmentText, urlContents);
         messages.add(new SystemMessage(systemContent));
 
-        List<ConversationMessage> history = messageRepo.findByBrandIdOrderByCreatedAtAsc(brand.getId());
+        List<ConversationMessage> history = messageRepo.findBySubjectIdOrderByCreatedAtAsc(subject.id());
         int start = Math.max(0, history.size() - (HISTORY_TURNS * 2));
         for (int i = start; i < history.size(); i++) {
             ConversationMessage m = history.get(i);
@@ -113,23 +111,23 @@ public class ConsultantService {
         return messages;
     }
 
-    private String buildSystemContent(Brand brand, String query,
+    private String buildSystemContent(ConsultantSubject subject, String query,
                                       String attachmentText,
                                       List<ContextEnrichmentService.UrlContent> urlContents) {
         var sb = new StringBuilder();
 
         sb.append(tenantConfig.systemPrompt()).append("\n\n");
 
-        sb.append("# Current Brand Context\n\n");
-        sb.append("**Brand:** ").append(brand.getName()).append("\n");
-        if (brand.getIndustry() != null && !brand.getIndustry().isBlank()) {
-            sb.append("**Industry:** ").append(brand.getIndustry()).append("\n");
+        sb.append("# Current Context\n\n");
+        sb.append("**Name:** ").append(subject.name()).append("\n");
+        if (subject.industry() != null && !subject.industry().isBlank()) {
+            sb.append("**Industry:** ").append(subject.industry()).append("\n");
         }
-        if (brand.getAudience() != null && !brand.getAudience().isBlank()) {
-            sb.append("**Audience:** ").append(brand.getAudience()).append("\n");
+        if (subject.audience() != null && !subject.audience().isBlank()) {
+            sb.append("**Audience:** ").append(subject.audience()).append("\n");
         }
-        if (brand.getBrief() != null && !brand.getBrief().isBlank()) {
-            sb.append("\n**Brief:**\n").append(brand.getBrief());
+        if (subject.brief() != null && !subject.brief().isBlank()) {
+            sb.append("\n**Brief:**\n").append(subject.brief());
         }
         sb.append("\n\n");
 
@@ -161,10 +159,10 @@ public class ConsultantService {
         return sb.toString();
     }
 
-    private void save(String brandId, String role, String content) {
+    private void save(String subjectId, String role, String content) {
         var msg = new ConversationMessage();
         msg.setId(UUID.randomUUID().toString());
-        msg.setBrandId(brandId);
+        msg.setSubjectId(subjectId);
         msg.setRole(role);
         msg.setContent(content);
         messageRepo.save(msg);
