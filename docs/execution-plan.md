@@ -59,6 +59,17 @@
 - [ ] Admin Service: questionnaire config, prompt templates, tier rules
 - [ ] Strapi CMS: marketing copy, email templates, blog
 
+### Admin auth & user management (backlog, added 2026-09-22)
+> Platform-level, not Genesis Brands-specific — belongs in `brain-engine-core` alongside the rest
+> of the admin/backoffice shell, since it applies to any tenant's admin, not just this one's.
+
+- [ ] Proper admin login page: replace today's browser-native Basic Auth popup (single hardcoded
+      `genesis.basic-auth.username`/`password` pair via `BasicAuthFilter`) with a real login form,
+      consistent with the rest of the admin shell UI
+- [ ] Proper admin user management: multiple named admin accounts (not one shared credential pair),
+      almost certainly informed by the roles already scoped for the planned training review workflow
+      (SUPER_ADMIN / TRAINER / APPROVER) rather than inventing a separate role model
+
 > **Generation quality note — Phase 1:** Copy and Visual generators run on detailed prompt engineering
 > with explicit style rules and design principles. Output quality is good but generic — the house
 > style library that makes output distinctly Genesis Brands is built in Phase 2.
