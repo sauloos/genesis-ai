@@ -63,6 +63,91 @@
 > with explicit style rules and design principles. Output quality is good but generic — the house
 > style library that makes output distinctly Genesis Brands is built in Phase 2.
 
+### Customer journey & dashboard (elaborated 2026-09-22)
+> Goal: turn the client flow into a real funnel — preview before paying, a dashboard that's
+> useful long after the initial three directions are delivered, not just a download page.
+
+> **Scope note:** everything in this section — landing page, journey, dashboard, product catalog,
+> consultant threads — is **Genesis Brands product surface**, not `brain-engine-core`/`genesis-os`
+> platform surface. It belongs in `genesis-brands` the same way `Brand`/`Engagement`/consultant
+> chat already got moved there in the recent module split. `brain-engine-core` stays the generic,
+> tenant-agnostic engine (themes, training, agent orchestration primitives); it should gain no
+> knowledge of directions, product catalogs, print orders, or consultant threads as this gets built.
+
+**Funnel, in order:**
+- [ ] Landing page: public marketing page, "Log in" for existing customers + "Start your brand
+      journey" CTA for new ones (replaces/extends the current holding page at `/`)
+- [ ] Journey → three directions preview gate: after the questionnaire, show anchored/evolved/
+      disruptive directions **watermarked and low-res** before any payment — proves the value,
+      withholds the deliverable. Needs a new preview-rendering step (watermark overlay +
+      downscale) sitting between generation and the existing client view; current `/your-brand/{id}`
+      already gates full-res PDF downloads behind `paid`, so this mostly needs a *pre-payment*
+      preview variant, not a new gate mechanism
+- [ ] Direction selection: customer picks one of the three directions to proceed with
+- [ ] Stripe checkout: package purchase (Essential/Premium/Ultimate) at point of direction
+      selection, replacing today's lead-capture + manual "mark paid"; optional **Consultant
+      subscription add-on** purchased at the same step or upsold later from the dashboard
+- [ ] Account creation on payment: today's lead-capture `ClientUser` becomes the full paid
+      account — same login (`/login`) an existing customer uses, no separate account system
+
+**Post-payment dashboard** (evolves `your-brand.html` into the real customer home):
+- [ ] Asset library: logo + variations, brand book — download, same as today but now the
+      resolved landing spot after checkout, not a standalone page
+- [ ] Product catalog: purchasable physical items (business cards, stand-up banners, mugs,
+      pens, etc.) **rendered live with the customer's actual brand assets** (logo/colors/type
+      composited onto product mockups) with pricing — this pulls a slice of Phase 2's
+      Order Service / Print & Merch Provider adapters forward into Phase 1, at least far enough
+      to show a real catalog and price list; full multi-provider fulfilment logic can stay Phase 2
+- [ ] Print & delivery flow: pick product + quantity, enter/confirm delivery address, place
+      order — needs at minimum an Order Service and one print provider integration (Printful is
+      the natural first pick per Phase 2's adapter list), even if fulfilment scope stays narrow
+- [ ] Consultant panel — **scoped, not the full admin Genesis AI**: knowledge context is Layer 1
+      methodology + the *one* direction this customer actually chose (not all three) + this
+      customer's own generated assets. Two jobs, not one: (a) produce/revise assets, same as
+      today's asset-generation dispatch, and (b) open-ended discussion — brainstorming, marketing
+      strategy, "how should we position this for the holiday season" — without necessarily
+      producing an asset at all. Requires a hard tenant-isolation guarantee on Layer 2 retrieval:
+      this consultant must never surface another customer's precedent/engagement data, unlike the
+      internal Genesis AI consultant which reasons across all of Layer 2
+- [ ] Threaded conversations, not one flat history: replaces the current per-brand single
+      `ConversationMessage` stream with a `ConsultantThread` concept (id, brand/engagement id,
+      title, optional `linked_asset_id`). Two entry points into a thread, both landing in the same
+      history: (1) general discussion started from the standalone consultant panel — may produce a
+      new asset partway through, which then appears in the catalog backlinked to the thread that
+      created it; (2) "Discuss / Improve" started directly from an asset in the catalog — opens or
+      continues the thread already anchored to that asset, pre-loaded with its type/version/brand
+      context. Dashboard needs a thread list (like an inbox), not just a single chat window
+- [ ] New-asset / revision requests via consultant: whichever entry point started the thread,
+      requesting something not yet generated (e.g. "a flyer for our Black Friday promo") or a
+      change to an existing asset dispatches the relevant specialist agent(s) with a scoped
+      direction brief (not a full 3-direction re-run) → resulting asset appears in the dashboard's
+      catalog, versioned if it's a revision. Needs a narrower orchestration path than
+      `EngagementOrchestratorService`'s current full-pipeline run — single-asset, single-agent
+      dispatch triggered from a thread message rather than from a questionnaire submission
+- [ ] Iterative asset revision: every printable/generated asset (cards, banners, flyers, mugs —
+      not just net-new requests) should be revisable through consultant conversation ("make the
+      flyer more urgent", "try a different color"), with the consultant re-invoking the owning
+      specialist agent with feedback. Needs asset versioning (keep prior versions, not just
+      overwrite) so a customer can compare/revert
+
+**Backlog — decisions to resolve before this gets scoped into sprints** (none of these are settled
+yet; each needs its own design pass, not a default picked in passing):
+- [ ] Decide watermark/low-res mechanism — server-side image processing step, or a cheaper CSS
+      overlay for web preview + real downscale only for anything downloadable?
+- [ ] Decide subscription model shape — is "Consultant access" a recurring add-on distinct from
+      the one-time brand package, and does it gate by time or by usage (message/asset count)?
+- [ ] Decide product catalog mockup rendering approach — flat template compositing (logo onto a
+      stock mug photo) is fast to ship; photorealistic rendering is a later upgrade, not MVP
+- [ ] Decide asset revision versioning model — extend the existing Playground run-history pattern
+      per agent, or a new per-customer-asset version table?
+- [ ] Decide Layer 2 tenant isolation enforcement — filter at the retrieval-query level (metadata
+      tag per customer/engagement) or physically separate index/namespace per customer? Filter-level
+      is cheaper but a retrieval bug there becomes a real cross-customer data leak, not just a bad
+      answer — this one needs a security-conscious decision, not just an engineering-convenience one
+- [ ] Decide live sync behavior between an in-progress thread and the catalog — does the catalog
+      panel poll (same pattern as today's engagement-status polling) while a thread's asset job
+      runs, or does the thread stream progress and the catalog only refresh on completion?
+
 ## Phase 2 — Print, Merch, Growth & Generation Intelligence
 > Goal: expand revenue streams, stickiness, and make generation output distinctly Genesis Brands
 
