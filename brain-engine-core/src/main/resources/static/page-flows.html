@@ -156,9 +156,9 @@
   .page-node .pn-badge.pn-auth { background: rgba(96,165,250,0.18); color: #7fb2fb; }
 
   .drawflow .connection .main-path { stroke: #6fe0a5; stroke-width: 2; }
-  .drawflow .output_1 { background: #6fe0a5 !important; }
-  .drawflow .output_2 { background: #999 !important; }
-  .drawflow .output_3 { background: #ef4444 !important; }
+  .drawflow .drawflow-node .output_1 { background: #6fe0a5 !important; }
+  .drawflow .drawflow-node .output_2 { background: #999 !important; }
+  .drawflow .drawflow-node .output_3 { background: #ef4444 !important; }
   .drawflow .connection[class*="output_1"] .main-path { stroke: #6fe0a5; }
   .drawflow .connection[class*="output_2"] .main-path { stroke: #999; stroke-dasharray: 4, 4; }
   .drawflow .connection[class*="output_3"] .main-path { stroke: #ef4444; }
@@ -543,6 +543,14 @@ async function addPage() {
   const name = prompt('Page name:');
   if (!name) return;
   const page = await apiFetch(`/api/admin/page-flows/${currentFlow.id}/pages`, { method: 'POST', body: JSON.stringify({ name }) });
+  const idx = currentPages.length;
+  page.canvasX = 60 + (idx % 5) * 230;
+  page.canvasY = 60 + Math.floor(idx / 5) * 160;
+  try {
+    await apiFetch(`/api/admin/pages/${page.id}/position`, {
+      method: 'PUT', body: JSON.stringify({ x: page.canvasX, y: page.canvasY })
+    });
+  } catch (e) { toast('Failed to place page: ' + e.message, false); }
   currentPages.push(page);
   renderCanvas();
 }
