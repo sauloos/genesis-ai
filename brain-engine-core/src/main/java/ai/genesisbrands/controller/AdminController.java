@@ -62,7 +62,7 @@ public class AdminController {
         }
         List<Map<String, Object>> result = navExtensions.stream()
                 .sorted(Comparator.comparingInt(AdminNavExtension::order))
-                .map(ext -> Map.<String, Object>of("label", ext.label(), "path", ext.path()))
+                .map(ext -> Map.<String, Object>of("label", ext.label(), "path", ext.path(), "description", ext.description()))
                 .toList();
         return ResponseEntity.ok(result);
     }

@@ -447,7 +447,7 @@
         </div>
         <div>
           <div class="card-title"></div>
-          <div class="card-desc">Extension registered by this tenant.</div>
+          <div class="card-desc"></div>
         </div>
         <div class="card-footer">
           <span class="card-badge">Live</span>
@@ -456,6 +456,7 @@
           </svg>
         </div>`;
       a.querySelector(".card-title").textContent = item.label;
+      a.querySelector(".card-desc").textContent = item.description;
       grid.appendChild(a);
     });
   } catch {}

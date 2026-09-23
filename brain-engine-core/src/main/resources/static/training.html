@@ -206,6 +206,7 @@
     display: none; align-items: center; gap: 6px; flex-wrap: wrap;
   }
   #asset-types-wrap.visible { display: flex; }
+  #asset-chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .asset-chip {
     padding: 3px 9px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.12);
     background: rgba(255,255,255,0.04); font-size: 11px; color: rgba(255,255,255,0.55); cursor: pointer;
@@ -470,11 +471,7 @@
 
       <div id="asset-types-wrap">
         <span class="cls-label">Types</span>
-        <button class="asset-chip" data-value="logo"            onclick="toggleAsset(this)">Logo</button>
-        <button class="asset-chip" data-value="copy"            onclick="toggleAsset(this)">Copy</button>
-        <button class="asset-chip" data-value="visual-identity" onclick="toggleAsset(this)">Visual Identity</button>
-        <button class="asset-chip" data-value="playbook"        onclick="toggleAsset(this)">Playbook</button>
-        <button class="asset-chip" data-value="brand-book"      onclick="toggleAsset(this)">Brand Book</button>
+        <div id="asset-chips"></div>
       </div>
     </div>
 
@@ -540,11 +537,26 @@ let userRole         = 'SUPER_ADMIN'; // default; overridden by /api/admin/me at
 const ASSET_TYPES = ['logo', 'copy', 'visual-identity', 'playbook', 'brand-book'];
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
+async function loadAssetChips() {
+  const agents = await fetch(`${API}/api/agents`, { headers: HEADERS }).then(r => r.ok ? r.json() : []).catch(() => []);
+  const wrap = document.getElementById('asset-chips');
+  wrap.innerHTML = '';
+  agents.forEach(agent => {
+    const btn = document.createElement('button');
+    btn.className = 'asset-chip';
+    btn.dataset.value = agent.agentId;
+    btn.textContent = agent.displayName;
+    btn.onclick = () => toggleAsset(btn);
+    wrap.appendChild(btn);
+  });
+}
+
 async function boot() {
   try {
     const me = await fetch(`${API}/api/admin/me`, { credentials: 'include' }).then(r => r.ok ? r.json() : null);
     if (me && me.role) userRole = me.role;
   } catch {}
+  await loadAssetChips();
   await loadSessions();
   document.getElementById('text-input').addEventListener('input', () => {
     const text = document.getElementById('text-input').value.trim();

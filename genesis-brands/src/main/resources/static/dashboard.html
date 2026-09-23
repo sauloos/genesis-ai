@@ -419,7 +419,7 @@
       <span class="section-label">Genesis Brands</span>
       <div class="section-line"></div>
     </div>
-    <div class="feature-grid">
+    <div class="feature-grid" id="tenant-feature-grid">
 
       <a href="/dashboard/console" class="feature-card">
         <div class="card-icon">
@@ -459,27 +459,6 @@
         </div>
       </a>
 
-      <a href="/dashboard/templates" class="feature-card">
-        <div class="card-icon">
-          <svg viewBox="0 0 22 22" fill="none" stroke-width="1.6">
-            <rect x="3" y="3" width="7" height="7" rx="1.5"/>
-            <rect x="12" y="3" width="7" height="7" rx="1.5"/>
-            <rect x="3" y="12" width="7" height="7" rx="1.5"/>
-            <path d="M12 15.5h7M15.5 12v7"/>
-          </svg>
-        </div>
-        <div>
-          <div class="card-title">Templates</div>
-          <div class="card-desc">Define and version the structure of playbooks and brand books. Control what the assembly agents produce.</div>
-        </div>
-        <div class="card-footer">
-          <span class="card-badge">Live</span>
-          <svg class="card-go" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 8h10M9 4l4 4-4 4"/>
-          </svg>
-        </div>
-      </a>
-
     </div>
   </div>
 
@@ -499,6 +478,43 @@
     el.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:${col};flex-shrink:0;display:inline-block"></span>`
       + `<span style="font-size:10px;font-weight:700;letter-spacing:0.5px;color:${col};text-transform:uppercase">${env}</span>`;
     if (!el.parentNode) document.body.appendChild(el);
+  } catch {}
+})();
+</script>
+<script>
+(async () => {
+  try {
+    const r = await fetch("/api/admin/nav-extensions", { credentials: "include" });
+    if (!r.ok) return;
+    const items = await r.json();
+    if (!items.length) return;
+    const grid = document.getElementById("tenant-feature-grid");
+    if (!grid) return;
+    items.forEach(item => {
+      const a = document.createElement("a");
+      a.href = item.path;
+      a.className = "feature-card";
+      a.innerHTML = `
+        <div class="card-icon">
+          <svg viewBox="0 0 22 22" fill="none" stroke-width="1.6">
+            <rect x="4" y="4" width="14" height="14" rx="2"/>
+            <path d="M8 11h6"/>
+          </svg>
+        </div>
+        <div>
+          <div class="card-title"></div>
+          <div class="card-desc"></div>
+        </div>
+        <div class="card-footer">
+          <span class="card-badge">Live</span>
+          <svg class="card-go" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 8h10M9 4l4 4-4 4"/>
+          </svg>
+        </div>`;
+      a.querySelector(".card-title").textContent = item.label;
+      a.querySelector(".card-desc").textContent = item.description;
+      grid.appendChild(a);
+    });
   } catch {}
 })();
 </script>

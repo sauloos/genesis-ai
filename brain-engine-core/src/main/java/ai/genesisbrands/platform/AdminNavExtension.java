@@ -12,6 +12,10 @@ public interface AdminNavExtension {
 
     String path();
 
+    default String description() {
+        return "Extension registered by this tenant.";
+    }
+
     default int order() {
         return 100;
     }

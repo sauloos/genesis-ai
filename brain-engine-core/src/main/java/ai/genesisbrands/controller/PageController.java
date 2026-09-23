@@ -21,11 +21,6 @@ public class PageController {
     @GetMapping("/training")
     public String trainingRedirect() { return "redirect:/dashboard/training"; }
 
-    @GetMapping("/dashboard/playground")
-    public String playgroundPage() { return "forward:/playground.html"; }
-    @GetMapping("/playground")
-    public String playgroundRedirect() { return "redirect:/dashboard/playground"; }
-
     @GetMapping("/dashboard/questionnaires")
     public String questionnairesPage() { return "forward:/questionnaires.html"; }
     @GetMapping("/questionnaires")
@@ -40,21 +35,6 @@ public class PageController {
     public String themesPage() { return "forward:/themes.html"; }
     @GetMapping("/themes")
     public String themesRedirect() { return "redirect:/dashboard/themes"; }
-
-    @GetMapping("/questionnaire-run")
-    public String questionnaireRunPage() {
-        return "forward:/questionnaire-run.html";
-    }
-
-    @GetMapping("/discover")
-    public String discoverPage() {
-        return "forward:/questionnaire-run.html";
-    }
-
-    @GetMapping("/your-brand/{id}")
-    public String yourBrandPage() {
-        return "forward:/your-brand.html";
-    }
 
     @GetMapping("/login")
     public String loginPage() {

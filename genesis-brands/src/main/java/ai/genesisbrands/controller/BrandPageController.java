@@ -10,4 +10,24 @@ public class BrandPageController {
     public String templatesPage() { return "forward:/templates.html"; }
     @GetMapping("/templates")
     public String templatesRedirect() { return "redirect:/dashboard/templates"; }
+
+    @GetMapping("/dashboard/playground")
+    public String playgroundPage() { return "forward:/playground.html"; }
+    @GetMapping("/playground")
+    public String playgroundRedirect() { return "redirect:/dashboard/playground"; }
+
+    @GetMapping("/questionnaire-run")
+    public String questionnaireRunPage() {
+        return "forward:/questionnaire-run.html";
+    }
+
+    @GetMapping("/discover")
+    public String discoverPage() {
+        return "forward:/questionnaire-run.html";
+    }
+
+    @GetMapping("/your-brand/{id}")
+    public String yourBrandPage() {
+        return "forward:/your-brand.html";
+    }
 }

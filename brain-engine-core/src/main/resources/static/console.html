@@ -339,9 +339,9 @@ const API = '';
 const KEY = 'genesis-ai-key';
 const HEADERS = { 'Content-Type': 'application/json', 'X-Api-Key': KEY };
 
-let currentBrandId  = null;
-let isStreaming     = false;
-let pendingFile     = null;
+let currentSubjectId = null;
+let isStreaming      = false;
+let pendingFile      = null;
 
 marked.use({ breaks: true, gfm: true });
 
@@ -356,24 +356,24 @@ async function boot() {
 
 // ── Conversations ─────────────────────────────────────
 async function loadConversations() {
-  const brands = await fetch(`${API}/api/brands`, { headers: HEADERS }).then(r => r.json()).catch(() => []);
-  brands.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  const subjects = await fetch(`${API}/api/consultant/subjects`, { headers: HEADERS }).then(r => r.json()).catch(() => []);
+  subjects.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
   const el = document.getElementById('conversations');
   el.innerHTML = '';
-  for (const b of brands) {
+  for (const s of subjects) {
     const div = document.createElement('div');
-    div.className = 'conv-item' + (b.id === currentBrandId ? ' active' : '');
-    div.dataset.id = b.id;
+    div.className = 'conv-item' + (s.id === currentSubjectId ? ' active' : '');
+    div.dataset.id = s.id;
     div.innerHTML = `
-      <span class="conv-name">${esc(b.name)}</span>
-      <button class="conv-delete" onclick="deleteConv(event,'${b.id}')" title="Delete">✕</button>`;
-    div.addEventListener('click', () => openConversation(b.id, b.name));
+      <span class="conv-name">${esc(s.name)}</span>
+      <button class="conv-delete" onclick="deleteConv(event,'${s.id}')" title="Delete">✕</button>`;
+    div.addEventListener('click', () => openConversation(s.id, s.name));
     el.appendChild(div);
   }
 }
 
 async function newChat() {
-  currentBrandId = null;
+  currentSubjectId = null;
   document.getElementById('messages').innerHTML = '';
   document.getElementById('messages').style.display = 'none';
   document.getElementById('empty').style.display = 'flex';
@@ -383,7 +383,7 @@ async function newChat() {
 }
 
 async function openConversation(id, name) {
-  currentBrandId = id;
+  currentSubjectId = id;
   document.getElementById('chat-title').textContent = name;
   document.getElementById('chat-header').style.display = 'flex';
   document.getElementById('empty').style.display = 'none';
@@ -394,7 +394,7 @@ async function openConversation(id, name) {
   const msgs = document.getElementById('messages');
   msgs.innerHTML = '';
 
-  const history = await fetch(`${API}/api/brands/${id}/chat/history`, { headers: HEADERS })
+  const history = await fetch(`${API}/api/consultant/subjects/${id}/chat/history`, { headers: HEADERS })
     .then(r => r.json()).catch(() => []);
 
   for (const m of history) {
@@ -405,14 +405,14 @@ async function openConversation(id, name) {
 
 async function deleteConv(e, id) {
   e.stopPropagation();
-  await fetch(`${API}/api/brands/${id}`, { method: 'DELETE', headers: HEADERS });
-  if (currentBrandId === id) newChat();
+  await fetch(`${API}/api/consultant/subjects/${id}`, { method: 'DELETE', headers: HEADERS });
+  if (currentSubjectId === id) newChat();
   await loadConversations();
 }
 
 async function clearHistory() {
-  if (!currentBrandId) return;
-  await fetch(`${API}/api/brands/${currentBrandId}/chat/history`, { method: 'DELETE', headers: HEADERS });
+  if (!currentSubjectId) return;
+  await fetch(`${API}/api/consultant/subjects/${currentSubjectId}/chat/history`, { method: 'DELETE', headers: HEADERS });
   document.getElementById('messages').innerHTML = '';
 }
 
@@ -446,21 +446,21 @@ async function sendMessage() {
   const file = pendingFile;
   removeAttachment();
 
-  // Create brand on first message if needed
-  if (!currentBrandId) {
+  // Create a subject on first message if needed
+  if (!currentSubjectId) {
     const name = text.split(' ').slice(0, 6).join(' ') + (text.split(' ').length > 6 ? '…' : '');
-    const brand = await fetch(`${API}/api/brands`, {
+    const subject = await fetch(`${API}/api/consultant/subjects`, {
       method: 'POST', headers: HEADERS,
       body: JSON.stringify({ name, industry: '', audience: '', brief: '' })
     }).then(r => r.json());
-    currentBrandId = brand.id;
+    currentSubjectId = subject.id;
     document.getElementById('chat-title').textContent = name;
     document.getElementById('chat-header').style.display = 'flex';
     document.getElementById('empty').style.display = 'none';
     document.getElementById('messages').style.display = 'flex';
     await loadConversations();
     document.querySelectorAll('.conv-item').forEach(el =>
-      el.classList.toggle('active', el.dataset.id === currentBrandId));
+      el.classList.toggle('active', el.dataset.id === currentSubjectId));
   }
 
   appendMessage('user', text, false);
@@ -485,7 +485,7 @@ async function sendMessage() {
     if (file) formData.append('file', file);
 
     const chatHeaders = { 'X-Api-Key': KEY }; // no Content-Type — browser sets multipart boundary
-    const response = await fetch(`${API}/api/brands/${currentBrandId}/chat`, {
+    const response = await fetch(`${API}/api/consultant/subjects/${currentSubjectId}/chat`, {
       method: 'POST', headers: chatHeaders, body: formData
     });
 
