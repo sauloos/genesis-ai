@@ -31,11 +31,6 @@ public class PageController {
     @GetMapping("/questionnaires")
     public String questionnairesRedirect() { return "redirect:/dashboard/questionnaires"; }
 
-    @GetMapping("/dashboard/templates")
-    public String templatesPage() { return "forward:/templates.html"; }
-    @GetMapping("/templates")
-    public String templatesRedirect() { return "redirect:/dashboard/templates"; }
-
     @GetMapping("/dashboard/knowledge")
     public String knowledgePage() { return "forward:/knowledge.html"; }
     @GetMapping("/knowledge")
