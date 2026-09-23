@@ -30,6 +30,19 @@ public class PageFlow {
     @Column(nullable = false)
     private boolean live = false;
 
+    @Column(name = "start_page_id", length = 36)
+    private String startPageId;
+
+    /** "END_PAGE" (display endPageId, a Page flagged isEndPage) or "REDIRECT_FLOW" (start endTargetFlowId). Null = End not configured. */
+    @Column(name = "end_action", length = 32)
+    private String endAction;
+
+    @Column(name = "end_page_id", length = 36)
+    private String endPageId;
+
+    @Column(name = "end_target_flow_id", length = 36)
+    private String endTargetFlowId;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 

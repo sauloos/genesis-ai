@@ -36,7 +36,7 @@ public class PageFlowController {
         if (!authorized(req)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         try {
             PageFlow flow = pageFlowService.get(id);
-            List<Page> pages = pageService.listByFlow(id);
+            List<Page> pages = pageFlowService.withEffectiveNav(pageService.listByFlow(id));
             return ResponseEntity.ok(new PageFlowDetail(flow, pages));
         } catch (NoSuchElementException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));
@@ -69,6 +69,18 @@ public class PageFlowController {
         }
     }
 
+    @PutMapping("/{id}/start")
+    public ResponseEntity<?> setStart(@PathVariable String id, @RequestBody SetStartRequest body, HttpServletRequest req) {
+        if (!authorized(req)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        return handle(() -> pageFlowService.setStartPage(id, body.startPageId()));
+    }
+
+    @PutMapping("/{id}/end")
+    public ResponseEntity<?> setEnd(@PathVariable String id, @RequestBody SetEndRequest body, HttpServletRequest req) {
+        if (!authorized(req)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        return handle(() -> pageFlowService.setEndConfig(id, body.endAction(), body.endPageId(), body.endTargetFlowId()));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable String id, HttpServletRequest req) {
         if (!authorized(req)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -80,11 +92,25 @@ public class PageFlowController {
         }
     }
 
+    private ResponseEntity<?> handle(java.util.function.Supplier<PageFlow> action) {
+        try {
+            return ResponseEntity.ok(action.get());
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
     private boolean authorized(HttpServletRequest req) {
         return adminAuth.isAdminRequest(req) || adminSession.hasValidSession(req);
     }
 
     public record CreatePageFlowRequest(String name, String slug) {}
+
+    public record SetStartRequest(String startPageId) {}
+
+    public record SetEndRequest(String endAction, String endPageId, String endTargetFlowId) {}
 
     public record PageFlowDetail(PageFlow flow, List<Page> pages) {}
 

@@ -40,11 +40,12 @@ public class PageService {
         return pageRepo.save(page);
     }
 
-    public Page updateMetadata(String id, String name, boolean requiresAuth, boolean errorPage) {
+    public Page updateMetadata(String id, String name, boolean requiresAuth, boolean errorPage, boolean endPage) {
         Page page = get(id);
         page.setName(name);
         page.setRequiresAuth(requiresAuth);
         page.setErrorPage(errorPage);
+        page.setEndPage(endPage);
         page.setUpdatedAt(Instant.now());
         return pageRepo.save(page);
     }
@@ -57,8 +58,11 @@ public class PageService {
         return pageRepo.save(page);
     }
 
-    public Page updateNavTargets(String id, String nextPageId, String previousPageId, String errorPageId) {
+    public Page updateNavTargets(String id, String nextPageId, String previousPageId, String errorPageId, boolean endsFlow) {
         Page page = get(id);
+        if (endsFlow) {
+            nextPageId = null;
+        }
         for (String targetId : new String[] { nextPageId, previousPageId, errorPageId }) {
             if (targetId == null) continue;
             Page target = pageRepo.findById(targetId)
@@ -70,6 +74,7 @@ public class PageService {
         page.setNextPageId(nextPageId);
         page.setPreviousPageId(previousPageId);
         page.setErrorPageId(errorPageId);
+        page.setEndsFlow(endsFlow);
         page.setUpdatedAt(Instant.now());
         return pageRepo.save(page);
     }

@@ -33,6 +33,10 @@ public class Page {
     @Column(name = "is_error_page", nullable = false)
     private boolean errorPage = false;
 
+    /** Marks this page as a designated "flow ends here" page a PageFlow's endPageId can point to. */
+    @Column(name = "is_end_page", nullable = false, columnDefinition = "boolean default false")
+    private boolean endPage = false;
+
     @Column(name = "layout_key", nullable = false, length = 64)
     private String layoutKey = "SINGLE_COLUMN";
 
@@ -45,6 +49,10 @@ public class Page {
     @Column(name = "error_page_id", length = 36)
     private String errorPageId;
 
+    /** True when this page's "next" is explicitly wired to the flow's End node instead of another page. */
+    @Column(name = "ends_flow", nullable = false, columnDefinition = "boolean default false")
+    private boolean endsFlow = false;
+
     @Column(name = "canvas_x", nullable = false)
     private double canvasX = 0;
 
@@ -56,4 +64,12 @@ public class Page {
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
+
+    /** Computed at read time: previousPageId if set, else whichever page most recently pointed its "next" here. */
+    @Transient
+    private String effectivePreviousPageId;
+
+    /** Computed at read time: errorPageId if set, else the flow's designated error page. */
+    @Transient
+    private String effectiveErrorPageId;
 }

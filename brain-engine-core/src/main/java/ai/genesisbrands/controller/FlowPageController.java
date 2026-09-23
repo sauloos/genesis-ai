@@ -29,7 +29,7 @@ public class FlowPageController {
     @PutMapping("/api/admin/pages/{id}")
     public ResponseEntity<?> updateMetadata(@PathVariable String id, @RequestBody UpdateMetadataRequest body, HttpServletRequest req) {
         if (!authorized(req)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        return handle(req, () -> pageService.updateMetadata(id, body.name(), body.requiresAuth(), body.errorPage()));
+        return handle(req, () -> pageService.updateMetadata(id, body.name(), body.requiresAuth(), body.errorPage(), body.endPage()));
     }
 
     @PutMapping("/api/admin/pages/{id}/position")
@@ -41,7 +41,7 @@ public class FlowPageController {
     @PutMapping("/api/admin/pages/{id}/nav-targets")
     public ResponseEntity<?> updateNavTargets(@PathVariable String id, @RequestBody UpdateNavTargetsRequest body, HttpServletRequest req) {
         if (!authorized(req)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        return handle(req, () -> pageService.updateNavTargets(id, body.nextPageId(), body.previousPageId(), body.errorPageId()));
+        return handle(req, () -> pageService.updateNavTargets(id, body.nextPageId(), body.previousPageId(), body.errorPageId(), body.endsFlow()));
     }
 
     @PutMapping("/api/admin/pages/{id}/layout")
@@ -76,9 +76,9 @@ public class FlowPageController {
     }
 
     public record CreatePageRequest(String name) {}
-    public record UpdateMetadataRequest(String name, boolean requiresAuth, boolean errorPage) {}
+    public record UpdateMetadataRequest(String name, boolean requiresAuth, boolean errorPage, boolean endPage) {}
     public record UpdatePositionRequest(double x, double y) {}
-    public record UpdateNavTargetsRequest(String nextPageId, String previousPageId, String errorPageId) {}
+    public record UpdateNavTargetsRequest(String nextPageId, String previousPageId, String errorPageId, boolean endsFlow) {}
     public record UpdateLayoutRequest(String layoutKey) {}
     public record ErrorResponse(String message) {}
 }

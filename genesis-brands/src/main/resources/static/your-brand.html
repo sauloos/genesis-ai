@@ -459,7 +459,7 @@ async function downloadLogos(direction) {
 
 async function logout() {
   await fetch(`${API}/api/auth/logout`, { method: 'POST', headers: HEADERS });
-  window.location.href = '/login';
+  window.location.href = '/';
 }
 
 function esc(s) {
