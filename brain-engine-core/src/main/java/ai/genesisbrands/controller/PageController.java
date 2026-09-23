@@ -41,6 +41,11 @@ public class PageController {
     @GetMapping("/agents")
     public String agentsRedirect() { return "redirect:/dashboard/agents"; }
 
+    @GetMapping("/dashboard/page-flows")
+    public String pageFlowsPage() { return "forward:/page-flows.html"; }
+    @GetMapping("/page-flows")
+    public String pageFlowsRedirect() { return "redirect:/dashboard/page-flows"; }
+
     @GetMapping("/login")
     public String loginPage() {
         return "forward:/login.html";
