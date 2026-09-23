@@ -429,10 +429,26 @@
       <a href="/dashboard/playground">Playground</a>
       <a href="/dashboard/training">Training</a>
       <a href="/dashboard/questionnaires">Questionnaires</a>
-      <a href="/dashboard/templates">Templates</a>
       <a href="/dashboard/knowledge" class="active">Knowledge</a>
     </nav>
   </div>
+  <script>
+  (async () => {
+    try {
+      const r = await fetch("/api/admin/nav-extensions", { credentials: "include" });
+      if (!r.ok) return;
+      const items = await r.json();
+      const nav = document.getElementById("nav-menu");
+      if (!nav) return;
+      items.forEach(item => {
+        const a = document.createElement("a");
+        a.href = item.path;
+        a.textContent = item.label;
+        nav.appendChild(a);
+      });
+    } catch {}
+  })();
+  </script>
 
   <div id="search-wrap">
     <input id="search-input" type="text" placeholder="Search knowledge…" autocomplete="off">

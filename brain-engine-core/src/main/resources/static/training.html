@@ -398,10 +398,27 @@
       <a href="/dashboard/training" class="nav-item active">Training</a>
       <a href="/dashboard/playground" class="nav-item">Playground</a>
       <a href="/dashboard/questionnaires" class="nav-item">Questionnaires</a>
-      <a href="/dashboard/templates" class="nav-item">Templates</a>
       <a href="/dashboard/knowledge" class="nav-item">Knowledge</a>
     </div>
   </div>
+  <script>
+  (async () => {
+    try {
+      const r = await fetch("/api/admin/nav-extensions", { credentials: "include" });
+      if (!r.ok) return;
+      const items = await r.json();
+      const nav = document.getElementById("nav-menu");
+      if (!nav) return;
+      items.forEach(item => {
+        const a = document.createElement("a");
+        a.href = item.path;
+        a.className = "nav-item";
+        a.textContent = item.label;
+        nav.appendChild(a);
+      });
+    } catch {}
+  })();
+  </script>
 
   <button id="new-session-btn" onclick="newSession()">
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
