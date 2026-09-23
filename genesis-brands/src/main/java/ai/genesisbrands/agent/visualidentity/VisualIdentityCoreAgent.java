@@ -25,4 +25,9 @@ public class VisualIdentityCoreAgent implements CoreAgent {
     public String testEndpoint() {
         return "/api/agents/visual-identity/execute";
     }
+
+    @Override
+    public boolean supportsABCompare() {
+        return true;
+    }
 }

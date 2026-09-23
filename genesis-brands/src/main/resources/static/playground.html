@@ -440,25 +440,8 @@
 
   <div id="agent-list">
     <div class="side-label">Specialist agents</div>
-    <div class="agent-item active" data-agent="copy" onclick="selectAgent(this)">
-      <div class="agent-name">✏️ Copy Agent</div>
-      <div class="agent-desc">Tagline, mission, brand story, elevator pitch, tone guide</div>
-    </div>
-    <div class="agent-item" data-agent="visual-identity" onclick="selectAgent(this)">
-      <div class="agent-name">🎨 Visual Identity</div>
-      <div class="agent-desc">Colour palette, typography, mood direction</div>
-    </div>
-    <div class="agent-item" data-agent="logo" onclick="selectAgent(this)">
-      <div class="agent-name">🔺 Logo</div>
-      <div class="agent-desc">Mark concept — DALL-E image or SVG concept</div>
-    </div>
-    <div class="agent-item" data-agent="playbook" onclick="selectAgent(this)">
-      <div class="agent-name">📘 Playbook Assembly</div>
-      <div class="agent-desc">Synthesizes accepted Copy/Visual/Logo runs into one brand playbook</div>
-    </div>
-    <div class="agent-item" data-agent="brand-book" onclick="selectAgent(this)">
-      <div class="agent-name">📗 Brand Book Assembly</div>
-      <div class="agent-desc">Assembles the client-facing brand book PDF from Copy/Visual/Logo/Playbook</div>
+    <div id="agent-items">
+      <div style="padding:12px 4px;color:#666;font-size:12px;">Loading agents…</div>
     </div>
   </div>
 
@@ -472,12 +455,10 @@
 
   <div id="method-toggle-wrap" style="display:none">
     <div class="side-label-inline">Generation method</div>
-    <div class="method-group">
-      <button class="method-btn active" data-value="DALLE" onclick="setMethod(this)">DALL-E image</button>
-      <button class="method-btn" data-value="IDEOGRAM" onclick="setMethod(this)">Ideogram</button>
-      <button class="method-btn" data-value="SVG_CONCEPT" onclick="setMethod(this)">SVG concept</button>
-    </div>
+    <div class="method-group"></div>
   </div>
+
+  <div id="custom-options-wrap" style="display:none"></div>
 
   <div id="compare-toggle-wrap">
     <label>
@@ -750,14 +731,41 @@ const SAMPLE_ANSWERS = {
 };
 let isManualMode = false;      // true when user clicked "Enter manually instead"
 
-const AGENT_META = {
-  'copy': { title: 'Copy Agent', sub: 'Give it a brand context and a creative direction, then run it.' },
-  'visual-identity': { title: 'Visual Identity Agent', sub: 'Give it a brand context and a creative direction, then run it.' },
-  'logo': { title: 'Logo Agent', sub: 'Give it a brand context and a creative direction, then run it.' },
-  'playbook': { title: 'Playbook Assembly Agent', sub: 'Pick accepted Copy/Visual Identity/Logo runs, give it the brief, then run it.' },
-  'brand-book': { title: 'Brand Book Assembly Agent', sub: 'Pick accepted Copy/Visual Identity/Logo/Playbook runs, give it the brief, then run it.' },
-  'journey': { title: 'Full Journey', sub: 'Run the complete pipeline from questionnaire intake to all brand assets.' }
+// Populated at boot from GET /api/admin/agents — keyed by agentId. No agent identity,
+// availability, or capability is hardcoded here; only decorative icons are (agentIcon()).
+let AGENT_CATALOG = {};
+
+const AGENT_ICONS = {
+  'copy': '✏️', 'visual-identity': '🎨', 'logo': '🔺', 'playbook': '📘', 'brand-book': '📗'
 };
+function agentIcon(agentId) { return AGENT_ICONS[agentId] || '🧩'; }
+
+async function loadAgentCatalog() {
+  const container = document.getElementById('agent-items');
+  try {
+    const agents = await fetch(`${API}/api/admin/agents`, { headers: HEADERS }).then(r => r.json());
+    AGENT_CATALOG = {};
+    agents.forEach(a => { AGENT_CATALOG[a.agentId] = a; });
+    renderAgentList();
+  } catch (err) {
+    container.innerHTML = `<div style="padding:12px 4px;color:#c66;font-size:12px;">Failed to load agents: ${esc(err.message || String(err))}</div>`;
+  }
+}
+
+function renderAgentList() {
+  const container = document.getElementById('agent-items');
+  const entries = Object.values(AGENT_CATALOG).filter(a => a.availableForPlayground);
+  if (!entries.length) {
+    container.innerHTML = '<div style="padding:12px 4px;color:#666;font-size:12px;">No agents available.</div>';
+    return;
+  }
+  container.innerHTML = entries.map(a => `
+    <div class="agent-item" data-agent="${esc(a.agentId)}" onclick="selectAgent(this)">
+      <div class="agent-name">${agentIcon(a.agentId)} ${esc(a.displayName)}</div>
+      <div class="agent-desc">${esc(a.description || '')}</div>
+    </div>
+  `).join('');
+}
 
 // ── Journey state ─────────────────────────────────────────────────────────────
 let journeyTab = 'simulate';
@@ -1285,7 +1293,7 @@ async function openAgentAuditItem(id) {
       ${e.paymentStatus === 'REQUESTED' ? `<button onclick="markPaid('${esc(id)}');loadAgentAudit();" style="background:#1e8a4c;color:#fff;border:none;border-radius:10px;font-size:11px;padding:3px 10px;cursor:pointer;font-family:inherit;">Mark as paid</button>` : ''}
       <a href="/your-brand/${esc(id)}" target="_blank" style="background:#1a1a1a;color:#fff;font-size:11px;padding:3px 10px;border-radius:10px;text-decoration:none;">View client page ↗</a>
     </div>
-    <div style="font-size:11px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">${esc(AGENT_META[currentAgent]?.title || currentAgent)} output — all directions</div>
+    <div style="font-size:11px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">${esc(AGENT_CATALOG[currentAgent]?.displayName || currentAgent)} output — all directions</div>
     ${dirsHtml}
   `;
 }
@@ -1344,10 +1352,11 @@ function selectAgent(el) {
     return;
   }
 
-  const meta = AGENT_META[currentAgent];
-  document.getElementById('form-title').textContent = meta.title;
-  document.getElementById('form-sub').textContent = meta.sub;
-  document.getElementById('method-toggle-wrap').style.display = currentAgent === 'logo' ? 'block' : 'none';
+  const meta = AGENT_CATALOG[currentAgent] || {};
+  document.getElementById('form-title').textContent = meta.displayName || currentAgent;
+  document.getElementById('form-sub').textContent = meta.description || '';
+  document.getElementById('compare-toggle-wrap').style.display = (meta.supportsABCompare && meta.abCompareEnabled) ? 'block' : 'none';
+  renderCustomOptions(meta.customOptions || []);
   document.getElementById('pb-source-runs').style.display = currentAgent === 'playbook' ? 'grid' : 'none';
   if (currentAgent === 'playbook') loadPlaybookSourceRuns();
   document.getElementById('bb-source-runs').style.display = currentAgent === 'brand-book' ? 'grid' : 'none';
@@ -1508,6 +1517,63 @@ async function deleteHistoryItem(e, id) {
   e.stopPropagation();
   await fetch(`${API}/api/playground/sessions/${id}`, { method: 'DELETE', headers: HEADERS });
   await loadHistory();
+}
+
+// The "method" custom option (currently only Logo's) drives an up-to-2 multi-select
+// that fans out into parallel runs — a different interaction than a single-value form
+// field, so it keeps its own dedicated widget. Any other declared custom option renders
+// through the generic single-value form below.
+function renderCustomOptions(options) {
+  const methodOption = options.find(o => o.key === 'method' && o.type === 'SELECT');
+  const methodWrap = document.getElementById('method-toggle-wrap');
+  if (methodOption) {
+    const defaultValue = methodOption.defaultValue || methodOption.allowedValues[0];
+    currentMethods = [defaultValue];
+    methodWrap.querySelector('.method-group').innerHTML = methodOption.allowedValues.map(v => `
+      <button class="method-btn${v === defaultValue ? ' active' : ''}" data-value="${esc(v)}" onclick="setMethod(this)">${esc(METHOD_LABELS[v] || v)}</button>
+    `).join('');
+    methodWrap.style.display = 'block';
+  } else {
+    methodWrap.style.display = 'none';
+  }
+
+  const otherOptions = options.filter(o => o !== methodOption);
+  const wrap = document.getElementById('custom-options-wrap');
+  if (!otherOptions.length) {
+    wrap.style.display = 'none';
+    wrap.innerHTML = '';
+    return;
+  }
+  wrap.style.display = 'block';
+  wrap.innerHTML = otherOptions.map(o => {
+    const id = `custom-opt-${o.key}`;
+    if (o.type === 'BOOLEAN') {
+      return `<label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#ccc;margin-bottom:8px;">
+        <input type="checkbox" id="${id}" data-key="${esc(o.key)}" ${o.defaultValue === 'true' ? 'checked' : ''}>
+        ${esc(o.label)}
+      </label>`;
+    }
+    if (o.type === 'SELECT') {
+      return `<div style="margin-bottom:8px;">
+        <label style="display:block;font-size:11px;color:#888;margin-bottom:4px;">${esc(o.label)}</label>
+        <select id="${id}" data-key="${esc(o.key)}">
+          ${(o.allowedValues || []).map(v => `<option value="${esc(v)}"${v === o.defaultValue ? ' selected' : ''}>${esc(v)}</option>`).join('')}
+        </select>
+      </div>`;
+    }
+    return `<div style="margin-bottom:8px;">
+      <label style="display:block;font-size:11px;color:#888;margin-bottom:4px;">${esc(o.label)}</label>
+      <input type="text" id="${id}" data-key="${esc(o.key)}" value="${esc(o.defaultValue || '')}">
+    </div>`;
+  }).join('');
+}
+
+function collectCustomOptions() {
+  const result = {};
+  document.getElementById('custom-options-wrap').querySelectorAll('[data-key]').forEach(input => {
+    result[input.dataset.key] = input.type === 'checkbox' ? input.checked : input.value;
+  });
+  return result;
 }
 
 function setMethod(btn) {
@@ -1988,6 +2054,9 @@ async function runAgent() {
     let requestPayload = brief;
     if (currentAgent === 'playbook') requestPayload = await buildPlaybookInput(brief);
     else if (currentAgent === 'brand-book') requestPayload = await buildBrandBookInput(brief);
+
+    const customOptions = collectCustomOptions();
+    if (Object.keys(customOptions).length) requestPayload = { ...requestPayload, options: customOptions };
 
     const results = await Promise.all(methods.map(m => fetchMethodResult(endpoint, requestPayload, m)));
     const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
@@ -2510,10 +2579,19 @@ document.addEventListener('click', (e) => {
   const params = new URLSearchParams(window.location.search);
   const agentId = params.get('agentId');
   const sessionId = params.get('session');
-  if (agentId && AGENT_META[agentId]) {
-    const el = document.querySelector(`.agent-item[data-agent="${agentId}"]`);
+
+  await loadAgentCatalog();
+
+  const requestedAvailable = agentId === 'journey'
+    || (AGENT_CATALOG[agentId] && AGENT_CATALOG[agentId].availableForPlayground);
+  const initialAgentId = requestedAvailable
+    ? agentId
+    : Object.values(AGENT_CATALOG).find(a => a.availableForPlayground)?.agentId;
+  if (initialAgentId) {
+    const el = document.querySelector(`.agent-item[data-agent="${initialAgentId}"]`);
     if (el) selectAgent(el);
   }
+
   if (sessionId) {
     switchViewTab('response');
     await switchResultsTab('history');

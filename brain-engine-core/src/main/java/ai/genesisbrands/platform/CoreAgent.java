@@ -1,5 +1,7 @@
 package ai.genesisbrands.platform;
 
+import java.util.List;
+
 /**
  * Extension point: a tenant registers a specialist agent so Playground can discover it
  * generically. This is a registry entry, not an invocation contract — each agent's real
@@ -15,4 +17,20 @@ public interface CoreAgent {
     String description();
 
     String testEndpoint();
+
+    default boolean requiresQuestionnaire() {
+        return false;
+    }
+
+    default boolean supportsPlayground() {
+        return true;
+    }
+
+    default boolean supportsABCompare() {
+        return false;
+    }
+
+    default List<AgentCustomOption> customOptions() {
+        return List.of();
+    }
 }

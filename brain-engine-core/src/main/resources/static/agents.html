@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Genesis — Agents</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --theme-bg-image: url('/bg-earth.jpg');
+    --theme-bg-transform: rotate(180deg);
+    --theme-bg-overlay: rgba(0, 0, 10, 0.52);
+    --theme-body-bg: #000010;
+    --theme-text-primary: #f2f2f2;
+    --theme-text-muted: rgba(255, 255, 255, 0.52);
+    --theme-text-label: rgba(255, 255, 255, 0.38);
+    --theme-card-bg: rgba(255, 255, 255, 0.07);
+    --theme-card-border: rgba(255, 255, 255, 0.10);
+    --theme-backdrop: blur(12px);
+    --theme-btn-color: rgba(255, 255, 255, 0.4);
+    --theme-btn-border: rgba(255, 255, 255, 0.12);
+    --theme-btn-color-hover: rgba(255, 255, 255, 0.75);
+    --theme-btn-border-hover: rgba(255, 255, 255, 0.3);
+    --theme-env-badge-bg: rgba(0, 0, 0, 0.4);
+    --theme-env-badge-border: rgba(255, 255, 255, 0.08);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    min-height: 100vh;
+    color: var(--theme-text-primary);
+    background: var(--theme-body-bg);
+    position: relative;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: var(--theme-bg-image) var(--theme-bg-position, center center) / var(--theme-bg-size, cover) no-repeat;
+    transform: var(--theme-bg-transform, none);
+    z-index: -2;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: var(--theme-bg-overlay);
+    z-index: -1;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 40px 0;
+  }
+  .back-btn {
+    font-size: 12px;
+    color: var(--theme-btn-color);
+    background: none;
+    border: 1px solid var(--theme-btn-border);
+    border-radius: 6px;
+    padding: 5px 12px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .back-btn:hover { color: var(--theme-btn-color-hover); border-color: var(--theme-btn-border-hover); }
+
+  .hero {
+    text-align: center;
+    padding: 36px 24px 32px;
+  }
+  .hero-label {
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--theme-text-label);
+    margin-bottom: 10px;
+  }
+  .hero h1 {
+    font-size: clamp(20px, 3vw, 28px);
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    color: var(--theme-text-primary);
+  }
+  .hero-sub {
+    font-size: 14px;
+    color: var(--theme-text-muted);
+    margin-top: 8px;
+  }
+
+  .main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 24px 80px;
+  }
+
+  .agent-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .agent-card {
+    background: var(--theme-card-bg);
+    border: 1px solid var(--theme-card-border);
+    border-radius: 16px;
+    backdrop-filter: var(--theme-backdrop);
+    -webkit-backdrop-filter: var(--theme-backdrop);
+    padding: 20px 22px;
+  }
+
+  .agent-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
+  .agent-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--theme-text-primary);
+  }
+  .agent-id {
+    font-size: 11px;
+    color: var(--theme-text-muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .agent-desc {
+    font-size: 13px;
+    color: var(--theme-text-muted);
+    line-height: 1.5;
+    margin-bottom: 14px;
+  }
+
+  .badge {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.06);
+    color: var(--theme-text-muted);
+    border: 1px solid var(--theme-card-border);
+  }
+  .badge-on {
+    background: rgba(111,224,165,0.15);
+    color: #6fe0a5;
+    border-color: rgba(111,224,165,0.25);
+  }
+
+  .custom-options {
+    font-size: 11px;
+    color: var(--theme-text-muted);
+    margin-bottom: 14px;
+  }
+  .custom-options span {
+    display: inline-block;
+    margin-right: 8px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--theme-card-border);
+  }
+
+  .toggle-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    padding-top: 12px;
+    border-top: 1px solid var(--theme-card-border);
+  }
+  .toggle-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--theme-text-muted);
+    cursor: pointer;
+  }
+  .toggle-item input { accent-color: #6fe0a5; width: 15px; height: 15px; cursor: pointer; }
+
+  .empty {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--theme-text-muted);
+    font-size: 14px;
+  }
+
+  #toast {
+    position: fixed;
+    bottom: 32px;
+    right: 24px;
+    background: rgba(30,30,40,0.95);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-size: 13px;
+    color: #f2f2f2;
+    backdrop-filter: blur(12px);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+    z-index: 100;
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+
+  @media (max-width: 480px) {
+    header { padding: 20px 16px 0; }
+    .hero { padding: 28px 16px 24px; }
+    .main { padding: 0 12px 60px; }
+  }
+
+  .hero-logo {
+    height: 52px;
+    width: auto;
+    aspect-ratio: 805 / 220;
+    display: block;
+    margin: 0 auto 20px;
+    background-color: var(--theme-text-primary, currentColor);
+    -webkit-mask-image: url(/api/themes/active/logo);
+    mask-image: url(/api/themes/active/logo);
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+  }
+
+  #env-badge {
+    position: fixed;
+    bottom: 20px;
+    left: 24px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: var(--theme-env-badge-bg);
+    border: 1px solid var(--theme-env-badge-border);
+    border-radius: 20px;
+    padding: 5px 12px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+</style>
+<link rel="stylesheet" href="/api/themes/active/styles.css">
+</head>
+<body>
+
+<header>
+  <a href="/dashboard" class="back-btn">← Dashboard</a>
+</header>
+
+<div class="hero">
+  <div class="hero-logo" role="img" aria-label="Genesis"></div>
+  <div class="hero-label">Brain Engine</div>
+  <h1>Agents</h1>
+  <p class="hero-sub">Registered specialist agents and their live-view / Playground availability.</p>
+</div>
+
+<div class="main">
+  <div class="agent-list" id="agentList">
+    <div class="empty">Loading agents…</div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+let API_KEY = '';
+
+async function apiFetch(path, opts = {}) {
+  const r = await fetch(path, {
+    ...opts,
+    headers: { 'X-Api-Key': API_KEY, 'Content-Type': 'application/json', ...(opts.headers || {}) }
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.status === 204 ? null : r.json();
+}
+
+function toast(msg, ok = true) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.borderColor = ok ? 'rgba(111,224,165,0.35)' : 'rgba(239,68,68,0.35)';
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+function renderAgents(agents) {
+  const list = document.getElementById('agentList');
+  if (!agents.length) {
+    list.innerHTML = '<div class="empty">No agents registered on this platform instance.</div>';
+    return;
+  }
+  list.innerHTML = agents.map(a => `
+    <div class="agent-card" data-id="${a.agentId}">
+      <div class="agent-head">
+        <span class="agent-name">${a.displayName}</span>
+        <span class="agent-id">${a.agentId}</span>
+        <span class="badge ${a.requiresQuestionnaire ? 'badge-on' : ''}">${a.requiresQuestionnaire ? 'Requires questionnaire' : 'No questionnaire'}</span>
+      </div>
+      <div class="agent-desc">${a.description || ''}</div>
+      ${a.customOptions && a.customOptions.length ? `
+        <div class="custom-options">
+          Custom options: ${a.customOptions.map(o => `<span>${o.label} (${o.type})</span>`).join('')}
+        </div>
+      ` : ''}
+      <div class="toggle-row">
+        <label class="toggle-item">
+          <input type="checkbox" data-field="availableForLiveView" ${a.availableForLiveView ? 'checked' : ''}>
+          Available in live dashboard
+        </label>
+        <label class="toggle-item">
+          <input type="checkbox" data-field="availableForPlayground" ${a.availableForPlayground ? 'checked' : ''}>
+          Available in Playground
+        </label>
+        ${a.supportsABCompare ? `
+          <label class="toggle-item">
+            <input type="checkbox" data-field="abCompareEnabled" ${a.abCompareEnabled ? 'checked' : ''}>
+            A/B compare enabled
+          </label>
+        ` : ''}
+      </div>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.agent-card').forEach(card => {
+    const agentId = card.dataset.id;
+    card.querySelectorAll('input[type=checkbox]').forEach(input => {
+      input.addEventListener('change', async () => {
+        try {
+          await apiFetch(`/api/admin/agents/${agentId}/config`, {
+            method: 'PUT',
+            body: JSON.stringify({ [input.dataset.field]: input.checked })
+          });
+          toast('Saved.');
+        } catch (e) {
+          input.checked = !input.checked;
+          toast(e.message, false);
+        }
+      });
+    });
+  });
+}
+
+async function load() {
+  try {
+    const agents = await apiFetch('/api/admin/agents');
+    renderAgents(agents);
+  } catch (e) {
+    document.getElementById('agentList').innerHTML = `<div class="empty">Error loading agents: ${e.message}</div>`;
+  }
+}
+
+// Fetch the API key from the admin session, then load
+(async () => {
+  try {
+    const r = await fetch('/api/admin/key', { credentials: 'include' });
+    if (r.ok) { const { key } = await r.json(); API_KEY = key; }
+  } catch {}
+  load();
+})();
+
+(async () => {
+  try {
+    const r = await fetch("/api/admin/env", { credentials: "include" });
+    if (!r.ok) return;
+    const { env } = await r.json();
+    const col = { PRODUCTION: "#ef4444", QA: "#f59e0b", DEV: "#6b7280" }[env] || "#888";
+    const el = document.createElement("div");
+    el.id = "env-badge";
+    el.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:${col};flex-shrink:0;display:inline-block"></span>`
+      + `<span style="font-size:10px;font-weight:700;letter-spacing:0.5px;color:${col};text-transform:uppercase">${env}</span>`;
+    document.body.appendChild(el);
+  } catch {}
+})();
+</script>
+</body>
+</html>

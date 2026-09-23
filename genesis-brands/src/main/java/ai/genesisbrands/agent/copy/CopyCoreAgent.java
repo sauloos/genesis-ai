@@ -25,4 +25,9 @@ public class CopyCoreAgent implements CoreAgent {
     public String testEndpoint() {
         return "/api/agents/copy/execute";
     }
+
+    @Override
+    public boolean supportsABCompare() {
+        return true;
+    }
 }
