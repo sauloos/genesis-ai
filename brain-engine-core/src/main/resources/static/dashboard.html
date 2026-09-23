@@ -474,8 +474,19 @@
     if (!r.ok) return;
     const items = await r.json();
     if (!items.length) return;
-    const grid = document.querySelector(".feature-grid");
-    if (!grid) return;
+    const wrap = document.querySelector(".grid-wrap");
+    if (!wrap) return;
+
+    const section = document.createElement("div");
+    section.className = "section";
+    section.innerHTML = `
+      <div class="section-header">
+        <span class="section-label">Extensions</span>
+        <div class="section-line"></div>
+      </div>
+      <div class="feature-grid"></div>`;
+    const grid = section.querySelector(".feature-grid");
+
     items.forEach(item => {
       const a = document.createElement("a");
       a.href = item.path;
@@ -501,6 +512,8 @@
       a.querySelector(".card-desc").textContent = item.description;
       grid.appendChild(a);
     });
+
+    wrap.appendChild(section);
   } catch {}
 })();
 </script>
