@@ -33,7 +33,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -69,7 +68,6 @@ public class EngagementOrchestratorService {
     private final ObjectMapper objectMapper;
 
     @Async
-    @Transactional
     public void runEngagement(String engagementId) {
         Engagement engagement = engagementRepo.findById(engagementId)
             .orElseThrow(() -> new RuntimeException("Engagement not found: " + engagementId));
@@ -86,7 +84,6 @@ public class EngagementOrchestratorService {
 
     /** Same pipeline as {@link #runEngagement(String)}, for callers that already have the Q&A in hand (e.g. a PageFlow's captured answers) instead of a QuestionnaireResponse to load. */
     @Async
-    @Transactional
     public void runEngagementWithAnswers(String engagementId, List<QuestionnaireQuestion> questions, List<QuestionnaireAnswer> answers) {
         Engagement engagement = engagementRepo.findById(engagementId)
             .orElseThrow(() -> new RuntimeException("Engagement not found: " + engagementId));
