@@ -199,7 +199,7 @@ class PublicFlowRuntimeServiceTest {
     void advance_movesToNextPage_returnsUpdatedView() {
         FlowSession updated = session("tok", "f1", "p2", false);
         when(flowSessionService.advance("tok", "next"))
-            .thenReturn(new FlowSessionService.AdvanceResult(updated, null));
+            .thenReturn(new FlowSessionService.AdvanceResult(updated, null, null));
         PageFlow f = flow("f1", "s");
         when(pageFlowRepo.findById("f1")).thenReturn(Optional.of(f));
         Page p2 = page("p2", "f1");
@@ -216,7 +216,7 @@ class PublicFlowRuntimeServiceTest {
     void advance_redirectFlow_startsNewSessionOnTargetFlow_returnsItsSlug() {
         FlowSession ended = session("tok", "f1", null, true);
         when(flowSessionService.advance("tok", "next"))
-            .thenReturn(new FlowSessionService.AdvanceResult(ended, "f2"));
+            .thenReturn(new FlowSessionService.AdvanceResult(ended, "f2", null));
         FlowSession newSession = session("tok2", "f2", "p9", false);
         when(flowSessionService.start("f2")).thenReturn(newSession);
         PageFlow f2 = flow("f2", "target-flow");
@@ -230,6 +230,21 @@ class PublicFlowRuntimeServiceTest {
 
         assertThat(view.token()).isEqualTo("tok2");
         assertThat(view.slug()).isEqualTo("target-flow");
+    }
+
+    @Test
+    void advance_createEngagementEndAction_returnsEngagementIdInView() {
+        FlowSession ended = session("tok", "f1", null, true);
+        when(flowSessionService.advance("tok", "next"))
+            .thenReturn(new FlowSessionService.AdvanceResult(ended, null, "eng-1"));
+        PageFlow f = flow("f1", "s");
+        when(pageFlowRepo.findById("f1")).thenReturn(Optional.of(f));
+
+        PublicFlowRuntimeService.PublicSessionView view = service.advance("tok", "next");
+
+        assertThat(view.ended()).isTrue();
+        assertThat(view.page()).isNull();
+        assertThat(view.engagementId()).isEqualTo("eng-1");
     }
 
     @Test

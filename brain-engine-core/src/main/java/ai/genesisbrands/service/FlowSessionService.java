@@ -105,6 +105,7 @@ public class FlowSessionService {
         eventRepo.save(event);
 
         String redirectToFlowId = null;
+        String engagementId = null;
         if ("PAGE".equals(transition.getTargetKind())) {
             session.setCurrentPageId(transition.getTargetPageId());
         } else {
@@ -119,13 +120,13 @@ public class FlowSessionService {
                 redirectToFlowId = flow.getEndTargetFlowId();
             } else if ("CREATE_ENGAGEMENT".equals(endAction)) {
                 session.setCurrentPageId(null);
-                flowEngagementService.triggerEngagement(flow, session);
+                engagementId = flowEngagementService.triggerEngagement(flow, session);
             } else {
                 session.setCurrentPageId(null);
             }
         }
         session.setUpdatedAt(Instant.now());
-        return new AdvanceResult(sessionRepo.save(session), redirectToFlowId);
+        return new AdvanceResult(sessionRepo.save(session), redirectToFlowId, engagementId);
     }
 
     public List<FlowSessionEvent> history(String token) {
@@ -133,5 +134,5 @@ public class FlowSessionService {
         return eventRepo.findByFlowSessionTokenOrderByOccurredAtAsc(token);
     }
 
-    public record AdvanceResult(FlowSession session, String redirectToFlowId) {}
+    public record AdvanceResult(FlowSession session, String redirectToFlowId, String engagementId) {}
 }

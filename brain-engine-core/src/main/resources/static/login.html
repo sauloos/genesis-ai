@@ -55,7 +55,7 @@
   <div class="field"><label>Password</label><input id="password" type="password" placeholder="Password" autocomplete="current-password"></div>
   <div class="err" id="err"></div>
   <button class="btn" id="btn" onclick="login()">Sign in</button>
-  <div class="footer-link">Don't have an account? <a href="/register">Create one</a></div>
+  <div class="footer-link">Don't have an account? <a id="register-link" href="/register">Create one</a></div>
 </div>
 
 <script>
@@ -64,6 +64,9 @@ const KEY     = 'genesis-ai-key';
 const HEADERS = { 'Content-Type': 'application/json', 'X-Api-Key': KEY };
 
 const nextUrl = new URLSearchParams(window.location.search).get('next') || '/';
+if (nextUrl !== '/') {
+  document.getElementById('register-link').href = '/register?next=' + encodeURIComponent(nextUrl);
+}
 
 document.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
 

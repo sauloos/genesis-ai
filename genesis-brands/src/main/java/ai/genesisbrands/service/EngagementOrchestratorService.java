@@ -96,13 +96,13 @@ public class EngagementOrchestratorService {
 
         engagement.setStatus(Engagement.Status.RUNNING);
         engagement.setUpdatedAt(Instant.now());
-        engagementRepo.save(engagement);
+        saveEngagement(engagement);
 
         try {
             // Derive 3 direction briefs
             List<DirectionBrief> briefs = briefDerivation.derive(engagementId, questions, answers);
             engagement.setBriefsJson(objectMapper.writeValueAsString(briefs));
-            engagementRepo.save(engagement);
+            saveEngagement(engagement);
 
             // Run pipeline for each direction
             List<DirectionOutput> directionOutputs = new ArrayList<>();
@@ -140,7 +140,7 @@ public class EngagementOrchestratorService {
             engagement.setResultsJson(objectMapper.writeValueAsString(results));
             engagement.setStatus(Engagement.Status.DONE);
             engagement.setUpdatedAt(Instant.now());
-            engagementRepo.save(engagement);
+            saveEngagement(engagement);
 
             log.info("Engagement {} completed successfully", engagementId);
         } catch (Exception e) {
@@ -148,8 +148,25 @@ public class EngagementOrchestratorService {
             engagement.setStatus(Engagement.Status.FAILED);
             engagement.setErrorMessage(e.getMessage());
             engagement.setUpdatedAt(Instant.now());
-            engagementRepo.save(engagement);
+            saveEngagement(engagement);
         }
+    }
+
+    /**
+     * The pipeline holds one in-memory {@code Engagement} for its whole (multi-minute) async run,
+     * but the client can concurrently claim it or request payment via separate requests. A plain
+     * save() here would silently overwrite those with the stale values this object was loaded
+     * with, so every save re-syncs the client-owned fields from the current DB row first.
+     */
+    private void saveEngagement(Engagement engagement) {
+        engagementRepo.findById(engagement.getId()).ifPresent(current -> {
+            engagement.setClientUserId(current.getClientUserId());
+            engagement.setClientEmail(current.getClientEmail());
+            engagement.setClientName(current.getClientName());
+            engagement.setPaymentStatus(current.getPaymentStatus());
+            engagement.setPaidAt(current.getPaidAt());
+        });
+        engagementRepo.save(engagement);
     }
 
     private DirectionOutput runDirection(DirectionBrief brief, boolean evalMode) {

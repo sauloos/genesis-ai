@@ -42,7 +42,7 @@ public class PublicFlowRuntimeService {
         PageFlow flow = pageFlowRepo.findByLiveTrueAndSlug(slug)
             .orElseThrow(() -> new NoSuchElementException("No live PageFlow for slug: " + slug));
         FlowSession session = flowSessionService.start(flow.getId());
-        return toView(session, flow);
+        return toView(session, flow, null);
     }
 
     public PublicSessionView resume(String token) {
@@ -72,18 +72,20 @@ public class PublicFlowRuntimeService {
         if (result.redirectToFlowId() != null) {
             return toView(flowSessionService.start(result.redirectToFlowId()));
         }
-        return toView(result.session());
+        PageFlow flow = pageFlowRepo.findById(result.session().getPageFlowId())
+            .orElseThrow(() -> new NoSuchElementException("PageFlow not found: " + result.session().getPageFlowId()));
+        return toView(result.session(), flow, result.engagementId());
     }
 
     private PublicSessionView toView(FlowSession session) {
         PageFlow flow = pageFlowRepo.findById(session.getPageFlowId())
             .orElseThrow(() -> new NoSuchElementException("PageFlow not found: " + session.getPageFlowId()));
-        return toView(session, flow);
+        return toView(session, flow, null);
     }
 
-    private PublicSessionView toView(FlowSession session, PageFlow flow) {
+    private PublicSessionView toView(FlowSession session, PageFlow flow, String engagementId) {
         PageRenderView page = session.isEnded() ? null : renderCurrentPage(session);
-        return new PublicSessionView(session.getToken(), flow.getSlug(), page, session.isEnded());
+        return new PublicSessionView(session.getToken(), flow.getSlug(), page, session.isEnded(), engagementId);
     }
 
     private PageRenderView renderCurrentPage(FlowSession session) {
@@ -123,7 +125,7 @@ public class PublicFlowRuntimeService {
         }
     }
 
-    public record PublicSessionView(String token, String slug, PageRenderView page, boolean ended) {}
+    public record PublicSessionView(String token, String slug, PageRenderView page, boolean ended, String engagementId) {}
 
     public record PageRenderView(
         String pageId, String name, String layoutKey,

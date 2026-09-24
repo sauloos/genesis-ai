@@ -116,6 +116,28 @@ public class EngagementController {
         return new EngagementDetail(EngagementSummary.of(e), results, adminAccess, downloadAllowed, ownsEngagement);
     }
 
+    // ── Claim (attach an anonymous engagement to the signed-in client) ─────────
+
+    @PostMapping("/{id}/claim")
+    public EngagementSummary claim(@PathVariable String id, HttpServletRequest req) {
+        Engagement e = engagementRepo.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Engagement not found: " + id));
+
+        String clientUserId = resolveClientUserId(req);
+        if (clientUserId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sign in required to claim this engagement");
+        }
+        if (e.getClientUserId() != null && !e.getClientUserId().equals(clientUserId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This engagement is already linked to another account");
+        }
+        if (e.getClientUserId() == null) {
+            e.setClientUserId(clientUserId);
+            e.setUpdatedAt(Instant.now());
+            engagementRepo.save(e);
+        }
+        return EngagementSummary.of(e);
+    }
+
     // ── Payment placeholder ───────────────────────────────────────────────────
 
     @PostMapping("/{id}/request-payment")

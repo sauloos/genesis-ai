@@ -203,10 +203,18 @@ async function boot() {
     if (me.id) {
       document.getElementById('user-name').textContent = me.name || me.email;
       document.getElementById('logout-link').style.display = 'inline';
+      // Best-effort: attach this engagement to the signed-in account if it isn't
+      // linked to one yet (e.g. visitor signed in via /login?next=... instead of
+      // registering inline). No-op if already claimed by this same account.
+      try {
+        await fetch(`${API}/api/engagements/${engagementId}/claim`, { method: 'POST', headers: HEADERS });
+      } catch (_) { /* non-fatal — viewing still works, just unclaimed */ }
     } else {
+      document.getElementById('login-link').href = '/login?next=' + encodeURIComponent(window.location.pathname);
       document.getElementById('login-link').style.display = 'inline';
     }
   } catch (_) {
+    document.getElementById('login-link').href = '/login?next=' + encodeURIComponent(window.location.pathname);
     document.getElementById('login-link').style.display = 'inline';
   }
 
