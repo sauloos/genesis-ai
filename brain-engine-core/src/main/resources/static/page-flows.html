@@ -299,7 +299,12 @@
   <div id="level1">
     <div id="toolbar">
       <h2 id="flow-title"></h2>
-      <span id="flow-live-path" title="Click to edit the root prefix" style="cursor:pointer; font-size:11px; color:rgba(255,255,255,0.5); font-family:ui-monospace,SFMono-Regular,Menlo,monospace;" onclick="editRootPrefix()"></span>
+      <span style="display:flex; align-items:center; gap:4px; font-size:11px; color:rgba(255,255,255,0.5); font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">
+        <input type="checkbox" id="flow-root-checkbox" onchange="toggleRootPrefix()" style="cursor:pointer; margin:0;">
+        <label for="flow-root-checkbox" id="flow-root-label" style="cursor:pointer;" title="Uncheck to mount this flow at the site root, with no prefix"></label>
+        <span id="flow-slug" ondblclick="startEditSlug()" style="cursor:pointer; text-decoration:underline dotted;" title="Double-click to edit the URL slug"></span>
+        <input type="text" id="flow-slug-input" onblur="commitSlugEdit()" onkeydown="handleSlugEditKey(event)" style="display:none; font-size:11px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; width:140px;">
+      </span>
       <span id="flow-theme" title="Click to set a theme override" style="cursor:pointer; font-size:11px; color:rgba(255,255,255,0.5); font-family:ui-monospace,SFMono-Regular,Menlo,monospace;" onclick="editTheme()"></span>
       <div class="legend">
         <span><span class="legend-dot" style="background:#6fe0a5"></span>outcome</span>
@@ -323,6 +328,7 @@
         <label class="check-field"><input type="checkbox" id="pg-auth"> Requires auth</label>
         <label class="check-field"><input type="checkbox" id="pg-error"> Is error page</label>
         <label class="check-field"><input type="checkbox" id="pg-endpage"> Is end-of-flow page</label>
+        <label class="check-field"><input type="checkbox" id="pg-bordered"> Show card border</label>
         <div class="form-field">
           <label>Layout</label>
           <select id="pg-layout"></select>
@@ -635,12 +641,22 @@ function renderFlowList() {
 async function newFlow() {
   const name = prompt('Page flow name:');
   if (!name) return;
-  let raw = prompt('URL slug (e.g. "home", or "/" to mount at the site root):');
+  const rootMounted = !confirm(
+    'Use the default "/live" root prefix?\n\n' +
+    'Click Cancel to mount this flow at the site root instead (no prefix) — ' +
+    'use this for a flow meant to replace a real page at the site\'s actual URL, like a landing page.'
+  );
+  let raw = prompt('URL slug (e.g. "home"' + (rootMounted ? ', or leave blank to serve at the site root "/"' : '') + '):');
   if (raw === null) return;
   raw = raw.trim();
-  if (!raw) return;
+  if (!raw && !rootMounted) return;
   const slug = raw === '/' ? '' : raw;
-  const f = await apiFetch('/api/admin/page-flows', { method: 'POST', body: JSON.stringify({ name, slug }) });
+  let f = await apiFetch('/api/admin/page-flows', { method: 'POST', body: JSON.stringify({ name, slug }) });
+  if (rootMounted) {
+    try {
+      f = await apiFetch(`/api/admin/page-flows/${f.id}/root-prefix`, { method: 'PUT', body: JSON.stringify({ rootPrefix: '' }) });
+    } catch (e) { toast(e.message, false); }
+  }
   await loadFlows();
   openFlow(f.id);
 }
@@ -669,10 +685,7 @@ async function openFlow(id) {
   document.getElementById('empty').style.display = 'none';
   document.getElementById('level2').style.display = 'none';
   document.getElementById('level1').style.display = 'flex';
-  document.getElementById('flow-title').textContent = currentFlow.name;
-  document.getElementById('flow-live-path').textContent = currentFlow.livePath;
-  document.getElementById('flow-theme').textContent = currentFlow.themeKey ? `theme: ${currentFlow.themeKey}` : 'theme: default';
-  document.getElementById('mark-live-btn').textContent = currentFlow.live ? 'Live' : 'Mark live';
+  updateFlowToolbar();
   document.getElementById('meta-panel').classList.remove('visible');
   if (!isSameFlow) {
     document.getElementById('end-panel').classList.remove('visible');
@@ -685,18 +698,74 @@ async function openFlow(id) {
   renderCanvas();
 }
 
-async function editRootPrefix() {
+function updateFlowToolbar() {
+  document.getElementById('flow-title').textContent = currentFlow.name;
+  const isRootMounted = currentFlow.rootPrefix === '';
+  document.getElementById('flow-root-checkbox').checked = !isRootMounted;
+  const label = document.getElementById('flow-root-label');
+  label.textContent = '/' + (currentFlow.rootPrefix || 'live');
+  label.style.opacity = isRootMounted ? '0.4' : '1';
+  document.getElementById('flow-slug').textContent = currentFlow.slug || '/';
+  document.getElementById('flow-slug').title = 'Double-click to edit · resolves to ' + currentFlow.livePath;
+  document.getElementById('flow-theme').textContent = currentFlow.themeKey ? `theme: ${currentFlow.themeKey}` : 'theme: default';
+  document.getElementById('mark-live-btn').textContent = currentFlow.live ? 'Live' : 'Mark live';
+}
+
+async function toggleRootPrefix() {
   if (!currentFlow) return;
-  let raw = prompt('Root prefix (blank = default "live", "/" = mount at site root, or a custom segment):', currentFlow.rootPrefix || '');
-  if (raw === null) return;
-  raw = raw.trim();
-  const rootPrefix = raw === '/' ? '' : raw;
+  const checkbox = document.getElementById('flow-root-checkbox');
+  const rootPrefix = checkbox.checked ? null : '';
   try {
     currentFlow = await apiFetch(`/api/admin/page-flows/${currentFlow.id}/root-prefix`, { method: 'PUT', body: JSON.stringify({ rootPrefix }) });
-    document.getElementById('flow-live-path').textContent = currentFlow.livePath;
+    updateFlowToolbar();
     await loadFlows();
     renderFlowList();
     toast('Root prefix updated.');
+  } catch (e) {
+    checkbox.checked = !checkbox.checked;
+    toast(e.message, false);
+  }
+}
+
+function startEditSlug() {
+  if (!currentFlow) return;
+  const span = document.getElementById('flow-slug');
+  const input = document.getElementById('flow-slug-input');
+  input.value = currentFlow.slug;
+  span.style.display = 'none';
+  input.style.display = 'inline-block';
+  input.focus();
+  input.select();
+}
+
+function handleSlugEditKey(e) {
+  if (e.key === 'Enter') {
+    e.target.blur();
+  } else if (e.key === 'Escape') {
+    e.target.dataset.cancel = '1';
+    e.target.blur();
+  }
+}
+
+async function commitSlugEdit() {
+  const input = document.getElementById('flow-slug-input');
+  const span = document.getElementById('flow-slug');
+  const cancelled = input.dataset.cancel === '1';
+  input.dataset.cancel = '';
+  input.style.display = 'none';
+  span.style.display = 'inline';
+  if (cancelled || !currentFlow) return;
+  let raw = input.value.trim();
+  const slug = raw === '/' ? '' : raw;
+  if (slug === currentFlow.slug) return;
+  try {
+    currentFlow = await apiFetch(`/api/admin/page-flows/${currentFlow.id}`, {
+      method: 'PUT', body: JSON.stringify({ name: currentFlow.name, slug })
+    });
+    updateFlowToolbar();
+    await loadFlows();
+    renderFlowList();
+    toast('Slug updated.');
   } catch (e) { toast(e.message, false); }
 }
 
@@ -866,6 +935,7 @@ function selectPage(pageId) {
   document.getElementById('pg-auth').checked = page.requiresAuth;
   document.getElementById('pg-error').checked = page.errorPage;
   document.getElementById('pg-endpage').checked = page.endPage;
+  document.getElementById('pg-bordered').checked = page.bordered !== false;
   document.getElementById('pg-layout').value = page.layoutKey;
   document.getElementById('meta-panel').classList.add('visible');
 }
@@ -880,7 +950,8 @@ async function savePageMeta() {
         name: document.getElementById('pg-name').value,
         requiresAuth: document.getElementById('pg-auth').checked,
         errorPage: document.getElementById('pg-error').checked,
-        endPage: document.getElementById('pg-endpage').checked
+        endPage: document.getElementById('pg-endpage').checked,
+        bordered: document.getElementById('pg-bordered').checked
       })
     });
     Object.assign(page, updated);

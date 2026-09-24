@@ -39,24 +39,29 @@ public class PageController {
     }
 
     /**
-     * Server-rendered so the resolved slug reaches the client even when this page is
-     * reached via PageFlowRouteFilter's forward: a forward never updates the browser's
-     * own window.location, so a client-side read of location.search always sees null
-     * for a /live/<slug>-style request. window.__PF_SLUG__ is the one channel that
-     * works both for that forwarded hit and for a direct ?slug=... navigation.
+     * Server-rendered so the resolved slug (and root prefix) reach the client even when
+     * this page is reached via PageFlowRouteFilter's forward: a forward never updates the
+     * browser's own window.location, so a client-side read of location.search always sees
+     * null for a /live/<slug>-style request. window.__PF_SLUG__/__PF_ROOT_PREFIX__ are the
+     * one channel that works both for that forwarded hit and for a direct ?slug=...
+     * navigation. rootPrefix disambiguates a slug shared by two live flows under different
+     * prefixes (see PageFlowRepository#findLiveByRoute) — omitted (null) means the default.
      */
     @GetMapping("/flow-runtime.html")
-    public ResponseEntity<String> flowRuntime(@RequestParam(required = false) String slug) {
-        String json;
+    public ResponseEntity<String> flowRuntime(
+            @RequestParam(required = false) String slug, @RequestParam(required = false) String rootPrefix) {
+        String slugJson;
+        String rootPrefixJson;
         try {
-            json = JSON.writeValueAsString(slug).replace("</", "<\\/");
+            slugJson = JSON.writeValueAsString(slug).replace("</", "<\\/");
+            rootPrefixJson = JSON.writeValueAsString(rootPrefix).replace("</", "<\\/");
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
         String themeStylesUrl = slug == null ? DEFAULT_THEME_STYLES_URL
-            : pageFlowRepo.findByLiveTrueAndSlug(slug).map(PageController::themeStylesUrl).orElse(DEFAULT_THEME_STYLES_URL);
+            : pageFlowRepo.findLiveByRoute(rootPrefix, slug).map(PageController::themeStylesUrl).orElse(DEFAULT_THEME_STYLES_URL);
         String html = flowRuntimeTemplate
-            .replace(SLUG_MARKER, "<script>window.__PF_SLUG__ = " + json + ";</script>")
+            .replace(SLUG_MARKER, "<script>window.__PF_SLUG__ = " + slugJson + "; window.__PF_ROOT_PREFIX__ = " + rootPrefixJson + ";</script>")
             .replace(THEME_MARKER, "<link rel=\"stylesheet\" href=\"" + themeStylesUrl + "\">");
         return ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(html);
     }

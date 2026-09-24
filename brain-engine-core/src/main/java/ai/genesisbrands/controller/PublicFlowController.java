@@ -25,7 +25,7 @@ public class PublicFlowController {
     @PostMapping("/flow-sessions")
     public ResponseEntity<?> start(@RequestBody StartRequest body) {
         try {
-            return ResponseEntity.ok(publicFlowRuntimeService.start(body.slug()));
+            return ResponseEntity.ok(publicFlowRuntimeService.start(body.slug(), body.rootPrefix()));
         } catch (NoSuchElementException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));
         }
@@ -67,7 +67,7 @@ public class PublicFlowController {
         return PageLayout.ALL;
     }
 
-    public record StartRequest(String slug) {}
+    public record StartRequest(String slug, String rootPrefix) {}
     public record AdvanceRequest(String outcomeKey) {}
     public record ContextPatchRequest(String contextPatchJson) {}
     public record ErrorResponse(String message) {}

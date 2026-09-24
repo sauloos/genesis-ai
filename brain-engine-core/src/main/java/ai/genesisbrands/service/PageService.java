@@ -41,12 +41,13 @@ public class PageService {
         return pageRepo.save(page);
     }
 
-    public Page updateMetadata(String id, String name, boolean requiresAuth, boolean errorPage, boolean endPage) {
+    public Page updateMetadata(String id, String name, boolean requiresAuth, boolean errorPage, boolean endPage, boolean bordered) {
         Page page = get(id);
         page.setName(name);
         page.setRequiresAuth(requiresAuth);
         page.setErrorPage(errorPage);
         page.setEndPage(endPage);
+        page.setBordered(bordered);
         page.setUpdatedAt(Instant.now());
         return pageRepo.save(page);
     }

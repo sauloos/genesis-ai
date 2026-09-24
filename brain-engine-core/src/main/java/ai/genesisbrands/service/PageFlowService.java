@@ -60,7 +60,10 @@ public class PageFlowService {
      *  becomes the explicit prefix. Validated against reserved segments before persisting. */
     public PageFlow setRootPrefix(String id, String rootPrefix) {
         PageFlow flow = get(id);
-        String normalized = (rootPrefix == null || rootPrefix.isBlank()) ? null : rootPrefix;
+        // "" is a meaningful, distinct value here (explicit root-mount, per PageFlowRouting) —
+        // only null or a whitespace-only-but-non-empty string resets to the "live" default.
+        boolean resetToDefault = rootPrefix == null || (rootPrefix.isBlank() && !rootPrefix.isEmpty());
+        String normalized = resetToDefault ? null : rootPrefix;
         PageFlowRouting.validate(normalized, flow.getSlug());
         flow.setRootPrefix(normalized);
         flow.setUpdatedAt(Instant.now());

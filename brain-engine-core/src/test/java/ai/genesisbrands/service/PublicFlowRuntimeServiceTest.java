@@ -80,15 +80,15 @@ class PublicFlowRuntimeServiceTest {
 
     @Test
     void start_unknownOrInactiveSlug_throwsNoSuchElement() {
-        when(pageFlowRepo.findByLiveTrueAndSlug("ghost")).thenReturn(Optional.empty());
+        when(pageFlowRepo.findLiveByRoute(null, "ghost")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.start("ghost")).isInstanceOf(NoSuchElementException.class);
+        assertThatThrownBy(() -> service.start("ghost", null)).isInstanceOf(NoSuchElementException.class);
     }
 
     @Test
     void start_liveFlow_createsSessionAndReturnsRenderView() {
         PageFlow f = flow("f1", "verify-runtime");
-        when(pageFlowRepo.findByLiveTrueAndSlug("verify-runtime")).thenReturn(Optional.of(f));
+        when(pageFlowRepo.findLiveByRoute(null, "verify-runtime")).thenReturn(Optional.of(f));
         FlowSession s = session("tok", "f1", "p1", false);
         when(flowSessionService.start("f1")).thenReturn(s);
         Page p = page("p1", "f1");
@@ -97,7 +97,7 @@ class PublicFlowRuntimeServiceTest {
         when(pageTransitionService.outcomesForPage(p))
             .thenReturn(List.of(WidgetOutcome.DEFAULT, new WidgetOutcome("error", "Error")));
 
-        PublicFlowRuntimeService.PublicSessionView view = service.start("verify-runtime");
+        PublicFlowRuntimeService.PublicSessionView view = service.start("verify-runtime", null);
 
         assertThat(view.token()).isEqualTo("tok");
         assertThat(view.slug()).isEqualTo("verify-runtime");

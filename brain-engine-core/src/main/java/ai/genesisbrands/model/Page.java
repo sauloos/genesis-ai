@@ -43,6 +43,10 @@ public class Page {
     @Column(name = "layout_key", nullable = false, length = 64)
     private String layoutKey = "SINGLE_COLUMN";
 
+    /** Whether the page's card shell renders its border/shadow. Off for pages meant to blend into a site (e.g. a root-mounted landing page). */
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private boolean bordered = true;
+
     @Column(name = "previous_page_id", length = 36)
     private String previousPageId;
 

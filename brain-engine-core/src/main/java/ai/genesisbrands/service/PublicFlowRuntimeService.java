@@ -38,8 +38,8 @@ public class PublicFlowRuntimeService {
     private final FlowSessionService flowSessionService;
     private final ObjectMapper objectMapper;
 
-    public PublicSessionView start(String slug) {
-        PageFlow flow = pageFlowRepo.findByLiveTrueAndSlug(slug)
+    public PublicSessionView start(String slug, String rootPrefix) {
+        PageFlow flow = pageFlowRepo.findLiveByRoute(rootPrefix, slug)
             .orElseThrow(() -> new NoSuchElementException("No live PageFlow for slug: " + slug));
         FlowSession session = flowSessionService.start(flow.getId());
         return toView(session, flow, null);
@@ -102,7 +102,7 @@ public class PublicFlowRuntimeService {
 
         boolean soleRedirect = redirectWidget != null && widgets.size() == 1;
         if (soleRedirect) {
-            return new PageRenderView(page.getId(), page.getName(), page.getLayoutKey(), List.of(), List.of(), redirectUrl);
+            return new PageRenderView(page.getId(), page.getName(), page.getLayoutKey(), page.isBordered(), List.of(), List.of(), redirectUrl);
         }
 
         // A redirect widget mixed with others has no defined visual (WidgetDescriptor
@@ -118,7 +118,7 @@ public class PublicFlowRuntimeService {
             .filter(o -> !PageTransitionService.ERROR_OUTCOME.equals(o.key()))
             .toList();
 
-        return new PageRenderView(page.getId(), page.getName(), page.getLayoutKey(), widgetViews, outcomes, redirectUrl);
+        return new PageRenderView(page.getId(), page.getName(), page.getLayoutKey(), page.isBordered(), widgetViews, outcomes, redirectUrl);
     }
 
     private Map<String, Object> parseConfig(String configJson) {
@@ -135,7 +135,7 @@ public class PublicFlowRuntimeService {
     public record PublicSessionView(String token, String slug, String livePath, PageRenderView page, boolean ended, String engagementId) {}
 
     public record PageRenderView(
-        String pageId, String name, String layoutKey,
+        String pageId, String name, String layoutKey, boolean bordered,
         List<PageWidgetView> widgets, List<WidgetOutcome> outcomes, String redirectUrl
     ) {}
 

@@ -98,14 +98,14 @@ class PageFlowServiceTest {
     }
 
     @Test
-    void setRootPrefix_slashBecomesRootMount() {
+    void setRootPrefix_emptyStringBecomesExplicitRootMount() {
         PageFlow existing = flow("f1", "hello", null, false);
         when(pageFlowRepo.findById("f1")).thenReturn(Optional.of(existing));
         when(pageFlowRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         PageFlow updated = service.setRootPrefix("f1", "");
 
-        assertThat(updated.getRootPrefix()).isNull();
+        assertThat(updated.getRootPrefix()).isEqualTo("");
     }
 
     @Test

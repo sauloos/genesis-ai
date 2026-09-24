@@ -45,6 +45,8 @@
     border: none; border-radius: 0; padding: 0; box-shadow: none; backdrop-filter: none;
   }
 
+  #card.no-border { border: none; box-shadow: none; }
+
   #page-grid { display: grid; gap: 24px; }
   #card.full-bleed #page-grid { gap: 0; height: 100%; min-height: 100vh; }
   .slot { display: flex; flex-direction: column; gap: 16px; }
@@ -193,6 +195,7 @@ const KEY     = 'genesis-ai-key';
 const HEADERS = { 'Content-Type': 'application/json', 'X-Api-Key': KEY };
 
 let slug = null;
+let rootPrefix = null;
 let token = null;
 let layouts = [];
 let requiredPending = new Set();
@@ -752,13 +755,20 @@ async function boot() {
   // the browser's own window.location — a query-string read here would always be null
   // for any /live/<slug>-style request. The query-string fallback only covers a direct
   // /flow-runtime.html?slug=... hit if the server-side injection is ever bypassed.
-  slug = (typeof window.__PF_SLUG__ !== 'undefined' && window.__PF_SLUG__)
+  // A root-mounted flow's slug is legitimately "" — must not be treated as falsy/absent
+  // the way a genuinely-unresolved (null) slug is.
+  slug = (typeof window.__PF_SLUG__ !== 'undefined' && window.__PF_SLUG__ !== null)
     ? window.__PF_SLUG__
     : new URLSearchParams(window.location.search).get('slug');
-  if (!slug) {
+  if (slug === null) {
     showState('Nothing here', 'There is no live page available at this address.');
     return;
   }
+  // Disambiguates a slug shared by two live flows under different root prefixes (see
+  // PageFlowRepository#findLiveByRoute) — null means the default "/live" prefix.
+  rootPrefix = (typeof window.__PF_ROOT_PREFIX__ !== 'undefined')
+    ? window.__PF_ROOT_PREFIX__
+    : new URLSearchParams(window.location.search).get('rootPrefix');
 
   try {
     layouts = await fetch(`${API}/api/public/page-layouts`, { headers: HEADERS }).then(r => r.json());
@@ -776,7 +786,7 @@ async function boot() {
 
     if (!view) {
       const res = await fetch(`${API}/api/public/flow-sessions`, {
-        method: 'POST', headers: HEADERS, body: JSON.stringify({ slug })
+        method: 'POST', headers: HEADERS, body: JSON.stringify({ slug, rootPrefix })
       });
       if (!res.ok) throw new Error('no live flow');
       view = await res.json();
@@ -827,6 +837,7 @@ function render(view) {
   document.getElementById('state-screen').style.display = 'none';
   document.getElementById('card').style.display = 'block';
   document.getElementById('card').classList.toggle('full-bleed', isFullBleed);
+  document.getElementById('card').classList.toggle('no-border', page.bordered === false);
 
   requiredPending = new Set();
 

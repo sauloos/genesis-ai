@@ -29,7 +29,7 @@ public class FlowPageController {
     @PutMapping("/api/admin/pages/{id}")
     public ResponseEntity<?> updateMetadata(@PathVariable String id, @RequestBody UpdateMetadataRequest body, HttpServletRequest req) {
         if (!authorized(req)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        return handle(req, () -> pageService.updateMetadata(id, body.name(), body.requiresAuth(), body.errorPage(), body.endPage()));
+        return handle(req, () -> pageService.updateMetadata(id, body.name(), body.requiresAuth(), body.errorPage(), body.endPage(), body.bordered()));
     }
 
     @PutMapping("/api/admin/pages/{id}/position")
@@ -76,7 +76,7 @@ public class FlowPageController {
     }
 
     public record CreatePageRequest(String name) {}
-    public record UpdateMetadataRequest(String name, boolean requiresAuth, boolean errorPage, boolean endPage) {}
+    public record UpdateMetadataRequest(String name, boolean requiresAuth, boolean errorPage, boolean endPage, boolean bordered) {}
     public record UpdatePositionRequest(double x, double y) {}
     public record UpdatePreviousPageRequest(String previousPageId) {}
     public record UpdateLayoutRequest(String layoutKey) {}

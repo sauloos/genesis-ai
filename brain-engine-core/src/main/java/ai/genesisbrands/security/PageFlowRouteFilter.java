@@ -53,7 +53,15 @@ public class PageFlowRouteFilter extends OncePerRequestFilter {
         for (PageFlow flow : pageFlowRepo.findAllByLiveTrue()) {
             if (PageFlowRouting.routeKey(flow.getRootPrefix(), flow.getSlug()).equals(requestKey)) {
                 String slug = URLEncoder.encode(flow.getSlug(), StandardCharsets.UTF_8);
-                req.getRequestDispatcher("/flow-runtime.html?slug=" + slug).forward(req, res);
+                // rootPrefix disambiguates a slug shared by two live flows under different
+                // prefixes (see PageFlowRepository#findLiveByRoute) — only appended when
+                // explicitly set, so a null (default "/live") prefix stays omitted, matching
+                // the request-param absent/empty distinction the client reads it back with.
+                String forwardUrl = "/flow-runtime.html?slug=" + slug;
+                if (flow.getRootPrefix() != null) {
+                    forwardUrl += "&rootPrefix=" + URLEncoder.encode(flow.getRootPrefix(), StandardCharsets.UTF_8);
+                }
+                req.getRequestDispatcher(forwardUrl).forward(req, res);
                 return;
             }
         }
