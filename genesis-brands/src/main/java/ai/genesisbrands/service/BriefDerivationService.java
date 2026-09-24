@@ -3,6 +3,7 @@ package ai.genesisbrands.service;
 import ai.genesisbrands.agent.core.DirectionBrief;
 import ai.genesisbrands.model.QuestionnaireAnswer;
 import ai.genesisbrands.model.QuestionnaireQuestion;
+import ai.genesisbrands.platform.BriefDerivationExtension;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -17,7 +18,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
-public class BriefDerivationService {
+public class BriefDerivationService implements BriefDerivationExtension {
 
     private static final Logger log = LoggerFactory.getLogger(BriefDerivationService.class);
 
@@ -33,6 +34,7 @@ public class BriefDerivationService {
         this.tenantBriefConfig = tenantBriefConfig;
     }
 
+    @Override
     public List<DirectionBrief> derive(String engagementId,
                                         List<QuestionnaireQuestion> questions,
                                         List<QuestionnaireAnswer> answers) {

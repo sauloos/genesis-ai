@@ -110,6 +110,11 @@ public class PageController {
     @GetMapping("/page-flows")
     public String pageFlowsRedirect() { return "redirect:/dashboard/page-flows"; }
 
+    @GetMapping("/dashboard/playground")
+    public String playgroundPage() { return "forward:/playground.html"; }
+    @GetMapping("/playground")
+    public String playgroundRedirect() { return "redirect:/dashboard/playground"; }
+
     @GetMapping("/flow/{slug}")
     public String flowRuntimeLegacyRedirect(@PathVariable String slug) { return "redirect:/live/" + slug; }
 

@@ -4,7 +4,7 @@ import ai.genesisbrands.agent.core.DirectionBrief;
 import ai.genesisbrands.model.PlaygroundSession;
 import ai.genesisbrands.model.QuestionnaireAnswer;
 import ai.genesisbrands.model.QuestionnaireQuestion;
-import ai.genesisbrands.service.BriefDerivationService;
+import ai.genesisbrands.platform.BriefDerivationExtension;
 import ai.genesisbrands.service.PlaygroundSessionService;
 import ai.genesisbrands.service.QuestionnaireService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -13,9 +13,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
@@ -26,7 +28,7 @@ public class PlaygroundController {
 
     private final PlaygroundSessionService playgroundService;
     private final QuestionnaireService questionnaireService;
-    private final BriefDerivationService briefDerivationService;
+    private final Optional<BriefDerivationExtension> briefDerivation;
 
     @GetMapping("/sessions")
     @Operation(summary = "List playground run history for an agent")
@@ -75,6 +77,8 @@ public class PlaygroundController {
     @PostMapping("/derive-briefs")
     @Operation(summary = "Derive three direction briefs from questionnaire answers via Brain Engine")
     public DeriveBriefsResult deriveBriefs(@RequestBody DeriveBriefsRequest req) {
+        BriefDerivationExtension extension = briefDerivation.orElseThrow(() ->
+            new ResponseStatusException(HttpStatus.NOT_FOUND, "Brief derivation is not available on this tenant"));
         List<QuestionnaireQuestion> questions = questionnaireService.listQuestions(req.questionnaireId());
         List<QuestionnaireAnswer> answers = req.answers().stream().map(a -> {
             QuestionnaireAnswer qa = new QuestionnaireAnswer();
@@ -84,7 +88,7 @@ public class PlaygroundController {
             return qa;
         }).toList();
         String engagementId = "playground-" + System.currentTimeMillis();
-        List<DirectionBrief> briefs = briefDerivationService.derive(engagementId, questions, answers);
+        List<DirectionBrief> briefs = extension.derive(engagementId, questions, answers);
         return new DeriveBriefsResult(briefs);
     }
 
