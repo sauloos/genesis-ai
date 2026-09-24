@@ -4,6 +4,7 @@ import ai.genesisbrands.model.PageFlow;
 import ai.genesisbrands.repository.PageFlowRepository;
 import ai.genesisbrands.repository.PageRepository;
 import ai.genesisbrands.repository.PageWidgetRepository;
+import ai.genesisbrands.repository.ThemeRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,12 +28,13 @@ class PageFlowServiceTest {
     @Mock private PageRepository pageRepo;
     @Mock private PageWidgetRepository pageWidgetRepo;
     @Mock private PageTransitionService pageTransitionService;
+    @Mock private ThemeRepository themeRepository;
 
     private PageFlowService service;
 
     @BeforeEach
     void setUp() {
-        service = new PageFlowService(pageFlowRepo, pageRepo, pageWidgetRepo, pageTransitionService);
+        service = new PageFlowService(pageFlowRepo, pageRepo, pageWidgetRepo, pageTransitionService, themeRepository);
     }
 
     private PageFlow flow(String id, String slug, String rootPrefix, boolean live) {
@@ -104,6 +106,41 @@ class PageFlowServiceTest {
         PageFlow updated = service.setRootPrefix("f1", "");
 
         assertThat(updated.getRootPrefix()).isNull();
+    }
+
+    @Test
+    void setTheme_rejectsUnknownThemeId() {
+        PageFlow existing = flow("f1", "hello", null, false);
+        when(pageFlowRepo.findById("f1")).thenReturn(Optional.of(existing));
+        when(themeRepository.existsById("no-such-theme")).thenReturn(false);
+
+        assertThatThrownBy(() -> service.setTheme("f1", "no-such-theme"))
+            .isInstanceOf(IllegalArgumentException.class);
+        verify(pageFlowRepo, never()).save(any());
+    }
+
+    @Test
+    void setTheme_blankResetsToTenantDefault() {
+        PageFlow existing = flow("f1", "hello", null, false);
+        existing.setThemeKey("custom");
+        when(pageFlowRepo.findById("f1")).thenReturn(Optional.of(existing));
+        when(pageFlowRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        PageFlow updated = service.setTheme("f1", "  ");
+
+        assertThat(updated.getThemeKey()).isNull();
+    }
+
+    @Test
+    void setTheme_savesAKnownThemeId() {
+        PageFlow existing = flow("f1", "hello", null, false);
+        when(pageFlowRepo.findById("f1")).thenReturn(Optional.of(existing));
+        when(themeRepository.existsById("genesis-brands")).thenReturn(true);
+        when(pageFlowRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        PageFlow updated = service.setTheme("f1", "genesis-brands");
+
+        assertThat(updated.getThemeKey()).isEqualTo("genesis-brands");
     }
 
     @Test

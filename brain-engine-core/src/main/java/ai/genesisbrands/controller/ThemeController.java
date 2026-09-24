@@ -39,6 +39,15 @@ public class ThemeController {
             .body(themeService.getActiveCss());
     }
 
+    @GetMapping(value = "/{id}/styles.css", produces = "text/css")
+    @Operation(summary = "Serve a specific theme's CSS by id — used by PageFlow pages with a theme override")
+    public ResponseEntity<String> styles(@PathVariable String id) {
+        return ResponseEntity.ok()
+            .contentType(MediaType.parseMediaType("text/css"))
+            .cacheControl(CacheControl.noCache().cachePrivate())
+            .body(themeService.getCss(id));
+    }
+
     @GetMapping("/active/logo")
     @Operation(summary = "Serve the active theme's logo — falls back to the platform default when the theme has none")
     public ResponseEntity<byte[]> activeLogo() {

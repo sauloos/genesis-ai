@@ -137,6 +137,12 @@ public class ThemeService {
             .orElse("");
     }
 
+    public String getCss(String id) {
+        return themeRepository.findById(id)
+            .map(Theme::getCssContent)
+            .orElse("");
+    }
+
     @Transactional
     public Theme activate(String id) {
         Theme theme = themeRepository.findById(id)

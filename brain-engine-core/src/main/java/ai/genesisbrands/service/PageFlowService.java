@@ -7,6 +7,7 @@ import ai.genesisbrands.platform.PageFlowRouting;
 import ai.genesisbrands.repository.PageFlowRepository;
 import ai.genesisbrands.repository.PageRepository;
 import ai.genesisbrands.repository.PageWidgetRepository;
+import ai.genesisbrands.repository.ThemeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,7 @@ public class PageFlowService {
     private final PageRepository pageRepo;
     private final PageWidgetRepository pageWidgetRepo;
     private final PageTransitionService pageTransitionService;
+    private final ThemeRepository themeRepository;
 
     public List<PageFlow> list() {
         return pageFlowRepo.findAll();
@@ -61,6 +63,19 @@ public class PageFlowService {
         String normalized = (rootPrefix == null || rootPrefix.isBlank()) ? null : rootPrefix;
         PageFlowRouting.validate(normalized, flow.getSlug());
         flow.setRootPrefix(normalized);
+        flow.setUpdatedAt(Instant.now());
+        return pageFlowRepo.save(flow);
+    }
+
+    /** Blank/null resets to the tenant's currently-active theme; any other value must
+     *  name an installed Theme id. */
+    public PageFlow setTheme(String id, String themeKey) {
+        PageFlow flow = get(id);
+        String normalized = (themeKey == null || themeKey.isBlank()) ? null : themeKey;
+        if (normalized != null && !themeRepository.existsById(normalized)) {
+            throw new IllegalArgumentException("Theme not found: " + normalized);
+        }
+        flow.setThemeKey(normalized);
         flow.setUpdatedAt(Instant.now());
         return pageFlowRepo.save(flow);
     }

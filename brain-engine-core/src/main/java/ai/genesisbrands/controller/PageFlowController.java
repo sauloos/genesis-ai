@@ -74,6 +74,12 @@ public class PageFlowController {
         return handle(() -> pageFlowService.setRootPrefix(id, body.rootPrefix()));
     }
 
+    @PutMapping("/{id}/theme")
+    public ResponseEntity<?> setTheme(@PathVariable String id, @RequestBody SetThemeRequest body, HttpServletRequest req) {
+        if (!authorized(req)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        return handle(() -> pageFlowService.setTheme(id, body.themeKey()));
+    }
+
     @PutMapping("/{id}/live")
     public ResponseEntity<?> setLive(@PathVariable String id, HttpServletRequest req) {
         if (!authorized(req)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -126,6 +132,8 @@ public class PageFlowController {
     public record SetStartRequest(String startPageId) {}
 
     public record SetRootPrefixRequest(String rootPrefix) {}
+
+    public record SetThemeRequest(String themeKey) {}
 
     public record SetEndRequest(String endAction, String endPageId, String endTargetFlowId) {}
 

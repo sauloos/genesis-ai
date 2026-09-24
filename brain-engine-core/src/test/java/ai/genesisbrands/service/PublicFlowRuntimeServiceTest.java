@@ -146,7 +146,7 @@ class PublicFlowRuntimeServiceTest {
     }
 
     @Test
-    void renderCurrentPage_mixedRedirectWidget_omitsWidgetFromList_andNoRedirectUrl() {
+    void renderCurrentPage_mixedRedirectWidget_omitsWidgetFromList_butStillSetsRedirectUrl() {
         PageFlow f = flow("f1", "s");
         FlowSession s = session("tok", "f1", "p1", false);
         when(flowSessionService.get("tok")).thenReturn(s);
@@ -161,7 +161,7 @@ class PublicFlowRuntimeServiceTest {
 
         PublicFlowRuntimeService.PublicSessionView view = service.resume("tok");
 
-        assertThat(view.page().redirectUrl()).isNull();
+        assertThat(view.page().redirectUrl()).isEqualTo("/discover");
         assertThat(view.page().widgets()).extracting(PublicFlowRuntimeService.PageWidgetView::widgetType)
             .containsExactly("content");
     }

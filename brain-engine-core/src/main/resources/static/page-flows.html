@@ -300,6 +300,7 @@
     <div id="toolbar">
       <h2 id="flow-title"></h2>
       <span id="flow-live-path" title="Click to edit the root prefix" style="cursor:pointer; font-size:11px; color:rgba(255,255,255,0.5); font-family:ui-monospace,SFMono-Regular,Menlo,monospace;" onclick="editRootPrefix()"></span>
+      <span id="flow-theme" title="Click to set a theme override" style="cursor:pointer; font-size:11px; color:rgba(255,255,255,0.5); font-family:ui-monospace,SFMono-Regular,Menlo,monospace;" onclick="editTheme()"></span>
       <div class="legend">
         <span><span class="legend-dot" style="background:#6fe0a5"></span>outcome</span>
         <span><span class="legend-dot" style="background:#60a5fa"></span>custom outcome</span>
@@ -670,6 +671,7 @@ async function openFlow(id) {
   document.getElementById('level1').style.display = 'flex';
   document.getElementById('flow-title').textContent = currentFlow.name;
   document.getElementById('flow-live-path').textContent = currentFlow.livePath;
+  document.getElementById('flow-theme').textContent = currentFlow.themeKey ? `theme: ${currentFlow.themeKey}` : 'theme: default';
   document.getElementById('mark-live-btn').textContent = currentFlow.live ? 'Live' : 'Mark live';
   document.getElementById('meta-panel').classList.remove('visible');
   if (!isSameFlow) {
@@ -695,6 +697,26 @@ async function editRootPrefix() {
     await loadFlows();
     renderFlowList();
     toast('Root prefix updated.');
+  } catch (e) { toast(e.message, false); }
+}
+
+let cachedThemes = null;
+
+async function editTheme() {
+  if (!currentFlow) return;
+  if (!cachedThemes) {
+    try { cachedThemes = await apiFetch('/api/themes'); } catch (e) { cachedThemes = []; }
+  }
+  const options = cachedThemes.map(t => `${t.id}  (${t.name})`).join('\n');
+  let raw = prompt(`Theme id (blank = tenant's active theme). Installed themes:\n${options}`, currentFlow.themeKey || '');
+  if (raw === null) return;
+  raw = raw.trim();
+  try {
+    currentFlow = await apiFetch(`/api/admin/page-flows/${currentFlow.id}/theme`, { method: 'PUT', body: JSON.stringify({ themeKey: raw }) });
+    document.getElementById('flow-theme').textContent = currentFlow.themeKey ? `theme: ${currentFlow.themeKey}` : 'theme: default';
+    await loadFlows();
+    renderFlowList();
+    toast('Theme updated.');
   } catch (e) { toast(e.message, false); }
 }
 

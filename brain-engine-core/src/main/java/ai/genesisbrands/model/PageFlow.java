@@ -33,6 +33,11 @@ public class PageFlow {
     @Column(name = "root_prefix")
     private String rootPrefix;
 
+    /** Null = use the tenant's currently-active theme. Non-null = a specific Theme id,
+     *  served via GET /api/themes/{id}/styles.css instead of /active/styles.css. */
+    @Column(name = "theme_key")
+    private String themeKey;
+
     @Column(nullable = false)
     private boolean live = false;
 

@@ -1,5 +1,7 @@
 package ai.genesisbrands.controller;
 
+import ai.genesisbrands.model.PageFlow;
+import ai.genesisbrands.repository.PageFlowRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.MediaType;
@@ -17,9 +19,16 @@ import java.nio.charset.StandardCharsets;
 public class PageController {
 
     private static final String SLUG_MARKER = "<!--PF_SLUG_INJECT-->";
+    private static final String THEME_MARKER = "<!--PF_THEME_INJECT-->";
+    private static final String DEFAULT_THEME_STYLES_URL = "/api/themes/active/styles.css";
     private static final ObjectMapper JSON = new ObjectMapper();
 
+    private final PageFlowRepository pageFlowRepo;
     private final String flowRuntimeTemplate = readClasspathResource("static/flow-runtime.html");
+
+    public PageController(PageFlowRepository pageFlowRepo) {
+        this.pageFlowRepo = pageFlowRepo;
+    }
 
     private static String readClasspathResource(String path) {
         try {
@@ -44,8 +53,16 @@ public class PageController {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        String html = flowRuntimeTemplate.replace(SLUG_MARKER, "<script>window.__PF_SLUG__ = " + json + ";</script>");
+        String themeStylesUrl = slug == null ? DEFAULT_THEME_STYLES_URL
+            : pageFlowRepo.findByLiveTrueAndSlug(slug).map(PageController::themeStylesUrl).orElse(DEFAULT_THEME_STYLES_URL);
+        String html = flowRuntimeTemplate
+            .replace(SLUG_MARKER, "<script>window.__PF_SLUG__ = " + json + ";</script>")
+            .replace(THEME_MARKER, "<link rel=\"stylesheet\" href=\"" + themeStylesUrl + "\">");
         return ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(html);
+    }
+
+    private static String themeStylesUrl(PageFlow flow) {
+        return flow.getThemeKey() == null ? DEFAULT_THEME_STYLES_URL : "/api/themes/" + flow.getThemeKey() + "/styles.css";
     }
 
     @GetMapping("/dashboard")

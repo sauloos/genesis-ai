@@ -93,15 +93,22 @@ public class PublicFlowRuntimeService {
             .orElseThrow(() -> new NoSuchElementException("Page not found: " + session.getCurrentPageId()));
         List<PageWidget> widgets = pageWidgetRepo.findByPageIdOrderByOrderInSlotAsc(page.getId());
 
-        boolean soleRedirect = widgets.size() == 1 && "redirect".equals(widgets.get(0).getWidgetType());
+        PageWidget redirectWidget = widgets.stream()
+            .filter(w -> "redirect".equals(w.getWidgetType()))
+            .findFirst()
+            .orElse(null);
+        String redirectUrl = redirectWidget == null ? null
+            : String.valueOf(parseConfig(redirectWidget.getConfigJson()).getOrDefault("targetUrl", ""));
+
+        boolean soleRedirect = redirectWidget != null && widgets.size() == 1;
         if (soleRedirect) {
-            String redirectUrl = String.valueOf(parseConfig(widgets.get(0).getConfigJson()).getOrDefault("targetUrl", ""));
             return new PageRenderView(page.getId(), page.getName(), page.getLayoutKey(), List.of(), List.of(), redirectUrl);
         }
 
         // A redirect widget mixed with others has no defined visual (WidgetDescriptor
-        // has no render semantics for it) and isn't a page-level redirect, so it's
-        // dropped from the rendered list rather than shown or acted on.
+        // has no render semantics for it), so it's excluded from the rendered widget
+        // list, but its target is still surfaced as redirectUrl so the client can show
+        // the rest of the page briefly before honoring the redirect.
         List<PageWidgetView> widgetViews = widgets.stream()
             .filter(w -> !"redirect".equals(w.getWidgetType()))
             .map(w -> new PageWidgetView(w.getId(), w.getSlotKey(), w.getOrderInSlot(), w.getWidgetType(), parseConfig(w.getConfigJson())))
@@ -111,7 +118,7 @@ public class PublicFlowRuntimeService {
             .filter(o -> !PageTransitionService.ERROR_OUTCOME.equals(o.key()))
             .toList();
 
-        return new PageRenderView(page.getId(), page.getName(), page.getLayoutKey(), widgetViews, outcomes, null);
+        return new PageRenderView(page.getId(), page.getName(), page.getLayoutKey(), widgetViews, outcomes, redirectUrl);
     }
 
     private Map<String, Object> parseConfig(String configJson) {
