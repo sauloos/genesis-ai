@@ -1,5 +1,6 @@
 package ai.genesisbrands.config;
 
+import ai.genesisbrands.agent.consultant.ConsultantCoreAgent;
 import ai.genesisbrands.controller.ConsultantController;
 import ai.genesisbrands.repository.ConversationMessageRepository;
 import ai.genesisbrands.service.ConsultantService;
@@ -53,5 +54,11 @@ public class ConsultantServiceConfiguration {
         ConversationMessageRepository messageRepo
     ) {
         return new ConsultantController(consultantService, subjectProvider, enrichment, messageRepo);
+    }
+
+    @Bean
+    @ConditionalOnBean(ConsultantSubjectProvider.class)
+    public ConsultantCoreAgent consultantCoreAgent() {
+        return new ConsultantCoreAgent();
     }
 }

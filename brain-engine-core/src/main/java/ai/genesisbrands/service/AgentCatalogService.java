@@ -80,7 +80,8 @@ public class AgentCatalogService {
             agent.customOptions(),
             config.map(AgentCatalogConfig::isAvailableForLiveView).orElse(true),
             config.map(AgentCatalogConfig::isAvailableForPlayground).orElse(true),
-            config.map(AgentCatalogConfig::isAbCompareEnabled).orElse(false)
+            config.map(AgentCatalogConfig::isAbCompareEnabled).orElse(false),
+            agent.chatBased()
         );
     }
 
@@ -88,7 +89,8 @@ public class AgentCatalogService {
         String agentId, String displayName, String description, String testEndpoint,
         boolean requiresQuestionnaire, boolean supportsPlayground, boolean supportsABCompare,
         List<AgentCustomOption> customOptions,
-        boolean availableForLiveView, boolean availableForPlayground, boolean abCompareEnabled
+        boolean availableForLiveView, boolean availableForPlayground, boolean abCompareEnabled,
+        boolean chatBased
     ) {}
 
     public record UpdateAgentConfigRequest(
