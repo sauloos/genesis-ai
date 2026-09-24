@@ -131,6 +131,17 @@ public class ThemeService {
         return themeRepository.findAll();
     }
 
+    /**
+     * True when the active theme is one of the platform's shipped built-ins (or when
+     * there is no active theme at all — a bare platform instance with nothing to
+     * customize). False only when the tenant has imported a bespoke theme zip, which is
+     * the one point in the theming system that's genuinely tenant-authored rather than
+     * platform-provided.
+     */
+    public boolean isActiveThemeCore() {
+        return themeRepository.findByActiveTrue().map(Theme::isBuiltIn).orElse(true);
+    }
+
     public String getActiveCss() {
         return themeRepository.findByActiveTrue()
             .map(Theme::getCssContent)

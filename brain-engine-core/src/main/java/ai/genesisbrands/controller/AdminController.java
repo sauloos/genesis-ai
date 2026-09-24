@@ -1,10 +1,14 @@
 package ai.genesisbrands.controller;
 
 import ai.genesisbrands.platform.AdminNavExtension;
+import ai.genesisbrands.platform.ModuleOrigin;
 import ai.genesisbrands.security.AdminAuthHelper;
 import ai.genesisbrands.security.AdminSessionService;
+import ai.genesisbrands.service.ConsultantSubjectProvider;
+import ai.genesisbrands.service.ThemeService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +16,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +29,8 @@ public class AdminController {
     private final AdminAuthHelper adminAuth;
     private final AdminSessionService adminSession;
     private final List<AdminNavExtension> navExtensions;
+    private final ObjectProvider<ConsultantSubjectProvider> consultantSubjectProvider;
+    private final ThemeService themeService;
 
     @Value("${genesis.environment:dev}")
     private String environment;
@@ -66,4 +73,64 @@ public class AdminController {
                 .toList();
         return ResponseEntity.ok(result);
     }
+
+    /**
+     * The dashboard's full card set — structural platform pages plus every registered
+     * AdminNavExtension — as one flat, data-driven list instead of dashboard.html's old
+     * hardcoded "Platform" markup plus a separately-fetched "Extensions" section. Each
+     * card carries {@code core}, computed per-card rather than by static origin alone:
+     * Consultant and Themes are only genuinely "customised" when a tenant has actually
+     * specialized them (a tenant-authored subject provider; an imported, non-built-in
+     * theme) — everything else either always ships from the platform (core=true) or is
+     * classified by where its AdminNavExtension implementation was loaded from.
+     */
+    @GetMapping("/dashboard-cards")
+    public ResponseEntity<List<DashboardCard>> dashboardCards(HttpServletRequest req) {
+        if (!adminAuth.isAdminRequest(req) && !adminSession.hasValidSession(req)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        List<DashboardCard> cards = new ArrayList<>();
+
+        ConsultantSubjectProvider subjectProvider = consultantSubjectProvider.getIfAvailable();
+        if (subjectProvider != null) {
+            cards.add(new DashboardCard("consultant", "Consultant",
+                    "Chat with Genesis AI. Ask questions, explore strategy, or run a full engagement.",
+                    "/dashboard/console", "consultant", true, ModuleOrigin.isCore(subjectProvider.getClass())));
+        }
+
+        cards.add(new DashboardCard("knowledge", "Knowledge",
+                "Browse Layer 1 sources and reasoning modules. Empty by default on a bare platform instance until ingested.",
+                "/dashboard/knowledge", "knowledge", true, true));
+
+        cards.add(new DashboardCard("training", "Training",
+                "Add examples, label content, and manage training sessions to sharpen the AI's judgement.",
+                "/dashboard/training", "training", true, true));
+
+        cards.add(new DashboardCard("questionnaires", "Questionnaires",
+                "Build and publish discovery questionnaires. Manage questions, flow, and scheduling.",
+                "/dashboard/questionnaires", "questionnaires", true, true));
+
+        cards.add(new DashboardCard("themes", "Themes",
+                "Manage the visual theme applied to this tenant. Import theme bundles, switch the active theme instantly.",
+                "/dashboard/themes", "themes", true, themeService.isActiveThemeCore()));
+
+        cards.add(new DashboardCard("agents", "Agents",
+                "Configure which registered agents are available in the live dashboard and Playground, and whether A/B compare is enabled.",
+                "/dashboard/agents", "agents", true, true));
+
+        cards.add(new DashboardCard("page-flows", "Page Flows",
+                "Assemble pages into a visual flow chart, connect next / previous / error arrows, and configure widgets in each page's layout.",
+                "/dashboard/page-flows", "page-flows", true, true));
+
+        navExtensions.stream()
+                .sorted(Comparator.comparingInt(AdminNavExtension::order))
+                .forEach(ext -> cards.add(new DashboardCard(
+                        ext.path(), ext.label(), ext.description(), ext.path(), "generic", true, ext.core())));
+
+        return ResponseEntity.ok(cards);
+    }
+
+    public record DashboardCard(
+            String id, String label, String description, String path, String icon, boolean live, boolean core) {}
 }

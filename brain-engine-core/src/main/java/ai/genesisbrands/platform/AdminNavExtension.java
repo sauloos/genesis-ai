@@ -19,4 +19,15 @@ public interface AdminNavExtension {
     default int order() {
         return 100;
     }
+
+    /**
+     * True when this extension is authored in brain-engine-core itself (a core
+     * capability that just isn't hardcoded into dashboard.html), false when a tenant
+     * module (e.g. genesis-brands) defines it. Computed from where the implementing
+     * class was actually loaded from, so a new extension is classified correctly with
+     * no manual bookkeeping required from whoever adds it.
+     */
+    default boolean core() {
+        return ModuleOrigin.isCore(getClass());
+    }
 }

@@ -125,7 +125,7 @@
     gap: 36px;
   }
 
-  .section {
+  .grid-wrap {
     --accent:        #7c9ef8;
     --accent-hover:  rgba(124,158,248,0.4);
     --accent-shadow: rgba(124,158,248,0.15);
@@ -133,27 +133,6 @@
     --accent-to:     #5a7de8;
     --badge-bg:      rgba(124,158,248,0.12);
     --badge-border:  rgba(124,158,248,0.22);
-  }
-
-  .section-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 14px;
-  }
-  .section-label {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--theme-section-label);
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-  .section-line {
-    flex: 1;
-    height: 1px;
-    background: var(--theme-divider);
   }
 
   .feature-grid {
@@ -227,6 +206,11 @@
     justify-content: space-between;
     margin-top: 4px;
   }
+  .card-badges {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
   .card-badge {
     font-size: 10px;
     font-weight: 600;
@@ -238,6 +222,22 @@
     color: var(--accent);
     border: 1px solid var(--badge-border);
   }
+  .prov-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 2px 7px 2px 6px;
+    border-radius: 4px;
+  }
+  .prov-badge .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .prov-core { background: rgba(148,163,184,0.12); border: 1px solid rgba(148,163,184,0.25); color: #94a3b8; }
+  .prov-core .dot { background: #94a3b8; }
+  .prov-customised { background: rgba(167,139,250,0.14); border: 1px solid rgba(167,139,250,0.32); color: #a78bfa; }
+  .prov-customised .dot { background: #a78bfa; }
   .card-go {
     color: var(--theme-go-color);
     transition: color 0.15s, transform 0.15s;
@@ -298,156 +298,9 @@
 </div>
 
 <div class="grid-wrap">
-
-  <div class="section">
-    <div class="section-header">
-      <span class="section-label">Platform</span>
-      <div class="section-line"></div>
-    </div>
-    <div class="feature-grid">
-
-      <a href="/dashboard/console" class="feature-card">
-        <div class="card-icon">
-          <svg viewBox="0 0 22 22" fill="none" stroke-width="1.6">
-            <path d="M3 3h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H13l-4 3v-3H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/>
-            <path d="M7 8h8M7 11h5"/>
-          </svg>
-        </div>
-        <div>
-          <div class="card-title">Consultant</div>
-          <div class="card-desc">Chat with Genesis AI. Ask questions, explore strategy, or run a full engagement.</div>
-        </div>
-        <div class="card-footer">
-          <span class="card-badge">Live</span>
-          <svg class="card-go" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 8h10M9 4l4 4-4 4"/>
-          </svg>
-        </div>
-      </a>
-
-      <a href="/dashboard/knowledge" class="feature-card">
-        <div class="card-icon">
-          <svg viewBox="0 0 22 22" fill="none" stroke-width="1.6">
-            <ellipse cx="11" cy="6" rx="7" ry="3"/>
-            <path d="M4 6v4c0 1.66 3.13 3 7 3s7-1.34 7-3V6"/>
-            <path d="M4 10v4c0 1.66 3.13 3 7 3s7-1.34 7-3v-4"/>
-          </svg>
-        </div>
-        <div>
-          <div class="card-title">Knowledge</div>
-          <div class="card-desc">Browse Layer 1 sources and reasoning modules. Empty by default on a bare platform instance until ingested.</div>
-        </div>
-        <div class="card-footer">
-          <span class="card-badge">Live</span>
-          <svg class="card-go" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 8h10M9 4l4 4-4 4"/>
-          </svg>
-        </div>
-      </a>
-
-      <a href="/dashboard/training" class="feature-card">
-        <div class="card-icon">
-          <svg viewBox="0 0 22 22" fill="none" stroke-width="1.6">
-            <path d="M11 2L2 7l9 5 9-5-9-5Z"/>
-            <path d="M2 7v6l9 5 9-5V7"/>
-          </svg>
-        </div>
-        <div>
-          <div class="card-title">Training</div>
-          <div class="card-desc">Add examples, label content, and manage training sessions to sharpen the AI's judgement.</div>
-        </div>
-        <div class="card-footer">
-          <span class="card-badge">Live</span>
-          <svg class="card-go" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 8h10M9 4l4 4-4 4"/>
-          </svg>
-        </div>
-      </a>
-
-      <a href="/dashboard/questionnaires" class="feature-card">
-        <div class="card-icon">
-          <svg viewBox="0 0 22 22" fill="none" stroke-width="1.6">
-            <rect x="4" y="2" width="14" height="18" rx="2"/>
-            <path d="M8 7h6M8 11h6M8 15h4"/>
-          </svg>
-        </div>
-        <div>
-          <div class="card-title">Questionnaires</div>
-          <div class="card-desc">Build and publish discovery questionnaires. Manage questions, flow, and scheduling.</div>
-        </div>
-        <div class="card-footer">
-          <span class="card-badge">Live</span>
-          <svg class="card-go" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 8h10M9 4l4 4-4 4"/>
-          </svg>
-        </div>
-      </a>
-
-      <a href="/dashboard/themes" class="feature-card">
-        <div class="card-icon">
-          <svg viewBox="0 0 22 22" fill="none" stroke-width="1.6">
-            <circle cx="11" cy="11" r="8"/>
-            <path d="M11 3v16M3 11h16"/>
-            <path d="M5.1 5.1l11.8 11.8M16.9 5.1L5.1 16.9"/>
-          </svg>
-        </div>
-        <div>
-          <div class="card-title">Themes</div>
-          <div class="card-desc">Manage the visual theme applied to this tenant. Import theme bundles, switch the active theme instantly.</div>
-        </div>
-        <div class="card-footer">
-          <span class="card-badge">Live</span>
-          <svg class="card-go" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 8h10M9 4l4 4-4 4"/>
-          </svg>
-        </div>
-      </a>
-
-      <a href="/dashboard/agents" class="feature-card">
-        <div class="card-icon">
-          <svg viewBox="0 0 22 22" fill="none" stroke-width="1.6">
-            <rect x="3" y="3" width="7" height="7" rx="1.5"/>
-            <rect x="12" y="3" width="7" height="7" rx="1.5"/>
-            <rect x="3" y="12" width="7" height="7" rx="1.5"/>
-            <rect x="12" y="12" width="7" height="7" rx="1.5"/>
-          </svg>
-        </div>
-        <div>
-          <div class="card-title">Agents</div>
-          <div class="card-desc">Configure which registered agents are available in the live dashboard and Playground, and whether A/B compare is enabled.</div>
-        </div>
-        <div class="card-footer">
-          <span class="card-badge">Live</span>
-          <svg class="card-go" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 8h10M9 4l4 4-4 4"/>
-          </svg>
-        </div>
-      </a>
-
-      <a href="/dashboard/page-flows" class="feature-card">
-        <div class="card-icon">
-          <svg viewBox="0 0 22 22" fill="none" stroke-width="1.6">
-            <rect x="2" y="9" width="6" height="6" rx="1.5"/>
-            <rect x="14" y="2" width="6" height="6" rx="1.5"/>
-            <rect x="14" y="16" width="6" height="6" rx="1.5"/>
-            <path d="M8 12h4v-6h2M12 12h2v6"/>
-          </svg>
-        </div>
-        <div>
-          <div class="card-title">Page Flows</div>
-          <div class="card-desc">Assemble pages into a visual flow chart, connect next / previous / error arrows, and configure widgets in each page's layout.</div>
-        </div>
-        <div class="card-footer">
-          <span class="card-badge">Live</span>
-          <svg class="card-go" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 8h10M9 4l4 4-4 4"/>
-          </svg>
-        </div>
-      </a>
-
-    </div>
+  <div class="feature-grid" id="card-grid">
+    <div style="padding:12px 4px;color:var(--theme-text-muted);font-size:12px;">Loading…</div>
   </div>
-
 </div>
 
 <a href="/" class="return-link">Return to landing page</a>
@@ -468,54 +321,61 @@
 })();
 </script>
 <script>
-(async () => {
-  try {
-    const r = await fetch("/api/admin/nav-extensions", { credentials: "include" });
-    if (!r.ok) return;
-    const items = await r.json();
-    if (!items.length) return;
-    const wrap = document.querySelector(".grid-wrap");
-    if (!wrap) return;
+  // Every dashboard card — core platform pages and tenant AdminNavExtensions alike —
+  // comes from one endpoint now, each carrying its own Live + Core/Customised
+  // provenance flag, so the page no longer needs a separate "Platform" vs
+  // "Extensions" grouping: it's a single flat grid.
+  const CARD_ICONS = {
+    consultant: '<path d="M3 3h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H13l-4 3v-3H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M7 8h8M7 11h5"/>',
+    knowledge: '<ellipse cx="11" cy="6" rx="7" ry="3"/><path d="M4 6v4c0 1.66 3.13 3 7 3s7-1.34 7-3V6"/><path d="M4 10v4c0 1.66 3.13 3 7 3s7-1.34 7-3v-4"/>',
+    training: '<path d="M11 2L2 7l9 5 9-5-9-5Z"/><path d="M2 7v6l9 5 9-5V7"/>',
+    questionnaires: '<rect x="4" y="2" width="14" height="18" rx="2"/><path d="M8 7h6M8 11h6M8 15h4"/>',
+    themes: '<circle cx="11" cy="11" r="8"/><path d="M11 3v16M3 11h16"/><path d="M5.1 5.1l11.8 11.8M16.9 5.1L5.1 16.9"/>',
+    agents: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="12" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="12" width="7" height="7" rx="1.5"/><rect x="12" y="12" width="7" height="7" rx="1.5"/>',
+    'page-flows': '<rect x="2" y="9" width="6" height="6" rx="1.5"/><rect x="14" y="2" width="6" height="6" rx="1.5"/><rect x="14" y="16" width="6" height="6" rx="1.5"/><path d="M8 12h4v-6h2M12 12h2v6"/>',
+    generic: '<rect x="4" y="4" width="14" height="14" rx="2"/><path d="M8 11h6"/>',
+  };
 
-    const section = document.createElement("div");
-    section.className = "section";
-    section.innerHTML = `
-      <div class="section-header">
-        <span class="section-label">Extensions</span>
-        <div class="section-line"></div>
+  function cardEl(card) {
+    const a = document.createElement("a");
+    a.href = card.path;
+    a.className = "feature-card";
+    const provClass = card.core ? "prov-core" : "prov-customised";
+    const provLabel = card.core ? "Core" : "Customised";
+    a.innerHTML = `
+      <div class="card-icon">
+        <svg viewBox="0 0 22 22" fill="none" stroke-width="1.6">${CARD_ICONS[card.icon] || CARD_ICONS.generic}</svg>
       </div>
-      <div class="feature-grid"></div>`;
-    const grid = section.querySelector(".feature-grid");
-
-    items.forEach(item => {
-      const a = document.createElement("a");
-      a.href = item.path;
-      a.className = "feature-card";
-      a.innerHTML = `
-        <div class="card-icon">
-          <svg viewBox="0 0 22 22" fill="none" stroke-width="1.6">
-            <rect x="4" y="4" width="14" height="14" rx="2"/>
-            <path d="M8 11h6"/>
-          </svg>
+      <div>
+        <div class="card-title"></div>
+        <div class="card-desc"></div>
+      </div>
+      <div class="card-footer">
+        <div class="card-badges">
+          <span class="card-badge">${card.live ? "Live" : "Off"}</span>
+          <span class="prov-badge ${provClass}"><span class="dot"></span>${provLabel}</span>
         </div>
-        <div>
-          <div class="card-title"></div>
-          <div class="card-desc"></div>
-        </div>
-        <div class="card-footer">
-          <span class="card-badge">Live</span>
-          <svg class="card-go" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 8h10M9 4l4 4-4 4"/>
-          </svg>
-        </div>`;
-      a.querySelector(".card-title").textContent = item.label;
-      a.querySelector(".card-desc").textContent = item.description;
-      grid.appendChild(a);
-    });
+        <svg class="card-go" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 8h10M9 4l4 4-4 4"/>
+        </svg>
+      </div>`;
+    a.querySelector(".card-title").textContent = card.label;
+    a.querySelector(".card-desc").textContent = card.description;
+    return a;
+  }
 
-    wrap.appendChild(section);
-  } catch {}
-})();
+  (async () => {
+    const grid = document.getElementById("card-grid");
+    try {
+      const r = await fetch("/api/admin/dashboard-cards", { credentials: "include" });
+      if (!r.ok) throw new Error("dashboard-cards fetch failed");
+      const cards = await r.json();
+      grid.innerHTML = "";
+      cards.forEach(card => grid.appendChild(cardEl(card)));
+    } catch {
+      grid.innerHTML = '<div style="padding:12px 4px;color:var(--theme-text-muted);font-size:12px;">Couldn\'t load capabilities.</div>';
+    }
+  })();
 </script>
 </body>
 </html>
