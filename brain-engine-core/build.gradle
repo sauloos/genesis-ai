@@ -44,6 +44,9 @@ dependencies {
     // BCrypt password hashing
     implementation 'org.springframework.security:spring-security-crypto'
 
+    // Google ID token verification (Sign in with Google)
+    implementation 'com.google.api-client:google-api-client:2.7.0'
+
     // Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

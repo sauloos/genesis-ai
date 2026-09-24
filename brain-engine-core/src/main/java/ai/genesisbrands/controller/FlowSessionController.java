@@ -46,7 +46,7 @@ public class FlowSessionController {
     public ResponseEntity<?> get(@PathVariable String token, HttpServletRequest req) {
         if (!authorized(req)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         try {
-            return ResponseEntity.ok(publicFlowRuntimeService.resume(token));
+            return ResponseEntity.ok(publicFlowRuntimeService.resume(token, null));
         } catch (NoSuchElementException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));
         }
@@ -56,7 +56,7 @@ public class FlowSessionController {
     public ResponseEntity<?> updateContext(@PathVariable String token, @RequestBody ContextPatchRequest body, HttpServletRequest req) {
         if (!authorized(req)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         try {
-            return ResponseEntity.ok(publicFlowRuntimeService.updateContext(token, body.contextPatchJson()));
+            return ResponseEntity.ok(publicFlowRuntimeService.updateContext(token, body.contextPatchJson(), null));
         } catch (NoSuchElementException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));
         } catch (IllegalArgumentException e) {
@@ -68,7 +68,7 @@ public class FlowSessionController {
     public ResponseEntity<?> advance(@PathVariable String token, @RequestBody AdvanceRequest body, HttpServletRequest req) {
         if (!authorized(req)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         try {
-            return ResponseEntity.ok(publicFlowRuntimeService.advance(token, body.outcomeKey()));
+            return ResponseEntity.ok(publicFlowRuntimeService.advance(token, body.outcomeKey(), null));
         } catch (NoSuchElementException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));
         } catch (IllegalArgumentException | IllegalStateException e) {

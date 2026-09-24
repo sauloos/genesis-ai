@@ -8,4 +8,5 @@ import java.util.Optional;
 public interface ClientUserRepository extends JpaRepository<ClientUser, String> {
     Optional<ClientUser> findByEmail(String email);
     boolean existsByEmail(String email);
+    Optional<ClientUser> findByGoogleSub(String googleSub);
 }

@@ -52,6 +52,23 @@ public class ClientAuthController {
         );
     }
 
+    @PostMapping("/google")
+    public ResponseEntity<AuthResponse> google(@RequestBody GoogleAuthRequest req,
+                                                HttpServletResponse res) {
+        try {
+            ClientUser user = authService.loginWithGoogle(req.idToken());
+            String token = authService.createSession(user.getId());
+            setSessionCookie(res, token);
+            return ResponseEntity.ok(new AuthResponse(user.getId(), user.getEmail(), user.getName(), null));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new AuthResponse(null, null, null, e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED)
+                .body(new AuthResponse(null, null, null, e.getMessage()));
+        }
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(HttpServletRequest req, HttpServletResponse res) {
         String token = ClientAuthFilter.extractSessionCookie(req);
@@ -82,5 +99,6 @@ public class ClientAuthController {
     }
 
     public record AuthRequest(String email, String name, String password) {}
+    public record GoogleAuthRequest(String idToken) {}
     public record AuthResponse(String id, String email, String name, String error) {}
 }

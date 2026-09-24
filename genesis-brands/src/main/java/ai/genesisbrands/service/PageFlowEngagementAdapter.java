@@ -15,9 +15,10 @@ import java.util.UUID;
 
 /**
  * Fills the brain-engine-core FlowEngagementTrigger extension point: a PageFlow ending
- * in CREATE_ENGAGEMENT lands here with the visitor's captured Q&A, and this creates an
- * anonymous, client-sourced Engagement (no questionnaireResponseId, no clientUserId —
- * registration/payment are wired separately, not by this trigger).
+ * in CREATE_ENGAGEMENT lands here with the visitor's captured Q&A, and this creates a
+ * client-sourced Engagement (no questionnaireResponseId — payment is wired separately,
+ * not by this trigger). clientUserId, when the originating FlowSession was linked to an
+ * authenticated ClientUser, is stamped in at creation.
  */
 @Component
 @RequiredArgsConstructor
@@ -27,10 +28,14 @@ public class PageFlowEngagementAdapter implements FlowEngagementTrigger {
     private final EngagementOrchestratorService orchestrator;
 
     @Override
-    public String createAndRun(List<QuestionnaireQuestion> questions, List<QuestionnaireAnswer> answers) {
+    public String createAndRun(List<QuestionnaireQuestion> questions, List<QuestionnaireAnswer> answers, String clientUserId) {
         Engagement e = new Engagement();
         e.setId(UUID.randomUUID().toString());
         e.setSource(Engagement.Source.CLIENT);
+        // Stamped in the same initial save, not as a follow-up update — the @Async
+        // orchestrator below does its own find-by-id/save on a separate thread right
+        // after commit, so setting this after creation would race it.
+        e.setClientUserId(clientUserId);
         engagementRepo.save(e);
         String engagementId = e.getId();
 

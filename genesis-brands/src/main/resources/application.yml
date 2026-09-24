@@ -56,6 +56,8 @@ genesis:
   basic-auth:
     username: ${BASIC_AUTH_USERNAME:genesis}
     password: ${BASIC_AUTH_PASSWORD:change-me-in-prod}
+  google-oauth:
+    client-id: ${GOOGLE_OAUTH_CLIENT_ID:}
   logo:
     default-method: DALLE
   training:

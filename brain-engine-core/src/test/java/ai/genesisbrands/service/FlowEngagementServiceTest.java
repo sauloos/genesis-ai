@@ -25,6 +25,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -86,14 +87,14 @@ class FlowEngagementServiceTest {
             widget("w3", "p1", "content", "{\"heading\":\"Hi\"}")
         ));
         FlowSession s = session("f1", "{\"w1\":\"Ada\",\"w2\":[\"Red\",\"Blue\"]}");
-        when(flowEngagementTrigger.createAndRun(anyList(), anyList())).thenReturn("eng-1");
+        when(flowEngagementTrigger.createAndRun(anyList(), anyList(), isNull())).thenReturn("eng-1");
 
         String result = service.triggerEngagement(f, s);
 
         assertThat(result).isEqualTo("eng-1");
         ArgumentCaptor<List<QuestionnaireQuestion>> questionsCaptor = ArgumentCaptor.forClass(List.class);
         ArgumentCaptor<List<QuestionnaireAnswer>> answersCaptor = ArgumentCaptor.forClass(List.class);
-        verify(flowEngagementTrigger).createAndRun(questionsCaptor.capture(), answersCaptor.capture());
+        verify(flowEngagementTrigger).createAndRun(questionsCaptor.capture(), answersCaptor.capture(), isNull());
 
         List<QuestionnaireQuestion> questions = questionsCaptor.getValue();
         assertThat(questions).hasSize(2);
@@ -119,12 +120,12 @@ class FlowEngagementServiceTest {
             widget("w2", "p1", "question", "{\"prompt\":\"Never reached\",\"questionType\":\"short_text\"}")
         ));
         FlowSession s = session("f1", "{\"w1\":\"answered\"}");
-        when(flowEngagementTrigger.createAndRun(anyList(), anyList())).thenReturn("eng-2");
+        when(flowEngagementTrigger.createAndRun(anyList(), anyList(), isNull())).thenReturn("eng-2");
 
         service.triggerEngagement(f, s);
 
         ArgumentCaptor<List<QuestionnaireAnswer>> answersCaptor = ArgumentCaptor.forClass(List.class);
-        verify(flowEngagementTrigger).createAndRun(anyList(), answersCaptor.capture());
+        verify(flowEngagementTrigger).createAndRun(anyList(), answersCaptor.capture(), isNull());
         assertThat(answersCaptor.getValue()).extracting(QuestionnaireAnswer::getQuestionId).containsExactly("w1");
     }
 
@@ -149,14 +150,14 @@ class FlowEngagementServiceTest {
         realAnswer.setValueJson("\"Blue\"");
         when(questionnaireAnswerRepo.findByResponseIdOrderByCreatedAtAsc("r1")).thenReturn(List.of(realAnswer));
 
-        when(flowEngagementTrigger.createAndRun(anyList(), anyList())).thenReturn("eng-3");
+        when(flowEngagementTrigger.createAndRun(anyList(), anyList(), isNull())).thenReturn("eng-3");
 
         String result = service.triggerEngagement(f, s);
 
         assertThat(result).isEqualTo("eng-3");
         ArgumentCaptor<List<QuestionnaireQuestion>> questionsCaptor = ArgumentCaptor.forClass(List.class);
         ArgumentCaptor<List<QuestionnaireAnswer>> answersCaptor2 = ArgumentCaptor.forClass(List.class);
-        verify(flowEngagementTrigger).createAndRun(questionsCaptor.capture(), answersCaptor2.capture());
+        verify(flowEngagementTrigger).createAndRun(questionsCaptor.capture(), answersCaptor2.capture(), isNull());
 
         assertThat(questionsCaptor.getValue()).extracting(QuestionnaireQuestion::getId).containsExactly("w1", "rq1");
         assertThat(answersCaptor2.getValue()).extracting(QuestionnaireAnswer::getQuestionId).containsExactly("w1", "rq1");
@@ -170,12 +171,12 @@ class FlowEngagementServiceTest {
             widget("w2", "p1", "questionnaire", "{\"questionnaireId\":\"q1\"}")
         ));
         FlowSession s = session("f1", "{}");
-        when(flowEngagementTrigger.createAndRun(anyList(), anyList())).thenReturn("eng-4");
+        when(flowEngagementTrigger.createAndRun(anyList(), anyList(), isNull())).thenReturn("eng-4");
 
         service.triggerEngagement(f, s);
 
         ArgumentCaptor<List<QuestionnaireQuestion>> questionsCaptor = ArgumentCaptor.forClass(List.class);
-        verify(flowEngagementTrigger).createAndRun(questionsCaptor.capture(), anyList());
+        verify(flowEngagementTrigger).createAndRun(questionsCaptor.capture(), anyList(), isNull());
         assertThat(questionsCaptor.getValue()).isEmpty();
     }
 }

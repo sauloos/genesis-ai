@@ -150,6 +150,67 @@
   .reg-login-row { text-align: center; margin-top: 16px; font-size: 12px; color: var(--theme-text-muted); }
   .reg-login-row a { color: var(--theme-text-primary); text-decoration: none; font-weight: 600; }
 
+  .widget-login { display: flex; flex-direction: column; }
+  .wl-tabs { display: flex; gap: 4px; margin-bottom: 18px; border-bottom: 1px solid var(--theme-card-border); }
+  .wl-tab {
+    flex: 1; padding: 10px; border: none; background: none; cursor: pointer; font-family: inherit;
+    font-size: 13px; font-weight: 600; color: var(--theme-text-muted); border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .wl-tab.active { color: var(--theme-text-primary); border-bottom-color: var(--theme-text-primary); }
+  .wl-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+  .wl-field label { font-size: 11px; font-weight: 600; color: var(--theme-text-muted); text-transform: uppercase; letter-spacing: 0.3px; }
+  .wl-field input {
+    padding: 11px 13px; border: 1px solid var(--theme-btn-border); border-radius: 9px; font-size: 14px;
+    font-family: inherit; outline: none; background: transparent; color: var(--theme-text-primary);
+  }
+  .wl-err { font-size: 12px; color: #d33; min-height: 16px; margin-bottom: 4px; }
+  .wl-submit-btn {
+    width: 100%; padding: 12px; background: var(--theme-text-primary); color: var(--theme-body-bg);
+    border: none; border-radius: 9px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+  .wl-submit-btn:disabled { opacity: 0.6; cursor: default; }
+  .wl-divider {
+    display: flex; align-items: center; gap: 10px; margin: 18px 0; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.5px; color: var(--theme-text-muted);
+  }
+  .wl-divider::before, .wl-divider::after { content: ''; flex: 1; height: 1px; background: var(--theme-card-border); }
+  .wl-google-btn { display: flex; justify-content: center; }
+
+  .widget-brand-results { display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .br-heading { font-size: 18px; font-weight: 700; margin-bottom: 18px; color: var(--theme-text-primary); }
+  .br-spinner {
+    width: 30px; height: 30px; border-radius: 50%;
+    border: 3px solid var(--theme-btn-border); border-top-color: var(--theme-text-primary);
+    animation: br-spin 0.8s linear infinite; margin-bottom: 14px;
+  }
+  @keyframes br-spin { to { transform: rotate(360deg); } }
+  .br-status { font-size: 13px; color: var(--theme-text-muted); max-width: 380px; line-height: 1.5; }
+  .br-error { font-size: 13px; color: #d33; max-width: 380px; line-height: 1.5; margin-bottom: 14px; }
+  .br-retry-btn {
+    padding: 10px 20px; border-radius: 9px; border: 1px solid var(--theme-btn-border);
+    background: none; color: var(--theme-text-primary); font-size: 13px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+  }
+  .br-cards {
+    width: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 18px; margin-top: 6px;
+  }
+  .br-card {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    border: 1px solid var(--theme-card-border); border-radius: 12px; padding: 14px;
+  }
+  .br-card-img { width: 100%; border-radius: 6px; display: block; object-fit: cover; }
+  .br-card-label { font-size: 13px; font-weight: 700; letter-spacing: 0.3px; color: var(--theme-text-primary); }
+  .br-card-tagline { font-size: 12px; color: var(--theme-text-muted); line-height: 1.4; }
+  .br-choose-btn {
+    width: 100%; margin-top: 4px; padding: 10px; border-radius: 9px; border: none;
+    background: var(--theme-text-primary); color: var(--theme-body-bg);
+    font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+  .br-choose-btn:disabled { opacity: 0.5; cursor: default; }
+  .br-note { font-size: 12px; color: var(--theme-text-muted); margin-top: 18px; }
+
   #sim-badge {
     display: none;
     position: fixed; top: 16px; left: 16px; z-index: 9999;
@@ -234,6 +295,11 @@ function parseChoices(json) {
 
 function isRequired(config) {
   return config.required === true || config.required === 'true';
+}
+
+function widgetConfigBool(value, defaultVal) {
+  if (value === undefined || value === null || value === '') return defaultVal;
+  return value === true || value === 'true';
 }
 
 async function saveAnswer(widgetId, value, required) {
@@ -379,6 +445,20 @@ const widgetRegistry = {
     div.className = 'widget-questionnaire';
     requiredPending.add(w.id);
     bootQuestionnaireWidget(w, div);
+    return div;
+  },
+  login: (w) => {
+    const div = document.createElement('div');
+    div.className = 'widget-login';
+    requiredPending.add(w.id);
+    bootLoginWidget(w, div);
+    return div;
+  },
+  brandResults: (w) => {
+    const div = document.createElement('div');
+    div.className = 'widget-brand-results';
+    requiredPending.add(w.id);
+    bootBrandResultsWidget(w, div);
     return div;
   }
 };
@@ -773,6 +853,317 @@ async function toggleQuestionnaireRecording(state) {
     state.isRecording = false;
     micBtn.classList.remove('recording');
   }
+}
+
+let googleScriptPromise = null;
+function loadGoogleScript() {
+  if (googleScriptPromise) return googleScriptPromise;
+  googleScriptPromise = new Promise((resolve, reject) => {
+    if (window.google && window.google.accounts && window.google.accounts.id) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true; s.defer = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('Failed to load Google Identity script'));
+    document.head.appendChild(s);
+  });
+  return googleScriptPromise;
+}
+
+async function bootLoginWidget(w, container) {
+  try {
+    const res = await fetch(`${API}/api/auth/me`, { headers: HEADERS });
+    if (res.ok) { finishLogin(w); return; }
+  } catch (e) { /* fall through to the form */ }
+  renderLoginForm(w, container);
+}
+
+function finishLogin(w) {
+  requiredPending.delete(w.id);
+  updateOutcomeButtons();
+  advance('next');
+}
+
+function renderLoginForm(w, container) {
+  container.innerHTML = '';
+  let mode = 'signin';
+
+  const tabs = document.createElement('div');
+  tabs.className = 'wl-tabs';
+  const signinTab = document.createElement('button');
+  signinTab.type = 'button'; signinTab.className = 'wl-tab active'; signinTab.textContent = 'Sign in';
+  const signupTab = document.createElement('button');
+  signupTab.type = 'button'; signupTab.className = 'wl-tab'; signupTab.textContent = 'Create account';
+  tabs.appendChild(signinTab); tabs.appendChild(signupTab);
+  container.appendChild(tabs);
+
+  const nameField = document.createElement('div');
+  nameField.className = 'wl-field'; nameField.style.display = 'none';
+  const nameLabel = document.createElement('label'); nameLabel.textContent = 'Name';
+  const nameInput = document.createElement('input'); nameInput.type = 'text'; nameInput.placeholder = 'Your name';
+  nameField.appendChild(nameLabel); nameField.appendChild(nameInput);
+  container.appendChild(nameField);
+
+  const emailField = document.createElement('div');
+  emailField.className = 'wl-field';
+  const emailLabel = document.createElement('label'); emailLabel.textContent = 'Email';
+  const emailInput = document.createElement('input'); emailInput.type = 'email'; emailInput.placeholder = 'your@email.com';
+  emailField.appendChild(emailLabel); emailField.appendChild(emailInput);
+  container.appendChild(emailField);
+
+  const passwordField = document.createElement('div');
+  passwordField.className = 'wl-field';
+  const passwordLabel = document.createElement('label'); passwordLabel.textContent = 'Password';
+  const passwordInput = document.createElement('input'); passwordInput.type = 'password'; passwordInput.placeholder = 'Min 8 characters';
+  passwordField.appendChild(passwordLabel); passwordField.appendChild(passwordInput);
+  container.appendChild(passwordField);
+
+  const errEl = document.createElement('div');
+  errEl.className = 'wl-err';
+  container.appendChild(errEl);
+
+  const submitBtn = document.createElement('button');
+  submitBtn.type = 'button';
+  submitBtn.className = 'wl-submit-btn';
+  submitBtn.textContent = 'Sign in';
+  container.appendChild(submitBtn);
+
+  signinTab.onclick = () => {
+    mode = 'signin';
+    signinTab.classList.add('active'); signupTab.classList.remove('active');
+    nameField.style.display = 'none';
+    submitBtn.textContent = 'Sign in';
+    errEl.textContent = '';
+  };
+  signupTab.onclick = () => {
+    mode = 'signup';
+    signupTab.classList.add('active'); signinTab.classList.remove('active');
+    nameField.style.display = 'flex';
+    submitBtn.textContent = 'Create account';
+    errEl.textContent = '';
+  };
+
+  submitBtn.onclick = async () => {
+    errEl.textContent = '';
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+    const name = nameInput.value.trim();
+    if (!email || !password) { errEl.textContent = 'Please fill in email and password.'; return; }
+    if (mode === 'signup' && !name) { errEl.textContent = 'Please enter your name.'; return; }
+    if (mode === 'signup' && password.length < 8) { errEl.textContent = 'Password must be at least 8 characters.'; return; }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = mode === 'signup' ? 'Creating account…' : 'Signing in…';
+    try {
+      const endpoint = mode === 'signup' ? '/api/auth/register' : '/api/auth/login';
+      const res = await fetch(`${API}${endpoint}`, {
+        method: 'POST', headers: HEADERS, body: JSON.stringify({ email, name, password })
+      });
+      const body = await res.json();
+      if (!res.ok || body.error) {
+        errEl.textContent = body.error || 'Something went wrong. Please try again.';
+        submitBtn.disabled = false;
+        submitBtn.textContent = mode === 'signup' ? 'Create account' : 'Sign in';
+        return;
+      }
+      finishLogin(w);
+    } catch (e) {
+      errEl.textContent = 'Something went wrong. Please try again.';
+      submitBtn.disabled = false;
+      submitBtn.textContent = mode === 'signup' ? 'Create account' : 'Sign in';
+    }
+  };
+
+  if (widgetConfigBool(w.config.googleEnabled, true) && window.__PF_GOOGLE_CLIENT_ID__) {
+    const divider = document.createElement('div');
+    divider.className = 'wl-divider';
+    divider.textContent = 'or';
+    container.appendChild(divider);
+
+    const googleContainer = document.createElement('div');
+    googleContainer.className = 'wl-google-btn';
+    container.appendChild(googleContainer);
+
+    loadGoogleScript().then(() => {
+      window.google.accounts.id.initialize({
+        client_id: window.__PF_GOOGLE_CLIENT_ID__,
+        callback: (response) => handleGoogleCredential(w, response, errEl)
+      });
+      window.google.accounts.id.renderButton(googleContainer, { theme: 'outline', size: 'large', width: 280 });
+    }).catch(() => { /* Google button simply doesn't render — email/password still works */ });
+  }
+}
+
+async function handleGoogleCredential(w, response, errEl) {
+  try {
+    const res = await fetch(`${API}/api/auth/google`, {
+      method: 'POST', headers: HEADERS, body: JSON.stringify({ idToken: response.credential })
+    });
+    const body = await res.json();
+    if (!res.ok || body.error) {
+      if (errEl) errEl.textContent = body.error || 'Google sign-in failed. Please try again.';
+      return;
+    }
+    finishLogin(w);
+  } catch (e) {
+    if (errEl) errEl.textContent = 'Google sign-in failed. Please try again.';
+  }
+}
+
+async function bootBrandResultsWidget(w, container) {
+  const heading = w.config.heading || 'Your brand directions are ready';
+  renderBrandResultsStatus(container, heading, 'Getting started…');
+  if (simulate) {
+    // The pipeline needs a real, authenticated FlowSession (BrandResultsController
+    // 403s without a clientUserId, which simulated sessions never have) — admin
+    // Simulate preview shows an explanatory placeholder instead of attempting it.
+    renderBrandResultsStatus(container, heading,
+      'The brand pipeline only runs for real visitor sessions — not available in Simulate preview.');
+    requiredPending.delete(w.id);
+    updateOutcomeButtons();
+    return;
+  }
+  startBrandResultsPipeline(w, container, false);
+}
+
+async function startBrandResultsPipeline(w, container, retry) {
+  const heading = w.config.heading || 'Your brand directions are ready';
+  renderBrandResultsStatus(container, heading, retry ? 'Retrying…' : 'Getting started…');
+  try {
+    const res = await fetch(
+      `${API}/api/public/brand-results/flow-sessions/${token}/widgets/${w.id}/start${retry ? '?retry=true' : ''}`,
+      { method: 'POST', headers: HEADERS }
+    );
+    if (!res.ok) throw new Error('start failed');
+    const body = await res.json();
+    pollBrandResults(w, container, body.engagementId);
+  } catch (e) {
+    renderBrandResultsError(w, container, 'Could not start generating your brand directions.');
+  }
+}
+
+function renderBrandResultsStatus(container, heading, message) {
+  container.innerHTML = '';
+  const h = document.createElement('h2');
+  h.className = 'br-heading';
+  h.textContent = heading;
+  container.appendChild(h);
+  const spinner = document.createElement('div');
+  spinner.className = 'br-spinner';
+  container.appendChild(spinner);
+  const status = document.createElement('div');
+  status.className = 'br-status';
+  status.textContent = message;
+  container.appendChild(status);
+}
+
+async function pollBrandResults(w, container, engagementId) {
+  let body;
+  try {
+    const res = await fetch(`${API}/api/engagements/${engagementId}`, { headers: HEADERS });
+    if (!res.ok) throw new Error('poll failed');
+    body = await res.json();
+  } catch (e) {
+    renderBrandResultsError(w, container, 'Lost connection while checking your brand directions.');
+    return;
+  }
+  const status = body.summary.status;
+  if (status === 'DONE') {
+    renderBrandResultsDirections(w, container, engagementId, body.results);
+  } else if (status === 'FAILED') {
+    renderBrandResultsError(w, container, 'Something went wrong generating your brand directions.');
+  } else {
+    renderBrandResultsStatus(container, w.config.heading || 'Your brand directions are ready',
+      'Reading your answers and shaping three directions… this can take a few minutes.');
+    setTimeout(() => pollBrandResults(w, container, engagementId), 4000);
+  }
+}
+
+function brandDirectionLabel(direction) {
+  const d = String(direction || '').toLowerCase();
+  return d.charAt(0).toUpperCase() + d.slice(1);
+}
+
+function renderBrandResultsDirections(w, container, engagementId, results) {
+  container.innerHTML = '';
+  const h = document.createElement('h2');
+  h.className = 'br-heading';
+  h.textContent = w.config.heading || 'Your brand directions are ready';
+  container.appendChild(h);
+
+  const grid = document.createElement('div');
+  grid.className = 'br-cards';
+  (results.directions || []).forEach(dir => {
+    const card = document.createElement('div');
+    card.className = 'br-card';
+
+    const img = document.createElement('img');
+    img.className = 'br-card-img';
+    img.src = `${API}/api/engagements/${engagementId}/preview/${dir.direction}`;
+    img.alt = brandDirectionLabel(dir.direction) + ' preview';
+    card.appendChild(img);
+
+    const label = document.createElement('div');
+    label.className = 'br-card-label';
+    label.textContent = brandDirectionLabel(dir.direction);
+    card.appendChild(label);
+
+    if (dir.copy && dir.copy.tagline) {
+      const tagline = document.createElement('div');
+      tagline.className = 'br-card-tagline';
+      tagline.textContent = dir.copy.tagline;
+      card.appendChild(tagline);
+    }
+
+    const chooseBtn = document.createElement('button');
+    chooseBtn.type = 'button';
+    chooseBtn.className = 'br-choose-btn';
+    chooseBtn.textContent = 'Choose this direction';
+    chooseBtn.onclick = () => chooseBrandDirection(w, engagementId, dir.direction, grid);
+    card.appendChild(chooseBtn);
+
+    grid.appendChild(card);
+  });
+  container.appendChild(grid);
+
+  const note = document.createElement('div');
+  note.className = 'br-note';
+  note.textContent = 'Your progress is saved — you can come back later and pick up where you left off.';
+  container.appendChild(note);
+}
+
+async function chooseBrandDirection(w, engagementId, direction, grid) {
+  grid.querySelectorAll('.br-choose-btn').forEach(b => b.disabled = true);
+  try {
+    const res = await fetch(`${API}/api/engagements/${engagementId}/choose-direction`, {
+      method: 'POST', headers: HEADERS, body: JSON.stringify({ direction })
+    });
+    if (!res.ok) throw new Error('choose failed');
+    requiredPending.delete(w.id);
+    updateOutcomeButtons();
+    advance('next');
+  } catch (e) {
+    grid.querySelectorAll('.br-choose-btn').forEach(b => b.disabled = false);
+    alert('Could not save your choice. Please try again.');
+  }
+}
+
+function renderBrandResultsError(w, container, message) {
+  container.innerHTML = '';
+  const h = document.createElement('h2');
+  h.className = 'br-heading';
+  h.textContent = w.config.heading || 'Your brand directions are ready';
+  container.appendChild(h);
+  const err = document.createElement('div');
+  err.className = 'br-error';
+  err.textContent = message;
+  container.appendChild(err);
+  const retryBtn = document.createElement('button');
+  retryBtn.type = 'button';
+  retryBtn.className = 'br-retry-btn';
+  retryBtn.textContent = 'Try again';
+  retryBtn.onclick = () => startBrandResultsPipeline(w, container, true);
+  container.appendChild(retryBtn);
 }
 
 function storageKey(s) { return 'flowSession:' + s; }

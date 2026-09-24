@@ -22,8 +22,13 @@ public class ClientUser {
     @Column
     private String name;
 
-    @Column(name = "password_hash", nullable = false)
+    @Column(name = "password_hash")
     private String passwordHash;
+
+    /** Google "sub" claim once this account has signed in with Google — null for
+     *  password-only accounts. Unique so a Google identity never resolves to two users. */
+    @Column(name = "google_sub", unique = true)
+    private String googleSub;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();

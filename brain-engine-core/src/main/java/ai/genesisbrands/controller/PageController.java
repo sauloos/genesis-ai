@@ -3,6 +3,7 @@ package ai.genesisbrands.controller;
 import ai.genesisbrands.model.PageFlow;
 import ai.genesisbrands.repository.PageFlowRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +26,9 @@ public class PageController {
 
     private final PageFlowRepository pageFlowRepo;
     private final String flowRuntimeTemplate = readClasspathResource("static/flow-runtime.html");
+
+    @Value("${genesis.google-oauth.client-id:}")
+    private String googleOauthClientId;
 
     public PageController(PageFlowRepository pageFlowRepo) {
         this.pageFlowRepo = pageFlowRepo;
@@ -52,16 +56,19 @@ public class PageController {
             @RequestParam(required = false) String slug, @RequestParam(required = false) String rootPrefix) {
         String slugJson;
         String rootPrefixJson;
+        String googleClientIdJson;
         try {
             slugJson = JSON.writeValueAsString(slug).replace("</", "<\\/");
             rootPrefixJson = JSON.writeValueAsString(rootPrefix).replace("</", "<\\/");
+            googleClientIdJson = JSON.writeValueAsString(googleOauthClientId.isBlank() ? null : googleOauthClientId).replace("</", "<\\/");
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
         String themeStylesUrl = slug == null ? DEFAULT_THEME_STYLES_URL
             : pageFlowRepo.findLiveByRoute(rootPrefix, slug).map(PageController::themeStylesUrl).orElse(DEFAULT_THEME_STYLES_URL);
         String html = flowRuntimeTemplate
-            .replace(SLUG_MARKER, "<script>window.__PF_SLUG__ = " + slugJson + "; window.__PF_ROOT_PREFIX__ = " + rootPrefixJson + ";</script>")
+            .replace(SLUG_MARKER, "<script>window.__PF_SLUG__ = " + slugJson + "; window.__PF_ROOT_PREFIX__ = " + rootPrefixJson
+                + "; window.__PF_GOOGLE_CLIENT_ID__ = " + googleClientIdJson + ";</script>")
             .replace(THEME_MARKER, "<link rel=\"stylesheet\" href=\"" + themeStylesUrl + "\">");
         return ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(html);
     }

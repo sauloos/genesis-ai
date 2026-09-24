@@ -2,12 +2,12 @@ package ai.genesisbrands.controller;
 
 import ai.genesisbrands.agent.brandbook.BrandBookInput;
 import ai.genesisbrands.agent.brandbook.BrandBookTemplateRenderer;
+import ai.genesisbrands.model.ClientUser;
 import ai.genesisbrands.model.Engagement;
 import ai.genesisbrands.repository.EngagementRepository;
 import ai.genesisbrands.security.AdminAuthHelper;
-import ai.genesisbrands.security.ClientAuthFilter;
+import ai.genesisbrands.security.ClientAuthHelper;
 import ai.genesisbrands.service.BlobStorageService;
-import ai.genesisbrands.service.ClientAuthService;
 import ai.genesisbrands.service.EngagementOrchestratorService;
 import ai.genesisbrands.service.PhotoSourcingService;
 import ai.genesisbrands.service.EngagementOrchestratorService.DirectionOutput;
@@ -45,7 +45,7 @@ public class EngagementController {
     private final PhotoSourcingService photoSourcingService;
     private final ObjectMapper objectMapper;
     private final AdminAuthHelper adminAuth;
-    private final ClientAuthService clientAuthService;
+    private final ClientAuthHelper clientAuthHelper;
 
     // ── Create ────────────────────────────────────────────────────────────────
 
@@ -136,6 +136,70 @@ public class EngagementController {
             engagementRepo.save(e);
         }
         return EngagementSummary.of(e);
+    }
+
+    // ── Direction choice (results page) ─────────────────────────────────────────
+
+    @PostMapping("/{id}/choose-direction")
+    public EngagementSummary chooseDirection(@PathVariable String id,
+                                              @RequestBody ChooseDirectionRequest req,
+                                              HttpServletRequest servletReq) {
+        Engagement e = engagementRepo.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Engagement not found: " + id));
+        requireOwner(e, servletReq);
+
+        if (e.getStatus() != Engagement.Status.DONE) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Engagement is not finished yet");
+        }
+        DirectionOutput chosen = findDirection(e, req.direction());
+        if (chosen == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown direction: " + req.direction());
+        }
+        e.setChosenDirection(chosen.direction().toUpperCase());
+        e.setUpdatedAt(Instant.now());
+        return EngagementSummary.of(engagementRepo.save(e));
+    }
+
+    // ── Watermarked preview (free, pre-payment) ─────────────────────────────────
+
+    @GetMapping("/{id}/preview/{direction}")
+    public ResponseEntity<byte[]> preview(@PathVariable String id,
+                                           @PathVariable String direction,
+                                           HttpServletRequest req) {
+        Engagement e = engagementRepo.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Engagement not found: " + id));
+        requireOwner(e, req);
+
+        DirectionOutput dir = findDirection(e, direction);
+        if (dir == null) return ResponseEntity.notFound().build();
+
+        BrandBookInput input = new BrandBookInput(
+            dir.brief(), dir.playbook(), dir.copy(), dir.visualIdentity(), dir.logo()
+        );
+        byte[] jpeg = pdfRenderer.renderPreviewImage(input, dir.brandBook());
+        return ResponseEntity.ok()
+            .contentType(MediaType.IMAGE_JPEG)
+            .body(jpeg);
+    }
+
+    private void requireOwner(Engagement e, HttpServletRequest req) {
+        String clientUserId = resolveClientUserId(req);
+        if (clientUserId == null || !clientUserId.equals(e.getClientUserId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not the owner of this engagement");
+        }
+    }
+
+    private DirectionOutput findDirection(Engagement e, String direction) {
+        EngagementResults results;
+        try {
+            results = objectMapper.readValue(e.getResultsJson(), EngagementResults.class);
+        } catch (Exception ex) {
+            return null;
+        }
+        return results.directions().stream()
+            .filter(d -> d.direction().equalsIgnoreCase(direction))
+            .findFirst()
+            .orElse(null);
     }
 
     // ── Payment placeholder ───────────────────────────────────────────────────
@@ -279,10 +343,7 @@ public class EngagementController {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private String resolveClientUserId(HttpServletRequest req) {
-        String token = ClientAuthFilter.extractSessionCookie(req);
-        return clientAuthService.validateSession(token)
-            .map(ai.genesisbrands.model.ClientUser::getId)
-            .orElse(null);
+        return clientAuthHelper.resolve(req).map(ClientUser::getId).orElse(null);
     }
 
     // ── DTOs ──────────────────────────────────────────────────────────────────
@@ -297,6 +358,8 @@ public class EngagementController {
     ) {}
 
     public record PaymentRequest(String email, String name) {}
+
+    public record ChooseDirectionRequest(String direction) {}
 
     public record ImportRequest(
         Engagement.Source source,

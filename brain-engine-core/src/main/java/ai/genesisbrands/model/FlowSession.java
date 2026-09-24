@@ -38,6 +38,11 @@ public class FlowSession {
     @Column(name = "context_json", columnDefinition = "TEXT")
     private String contextJson;
 
+    /** The ClientUser this session became associated with, once the visitor authenticated
+     *  partway through the flow. First-write-wins — never overwritten once set. */
+    @Column(name = "client_user_id", length = 36)
+    private String clientUserId;
+
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 

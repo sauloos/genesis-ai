@@ -142,6 +142,7 @@ class FlowSessionServiceTest {
         FlowSession s = session("tok", "f1", "p1");
         when(sessionRepo.findByTokenAndExpiresAtAfter(anyString(), any())).thenReturn(Optional.of(s));
         when(pageTransitionService.resolve("p1", "next")).thenReturn(Optional.of(transition("PAGE", "p2")));
+        when(pageRepo.findById("p2")).thenReturn(Optional.of(page("p2", "f1", Instant.now())));
         when(sessionRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         FlowSessionService.AdvanceResult result = service.advance("tok", "next");
@@ -149,6 +150,34 @@ class FlowSessionServiceTest {
         assertThat(result.session().getCurrentPageId()).isEqualTo("p2");
         assertThat(result.session().isEnded()).isFalse();
         assertThat(result.redirectToFlowId()).isNull();
+    }
+
+    @Test
+    void advance_targetPageRequiresAuth_anonymousSessionThrowsAuthRequired() {
+        FlowSession s = session("tok", "f1", "p1");
+        when(sessionRepo.findByTokenAndExpiresAtAfter(anyString(), any())).thenReturn(Optional.of(s));
+        when(pageTransitionService.resolve("p1", "next")).thenReturn(Optional.of(transition("PAGE", "p2")));
+        Page target = page("p2", "f1", Instant.now());
+        target.setRequiresAuth(true);
+        when(pageRepo.findById("p2")).thenReturn(Optional.of(target));
+
+        assertThatThrownBy(() -> service.advance("tok", "next")).isInstanceOf(AuthRequiredException.class);
+    }
+
+    @Test
+    void advance_targetPageRequiresAuth_authenticatedSessionProceeds() {
+        FlowSession s = session("tok", "f1", "p1");
+        s.setClientUserId("cu-1");
+        when(sessionRepo.findByTokenAndExpiresAtAfter(anyString(), any())).thenReturn(Optional.of(s));
+        when(pageTransitionService.resolve("p1", "next")).thenReturn(Optional.of(transition("PAGE", "p2")));
+        Page target = page("p2", "f1", Instant.now());
+        target.setRequiresAuth(true);
+        when(pageRepo.findById("p2")).thenReturn(Optional.of(target));
+        when(sessionRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        FlowSessionService.AdvanceResult result = service.advance("tok", "next");
+
+        assertThat(result.session().getCurrentPageId()).isEqualTo("p2");
     }
 
     @Test
@@ -269,5 +298,36 @@ class FlowSessionServiceTest {
         when(sessionRepo.findByTokenAndExpiresAtAfter(anyString(), any())).thenReturn(Optional.of(s));
 
         assertThatThrownBy(() -> service.updateContext("tok", "not json")).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void linkClientUser_nullClientUserId_isNoOp() {
+        service.linkClientUser("tok", null);
+
+        org.mockito.Mockito.verifyNoInteractions(sessionRepo);
+    }
+
+    @Test
+    void linkClientUser_setsClientUserIdOnUnlinkedSession() {
+        FlowSession s = session("tok", "f1", "p1");
+        when(sessionRepo.findByTokenAndExpiresAtAfter(anyString(), any())).thenReturn(Optional.of(s));
+        when(sessionRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.linkClientUser("tok", "cu-1");
+
+        assertThat(s.getClientUserId()).isEqualTo("cu-1");
+        org.mockito.Mockito.verify(sessionRepo).save(s);
+    }
+
+    @Test
+    void linkClientUser_alreadyLinkedSession_firstWriteWins_neverOverwrites() {
+        FlowSession s = session("tok", "f1", "p1");
+        s.setClientUserId("cu-original");
+        when(sessionRepo.findByTokenAndExpiresAtAfter(anyString(), any())).thenReturn(Optional.of(s));
+
+        service.linkClientUser("tok", "cu-different");
+
+        assertThat(s.getClientUserId()).isEqualTo("cu-original");
+        org.mockito.Mockito.verify(sessionRepo, org.mockito.Mockito.never()).save(any());
     }
 }

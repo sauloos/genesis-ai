@@ -82,7 +82,7 @@ class PublicFlowRuntimeServiceTest {
     void start_unknownOrInactiveSlug_throwsNoSuchElement() {
         when(pageFlowRepo.findLiveByRoute(null, "ghost")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.start("ghost", null)).isInstanceOf(NoSuchElementException.class);
+        assertThatThrownBy(() -> service.start("ghost", null, null)).isInstanceOf(NoSuchElementException.class);
     }
 
     @Test
@@ -97,7 +97,7 @@ class PublicFlowRuntimeServiceTest {
         when(pageTransitionService.outcomesForPage(p))
             .thenReturn(List.of(WidgetOutcome.DEFAULT, new WidgetOutcome("error", "Error")));
 
-        PublicFlowRuntimeService.PublicSessionView view = service.start("verify-runtime", null);
+        PublicFlowRuntimeService.PublicSessionView view = service.start("verify-runtime", null, null);
 
         assertThat(view.token()).isEqualTo("tok");
         assertThat(view.slug()).isEqualTo("verify-runtime");
@@ -138,7 +138,7 @@ class PublicFlowRuntimeServiceTest {
         when(pageTransitionService.outcomesForPage(p))
             .thenReturn(List.of(WidgetOutcome.DEFAULT, new WidgetOutcome("error", "Error")));
 
-        PublicFlowRuntimeService.PublicSessionView view = service.resume("tok");
+        PublicFlowRuntimeService.PublicSessionView view = service.resume("tok", null);
 
         assertThat(view.page().widgets()).hasSize(1);
         assertThat(view.page().widgets().get(0).config()).containsEntry("heading", "Hi");
@@ -157,7 +157,7 @@ class PublicFlowRuntimeServiceTest {
         when(pageWidgetRepo.findByPageIdOrderByOrderInSlotAsc("p1"))
             .thenReturn(List.of(widget("p1", "main", 0, "redirect", "{\"targetUrl\":\"/discover\"}")));
 
-        PublicFlowRuntimeService.PublicSessionView view = service.resume("tok");
+        PublicFlowRuntimeService.PublicSessionView view = service.resume("tok", null);
 
         assertThat(view.page().redirectUrl()).isEqualTo("/discover");
         assertThat(view.page().widgets()).isEmpty();
@@ -177,7 +177,7 @@ class PublicFlowRuntimeServiceTest {
         ));
         when(pageTransitionService.outcomesForPage(p)).thenReturn(List.of(WidgetOutcome.DEFAULT));
 
-        PublicFlowRuntimeService.PublicSessionView view = service.resume("tok");
+        PublicFlowRuntimeService.PublicSessionView view = service.resume("tok", null);
 
         assertThat(view.page().redirectUrl()).isEqualTo("/discover");
         assertThat(view.page().widgets()).extracting(PublicFlowRuntimeService.PageWidgetView::widgetType)
@@ -196,7 +196,7 @@ class PublicFlowRuntimeServiceTest {
             .thenReturn(List.of(widget("p1", "main", 0, "content", "not json")));
         when(pageTransitionService.outcomesForPage(p)).thenReturn(List.of(WidgetOutcome.DEFAULT));
 
-        PublicFlowRuntimeService.PublicSessionView view = service.resume("tok");
+        PublicFlowRuntimeService.PublicSessionView view = service.resume("tok", null);
 
         assertThat(view.page().widgets().get(0).config()).isEmpty();
     }
@@ -208,7 +208,7 @@ class PublicFlowRuntimeServiceTest {
         when(flowSessionService.get("tok")).thenReturn(s);
         when(pageFlowRepo.findById("f1")).thenReturn(Optional.of(f));
 
-        PublicFlowRuntimeService.PublicSessionView view = service.resume("tok");
+        PublicFlowRuntimeService.PublicSessionView view = service.resume("tok", null);
 
         assertThat(view.ended()).isTrue();
         assertThat(view.page()).isNull();
@@ -226,7 +226,7 @@ class PublicFlowRuntimeServiceTest {
         when(pageWidgetRepo.findByPageIdOrderByOrderInSlotAsc("p2")).thenReturn(List.of());
         when(pageTransitionService.outcomesForPage(p2)).thenReturn(List.of(WidgetOutcome.DEFAULT));
 
-        PublicFlowRuntimeService.PublicSessionView view = service.advance("tok", "next");
+        PublicFlowRuntimeService.PublicSessionView view = service.advance("tok", "next", null);
 
         assertThat(view.page().pageId()).isEqualTo("p2");
     }
@@ -245,7 +245,7 @@ class PublicFlowRuntimeServiceTest {
         when(pageWidgetRepo.findByPageIdOrderByOrderInSlotAsc("p9")).thenReturn(List.of());
         when(pageTransitionService.outcomesForPage(p9)).thenReturn(List.of(WidgetOutcome.DEFAULT));
 
-        PublicFlowRuntimeService.PublicSessionView view = service.advance("tok", "next");
+        PublicFlowRuntimeService.PublicSessionView view = service.advance("tok", "next", null);
 
         assertThat(view.token()).isEqualTo("tok2");
         assertThat(view.slug()).isEqualTo("target-flow");
@@ -259,7 +259,7 @@ class PublicFlowRuntimeServiceTest {
         PageFlow f = flow("f1", "s");
         when(pageFlowRepo.findById("f1")).thenReturn(Optional.of(f));
 
-        PublicFlowRuntimeService.PublicSessionView view = service.advance("tok", "next");
+        PublicFlowRuntimeService.PublicSessionView view = service.advance("tok", "next", null);
 
         assertThat(view.ended()).isTrue();
         assertThat(view.page()).isNull();
@@ -271,6 +271,6 @@ class PublicFlowRuntimeServiceTest {
         when(flowSessionService.advance("tok", "next"))
             .thenThrow(new IllegalStateException("FlowSession has already ended"));
 
-        assertThatThrownBy(() -> service.advance("tok", "next")).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> service.advance("tok", "next", null)).isInstanceOf(IllegalStateException.class);
     }
 }

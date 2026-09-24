@@ -32,7 +32,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class FlowSessionService {
 
-    private static final int SESSION_HOURS = 24;
+    private static final int SESSION_HOURS = 24 * 30;
 
     private final FlowSessionRepository sessionRepo;
     private final FlowSessionEventRepository eventRepo;
@@ -75,6 +75,32 @@ public class FlowSessionService {
     public FlowSession get(String token) {
         return sessionRepo.findByTokenAndExpiresAtAfter(token, Instant.now())
             .orElseThrow(() -> new NoSuchElementException("FlowSession not found or expired: " + token));
+    }
+
+    /** Row-locked variant of get() — callers doing their own check-then-write against
+     *  session state (e.g. "start the pipeline unless it's already started") should wrap
+     *  this and their write in one @Transactional method so the lock spans both. */
+    @Transactional
+    public FlowSession getForUpdate(String token) {
+        return sessionRepo.findWithLockByTokenAndExpiresAtAfter(token, Instant.now())
+            .orElseThrow(() -> new NoSuchElementException("FlowSession not found or expired: " + token));
+    }
+
+    /** Associates this session with an authenticated ClientUser. First-write-wins — a
+     *  no-op if clientUserId is null (visitor still anonymous) or the session is already
+     *  linked, so a session can never be re-attributed to a different account mid-flow. */
+    @Transactional
+    public void linkClientUser(String token, String clientUserId) {
+        if (clientUserId == null) {
+            return;
+        }
+        FlowSession session = get(token);
+        if (session.getClientUserId() != null) {
+            return;
+        }
+        session.setClientUserId(clientUserId);
+        session.setUpdatedAt(Instant.now());
+        sessionRepo.save(session);
     }
 
     @Transactional
@@ -127,6 +153,11 @@ public class FlowSessionService {
         String redirectToFlowId = null;
         String engagementId = null;
         if ("PAGE".equals(transition.getTargetKind())) {
+            Page targetPage = pageRepo.findById(transition.getTargetPageId())
+                .orElseThrow(() -> new NoSuchElementException("Page not found: " + transition.getTargetPageId()));
+            if (targetPage.isRequiresAuth() && session.getClientUserId() == null) {
+                throw new AuthRequiredException("Page requires authentication: " + targetPage.getId());
+            }
             session.setCurrentPageId(transition.getTargetPageId());
         } else {
             PageFlow flow = pageFlowRepo.findById(session.getPageFlowId())

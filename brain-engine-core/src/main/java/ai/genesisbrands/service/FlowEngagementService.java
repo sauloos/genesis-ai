@@ -72,7 +72,7 @@ public class FlowEngagementService {
         return flowEngagementTrigger
             .orElseThrow(() -> new IllegalStateException(
                 "No FlowEngagementTrigger bean available — this tenant app doesn't support CREATE_ENGAGEMENT flows"))
-            .createAndRun(questions, answers);
+            .createAndRun(questions, answers, session.getClientUserId());
     }
 
     private QuestionnaireQuestion toQuestion(PageWidget widget) {

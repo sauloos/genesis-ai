@@ -12,8 +12,10 @@ import ai.genesisbrands.service.BrandBookTemplateService;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.BrowserType;
+import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
+import com.microsoft.playwright.options.ScreenshotType;
 import com.microsoft.playwright.options.WaitUntilState;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -116,6 +118,20 @@ public class BrandBookTemplateRenderer {
         return renderHtml(html, true);
     }
 
+    /**
+     * Watermarked JPEG preview of the cover page — the free, pre-payment preview shown
+     * on the results page before a direction is chosen. Same HTML build as render(),
+     * but skips PDF generation entirely and screenshots just the first .page.
+     */
+    public byte[] renderPreviewImage(BrandBookInput input, BrandBookOutput output) {
+        BrandBookTemplate template = brandBookTemplateService.select(
+            input.brief().brand(), input.brief().direction());
+        Set<String> includedSections = brandBookTemplateService.resolveIncludedSections(template);
+        String templateHtml = brandBookTemplateService.loadHtml(template);
+        String html = injectPreviewWatermarkCss(buildHtml(input, output, templateHtml, includedSections));
+        return renderPreviewScreenshot(html);
+    }
+
     // ── Section filtering ─────────────────────────────────────────────────────
 
     /**
@@ -175,6 +191,60 @@ public class BrandBookTemplateRenderer {
                 try { Files.delete(tmpFile); } catch (IOException ignored) {}
             }
         }
+    }
+
+    /**
+     * Screenshots only the first .page element as a JPEG, downscaled via a reduced
+     * deviceScaleFactor rather than CSS: .page has a fixed physical size (A4 in mm) set
+     * by the template regardless of viewport, so only the device scale factor actually
+     * shrinks the captured pixels. 0.756 maps an A4 page (~794×1123 CSS px) to ~600×849.
+     */
+    private byte[] renderPreviewScreenshot(String html) {
+        Path tmpFile = null;
+        BrowserContext ctx = browser.newContext(new Browser.NewContextOptions()
+            .setViewportSize(900, 1300)
+            .setDeviceScaleFactor(0.756));
+        try {
+            tmpFile = Files.createTempFile("brand-book-preview-", ".html");
+            Files.writeString(tmpFile, html, StandardCharsets.UTF_8);
+            Page tab = ctx.newPage();
+            tab.navigate("file://" + tmpFile.toAbsolutePath(),
+                new Page.NavigateOptions().setWaitUntil(WaitUntilState.NETWORKIDLE));
+            return tab.locator(".page").first().screenshot(new Locator.ScreenshotOptions()
+                .setType(ScreenshotType.JPEG)
+                .setQuality(70));
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to write temp HTML file for preview render", e);
+        } finally {
+            ctx.close();
+            if (tmpFile != null) {
+                try { Files.delete(tmpFile); } catch (IOException ignored) {}
+            }
+        }
+    }
+
+    private static String injectPreviewWatermarkCss(String html) {
+        // Tiled, rotated "PREVIEW" stamp reusing .page::after — free on the non-print-ready
+        // path since injectPrintBleedCss only occupies ::after when printReady is true.
+        String watermarkSvg = "<svg xmlns='http://www.w3.org/2000/svg' width='240' height='160'>"
+            + "<text x='-20' y='95' font-family='sans-serif' font-size='26' font-weight='700' "
+            + "fill='rgba(0,0,0,0.14)' transform='rotate(-30 120 80)'>PREVIEW</text></svg>";
+        String watermarkB64 = Base64.getEncoder()
+            .encodeToString(watermarkSvg.getBytes(StandardCharsets.UTF_8));
+
+        String watermarkCss = "\n/* Preview watermark: tiled rotated PREVIEW stamp */\n"
+            + ".page::after {\n"
+            + "  content: '';\n"
+            + "  position: absolute;\n"
+            + "  top: 0; left: 0; width: 100%; height: 100%;\n"
+            + "  background: url(\"data:image/svg+xml;base64," + watermarkB64 + "\") repeat;\n"
+            + "  pointer-events: none;\n"
+            + "  z-index: 99999;\n"
+            + "}\n";
+
+        int idx = html.lastIndexOf("</style>");
+        if (idx < 0) return html;
+        return html.substring(0, idx) + watermarkCss + html.substring(idx);
     }
 
     private static String injectPrintBleedCss(String html) {

@@ -38,10 +38,11 @@ public class PublicFlowRuntimeService {
     private final FlowSessionService flowSessionService;
     private final ObjectMapper objectMapper;
 
-    public PublicSessionView start(String slug, String rootPrefix) {
+    public PublicSessionView start(String slug, String rootPrefix, String clientUserId) {
         PageFlow flow = pageFlowRepo.findLiveByRoute(rootPrefix, slug)
             .orElseThrow(() -> new NoSuchElementException("No live PageFlow for slug: " + slug));
         FlowSession session = flowSessionService.start(flow.getId(), false);
+        flowSessionService.linkClientUser(session.getToken(), clientUserId);
         return toView(session, flow, null);
     }
 
@@ -55,11 +56,13 @@ public class PublicFlowRuntimeService {
         return toView(session, flow, null);
     }
 
-    public PublicSessionView resume(String token) {
+    public PublicSessionView resume(String token, String clientUserId) {
+        flowSessionService.linkClientUser(token, clientUserId);
         return toView(flowSessionService.get(token));
     }
 
-    public PublicSessionView updateContext(String token, String contextPatchJson) {
+    public PublicSessionView updateContext(String token, String contextPatchJson, String clientUserId) {
+        flowSessionService.linkClientUser(token, clientUserId);
         return toView(flowSessionService.updateContext(token, contextPatchJson));
     }
 
@@ -77,10 +80,13 @@ public class PublicFlowRuntimeService {
      * with nothing to resume into.
      */
     @Transactional
-    public PublicSessionView advance(String token, String outcomeKey) {
+    public PublicSessionView advance(String token, String outcomeKey, String clientUserId) {
+        flowSessionService.linkClientUser(token, clientUserId);
         FlowSessionService.AdvanceResult result = flowSessionService.advance(token, outcomeKey);
         if (result.redirectToFlowId() != null) {
-            return toView(flowSessionService.start(result.redirectToFlowId(), result.session().isSimulated()));
+            FlowSession redirected = flowSessionService.start(result.redirectToFlowId(), result.session().isSimulated());
+            flowSessionService.linkClientUser(redirected.getToken(), clientUserId);
+            return toView(redirected);
         }
         PageFlow flow = pageFlowRepo.findById(result.session().getPageFlowId())
             .orElseThrow(() -> new NoSuchElementException("PageFlow not found: " + result.session().getPageFlowId()));
@@ -101,6 +107,9 @@ public class PublicFlowRuntimeService {
     private PageRenderView renderCurrentPage(FlowSession session) {
         Page page = pageRepo.findById(session.getCurrentPageId())
             .orElseThrow(() -> new NoSuchElementException("Page not found: " + session.getCurrentPageId()));
+        if (page.isRequiresAuth() && session.getClientUserId() == null) {
+            throw new AuthRequiredException("Page requires authentication: " + page.getId());
+        }
         List<PageWidget> widgets = pageWidgetRepo.findByPageIdOrderByOrderInSlotAsc(page.getId());
 
         PageWidget redirectWidget = widgets.stream()

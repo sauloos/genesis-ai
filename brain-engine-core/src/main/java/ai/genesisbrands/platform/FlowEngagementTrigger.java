@@ -13,6 +13,8 @@ import java.util.List;
  */
 public interface FlowEngagementTrigger {
 
-    /** Creates a new Engagement from the given Q&A and starts the pipeline asynchronously. Returns the new engagement's id. */
-    String createAndRun(List<QuestionnaireQuestion> questions, List<QuestionnaireAnswer> answers);
+    /** Creates a new Engagement from the given Q&A and starts the pipeline asynchronously.
+     *  clientUserId (nullable) is the ClientUser the originating FlowSession was linked to,
+     *  if any, and is stamped onto the Engagement at creation. Returns the new engagement's id. */
+    String createAndRun(List<QuestionnaireQuestion> questions, List<QuestionnaireAnswer> answers, String clientUserId);
 }

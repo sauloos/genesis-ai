@@ -50,6 +50,11 @@ public class Engagement {
     @Column(name = "client_user_id", length = 36)
     private String clientUserId;
 
+    /** DirectionBrief.CreativeDirection name (ANCHORED/EVOLVED/DISRUPTIVE) once the
+     *  client has picked a direction on the results page. Null until then. */
+    @Column(name = "chosen_direction")
+    private String chosenDirection;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_status", nullable = false)
     private PaymentStatus paymentStatus = PaymentStatus.NONE;
