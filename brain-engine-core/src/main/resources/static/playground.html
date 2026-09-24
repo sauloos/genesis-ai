@@ -91,7 +91,16 @@
   .side-label {
     font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase;
     letter-spacing: 0.5px; padding: 4px 4px 8px;
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer; user-select: none;
   }
+  .side-label:hover { color: #999; }
+  .side-label-chev {
+    width: 9px; height: 9px; flex-shrink: 0; transition: transform 0.15s;
+    stroke: currentColor;
+  }
+  .side-section.collapsed .side-label-chev { transform: rotate(-90deg); }
+  .side-section.collapsed .side-section-body { display: none; }
   .agent-item {
     padding: 10px 12px; border-radius: 8px; cursor: pointer; margin-bottom: 4px;
     border: 1px solid transparent; transition: all 0.15s;
@@ -126,7 +135,7 @@
   .panel-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 
   #compare-toggle-wrap {
-    padding: 14px 16px; margin: 4px 12px 12px; background: #1a1a1a; border-radius: 8px;
+    padding: 14px 16px; margin: 4px 0 12px; background: #1a1a1a; border-radius: 8px;
     border: 1px solid #2a2a2a;
   }
   #compare-toggle-wrap label {
@@ -137,7 +146,7 @@
   #compare-toggle { width: 15px; height: 15px; accent-color: #4caf7d; cursor: pointer; }
 
   #eval-toggle-wrap {
-    padding: 14px 16px; margin: 0 12px 12px; background: #1a1a1a; border-radius: 8px;
+    padding: 14px 16px; margin: 0 0 12px; background: #1a1a1a; border-radius: 8px;
     border: 1px solid #2a2a2a;
   }
   #eval-toggle-wrap label {
@@ -284,7 +293,7 @@
   .typo-rationale { font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5; }
 
   #method-toggle-wrap {
-    padding: 14px 16px; margin: 0 12px 12px; background: #1a1a1a; border-radius: 8px;
+    padding: 14px 16px; margin: 0 0 12px; background: #1a1a1a; border-radius: 8px;
     border: 1px solid #2a2a2a;
   }
   #method-toggle-wrap .side-label-inline {
@@ -460,41 +469,51 @@
     </div>
   </div>
 
-  <div id="agent-list">
-    <div class="side-label">Specialist agents</div>
-    <div id="agent-items">
-      <div style="padding:12px 4px;color:#666;font-size:12px;">Loading agents…</div>
+  <div id="agent-list" class="side-section">
+    <div class="side-label" onclick="toggleSideSection('agent-list')">
+      <span>Specialist agents</span>
+      <svg class="side-label-chev" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="side-section-body">
+      <div id="agent-items">
+        <div style="padding:12px 4px;color:#666;font-size:12px;">Loading agents…</div>
+      </div>
+
+      <div id="method-toggle-wrap" style="display:none">
+        <div class="side-label-inline">Generation method</div>
+        <div class="method-group"></div>
+      </div>
+
+      <div id="custom-options-wrap" style="display:none"></div>
+
+      <div id="compare-toggle-wrap">
+        <label>
+          <input type="checkbox" id="compare-toggle">
+          A/B compare vs. plain AI
+        </label>
+        <p>Runs the same brief through Genesis AI's orchestrated agent (persona, craft rubric, Layer 2 precedent, training instructions) side-by-side with a plain model call given only the raw facts — so you can see the value the orchestration adds.</p>
+      </div>
+
+      <div id="eval-toggle-wrap">
+        <label>
+          <input type="checkbox" id="eval-toggle">
+          Evaluation loop
+        </label>
+        <p>Genesis AI reviews the draft against the agent's rubric and sends it back for revision until it's accepted (or the iteration budget runs out), instead of returning the first draft.</p>
+      </div>
     </div>
   </div>
 
-  <div id="agent-list-pageflows" style="margin-top:8px;border-top:1px solid #2a2a2a;padding-top:8px;">
-    <div class="side-label">Page Flows</div>
-    <div id="pageflow-items">
-      <div style="padding:12px 4px;color:#666;font-size:12px;">Loading page flows…</div>
+  <div id="agent-list-pageflows" class="side-section" style="margin-top:8px;border-top:1px solid #2a2a2a;padding-top:8px;">
+    <div class="side-label" onclick="toggleSideSection('agent-list-pageflows')">
+      <span>Page Flows</span>
+      <svg class="side-label-chev" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </div>
-  </div>
-
-  <div id="method-toggle-wrap" style="display:none">
-    <div class="side-label-inline">Generation method</div>
-    <div class="method-group"></div>
-  </div>
-
-  <div id="custom-options-wrap" style="display:none"></div>
-
-  <div id="compare-toggle-wrap">
-    <label>
-      <input type="checkbox" id="compare-toggle">
-      A/B compare vs. plain AI
-    </label>
-    <p>Runs the same brief through Genesis AI's orchestrated agent (persona, craft rubric, Layer 2 precedent, training instructions) side-by-side with a plain model call given only the raw facts — so you can see the value the orchestration adds.</p>
-  </div>
-
-  <div id="eval-toggle-wrap">
-    <label>
-      <input type="checkbox" id="eval-toggle">
-      Evaluation loop
-    </label>
-    <p>Genesis AI reviews the draft against the agent's rubric and sends it back for revision until it's accepted (or the iteration budget runs out), instead of returning the first draft.</p>
+    <div class="side-section-body">
+      <div id="pageflow-items">
+        <div style="padding:12px 4px;color:#666;font-size:12px;">Loading page flows…</div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -748,6 +767,20 @@ const AGENT_ICONS = {
   'copy': '✏️', 'visual-identity': '🎨', 'logo': '🔺', 'playbook': '📘', 'brand-book': '📗'
 };
 function agentIcon(agentId) { return AGENT_ICONS[agentId] || '🧩'; }
+
+// ── Collapsible sidebar sections ─────────────────────────────────────────────
+function toggleSideSection(id) {
+  const el = document.getElementById(id);
+  const collapsed = el.classList.toggle('collapsed');
+  try { localStorage.setItem('pg-collapsed-' + id, collapsed ? '1' : '0'); } catch {}
+}
+(function restoreSideSectionState() {
+  ['agent-list', 'agent-list-pageflows'].forEach(id => {
+    let collapsed = false;
+    try { collapsed = localStorage.getItem('pg-collapsed-' + id) === '1'; } catch {}
+    if (collapsed) document.getElementById(id).classList.add('collapsed');
+  });
+})();
 
 async function loadAgentCatalog() {
   const container = document.getElementById('agent-items');
@@ -1084,6 +1117,13 @@ function selectAgent(el) {
   document.getElementById('view-parameters').style.display = (isPageFlow || isChatAgent) ? 'none' : 'flex';
   document.getElementById('view-tabs').style.display = (isPageFlow || isChatAgent) ? 'none' : 'flex';
 
+  // Agent run options (A/B compare, evaluation loop) only apply to a running specialist
+  // agent — hide them for a page flow or a chat-based agent like Consultant.
+  if (isPageFlow || isChatAgent) {
+    document.getElementById('compare-toggle-wrap').style.display = 'none';
+    document.getElementById('eval-toggle-wrap').style.display = 'none';
+  }
+
   if (isPageFlow) {
     openPageFlowSim(currentAgent.slice('pageflow:'.length));
     return;
@@ -1097,6 +1137,7 @@ function selectAgent(el) {
   document.getElementById('form-title').textContent = meta.displayName || currentAgent;
   document.getElementById('form-sub').textContent = meta.description || '';
   document.getElementById('compare-toggle-wrap').style.display = (meta.supportsABCompare && meta.abCompareEnabled) ? 'block' : 'none';
+  document.getElementById('eval-toggle-wrap').style.display = 'block';
   renderCustomOptions(meta.customOptions || []);
   document.getElementById('pb-source-runs').style.display = currentAgent === 'playbook' ? 'grid' : 'none';
   if (currentAgent === 'playbook') loadPlaybookSourceRuns();
