@@ -9,6 +9,8 @@ import ai.genesisbrands.model.QuestionnaireQuestion;
 import ai.genesisbrands.platform.FlowEngagementTrigger;
 import ai.genesisbrands.repository.PageRepository;
 import ai.genesisbrands.repository.PageWidgetRepository;
+import ai.genesisbrands.repository.QuestionnaireAnswerRepository;
+import ai.genesisbrands.repository.QuestionnaireQuestionRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -31,30 +33,39 @@ public class FlowEngagementService {
 
     private final PageRepository pageRepo;
     private final PageWidgetRepository pageWidgetRepo;
+    private final QuestionnaireQuestionRepository questionnaireQuestionRepo;
+    private final QuestionnaireAnswerRepository questionnaireAnswerRepo;
     private final FlowEngagementTrigger flowEngagementTrigger;
     private final ObjectMapper objectMapper;
 
     public String triggerEngagement(PageFlow flow, FlowSession session) {
-        List<String> pageIds = pageRepo.findByPageFlowId(flow.getId()).stream().map(Page::getId).toList();
-        List<PageWidget> questionWidgets = pageWidgetRepo.findByPageIdInOrderByOrderInSlotAsc(pageIds).stream()
-            .filter(w -> "question".equals(w.getWidgetType()))
-            .toList();
+        List<PageWidget> widgets = pageWidgetRepo.findByPageIdInOrderByOrderInSlotAsc(
+            pageRepo.findByPageFlowId(flow.getId()).stream().map(Page::getId).toList());
+        Map<String, Object> context = parseContext(session.getContextJson());
 
         List<QuestionnaireQuestion> questions = new ArrayList<>();
-        for (PageWidget widget : questionWidgets) {
-            questions.add(toQuestion(widget));
-        }
-
-        Map<String, Object> context = parseContext(session.getContextJson());
         List<QuestionnaireAnswer> answers = new ArrayList<>();
-        for (QuestionnaireQuestion question : questions) {
-            if (!context.containsKey(question.getId())) {
-                continue;
+
+        for (PageWidget widget : widgets) {
+            if ("question".equals(widget.getWidgetType())) {
+                QuestionnaireQuestion question = toQuestion(widget);
+                questions.add(question);
+                if (context.containsKey(question.getId())) {
+                    QuestionnaireAnswer answer = new QuestionnaireAnswer();
+                    answer.setQuestionId(question.getId());
+                    answer.setValueJson(toValueJson(context.get(question.getId())));
+                    answers.add(answer);
+                }
+            } else if ("questionnaire".equals(widget.getWidgetType())) {
+                Object responseId = context.get("__questionnaireResponse:" + widget.getId());
+                if (responseId == null) {
+                    continue; // visitor never reached/completed this branch
+                }
+                Map<String, Object> config = parseContext(widget.getConfigJson());
+                String questionnaireId = String.valueOf(config.getOrDefault("questionnaireId", ""));
+                questions.addAll(questionnaireQuestionRepo.findByQuestionnaireIdOrderByOrderIndexAsc(questionnaireId));
+                answers.addAll(questionnaireAnswerRepo.findByResponseIdOrderByCreatedAtAsc(String.valueOf(responseId)));
             }
-            QuestionnaireAnswer answer = new QuestionnaireAnswer();
-            answer.setQuestionId(question.getId());
-            answer.setValueJson(toValueJson(context.get(question.getId())));
-            answers.add(answer);
         }
 
         return flowEngagementTrigger.createAndRun(questions, answers);

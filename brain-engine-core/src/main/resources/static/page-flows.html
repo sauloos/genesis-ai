@@ -299,6 +299,7 @@
   <div id="level1">
     <div id="toolbar">
       <h2 id="flow-title"></h2>
+      <span id="flow-live-path" title="Click to edit the root prefix" style="cursor:pointer; font-size:11px; color:rgba(255,255,255,0.5); font-family:ui-monospace,SFMono-Regular,Menlo,monospace;" onclick="editRootPrefix()"></span>
       <div class="legend">
         <span><span class="legend-dot" style="background:#6fe0a5"></span>outcome</span>
         <span><span class="legend-dot" style="background:#60a5fa"></span>custom outcome</span>
@@ -447,6 +448,14 @@ async function boot() {
 function initDrawflow() {
   const container = document.getElementById('drawflow');
   editor = new Drawflow(container);
+  // Drawflow has no automatic obstacle-avoidance routing — `reroute` is the library's own
+  // mitigation: it lets a wire be dragged to add bend points, so an admin can pull a connection
+  // clear of a node it would otherwise cross. reroute_fix_curvature keeps those bends from
+  // reintroducing an S-curve back through whatever the drag just avoided.
+  editor.reroute = true;
+  editor.reroute_fix_curvature = true;
+  editor.reroute_curvature = 0.5;
+  editor.reroute_curvature_start_end = 0.5;
   editor.start();
 
   editor.on('nodeMoved', async (id) => {
@@ -456,6 +465,11 @@ function initDrawflow() {
       await apiFetch(`/api/admin/pages/${node.data.pageId}/position`, {
         method: 'PUT', body: JSON.stringify({ x: node.pos_x, y: node.pos_y })
       });
+      // Keep the in-memory copy in sync — any later renderCanvas() (e.g. after saving page
+      // meta, adding/deleting a page, or wiring a connection) rebuilds every node from
+      // currentPages, so a stale canvasX/canvasY here would visually snap this node back.
+      const page = currentPages.find(p => p.id === node.data.pageId);
+      if (page) { page.canvasX = node.pos_x; page.canvasY = node.pos_y; }
     } catch (e) { toast('Failed to save position: ' + e.message, false); }
   });
 
@@ -608,7 +622,7 @@ function renderFlowList() {
     div.innerHTML = `
       <div class="flow-meta">
         <div class="flow-name">${esc(f.name)}</div>
-        <div class="flow-slug">${esc(f.slug)}</div>
+        <div class="flow-slug">${esc(f.livePath)}</div>
         ${f.live ? '<span class="live-pill">Live</span>' : ''}
       </div>
       <button class="flow-delete" onclick="deleteFlow(event,'${f.id}')" title="Delete">✕</button>`;
@@ -620,8 +634,11 @@ function renderFlowList() {
 async function newFlow() {
   const name = prompt('Page flow name:');
   if (!name) return;
-  const slug = prompt('URL slug (e.g. "home"):');
-  if (!slug) return;
+  let raw = prompt('URL slug (e.g. "home", or "/" to mount at the site root):');
+  if (raw === null) return;
+  raw = raw.trim();
+  if (!raw) return;
+  const slug = raw === '/' ? '' : raw;
   const f = await apiFetch('/api/admin/page-flows', { method: 'POST', body: JSON.stringify({ name, slug }) });
   await loadFlows();
   openFlow(f.id);
@@ -652,6 +669,7 @@ async function openFlow(id) {
   document.getElementById('level2').style.display = 'none';
   document.getElementById('level1').style.display = 'flex';
   document.getElementById('flow-title').textContent = currentFlow.name;
+  document.getElementById('flow-live-path').textContent = currentFlow.livePath;
   document.getElementById('mark-live-btn').textContent = currentFlow.live ? 'Live' : 'Mark live';
   document.getElementById('meta-panel').classList.remove('visible');
   if (!isSameFlow) {
@@ -663,6 +681,21 @@ async function openFlow(id) {
   selectedPageId = null;
   renderFlowList();
   renderCanvas();
+}
+
+async function editRootPrefix() {
+  if (!currentFlow) return;
+  let raw = prompt('Root prefix (blank = default "live", "/" = mount at site root, or a custom segment):', currentFlow.rootPrefix || '');
+  if (raw === null) return;
+  raw = raw.trim();
+  const rootPrefix = raw === '/' ? '' : raw;
+  try {
+    currentFlow = await apiFetch(`/api/admin/page-flows/${currentFlow.id}/root-prefix`, { method: 'PUT', body: JSON.stringify({ rootPrefix }) });
+    document.getElementById('flow-live-path').textContent = currentFlow.livePath;
+    await loadFlows();
+    renderFlowList();
+    toast('Root prefix updated.');
+  } catch (e) { toast(e.message, false); }
 }
 
 async function markLive() {
@@ -677,12 +710,6 @@ async function markLive() {
 }
 
 // ── Canvas (Level 1) ────────────────────────────────────────────────────
-function effectiveStartPageId() {
-  if (currentFlow.startPageId) return currentFlow.startPageId;
-  if (!currentPages.length) return null;
-  return [...currentPages].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))[0].id;
-}
-
 function applyOutputDotClasses(nodeId, outcomes) {
   const nodeEl = document.getElementById('node-' + nodeId);
   if (!nodeEl) return;
@@ -761,19 +788,15 @@ function renderCanvas() {
     </div>`;
   const endNodeId = editor.addNode('end', 1, 0, 60, 60 + rows * 160 + 40, 'flow-anchor-node end-node', { isEnd: true }, endHtml);
 
+  // Wires are only drawn for explicit navigation. Error/previous/start all have a
+  // default-if-unset fallback computed server-side (withEffectiveNav(), FlowSessionService's
+  // start-page fallback) that still applies at runtime — an explicit wire always supersedes it,
+  // but leaving the fallback undrawn keeps the canvas from being cluttered with wires the admin
+  // never actually set.
   for (const p of currentPages) {
     const sourceId = idMap[p.id];
     const outcomes = outcomesForPage(p.id);
     outcomes.forEach((o, i) => {
-      // The "error" port's target is effectiveErrorPageId (explicit PageTransition row, else
-      // the flow's fallback error page) — precomputed server-side by withEffectiveNav(), same
-      // as previousPageId's fallback. Every other outcome only draws when explicitly set.
-      if (o.key === 'error') {
-        if (p.effectiveErrorPageId && idMap[p.effectiveErrorPageId] != null) {
-          editor.addConnection(sourceId, idMap[p.effectiveErrorPageId], 'output_' + (i + 1), 'input_1');
-        }
-        return;
-      }
       const t = currentTransitions.find(tr => tr.sourcePageId === p.id && tr.outcomeKey === o.key);
       if (!t) return;
       if (t.targetKind === 'FLOW_END') {
@@ -782,14 +805,13 @@ function renderCanvas() {
         editor.addConnection(sourceId, idMap[t.targetPageId], 'output_' + (i + 1), 'input_1');
       }
     });
-    if (p.effectivePreviousPageId && idMap[p.effectivePreviousPageId] != null) {
-      editor.addConnection(sourceId, idMap[p.effectivePreviousPageId], 'output_' + (outcomes.length + 1), 'input_1');
+    if (p.previousPageId && idMap[p.previousPageId] != null) {
+      editor.addConnection(sourceId, idMap[p.previousPageId], 'output_' + (outcomes.length + 1), 'input_1');
     }
   }
 
-  const startTarget = effectiveStartPageId();
-  if (startTarget && idMap[startTarget] != null) {
-    editor.addConnection(startNodeId, idMap[startTarget], 'output_1', 'input_1');
+  if (currentFlow.startPageId && idMap[currentFlow.startPageId] != null) {
+    editor.addConnection(startNodeId, idMap[currentFlow.startPageId], 'output_1', 'input_1');
   }
 
   applyConnectionColors();
@@ -993,7 +1015,7 @@ function renderLayoutGrid() {
   });
 }
 
-function selectWidget(id) {
+async function selectWidget(id) {
   l2SelectedWidgetId = id;
   renderLayoutGrid();
   const widget = l2Widgets.find(w => w.id === id);
@@ -1016,9 +1038,22 @@ function selectWidget(id) {
   `;
   const fields = document.getElementById('w-config-fields');
   const options = descriptor ? descriptor.configOptions : [];
+
+  let questionnaires = [];
+  if (options.some(o => o.key === 'questionnaireId')) {
+    try { questionnaires = await apiFetch('/api/questionnaires'); } catch (e) { questionnaires = []; }
+  }
+
   fields.innerHTML = options.map(o => {
     const id = `w-opt-${o.key}`;
     const value = config[o.key] !== undefined ? config[o.key] : (o.defaultValue || '');
+    if (o.key === 'questionnaireId') {
+      return `<div class="form-field"><label>${esc(o.label)}</label>
+        <select id="${id}" data-key="${esc(o.key)}">
+          <option value="">— Select a questionnaire —</option>
+          ${questionnaires.map(q => `<option value="${esc(q.id)}"${q.id === value ? ' selected' : ''}>${esc(q.title)} (${esc(q.status)})</option>`).join('')}
+        </select></div>`;
+    }
     if (o.type === 'BOOLEAN') {
       return `<label class="check-field"><input type="checkbox" id="${id}" data-key="${esc(o.key)}" ${value === true || value === 'true' ? 'checked' : ''}> ${esc(o.label)}</label>`;
     }
@@ -1027,6 +1062,17 @@ function selectWidget(id) {
         <select id="${id}" data-key="${esc(o.key)}">
           ${(o.allowedValues || []).map(v => `<option value="${esc(v)}"${v === value ? ' selected' : ''}>${esc(v)}</option>`).join('')}
         </select></div>`;
+    }
+    if (o.key === 'html') {
+      return `<div class="form-field"><label>${esc(o.label)}</label><textarea id="${id}" data-key="${esc(o.key)}" rows="6">${esc(value)}</textarea></div>`;
+    }
+    if (o.key === 'imageUrl' || o.key === 'htmlFileUrl') {
+      const kind = o.key === 'imageUrl' ? 'image' : 'htmlFile';
+      const accept = kind === 'image' ? 'image/*' : '.html,.htm';
+      return `<div class="form-field"><label>${esc(o.label)}</label>
+        <input type="text" id="${id}" data-key="${esc(o.key)}" value="${esc(value)}">
+        <input type="file" accept="${accept}" onchange="uploadWidgetAsset('${kind}', '${id}', this)">
+      </div>`;
     }
     return `<div class="form-field"><label>${esc(o.label)}</label><input type="text" id="${id}" data-key="${esc(o.key)}" value="${esc(value)}"></div>`;
   }).join('');
@@ -1040,6 +1086,30 @@ function collectWidgetConfig() {
     result[input.dataset.key] = input.type === 'checkbox' ? input.checked : input.value;
   });
   return result;
+}
+
+async function uploadWidgetAsset(kind, inputId, fileInputEl) {
+  const file = fileInputEl.files[0];
+  if (!file) return;
+  const endpoint = kind === 'image' ? 'content-image' : 'content-html-file';
+  const fieldName = kind === 'image' ? 'image' : 'file';
+  const formData = new FormData();
+  formData.append(fieldName, file);
+  try {
+    const res = await fetch(`/api/admin/pages/${l2PageId}/widgets/${l2SelectedWidgetId}/${endpoint}`, {
+      method: 'POST',
+      headers: { 'X-Api-Key': API_KEY },
+      body: formData
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    document.getElementById(inputId).value = data.url;
+    toast('Uploaded.');
+  } catch (e) {
+    toast(e.message, false);
+  } finally {
+    fileInputEl.value = '';
+  }
 }
 
 async function saveWidget() {

@@ -9,6 +9,8 @@ import ai.genesisbrands.model.QuestionnaireQuestion;
 import ai.genesisbrands.platform.FlowEngagementTrigger;
 import ai.genesisbrands.repository.PageRepository;
 import ai.genesisbrands.repository.PageWidgetRepository;
+import ai.genesisbrands.repository.QuestionnaireAnswerRepository;
+import ai.genesisbrands.repository.QuestionnaireQuestionRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,13 +32,16 @@ class FlowEngagementServiceTest {
 
     @Mock private PageRepository pageRepo;
     @Mock private PageWidgetRepository pageWidgetRepo;
+    @Mock private QuestionnaireQuestionRepository questionnaireQuestionRepo;
+    @Mock private QuestionnaireAnswerRepository questionnaireAnswerRepo;
     @Mock private FlowEngagementTrigger flowEngagementTrigger;
 
     private FlowEngagementService service;
 
     @BeforeEach
     void setUp() {
-        service = new FlowEngagementService(pageRepo, pageWidgetRepo, flowEngagementTrigger, new ObjectMapper());
+        service = new FlowEngagementService(pageRepo, pageWidgetRepo, questionnaireQuestionRepo,
+            questionnaireAnswerRepo, flowEngagementTrigger, new ObjectMapper());
     }
 
     private PageFlow flow(String id) {
@@ -120,5 +125,56 @@ class FlowEngagementServiceTest {
         ArgumentCaptor<List<QuestionnaireAnswer>> answersCaptor = ArgumentCaptor.forClass(List.class);
         verify(flowEngagementTrigger).createAndRun(anyList(), answersCaptor.capture());
         assertThat(answersCaptor.getValue()).extracting(QuestionnaireAnswer::getQuestionId).containsExactly("w1");
+    }
+
+    @Test
+    void triggerEngagement_questionnaireWidget_mergesRealQuestionsAndAnswers_alongsideQuestionWidget() {
+        PageFlow f = flow("f1");
+        when(pageRepo.findByPageFlowId("f1")).thenReturn(List.of(page("p1", "f1")));
+        when(pageWidgetRepo.findByPageIdInOrderByOrderInSlotAsc(List.of("p1"))).thenReturn(List.of(
+            widget("w1", "p1", "question", "{\"prompt\":\"Your name?\",\"required\":true,\"questionType\":\"short_text\"}"),
+            widget("w2", "p1", "questionnaire", "{\"questionnaireId\":\"q1\"}")
+        ));
+        FlowSession s = session("f1", "{\"w1\":\"Ada\",\"__questionnaireResponse:w2\":\"r1\"}");
+
+        QuestionnaireQuestion realQuestion = new QuestionnaireQuestion();
+        realQuestion.setId("rq1");
+        realQuestion.setQuestionnaireId("q1");
+        realQuestion.setPrompt("Favourite colour?");
+        when(questionnaireQuestionRepo.findByQuestionnaireIdOrderByOrderIndexAsc("q1")).thenReturn(List.of(realQuestion));
+
+        QuestionnaireAnswer realAnswer = new QuestionnaireAnswer();
+        realAnswer.setQuestionId("rq1");
+        realAnswer.setValueJson("\"Blue\"");
+        when(questionnaireAnswerRepo.findByResponseIdOrderByCreatedAtAsc("r1")).thenReturn(List.of(realAnswer));
+
+        when(flowEngagementTrigger.createAndRun(anyList(), anyList())).thenReturn("eng-3");
+
+        String result = service.triggerEngagement(f, s);
+
+        assertThat(result).isEqualTo("eng-3");
+        ArgumentCaptor<List<QuestionnaireQuestion>> questionsCaptor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<QuestionnaireAnswer>> answersCaptor2 = ArgumentCaptor.forClass(List.class);
+        verify(flowEngagementTrigger).createAndRun(questionsCaptor.capture(), answersCaptor2.capture());
+
+        assertThat(questionsCaptor.getValue()).extracting(QuestionnaireQuestion::getId).containsExactly("w1", "rq1");
+        assertThat(answersCaptor2.getValue()).extracting(QuestionnaireAnswer::getQuestionId).containsExactly("w1", "rq1");
+    }
+
+    @Test
+    void triggerEngagement_questionnaireWidget_noResponseIdInContext_isSkipped_doesNotThrow() {
+        PageFlow f = flow("f1");
+        when(pageRepo.findByPageFlowId("f1")).thenReturn(List.of(page("p1", "f1")));
+        when(pageWidgetRepo.findByPageIdInOrderByOrderInSlotAsc(List.of("p1"))).thenReturn(List.of(
+            widget("w2", "p1", "questionnaire", "{\"questionnaireId\":\"q1\"}")
+        ));
+        FlowSession s = session("f1", "{}");
+        when(flowEngagementTrigger.createAndRun(anyList(), anyList())).thenReturn("eng-4");
+
+        service.triggerEngagement(f, s);
+
+        ArgumentCaptor<List<QuestionnaireQuestion>> questionsCaptor = ArgumentCaptor.forClass(List.class);
+        verify(flowEngagementTrigger).createAndRun(questionsCaptor.capture(), anyList());
+        assertThat(questionsCaptor.getValue()).isEmpty();
     }
 }

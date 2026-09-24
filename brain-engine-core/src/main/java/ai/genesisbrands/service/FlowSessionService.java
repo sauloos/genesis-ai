@@ -2,11 +2,13 @@ package ai.genesisbrands.service;
 
 import ai.genesisbrands.model.FlowSession;
 import ai.genesisbrands.model.FlowSessionEvent;
+import ai.genesisbrands.model.Page;
 import ai.genesisbrands.model.PageFlow;
 import ai.genesisbrands.model.PageTransition;
 import ai.genesisbrands.repository.FlowSessionEventRepository;
 import ai.genesisbrands.repository.FlowSessionRepository;
 import ai.genesisbrands.repository.PageFlowRepository;
+import ai.genesisbrands.repository.PageRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -34,6 +37,7 @@ public class FlowSessionService {
     private final FlowSessionRepository sessionRepo;
     private final FlowSessionEventRepository eventRepo;
     private final PageFlowRepository pageFlowRepo;
+    private final PageRepository pageRepo;
     private final PageTransitionService pageTransitionService;
     private final FlowEngagementService flowEngagementService;
     private final ObjectMapper objectMapper;
@@ -42,15 +46,29 @@ public class FlowSessionService {
     public FlowSession start(String pageFlowId) {
         PageFlow flow = pageFlowRepo.findById(pageFlowId)
             .orElseThrow(() -> new NoSuchElementException("PageFlow not found: " + pageFlowId));
-        if (flow.getStartPageId() == null) {
-            throw new IllegalArgumentException("PageFlow has no start page configured: " + pageFlowId);
+        String startPageId = effectiveStartPageId(flow);
+        if (startPageId == null) {
+            throw new IllegalArgumentException("PageFlow has no pages to start from: " + pageFlowId);
         }
         FlowSession session = new FlowSession();
         session.setToken(UUID.randomUUID().toString());
         session.setPageFlowId(pageFlowId);
-        session.setCurrentPageId(flow.getStartPageId());
+        session.setCurrentPageId(startPageId);
         session.setExpiresAt(Instant.now().plus(SESSION_HOURS, ChronoUnit.HOURS));
         return sessionRepo.save(session);
+    }
+
+    /** Explicit PageFlow.startPageId if set, else the flow's earliest-created page — mirrors
+     *  the same default-if-unset convention as Page.effectivePreviousPageId/effectiveErrorPageId;
+     *  an explicit start page always supersedes this fallback. */
+    private String effectiveStartPageId(PageFlow flow) {
+        if (flow.getStartPageId() != null) {
+            return flow.getStartPageId();
+        }
+        return pageRepo.findByPageFlowId(flow.getId()).stream()
+            .min(Comparator.comparing(Page::getCreatedAt))
+            .map(Page::getId)
+            .orElse(null);
     }
 
     public FlowSession get(String token) {

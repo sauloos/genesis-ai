@@ -36,6 +36,11 @@ public record PageLayout(
             "SIDEBAR_LEFT", "Sidebar + main",
             List.of(new Slot("sidebar", "Sidebar"), new Slot("main", "Main")),
             "280px 1fr"
+        ),
+        new PageLayout(
+            "FULL_BLEED", "Full bleed",
+            List.of(new Slot("main", "Main")),
+            "1fr"
         )
     );
 

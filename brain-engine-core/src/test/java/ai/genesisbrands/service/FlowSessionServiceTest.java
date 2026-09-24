@@ -1,11 +1,13 @@
 package ai.genesisbrands.service;
 
 import ai.genesisbrands.model.FlowSession;
+import ai.genesisbrands.model.Page;
 import ai.genesisbrands.model.PageFlow;
 import ai.genesisbrands.model.PageTransition;
 import ai.genesisbrands.repository.FlowSessionEventRepository;
 import ai.genesisbrands.repository.FlowSessionRepository;
 import ai.genesisbrands.repository.PageFlowRepository;
+import ai.genesisbrands.repository.PageRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
@@ -29,6 +32,7 @@ class FlowSessionServiceTest {
     @Mock private FlowSessionRepository sessionRepo;
     @Mock private FlowSessionEventRepository eventRepo;
     @Mock private PageFlowRepository pageFlowRepo;
+    @Mock private PageRepository pageRepo;
     @Mock private PageTransitionService pageTransitionService;
     @Mock private FlowEngagementService flowEngagementService;
 
@@ -36,7 +40,7 @@ class FlowSessionServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new FlowSessionService(sessionRepo, eventRepo, pageFlowRepo, pageTransitionService, flowEngagementService, new ObjectMapper());
+        service = new FlowSessionService(sessionRepo, eventRepo, pageFlowRepo, pageRepo, pageTransitionService, flowEngagementService, new ObjectMapper());
     }
 
     private PageFlow flow(String id, String startPageId, String endAction, String endPageId, String endTargetFlowId) {
@@ -47,6 +51,14 @@ class FlowSessionServiceTest {
         f.setEndPageId(endPageId);
         f.setEndTargetFlowId(endTargetFlowId);
         return f;
+    }
+
+    private Page page(String id, String flowId, Instant createdAt) {
+        Page p = new Page();
+        p.setId(id);
+        p.setPageFlowId(flowId);
+        p.setCreatedAt(createdAt);
+        return p;
     }
 
     private FlowSession session(String token, String flowId, String currentPageId) {
@@ -66,8 +78,9 @@ class FlowSessionServiceTest {
     }
 
     @Test
-    void start_requiresStartPageId() {
+    void start_requiresAtLeastOnePageWhenNoStartPageConfigured() {
         when(pageFlowRepo.findById("f1")).thenReturn(Optional.of(flow("f1", null, null, null, null)));
+        when(pageRepo.findByPageFlowId("f1")).thenReturn(List.of());
 
         assertThatThrownBy(() -> service.start("f1")).isInstanceOf(IllegalArgumentException.class);
     }
@@ -90,6 +103,20 @@ class FlowSessionServiceTest {
         assertThat(s.getCurrentPageId()).isEqualTo("p1");
         assertThat(s.isEnded()).isFalse();
         assertThat(s.getExpiresAt()).isAfter(Instant.now().plusSeconds(3600 * 23));
+    }
+
+    @Test
+    void start_fallsBackToEarliestCreatedPage_whenNoExplicitStartPageId() {
+        when(pageFlowRepo.findById("f1")).thenReturn(Optional.of(flow("f1", null, null, null, null)));
+        when(pageRepo.findByPageFlowId("f1")).thenReturn(List.of(
+            page("newer", "f1", Instant.parse("2026-01-02T00:00:00Z")),
+            page("older", "f1", Instant.parse("2026-01-01T00:00:00Z"))
+        ));
+        when(sessionRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        FlowSession s = service.start("f1");
+
+        assertThat(s.getCurrentPageId()).isEqualTo("older");
     }
 
     @Test

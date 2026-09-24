@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<!--PF_SLUG_INJECT-->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Genesis AI</title>
@@ -25,13 +26,22 @@
     box-shadow: 0 2px 20px rgba(0,0,0,0.04);
   }
 
+  #card.full-bleed {
+    max-width: 100%; width: 100%; min-height: 100vh; margin: 0;
+    border: none; border-radius: 0; padding: 0; box-shadow: none;
+  }
+
   #page-title { font-size: 22px; font-weight: 700; line-height: 1.35; margin-bottom: 24px; text-wrap: balance; }
 
   #page-grid { display: grid; gap: 24px; }
+  #card.full-bleed #page-grid { gap: 0; height: 100%; min-height: 100vh; }
   .slot { display: flex; flex-direction: column; gap: 16px; }
+  #card.full-bleed .slot { gap: 0; height: 100%; }
 
   .widget-content h2 { font-size: 17px; font-weight: 600; margin-bottom: 8px; line-height: 1.35; }
   .widget-content p { font-size: 14px; color: #555; line-height: 1.6; white-space: pre-wrap; }
+  .widget-content-image { max-width: 100%; display: block; object-fit: contain; }
+  .widget-content-iframe { width: 100%; min-height: 400px; border: 0; display: block; }
 
   .widget-question label.q-prompt { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
   .widget-question .q-help { font-size: 12px; color: #999; margin-bottom: 10px; }
@@ -41,6 +51,53 @@
   }
   .widget-question .q-choices { display: flex; flex-direction: column; gap: 8px; }
   .widget-question .q-choice { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+
+  .widget-questionnaire {
+    border: 1px solid #eee; border-radius: 12px; padding: 24px; background: #fcfcfc;
+  }
+  .q-embed-status { font-size: 13px; color: #999; }
+  .q-embed-progress { font-size: 11px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px;
+    font-weight: 600; margin-bottom: 10px; }
+  .q-embed-prompt { font-size: 16px; font-weight: 700; line-height: 1.35; margin-bottom: 6px; }
+  .q-embed-help { font-size: 12px; color: #999; margin-bottom: 16px; line-height: 1.5; }
+  .q-embed-body { min-height: 60px; }
+  .q-embed-text-row { display: flex; gap: 8px; align-items: flex-start; }
+  .q-embed-text-row input[type="text"], .q-embed-text-row textarea {
+    flex: 1; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px;
+    font-size: 14px; font-family: inherit; resize: vertical;
+  }
+  .q-embed-text-row textarea { min-height: 90px; line-height: 1.5; }
+  .q-embed-mic-btn {
+    width: 38px; height: 38px; flex-shrink: 0; border-radius: 8px; border: 1px solid #ddd;
+    background: #fff; cursor: pointer; font-size: 14px;
+  }
+  .q-embed-mic-btn.recording { background: #fdeaea; border-color: #e88; }
+  .q-embed-voice-status { font-size: 12px; color: #999; margin-top: 6px; min-height: 14px; }
+  .q-embed-dropzone {
+    border: 2px dashed #ddd; border-radius: 10px; padding: 24px; text-align: center;
+    cursor: pointer; color: #999; font-size: 13px;
+  }
+  .q-embed-image-preview { max-width: 100%; max-height: 200px; border-radius: 8px; display: block; margin: 0 auto 10px; }
+  .q-embed-slider-wrap { padding: 12px 4px 0; }
+  .q-embed-slider-wrap input[type="range"] { width: 100%; accent-color: #1a1a1a; }
+  .q-embed-slider-labels { display: flex; justify-content: space-between; font-size: 12px; color: #999; margin-top: 6px; }
+  .q-embed-slider-value { text-align: center; font-size: 22px; font-weight: 700; margin-top: 10px; font-variant-numeric: tabular-nums; }
+  .q-embed-choice-list { display: flex; flex-direction: column; gap: 8px; }
+  .q-embed-choice-btn {
+    text-align: left; padding: 11px 14px; border: 1px solid #e5e5e5; border-radius: 8px;
+    background: #fff; font-size: 14px; color: #333; cursor: pointer; font-family: inherit;
+  }
+  .q-embed-choice-btn.selected { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+  .q-embed-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+  .q-embed-nav-btn {
+    padding: 9px 18px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+  }
+  .q-embed-nav-primary { background: #1a1a1a; color: #fff; }
+  .q-embed-nav-primary:disabled { background: #ccc; cursor: default; }
+  .q-embed-nav-ghost { background: none; color: #999; }
+  .q-embed-nav-ghost:disabled { opacity: 0.3; cursor: default; }
+  .q-embed-done { font-size: 14px; color: #333; font-weight: 600; }
 
   #outcomes { display: flex; gap: 10px; justify-content: flex-end; margin-top: 32px; flex-wrap: wrap; }
   .outcome-btn {
@@ -110,6 +167,7 @@ let slug = null;
 let token = null;
 let layouts = [];
 let requiredPending = new Set();
+let questionnaireStates = {};
 
 function parseChoices(json) {
   try {
@@ -146,17 +204,54 @@ function updateOutcomeButtons() {
   document.querySelectorAll('.outcome-btn').forEach(b => b.disabled = requiredPending.size > 0);
 }
 
+async function putContext(key, value) {
+  const patch = {};
+  patch[key] = value;
+  try {
+    await fetch(`${API}/api/public/flow-sessions/${token}/context`, {
+      method: 'PUT', headers: HEADERS, body: JSON.stringify({ contextPatchJson: JSON.stringify(patch) })
+    });
+  } catch (e) { /* best effort — outcome gating below only reflects local state */ }
+}
+
+function applyBoundaries(el, config) {
+  if (config.widthMode === 'percent' && config.width) el.style.width = config.width + '%';
+  else if (config.widthMode === 'fixed' && config.width) el.style.width = config.width + 'px';
+  if (config.heightMode === 'percent' && config.height) el.style.height = config.height + '%';
+  else if (config.heightMode === 'fixed' && config.height) el.style.height = config.height + 'px';
+}
+
 const widgetRegistry = {
   content: (w) => {
-    const div = document.createElement('div');
-    div.className = 'widget-content';
-    const h = document.createElement('h2');
-    h.textContent = w.config.heading || '';
-    const p = document.createElement('p');
-    p.textContent = w.config.body || '';
-    div.appendChild(h);
-    div.appendChild(p);
-    return div;
+    const mode = w.config.contentMode || 'text';
+    let el;
+    if (mode === 'html') {
+      el = document.createElement('div');
+      el.className = 'widget-content';
+      el.innerHTML = w.config.html || '';
+    } else if (mode === 'image') {
+      el = document.createElement('img');
+      el.className = 'widget-content-image';
+      el.src = w.config.imageUrl || '';
+      el.alt = w.config.imageAlt || '';
+    } else if (mode === 'htmlFile') {
+      el = document.createElement('iframe');
+      el.className = 'widget-content-iframe';
+      el.src = w.config.htmlFileUrl || '';
+      el.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups');
+      el.setAttribute('frameborder', '0');
+    } else {
+      el = document.createElement('div');
+      el.className = 'widget-content';
+      const h = document.createElement('h2');
+      h.textContent = w.config.heading || '';
+      const p = document.createElement('p');
+      p.textContent = w.config.body || '';
+      el.appendChild(h);
+      el.appendChild(p);
+    }
+    applyBoundaries(el, w.config);
+    return el;
   },
   question: (w) => {
     const div = document.createElement('div');
@@ -218,13 +313,419 @@ const widgetRegistry = {
     }
 
     return div;
+  },
+  questionnaire: (w) => {
+    const div = document.createElement('div');
+    div.className = 'widget-questionnaire';
+    requiredPending.add(w.id);
+    bootQuestionnaireWidget(w, div);
+    return div;
   }
 };
+
+function qid(state, suffix) { return 'qw-' + state.widgetId + '-' + suffix; }
+
+function buildMicIcon() {
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('width', '14');
+  svg.setAttribute('height', '14');
+  svg.setAttribute('viewBox', '0 0 16 16');
+  svg.setAttribute('fill', 'none');
+  const rect = document.createElementNS(svgNS, 'rect');
+  rect.setAttribute('x', '5');
+  rect.setAttribute('y', '1');
+  rect.setAttribute('width', '6');
+  rect.setAttribute('height', '9');
+  rect.setAttribute('rx', '3');
+  rect.setAttribute('fill', 'currentColor');
+  const path = document.createElementNS(svgNS, 'path');
+  path.setAttribute('d', 'M3 7v1a5 5 0 0010 0V7M8 13v2');
+  path.setAttribute('stroke', 'currentColor');
+  path.setAttribute('stroke-width', '1.5');
+  path.setAttribute('stroke-linecap', 'round');
+  svg.appendChild(rect);
+  svg.appendChild(path);
+  return svg;
+}
+
+function renderQuestionnaireStatus(container, message) {
+  container.innerHTML = '';
+  const status = document.createElement('div');
+  status.className = 'q-embed-status';
+  status.textContent = message;
+  container.appendChild(status);
+}
+
+function renderQuestionnaireDone(container) {
+  container.innerHTML = '';
+  const done = document.createElement('div');
+  done.className = 'q-embed-done';
+  done.textContent = '✓ Completed — thank you.';
+  container.appendChild(done);
+}
+
+function bootQuestionnaireWidget(w, container) {
+  const state = {
+    widgetId: w.id, questionnaireId: w.config.questionnaireId, questions: [],
+    responseId: null, index: 0, mediaRecorder: null, isRecording: false,
+    pendingImageFile: null, answers: {}
+  };
+  questionnaireStates[w.id] = state;
+  renderQuestionnaireStatus(container, 'Loading…');
+  loadQuestionnaireWidget(w, container, state);
+}
+
+async function loadQuestionnaireWidget(w, container, state) {
+  try {
+    const detail = await fetch(`${API}/api/questionnaires/${state.questionnaireId}`, { headers: HEADERS }).then(r => r.json());
+    state.questions = detail.questions || [];
+    if (!state.questions.length) {
+      requiredPending.delete(w.id);
+      updateOutcomeButtons();
+      renderQuestionnaireStatus(container, 'This questionnaire has no questions configured.');
+      return;
+    }
+    const startRes = await fetch(`${API}/api/questionnaires/${state.questionnaireId}/responses`, {
+      method: 'POST', headers: HEADERS
+    }).then(r => r.json());
+    state.responseId = startRes.id;
+    await putContext('__questionnaireResponse:' + w.id, state.responseId);
+    renderQuestionnaireStep(w, container, state);
+  } catch (e) {
+    requiredPending.delete(w.id);
+    updateOutcomeButtons();
+    renderQuestionnaireStatus(container, 'This questionnaire is not available right now.');
+  }
+}
+
+function renderQuestionnaireStep(w, container, state) {
+  container.innerHTML = '';
+  const q = state.questions[state.index];
+
+  const progress = document.createElement('div');
+  progress.className = 'q-embed-progress';
+  progress.textContent = 'Question ' + (state.index + 1) + ' of ' + state.questions.length;
+  container.appendChild(progress);
+
+  const prompt = document.createElement('div');
+  prompt.className = 'q-embed-prompt';
+  prompt.textContent = q.prompt + (q.required ? ' *' : '');
+  container.appendChild(prompt);
+
+  if (q.helpText) {
+    const help = document.createElement('div');
+    help.className = 'q-embed-help';
+    help.textContent = q.helpText;
+    container.appendChild(help);
+  }
+
+  const body = document.createElement('div');
+  body.className = 'q-embed-body';
+  container.appendChild(body);
+
+  if (q.type === 'SHORT_TEXT' || q.type === 'LONG_TEXT') {
+    renderQuestionnaireTextStep(w, body, q, state);
+  } else if (q.type === 'IMAGE_UPLOAD') {
+    renderQuestionnaireImageStep(body, q, state);
+  } else if (q.type === 'SLIDER') {
+    renderQuestionnaireSliderStep(body, q, state);
+  } else if (q.type === 'SINGLE_SELECT' || q.type === 'MULTI_SELECT') {
+    renderQuestionnaireChoiceStep(body, q, state);
+  }
+
+  appendQuestionnaireFooter(w, container, state);
+}
+
+function renderQuestionnaireTextStep(w, body, q, state) {
+  const row = document.createElement('div');
+  row.className = 'q-embed-text-row';
+
+  const field = document.createElement(q.type === 'LONG_TEXT' ? 'textarea' : 'input');
+  if (q.type !== 'LONG_TEXT') field.type = 'text';
+  field.id = qid(state, 'text-field');
+  field.value = state.answers[q.id] || '';
+  row.appendChild(field);
+
+  if (q.allowVoice) {
+    const micBtn = document.createElement('button');
+    micBtn.type = 'button';
+    micBtn.className = 'q-embed-mic-btn';
+    micBtn.id = qid(state, 'mic-btn');
+    micBtn.title = 'Record answer';
+    micBtn.appendChild(buildMicIcon());
+    micBtn.onclick = () => toggleQuestionnaireRecording(state);
+    row.appendChild(micBtn);
+  }
+  body.appendChild(row);
+
+  if (q.allowVoice) {
+    const status = document.createElement('div');
+    status.className = 'q-embed-voice-status';
+    status.id = qid(state, 'voice-status');
+    body.appendChild(status);
+  }
+}
+
+function renderQuestionnaireImageStep(body, q, state) {
+  state.pendingImageFile = null;
+  const existing = state.answers[q.id];
+  const existingBlob = existing && existing.blobPath;
+
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = 'image/*';
+  fileInput.style.display = 'none';
+  fileInput.id = qid(state, 'image-input');
+  body.appendChild(fileInput);
+
+  const dropZone = document.createElement('div');
+  dropZone.className = 'q-embed-dropzone';
+  dropZone.id = qid(state, 'drop-zone');
+  dropZone.style.display = existingBlob ? 'none' : 'block';
+  dropZone.textContent = 'Click to upload an image';
+  dropZone.onclick = () => fileInput.click();
+  body.appendChild(dropZone);
+
+  const previewWrap = document.createElement('div');
+  previewWrap.className = 'q-embed-image-preview-wrap';
+  previewWrap.id = qid(state, 'image-preview-wrap');
+  previewWrap.style.display = existingBlob ? 'block' : 'none';
+
+  const img = document.createElement('img');
+  img.className = 'q-embed-image-preview';
+  img.id = qid(state, 'image-preview');
+  img.src = existingBlob || '';
+  previewWrap.appendChild(img);
+
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.className = 'q-embed-nav-btn q-embed-nav-ghost';
+  removeBtn.textContent = 'Remove';
+  removeBtn.onclick = () => {
+    state.pendingImageFile = null;
+    delete state.answers[q.id];
+    fileInput.value = '';
+    dropZone.style.display = 'block';
+    previewWrap.style.display = 'none';
+  };
+  previewWrap.appendChild(removeBtn);
+  body.appendChild(previewWrap);
+
+  fileInput.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    state.pendingImageFile = file;
+    const reader = new FileReader();
+    reader.onload = () => {
+      img.src = reader.result;
+      dropZone.style.display = 'none';
+      previewWrap.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  };
+}
+
+function renderQuestionnaireSliderStep(body, q, state) {
+  const config = q.configJson ? JSON.parse(q.configJson) : {};
+  const min = config.min ?? 0, max = config.max ?? 100, step = config.step ?? 1;
+  const existing = state.answers[q.id];
+  const val = existing !== undefined ? existing : Math.round((min + max) / 2);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'q-embed-slider-wrap';
+
+  const input = document.createElement('input');
+  input.type = 'range';
+  input.id = qid(state, 'slider-input');
+  input.min = min; input.max = max; input.step = step; input.value = val;
+
+  const valueEl = document.createElement('div');
+  valueEl.className = 'q-embed-slider-value';
+  valueEl.textContent = val;
+  input.oninput = () => { valueEl.textContent = input.value; };
+  wrap.appendChild(input);
+
+  const labels = document.createElement('div');
+  labels.className = 'q-embed-slider-labels';
+  const minLabel = document.createElement('span');
+  minLabel.textContent = config.minLabel || String(min);
+  const maxLabel = document.createElement('span');
+  maxLabel.textContent = config.maxLabel || String(max);
+  labels.appendChild(minLabel);
+  labels.appendChild(maxLabel);
+  wrap.appendChild(labels);
+  wrap.appendChild(valueEl);
+  body.appendChild(wrap);
+}
+
+function renderQuestionnaireChoiceStep(body, q, state) {
+  const config = q.configJson ? JSON.parse(q.configJson) : {};
+  const options = config.options || [];
+  const existing = state.answers[q.id];
+  const selected = q.type === 'MULTI_SELECT' ? (existing || []) : (existing !== undefined ? [existing] : []);
+
+  const list = document.createElement('div');
+  list.className = 'q-embed-choice-list';
+  options.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'q-embed-choice-btn' + (selected.includes(opt) ? ' selected' : '');
+    btn.textContent = opt;
+    btn.dataset.opt = opt;
+    btn.onclick = () => {
+      if (q.type === 'SINGLE_SELECT') {
+        list.querySelectorAll('.q-embed-choice-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+      } else {
+        btn.classList.toggle('selected');
+      }
+    };
+    list.appendChild(btn);
+  });
+  body.appendChild(list);
+}
+
+function appendQuestionnaireFooter(w, container, state) {
+  const footer = document.createElement('div');
+  footer.className = 'q-embed-footer';
+
+  const backBtn = document.createElement('button');
+  backBtn.type = 'button';
+  backBtn.className = 'q-embed-nav-btn q-embed-nav-ghost';
+  backBtn.textContent = 'Back';
+  backBtn.disabled = state.index === 0;
+  backBtn.onclick = () => { state.index--; renderQuestionnaireStep(w, container, state); };
+  footer.appendChild(backBtn);
+
+  const nextBtn = document.createElement('button');
+  nextBtn.type = 'button';
+  nextBtn.className = 'q-embed-nav-btn q-embed-nav-primary';
+  nextBtn.textContent = state.index === state.questions.length - 1 ? 'Submit' : 'Next';
+  nextBtn.onclick = async () => {
+    nextBtn.disabled = true;
+    const ok = await persistQuestionnaireStep(container, state);
+    nextBtn.disabled = false;
+    if (!ok) return;
+
+    if (state.index === state.questions.length - 1) {
+      await fetch(`${API}/api/questionnaires/responses/${state.responseId}/submit`, { method: 'POST', headers: HEADERS });
+      requiredPending.delete(w.id);
+      updateOutcomeButtons();
+      renderQuestionnaireDone(container);
+      return;
+    }
+    state.index++;
+    renderQuestionnaireStep(w, container, state);
+  };
+  footer.appendChild(nextBtn);
+  container.appendChild(footer);
+}
+
+async function persistQuestionnaireStep(container, state) {
+  const q = state.questions[state.index];
+
+  if (q.type === 'SHORT_TEXT' || q.type === 'LONG_TEXT') {
+    const value = document.getElementById(qid(state, 'text-field')).value.trim();
+    if (q.required && !value) { alert('This question requires an answer.'); return false; }
+    if (value) {
+      state.answers[q.id] = value;
+      await saveQuestionnaireAnswer(state, q.id, value);
+    }
+  } else if (q.type === 'IMAGE_UPLOAD') {
+    if (state.pendingImageFile) {
+      const form = new FormData();
+      form.append('image', state.pendingImageFile);
+      const res = await fetch(`${API}/api/questionnaires/responses/${state.responseId}/answers/${q.id}/image`, {
+        method: 'POST', headers: { 'X-Api-Key': KEY }, body: form
+      }).then(r => r.json());
+      state.answers[q.id] = JSON.parse(res.valueJson);
+      state.pendingImageFile = null;
+    } else if (q.required && !state.answers[q.id]) {
+      alert('This question requires an image.'); return false;
+    }
+  } else if (q.type === 'SLIDER') {
+    const value = Number(document.getElementById(qid(state, 'slider-input')).value);
+    state.answers[q.id] = value;
+    await saveQuestionnaireAnswer(state, q.id, value);
+  } else if (q.type === 'SINGLE_SELECT') {
+    const btn = container.querySelector('.q-embed-choice-btn.selected');
+    if (q.required && !btn) { alert('Please choose an option.'); return false; }
+    if (btn) {
+      const value = btn.dataset.opt;
+      state.answers[q.id] = value;
+      await saveQuestionnaireAnswer(state, q.id, value);
+    }
+  } else if (q.type === 'MULTI_SELECT') {
+    const selected = Array.from(container.querySelectorAll('.q-embed-choice-btn.selected')).map(b => b.dataset.opt);
+    if (q.required && !selected.length) { alert('Please choose at least one option.'); return false; }
+    state.answers[q.id] = selected;
+    await saveQuestionnaireAnswer(state, q.id, selected);
+  }
+  return true;
+}
+
+async function saveQuestionnaireAnswer(state, questionId, value) {
+  await fetch(`${API}/api/questionnaires/responses/${state.responseId}/answers/${questionId}`, {
+    method: 'PUT', headers: HEADERS, body: JSON.stringify({ value })
+  });
+}
+
+async function toggleQuestionnaireRecording(state) {
+  const micBtn = document.getElementById(qid(state, 'mic-btn'));
+  const statusEl = document.getElementById(qid(state, 'voice-status'));
+
+  if (!state.isRecording) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      state.mediaRecorder = new MediaRecorder(stream);
+      const audioChunks = [];
+      state.mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+      state.mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(audioChunks, { type: 'audio/webm' });
+        statusEl.textContent = 'Transcribing…';
+        const q = state.questions[state.index];
+        const form = new FormData();
+        form.append('audio', blob, 'answer.webm');
+        try {
+          const res = await fetch(`${API}/api/questionnaires/responses/${state.responseId}/answers/${q.id}/voice`, {
+            method: 'POST', headers: { 'X-Api-Key': KEY }, body: form
+          }).then(r => r.json());
+          const transcript = JSON.parse(res.valueJson);
+          const field = document.getElementById(qid(state, 'text-field'));
+          if (field) field.value = transcript;
+          state.answers[q.id] = transcript;
+          statusEl.textContent = 'Transcribed — feel free to edit before continuing.';
+        } catch (err) {
+          statusEl.textContent = 'Transcription failed — you can type your answer instead.';
+        }
+      };
+      state.mediaRecorder.start();
+      state.isRecording = true;
+      micBtn.classList.add('recording');
+      statusEl.textContent = 'Recording… click to stop.';
+    } catch (err) {
+      statusEl.textContent = 'Microphone access denied.';
+    }
+  } else {
+    state.mediaRecorder.stop();
+    state.isRecording = false;
+    micBtn.classList.remove('recording');
+  }
+}
 
 function storageKey(s) { return 'flowSession:' + s; }
 
 async function boot() {
-  slug = window.location.pathname.split('/').filter(Boolean)[1];
+  // window.__PF_SLUG__ is set server-side (see PageController#flowRuntime) because
+  // PageFlowRouteFilter reaches this page via a servlet forward, which never updates
+  // the browser's own window.location — a query-string read here would always be null
+  // for any /live/<slug>-style request. The query-string fallback only covers a direct
+  // /flow-runtime.html?slug=... hit if the server-side injection is ever bypassed.
+  slug = (typeof window.__PF_SLUG__ !== 'undefined' && window.__PF_SLUG__)
+    ? window.__PF_SLUG__
+    : new URLSearchParams(window.location.search).get('slug');
   if (!slug) {
     showState('Nothing here', 'There is no live page available at this address.');
     return;
@@ -282,16 +783,21 @@ function render(view) {
   if (view.slug !== slug) {
     slug = view.slug;
     localStorage.setItem(storageKey(slug), token);
-    history.replaceState(null, '', '/flow/' + slug);
+    history.replaceState(null, '', view.livePath || ('/live/' + slug));
   }
+
+  const layout = layouts.find(l => l.id === page.layoutKey) || layouts[0];
+  const isFullBleed = !!layout && layout.id === 'FULL_BLEED';
 
   document.getElementById('state-screen').style.display = 'none';
   document.getElementById('card').style.display = 'block';
+  document.getElementById('card').classList.toggle('full-bleed', isFullBleed);
+  document.getElementById('topbar').style.display = isFullBleed ? 'none' : '';
+  document.getElementById('page-title').style.display = isFullBleed ? 'none' : '';
   document.getElementById('page-title').textContent = page.name || '';
 
   requiredPending = new Set();
 
-  const layout = layouts.find(l => l.id === page.layoutKey) || layouts[0];
   const grid = document.getElementById('page-grid');
   grid.style.gridTemplateColumns = layout ? layout.gridTemplateColumns : '1fr';
   grid.innerHTML = '';

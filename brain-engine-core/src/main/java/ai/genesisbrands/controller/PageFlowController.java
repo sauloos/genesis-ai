@@ -68,6 +68,12 @@ public class PageFlowController {
         }
     }
 
+    @PutMapping("/{id}/root-prefix")
+    public ResponseEntity<?> setRootPrefix(@PathVariable String id, @RequestBody SetRootPrefixRequest body, HttpServletRequest req) {
+        if (!authorized(req)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        return handle(() -> pageFlowService.setRootPrefix(id, body.rootPrefix()));
+    }
+
     @PutMapping("/{id}/live")
     public ResponseEntity<?> setLive(@PathVariable String id, HttpServletRequest req) {
         if (!authorized(req)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -118,6 +124,8 @@ public class PageFlowController {
     public record CreatePageFlowRequest(String name, String slug) {}
 
     public record SetStartRequest(String startPageId) {}
+
+    public record SetRootPrefixRequest(String rootPrefix) {}
 
     public record SetEndRequest(String endAction, String endPageId, String endTargetFlowId) {}
 

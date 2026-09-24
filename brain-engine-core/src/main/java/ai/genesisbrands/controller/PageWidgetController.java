@@ -9,8 +9,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
 @RestController
@@ -56,6 +59,32 @@ public class PageWidgetController {
         try {
             pageWidgetService.delete(id);
             return ResponseEntity.noContent().build();
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+    @PostMapping(value = "/{id}/content-image", consumes = "multipart/form-data")
+    public ResponseEntity<?> uploadContentImage(@PathVariable String pageId, @PathVariable String id,
+                                                 @RequestParam("image") MultipartFile image, HttpServletRequest req) throws IOException {
+        if (!authorized(req)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        try {
+            return ResponseEntity.ok(Map.of("url", pageWidgetService.uploadContentImage(id, image)));
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+    @PostMapping(value = "/{id}/content-html-file", consumes = "multipart/form-data")
+    public ResponseEntity<?> uploadContentHtmlFile(@PathVariable String pageId, @PathVariable String id,
+                                                     @RequestParam("file") MultipartFile file, HttpServletRequest req) throws IOException {
+        if (!authorized(req)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        String filename = file.getOriginalFilename();
+        if (filename == null || !(filename.endsWith(".html") || filename.endsWith(".htm"))) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse("File must be a .html or .htm document"));
+        }
+        try {
+            return ResponseEntity.ok(Map.of("url", pageWidgetService.uploadContentHtmlFile(id, file)));
         } catch (NoSuchElementException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));
         }

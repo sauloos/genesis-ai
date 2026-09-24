@@ -101,6 +101,7 @@ class PublicFlowRuntimeServiceTest {
 
         assertThat(view.token()).isEqualTo("tok");
         assertThat(view.slug()).isEqualTo("verify-runtime");
+        assertThat(view.livePath()).isEqualTo("/live/verify-runtime");
         assertThat(view.ended()).isFalse();
         assertThat(view.page().pageId()).isEqualTo("p1");
         assertThat(view.page().outcomes()).extracting(WidgetOutcome::key).containsExactly("next");

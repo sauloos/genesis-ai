@@ -1,10 +1,52 @@
 package ai.genesisbrands.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 
 @Controller
 public class PageController {
+
+    private static final String SLUG_MARKER = "<!--PF_SLUG_INJECT-->";
+    private static final ObjectMapper JSON = new ObjectMapper();
+
+    private final String flowRuntimeTemplate = readClasspathResource("static/flow-runtime.html");
+
+    private static String readClasspathResource(String path) {
+        try {
+            return new ClassPathResource(path).getContentAsString(StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    /**
+     * Server-rendered so the resolved slug reaches the client even when this page is
+     * reached via PageFlowRouteFilter's forward: a forward never updates the browser's
+     * own window.location, so a client-side read of location.search always sees null
+     * for a /live/<slug>-style request. window.__PF_SLUG__ is the one channel that
+     * works both for that forwarded hit and for a direct ?slug=... navigation.
+     */
+    @GetMapping("/flow-runtime.html")
+    public ResponseEntity<String> flowRuntime(@RequestParam(required = false) String slug) {
+        String json;
+        try {
+            json = JSON.writeValueAsString(slug).replace("</", "<\\/");
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        String html = flowRuntimeTemplate.replace(SLUG_MARKER, "<script>window.__PF_SLUG__ = " + json + ";</script>");
+        return ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(html);
+    }
 
     @GetMapping("/dashboard")
     public String dashboardPage() {
@@ -47,7 +89,7 @@ public class PageController {
     public String pageFlowsRedirect() { return "redirect:/dashboard/page-flows"; }
 
     @GetMapping("/flow/{slug}")
-    public String flowRuntimePage() { return "forward:/flow-runtime.html"; }
+    public String flowRuntimeLegacyRedirect(@PathVariable String slug) { return "redirect:/live/" + slug; }
 
     @GetMapping("/login")
     public String loginPage() {

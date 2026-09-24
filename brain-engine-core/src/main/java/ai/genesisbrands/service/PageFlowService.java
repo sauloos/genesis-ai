@@ -3,6 +3,7 @@ package ai.genesisbrands.service;
 import ai.genesisbrands.model.Page;
 import ai.genesisbrands.model.PageFlow;
 import ai.genesisbrands.model.PageTransition;
+import ai.genesisbrands.platform.PageFlowRouting;
 import ai.genesisbrands.repository.PageFlowRepository;
 import ai.genesisbrands.repository.PageRepository;
 import ai.genesisbrands.repository.PageWidgetRepository;
@@ -36,6 +37,7 @@ public class PageFlowService {
     }
 
     public PageFlow create(String name, String slug) {
+        PageFlowRouting.validate(null, slug);
         PageFlow flow = new PageFlow();
         flow.setId(UUID.randomUUID().toString());
         flow.setName(name);
@@ -45,8 +47,20 @@ public class PageFlowService {
 
     public PageFlow rename(String id, String name, String slug) {
         PageFlow flow = get(id);
+        PageFlowRouting.validate(flow.getRootPrefix(), slug);
         flow.setName(name);
         flow.setSlug(slug);
+        flow.setUpdatedAt(Instant.now());
+        return pageFlowRepo.save(flow);
+    }
+
+    /** Blank resets to the default ("live"); any other value (including "" for root-mount)
+     *  becomes the explicit prefix. Validated against reserved segments before persisting. */
+    public PageFlow setRootPrefix(String id, String rootPrefix) {
+        PageFlow flow = get(id);
+        String normalized = (rootPrefix == null || rootPrefix.isBlank()) ? null : rootPrefix;
+        PageFlowRouting.validate(normalized, flow.getSlug());
+        flow.setRootPrefix(normalized);
         flow.setUpdatedAt(Instant.now());
         return pageFlowRepo.save(flow);
     }
@@ -54,7 +68,15 @@ public class PageFlowService {
     @Transactional
     public PageFlow setLive(String id) {
         PageFlow flow = get(id);
-        pageFlowRepo.deactivateAllForSlug(flow.getSlug());
+        String routeKey = PageFlowRouting.routeKey(flow.getRootPrefix(), flow.getSlug());
+        for (PageFlow other : pageFlowRepo.findAllByLiveTrue()) {
+            if (!other.getId().equals(id)
+                    && PageFlowRouting.routeKey(other.getRootPrefix(), other.getSlug()).equals(routeKey)) {
+                other.setLive(false);
+                other.setUpdatedAt(Instant.now());
+                pageFlowRepo.save(other);
+            }
+        }
         flow.setLive(true);
         flow.setUpdatedAt(Instant.now());
         return pageFlowRepo.save(flow);
@@ -102,10 +124,10 @@ public class PageFlowService {
                 boolean hasQuestionWidget = pageRepo.findByPageFlowId(id).stream()
                     .map(Page::getId)
                     .flatMap(pageId -> pageWidgetRepo.findByPageIdOrderByOrderInSlotAsc(pageId).stream())
-                    .anyMatch(w -> "question".equals(w.getWidgetType()));
+                    .anyMatch(w -> "question".equals(w.getWidgetType()) || "questionnaire".equals(w.getWidgetType()));
                 if (!hasQuestionWidget) {
                     throw new IllegalArgumentException(
-                        "CREATE_ENGAGEMENT requires at least one question widget somewhere in this PageFlow");
+                        "CREATE_ENGAGEMENT requires at least one question or questionnaire widget somewhere in this PageFlow");
                 }
             }
         }

@@ -45,6 +45,7 @@ public class AssetController {
         if (blobPath.endsWith(".png")) return MediaType.IMAGE_PNG;
         if (blobPath.endsWith(".jpg") || blobPath.endsWith(".jpeg")) return MediaType.IMAGE_JPEG;
         if (blobPath.endsWith(".svg")) return MediaType.valueOf("image/svg+xml");
+        if (blobPath.endsWith(".html") || blobPath.endsWith(".htm")) return MediaType.TEXT_HTML;
         return MediaType.APPLICATION_OCTET_STREAM;
     }
 }

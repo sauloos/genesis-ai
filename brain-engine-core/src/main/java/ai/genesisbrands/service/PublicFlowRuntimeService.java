@@ -85,7 +85,7 @@ public class PublicFlowRuntimeService {
 
     private PublicSessionView toView(FlowSession session, PageFlow flow, String engagementId) {
         PageRenderView page = session.isEnded() ? null : renderCurrentPage(session);
-        return new PublicSessionView(session.getToken(), flow.getSlug(), page, session.isEnded(), engagementId);
+        return new PublicSessionView(session.getToken(), flow.getSlug(), flow.getLivePath(), page, session.isEnded(), engagementId);
     }
 
     private PageRenderView renderCurrentPage(FlowSession session) {
@@ -125,7 +125,7 @@ public class PublicFlowRuntimeService {
         }
     }
 
-    public record PublicSessionView(String token, String slug, PageRenderView page, boolean ended, String engagementId) {}
+    public record PublicSessionView(String token, String slug, String livePath, PageRenderView page, boolean ended, String engagementId) {}
 
     public record PageRenderView(
         String pageId, String name, String layoutKey,
