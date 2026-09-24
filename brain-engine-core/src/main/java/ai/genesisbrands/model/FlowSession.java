@@ -30,6 +30,11 @@ public class FlowSession {
     @Column(nullable = false)
     private boolean ended = false;
 
+    /** True for an admin Simulate preview session — gates FlowEngagementService.triggerEngagement()
+     *  and keeps this traversal out of real-visitor analytics, without skipping persistence entirely. */
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean simulated = false;
+
     @Column(name = "context_json", columnDefinition = "TEXT")
     private String contextJson;
 

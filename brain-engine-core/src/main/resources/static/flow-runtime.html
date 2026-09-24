@@ -149,10 +149,23 @@
   }
   .reg-login-row { text-align: center; margin-top: 16px; font-size: 12px; color: var(--theme-text-muted); }
   .reg-login-row a { color: var(--theme-text-primary); text-decoration: none; font-weight: 600; }
+
+  #sim-badge {
+    display: none;
+    position: fixed; top: 16px; left: 16px; z-index: 9999;
+    align-items: center; gap: 7px;
+    background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px; padding: 5px 12px;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  }
+  #sim-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: #a78bfa; flex-shrink: 0; }
+  #sim-badge span.label { font-size: 10px; font-weight: 700; letter-spacing: 0.5px; color: #a78bfa; text-transform: uppercase; }
 </style>
 <!--PF_THEME_INJECT-->
 </head>
 <body>
+
+<div id="sim-badge"><span class="dot"></span><span class="label">Simulated</span></div>
 
 <div id="card">
   <div id="page-grid"></div>
@@ -201,6 +214,15 @@ let layouts = [];
 let requiredPending = new Set();
 let questionnaireStates = {};
 
+// Simulate mode: an admin previewing a (possibly draft, never-live) PageFlow from
+// page-flows.html/playground.html, embedded here via an iframe with ?simulate=1&pageFlowId=.
+// Every session it starts is a real FlowSession row flagged simulated=true server-side
+// (see FlowSessionController/PublicFlowRuntimeService) — this only swaps which API base
+// this page talks to and skips the slug/localStorage machinery a real visitor needs.
+let simulate = false;
+let pageFlowId = null;
+function fsBase() { return simulate ? '/api/admin/flow-sessions' : '/api/public/flow-sessions'; }
+
 function parseChoices(json) {
   try {
     const arr = JSON.parse(json || '[]');
@@ -218,8 +240,9 @@ async function saveAnswer(widgetId, value, required) {
   const patch = {};
   patch[widgetId] = value;
   try {
-    await fetch(`${API}/api/public/flow-sessions/${token}/context`, {
-      method: 'PUT', headers: HEADERS, body: JSON.stringify({ contextPatchJson: JSON.stringify(patch) })
+    await fetch(`${API}${fsBase()}/${token}/context`, {
+      method: 'PUT', headers: HEADERS, credentials: simulate ? 'include' : 'same-origin',
+      body: JSON.stringify({ contextPatchJson: JSON.stringify(patch) })
     });
   } catch (e) { /* best effort — outcome gating below only reflects local state */ }
 
@@ -240,8 +263,9 @@ async function putContext(key, value) {
   const patch = {};
   patch[key] = value;
   try {
-    await fetch(`${API}/api/public/flow-sessions/${token}/context`, {
-      method: 'PUT', headers: HEADERS, body: JSON.stringify({ contextPatchJson: JSON.stringify(patch) })
+    await fetch(`${API}${fsBase()}/${token}/context`, {
+      method: 'PUT', headers: HEADERS, credentials: simulate ? 'include' : 'same-origin',
+      body: JSON.stringify({ contextPatchJson: JSON.stringify(patch) })
     });
   } catch (e) { /* best effort — outcome gating below only reflects local state */ }
 }
@@ -422,7 +446,7 @@ async function loadQuestionnaireWidget(w, container, state) {
       renderQuestionnaireStatus(container, 'This questionnaire has no questions configured.');
       return;
     }
-    const startRes = await fetch(`${API}/api/questionnaires/${state.questionnaireId}/responses`, {
+    const startRes = await fetch(`${API}/api/questionnaires/${state.questionnaireId}/responses${simulate ? '?simulated=true' : ''}`, {
       method: 'POST', headers: HEADERS
     }).then(r => r.json());
     state.responseId = startRes.id;
@@ -754,6 +778,28 @@ async function toggleQuestionnaireRecording(state) {
 function storageKey(s) { return 'flowSession:' + s; }
 
 async function boot() {
+  const params = new URLSearchParams(window.location.search);
+  simulate = params.get('simulate') === '1';
+  pageFlowId = params.get('pageFlowId');
+
+  if (simulate) {
+    document.getElementById('sim-badge').style.display = 'flex';
+    try {
+      layouts = await fetch(`${API}/api/public/page-layouts`, { headers: HEADERS }).then(r => r.json());
+      const res = await fetch(`${API}${fsBase()}`, {
+        method: 'POST', headers: HEADERS, credentials: 'include',
+        body: JSON.stringify({ pageFlowId })
+      });
+      if (!res.ok) throw new Error('no such flow');
+      const view = await res.json();
+      token = view.token;
+      render(view);
+    } catch (e) {
+      showState('Nothing here', 'This page flow could not be simulated.');
+    }
+    return;
+  }
+
   // window.__PF_SLUG__ is set server-side (see PageController#flowRuntime) because
   // PageFlowRouteFilter reaches this page via a servlet forward, which never updates
   // the browser's own window.location — a query-string read here would always be null
@@ -808,7 +854,7 @@ function render(view) {
   token = view.token;
 
   if (view.ended) {
-    localStorage.removeItem(storageKey(slug));
+    if (!simulate) localStorage.removeItem(storageKey(slug));
     if (view.engagementId) {
       showRegisterScreen(view.engagementId);
     } else {
@@ -829,7 +875,7 @@ function render(view) {
     setTimeout(() => { window.location.href = page.redirectUrl; }, 1500);
   }
 
-  if (view.slug !== slug) {
+  if (!simulate && view.slug !== slug) {
     slug = view.slug;
     localStorage.setItem(storageKey(slug), token);
     history.replaceState(null, '', view.livePath || ('/live/' + slug));
@@ -879,8 +925,9 @@ function render(view) {
 async function advance(outcomeKey) {
   document.querySelectorAll('.outcome-btn').forEach(b => b.disabled = true);
   try {
-    const res = await fetch(`${API}/api/public/flow-sessions/${token}/advance`, {
-      method: 'POST', headers: HEADERS, body: JSON.stringify({ outcomeKey })
+    const res = await fetch(`${API}${fsBase()}/${token}/advance`, {
+      method: 'POST', headers: HEADERS, body: JSON.stringify({ outcomeKey }),
+      credentials: simulate ? 'include' : 'same-origin'
     });
     if (!res.ok) throw new Error('advance failed');
     render(await res.json());

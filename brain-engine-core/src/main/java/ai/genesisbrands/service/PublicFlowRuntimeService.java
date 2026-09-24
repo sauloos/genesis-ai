@@ -41,7 +41,17 @@ public class PublicFlowRuntimeService {
     public PublicSessionView start(String slug, String rootPrefix) {
         PageFlow flow = pageFlowRepo.findLiveByRoute(rootPrefix, slug)
             .orElseThrow(() -> new NoSuchElementException("No live PageFlow for slug: " + slug));
-        FlowSession session = flowSessionService.start(flow.getId());
+        FlowSession session = flowSessionService.start(flow.getId(), false);
+        return toView(session, flow, null);
+    }
+
+    /** Admin Simulate preview: resolves by id instead of a live slug (a draft flow has
+     *  no live route yet), and marks the session simulated so it renders through the
+     *  same view shape a real visitor gets while skipping real side effects. */
+    public PublicSessionView startSimulated(String pageFlowId) {
+        PageFlow flow = pageFlowRepo.findById(pageFlowId)
+            .orElseThrow(() -> new NoSuchElementException("PageFlow not found: " + pageFlowId));
+        FlowSession session = flowSessionService.start(pageFlowId, true);
         return toView(session, flow, null);
     }
 
@@ -70,7 +80,7 @@ public class PublicFlowRuntimeService {
     public PublicSessionView advance(String token, String outcomeKey) {
         FlowSessionService.AdvanceResult result = flowSessionService.advance(token, outcomeKey);
         if (result.redirectToFlowId() != null) {
-            return toView(flowSessionService.start(result.redirectToFlowId()));
+            return toView(flowSessionService.start(result.redirectToFlowId(), result.session().isSimulated()));
         }
         PageFlow flow = pageFlowRepo.findById(result.session().getPageFlowId())
             .orElseThrow(() -> new NoSuchElementException("PageFlow not found: " + result.session().getPageFlowId()));
@@ -85,7 +95,7 @@ public class PublicFlowRuntimeService {
 
     private PublicSessionView toView(FlowSession session, PageFlow flow, String engagementId) {
         PageRenderView page = session.isEnded() ? null : renderCurrentPage(session);
-        return new PublicSessionView(session.getToken(), flow.getSlug(), flow.getLivePath(), page, session.isEnded(), engagementId);
+        return new PublicSessionView(session.getToken(), flow.getSlug(), flow.getLivePath(), page, session.isEnded(), engagementId, session.isSimulated());
     }
 
     private PageRenderView renderCurrentPage(FlowSession session) {
@@ -132,7 +142,7 @@ public class PublicFlowRuntimeService {
         }
     }
 
-    public record PublicSessionView(String token, String slug, String livePath, PageRenderView page, boolean ended, String engagementId) {}
+    public record PublicSessionView(String token, String slug, String livePath, PageRenderView page, boolean ended, String engagementId, boolean simulated) {}
 
     public record PageRenderView(
         String pageId, String name, String layoutKey, boolean bordered,

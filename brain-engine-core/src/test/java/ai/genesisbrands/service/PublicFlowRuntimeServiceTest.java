@@ -90,7 +90,7 @@ class PublicFlowRuntimeServiceTest {
         PageFlow f = flow("f1", "verify-runtime");
         when(pageFlowRepo.findLiveByRoute(null, "verify-runtime")).thenReturn(Optional.of(f));
         FlowSession s = session("tok", "f1", "p1", false);
-        when(flowSessionService.start("f1")).thenReturn(s);
+        when(flowSessionService.start("f1", false)).thenReturn(s);
         Page p = page("p1", "f1");
         when(pageRepo.findById("p1")).thenReturn(Optional.of(p));
         when(pageWidgetRepo.findByPageIdOrderByOrderInSlotAsc("p1")).thenReturn(List.of());
@@ -105,6 +105,24 @@ class PublicFlowRuntimeServiceTest {
         assertThat(view.ended()).isFalse();
         assertThat(view.page().pageId()).isEqualTo("p1");
         assertThat(view.page().outcomes()).extracting(WidgetOutcome::key).containsExactly("next");
+    }
+
+    @Test
+    void startSimulated_resolvesByIdAndMarksSessionSimulated() {
+        PageFlow f = flow("f1", "draft-flow");
+        when(pageFlowRepo.findById("f1")).thenReturn(Optional.of(f));
+        FlowSession s = session("tok", "f1", "p1", false);
+        s.setSimulated(true);
+        when(flowSessionService.start("f1", true)).thenReturn(s);
+        Page p = page("p1", "f1");
+        when(pageRepo.findById("p1")).thenReturn(Optional.of(p));
+        when(pageWidgetRepo.findByPageIdOrderByOrderInSlotAsc("p1")).thenReturn(List.of());
+        when(pageTransitionService.outcomesForPage(p)).thenReturn(List.of(WidgetOutcome.DEFAULT));
+
+        PublicFlowRuntimeService.PublicSessionView view = service.startSimulated("f1");
+
+        assertThat(view.simulated()).isTrue();
+        assertThat(view.token()).isEqualTo("tok");
     }
 
     @Test
@@ -219,7 +237,7 @@ class PublicFlowRuntimeServiceTest {
         when(flowSessionService.advance("tok", "next"))
             .thenReturn(new FlowSessionService.AdvanceResult(ended, "f2", null));
         FlowSession newSession = session("tok2", "f2", "p9", false);
-        when(flowSessionService.start("f2")).thenReturn(newSession);
+        when(flowSessionService.start("f2", false)).thenReturn(newSession);
         PageFlow f2 = flow("f2", "target-flow");
         when(pageFlowRepo.findById("f2")).thenReturn(Optional.of(f2));
         Page p9 = page("p9", "f2");

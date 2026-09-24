@@ -133,21 +133,12 @@
   }
   #end-panel.visible { display: flex; }
   #sim-panel {
-    width: 300px; min-width: 300px; border-left: 1px solid var(--theme-divider); background: var(--theme-card-bg);
+    width: 420px; min-width: 420px; border-left: 1px solid var(--theme-divider); background: var(--theme-card-bg);
     padding: 18px; overflow-y: auto; display: none; flex-direction: column; gap: 14px;
   }
   #sim-panel.visible { display: flex; }
   #sim-panel h3 { font-size: 13px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.5px; }
-  .sim-current { font-size: 14px; font-weight: 700; color: #fff; }
-  .sim-ended { font-size: 12px; color: #6fe0a5; }
-  .sim-outcome-btn {
-    width: 100%; text-align: left; padding: 9px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(255,255,255,0.04); color: #ddd; font-size: 12px; cursor: pointer; transition: border-color 0.15s;
-  }
-  .sim-outcome-btn:hover { border-color: rgba(255,255,255,0.3); }
-  .sim-history { font-size: 11px; color: rgba(255,255,255,0.45); display: flex; flex-direction: column; gap: 4px; }
-  .sim-history summary { cursor: pointer; font-size: 11px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px; }
-  .sim-history-row { display: flex; justify-content: space-between; gap: 6px; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  #sim-frame { flex: 1; width: 100%; min-height: 480px; border: 1px solid var(--theme-divider); border-radius: 8px; background: #fff; }
   #meta-panel h3 { font-size: 13px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.5px; }
   .form-field { display: flex; flex-direction: column; gap: 4px; }
   .form-field label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.4px; }
@@ -366,7 +357,7 @@
       </div>
       <div id="sim-panel">
         <h3>Simulate</h3>
-        <div id="sim-body"></div>
+        <iframe id="sim-frame" src="about:blank"></iframe>
       </div>
     </div>
   </div>
@@ -404,8 +395,11 @@ let widgetTypes = [];
 let l2PageId = null;
 let l2Widgets = [];
 let l2SelectedWidgetId = null;
-let simSession = null;
-let simHistory = [];
+
+function closeSimulatePanel() {
+  document.getElementById('sim-panel').classList.remove('visible');
+  document.getElementById('sim-frame').src = 'about:blank';
+}
 
 function esc(s) { return (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
@@ -689,9 +683,7 @@ async function openFlow(id) {
   document.getElementById('meta-panel').classList.remove('visible');
   if (!isSameFlow) {
     document.getElementById('end-panel').classList.remove('visible');
-    document.getElementById('sim-panel').classList.remove('visible');
-    simSession = null;
-    simHistory = [];
+    closeSimulatePanel();
   }
   selectedPageId = null;
   renderFlowList();
@@ -930,7 +922,7 @@ function selectPage(pageId) {
   selectedPageId = pageId;
   const page = currentPages.find(p => p.id === pageId);
   if (!page) return;
-  document.getElementById('sim-panel').classList.remove('visible');
+  closeSimulatePanel();
   document.getElementById('pg-name').value = page.name;
   document.getElementById('pg-auth').checked = page.requiresAuth;
   document.getElementById('pg-error').checked = page.errorPage;
@@ -983,7 +975,7 @@ async function deleteSelectedPage() {
 // ── End node config ──────────────────────────────────────────────────
 function openEndConfig() {
   document.getElementById('meta-panel').classList.remove('visible');
-  document.getElementById('sim-panel').classList.remove('visible');
+  closeSimulatePanel();
   selectedPageId = null;
 
   const endPages = currentPages.filter(p => p.endPage);
@@ -1237,90 +1229,14 @@ async function deleteWidget() {
 }
 
 // ── Simulate panel ──────────────────────────────────────────────────────
-async function openSimulatePanel() {
+function openSimulatePanel() {
   if (!currentFlow) return;
   document.getElementById('meta-panel').classList.remove('visible');
   document.getElementById('end-panel').classList.remove('visible');
   selectedPageId = null;
   document.getElementById('sim-panel').classList.add('visible');
-  await simStart();
-}
-
-async function simStart() {
-  if (!currentFlow) return;
-  try {
-    simSession = await apiFetch('/api/admin/flow-sessions', {
-      method: 'POST', body: JSON.stringify({ pageFlowId: currentFlow.id })
-    });
-    simHistory = [];
-    renderSimBody();
-  } catch (e) { toast('Failed to start simulation: ' + e.message, false); }
-}
-
-async function simAdvance(outcomeKey) {
-  try {
-    const result = await apiFetch(`/api/admin/flow-sessions/${simSession.token}/advance`, {
-      method: 'POST', body: JSON.stringify({ outcomeKey })
-    });
-    simSession = result.session;
-    simHistory = await apiFetch(`/api/admin/flow-sessions/${simSession.token}/history`);
-    if (result.redirectToFlowId) {
-      toast('Flow ended with a redirect — starting a new session on the target flow.');
-      // The target flow's pages/widgets aren't loaded yet — renderSimBody() resolves
-      // page names and outcome buttons from currentPages/currentWidgets, so switch
-      // the open flow before starting the session, or the panel can't render it.
-      await openFlow(result.redirectToFlowId);
-      simSession = await apiFetch('/api/admin/flow-sessions', {
-        method: 'POST', body: JSON.stringify({ pageFlowId: result.redirectToFlowId })
-      });
-      simHistory = [];
-      document.getElementById('sim-panel').classList.add('visible');
-    }
-    renderSimBody();
-  } catch (e) { toast('Failed to advance: ' + e.message, false); }
-}
-
-function renderSimHistory() {
-  if (!simHistory.length) return '';
-  return `
-    <details class="sim-history">
-      <summary>History (${simHistory.length})</summary>
-      ${simHistory.map(ev => {
-        const src = currentPages.find(p => p.id === ev.sourcePageId);
-        const tgt = ev.targetPageId ? currentPages.find(p => p.id === ev.targetPageId) : null;
-        const targetLabel = ev.targetKind === 'FLOW_END' ? 'Flow End' : esc(tgt ? tgt.name : '—');
-        return `<div class="sim-history-row"><span>${esc(src ? src.name : ev.sourcePageId)} → <em>${esc(ev.outcomeKey)}</em></span><span>${targetLabel}</span></div>`;
-      }).join('')}
-    </details>`;
-}
-
-function renderSimBody() {
-  const el = document.getElementById('sim-body');
-  if (!simSession) { el.innerHTML = ''; return; }
-
-  if (simSession.ended) {
-    const endPage = simSession.currentPageId ? currentPages.find(p => p.id === simSession.currentPageId) : null;
-    const label = endPage ? `Ended — showing end page "${esc(endPage.name)}"` : 'Ended.';
-    el.innerHTML = `
-      <div class="sim-ended">${label}</div>
-      ${renderSimHistory()}
-      <div class="panel-actions"><button class="tbtn tbtn-ghost" onclick="simStart()">Reset</button></div>`;
-    return;
-  }
-
-  const page = currentPages.find(p => p.id === simSession.currentPageId);
-  const outcomes = page ? outcomesForPage(page.id) : [];
-  el.innerHTML = `
-    <div class="sim-current">${page ? esc(page.name) : '(unknown page)'}</div>
-    <div style="display:flex;flex-direction:column;gap:6px">
-      ${outcomes.map(o => `<button class="sim-outcome-btn" data-key="${esc(o.key)}">${esc(o.label)}</button>`).join('')}
-    </div>
-    ${renderSimHistory()}
-    <div class="panel-actions"><button class="tbtn tbtn-ghost" onclick="simStart()">Reset</button></div>`;
-
-  el.querySelectorAll('.sim-outcome-btn').forEach(btn => {
-    btn.addEventListener('click', () => simAdvance(btn.dataset.key));
-  });
+  document.getElementById('sim-frame').src =
+    `/flow-runtime.html?simulate=1&pageFlowId=${encodeURIComponent(currentFlow.id)}`;
 }
 
 boot();

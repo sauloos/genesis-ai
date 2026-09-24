@@ -82,14 +82,14 @@ class FlowSessionServiceTest {
         when(pageFlowRepo.findById("f1")).thenReturn(Optional.of(flow("f1", null, null, null, null)));
         when(pageRepo.findByPageFlowId("f1")).thenReturn(List.of());
 
-        assertThatThrownBy(() -> service.start("f1")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.start("f1", false)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void start_missingFlowThrows() {
         when(pageFlowRepo.findById("missing")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.start("missing")).isInstanceOf(NoSuchElementException.class);
+        assertThatThrownBy(() -> service.start("missing", false)).isInstanceOf(NoSuchElementException.class);
     }
 
     @Test
@@ -97,12 +97,23 @@ class FlowSessionServiceTest {
         when(pageFlowRepo.findById("f1")).thenReturn(Optional.of(flow("f1", "p1", null, null, null)));
         when(sessionRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        FlowSession s = service.start("f1");
+        FlowSession s = service.start("f1", false);
 
         assertThat(s.getPageFlowId()).isEqualTo("f1");
         assertThat(s.getCurrentPageId()).isEqualTo("p1");
         assertThat(s.isEnded()).isFalse();
+        assertThat(s.isSimulated()).isFalse();
         assertThat(s.getExpiresAt()).isAfter(Instant.now().plusSeconds(3600 * 23));
+    }
+
+    @Test
+    void start_marksSessionSimulatedWhenRequested() {
+        when(pageFlowRepo.findById("f1")).thenReturn(Optional.of(flow("f1", "p1", null, null, null)));
+        when(sessionRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        FlowSession s = service.start("f1", true);
+
+        assertThat(s.isSimulated()).isTrue();
     }
 
     @Test
@@ -114,7 +125,7 @@ class FlowSessionServiceTest {
         ));
         when(sessionRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        FlowSession s = service.start("f1");
+        FlowSession s = service.start("f1", false);
 
         assertThat(s.getCurrentPageId()).isEqualTo("older");
     }
@@ -203,6 +214,23 @@ class FlowSessionServiceTest {
         assertThat(result.redirectToFlowId()).isNull();
         assertThat(result.engagementId()).isEqualTo("eng-1");
         org.mockito.Mockito.verify(flowEngagementService).triggerEngagement(f, s);
+    }
+
+    @Test
+    void advance_simulatedSessionSkipsCreateEngagementSideEffect() {
+        FlowSession s = session("tok", "f1", "p1");
+        s.setSimulated(true);
+        when(sessionRepo.findByTokenAndExpiresAtAfter(anyString(), any())).thenReturn(Optional.of(s));
+        when(pageTransitionService.resolve("p1", "next")).thenReturn(Optional.of(transition("FLOW_END", null)));
+        PageFlow f = flow("f1", "p1", "CREATE_ENGAGEMENT", null, null);
+        when(pageFlowRepo.findById("f1")).thenReturn(Optional.of(f));
+        when(sessionRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        FlowSessionService.AdvanceResult result = service.advance("tok", "next");
+
+        assertThat(result.session().isEnded()).isTrue();
+        assertThat(result.engagementId()).isNull();
+        org.mockito.Mockito.verify(flowEngagementService, org.mockito.Mockito.never()).triggerEngagement(any(), any());
     }
 
     @Test

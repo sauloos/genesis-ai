@@ -26,6 +26,11 @@ public class QuestionnaireResponse {
     @Column(nullable = false)
     private Status status = Status.IN_PROGRESS;
 
+    /** True when started from an admin Simulate preview embedding this questionnaire widget,
+     *  rather than a real visitor's fill-out attempt — a real row, just flagged. */
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean simulated = false;
+
     @Column(name = "started_at", nullable = false)
     private Instant startedAt = Instant.now();
 

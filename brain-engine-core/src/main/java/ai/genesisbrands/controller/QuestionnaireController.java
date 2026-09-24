@@ -125,8 +125,9 @@ public class QuestionnaireController {
     @PostMapping("/{id}/responses")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Start a new fill-out attempt for a questionnaire")
-    public QuestionnaireResponse startResponse(@PathVariable String id) {
-        return responseService.startResponse(id);
+    public QuestionnaireResponse startResponse(@PathVariable String id,
+            @RequestParam(defaultValue = "false") boolean simulated) {
+        return responseService.startResponse(id, simulated);
     }
 
     @GetMapping("/responses/{responseId}/answers")

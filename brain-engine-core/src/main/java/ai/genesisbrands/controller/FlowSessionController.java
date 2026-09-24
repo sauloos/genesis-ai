@@ -1,9 +1,9 @@
 package ai.genesisbrands.controller;
 
-import ai.genesisbrands.model.FlowSession;
 import ai.genesisbrands.security.AdminAuthHelper;
 import ai.genesisbrands.security.AdminSessionService;
 import ai.genesisbrands.service.FlowSessionService;
+import ai.genesisbrands.service.PublicFlowRuntimeService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -14,7 +14,11 @@ import java.util.NoSuchElementException;
 
 /**
  * Admin-gated harness for exercising FlowSession traversal (used by the Simulate panel
- * in page-flows.html). Not a public/visitor-facing runtime route.
+ * in page-flows.html/playground.html, embedded as an iframe running flow-runtime.html
+ * in simulate mode). Delegates into PublicFlowRuntimeService so a simulated session
+ * renders through the exact same PublicSessionView shape a real visitor gets — the
+ * difference is entirely in how the session starts (by pageFlowId, not a live slug)
+ * and in the simulated flag it carries, not in the response contract.
  */
 @RestController
 @RequestMapping("/api/admin/flow-sessions")
@@ -24,12 +28,13 @@ public class FlowSessionController {
     private final AdminAuthHelper adminAuth;
     private final AdminSessionService adminSession;
     private final FlowSessionService flowSessionService;
+    private final PublicFlowRuntimeService publicFlowRuntimeService;
 
     @PostMapping
     public ResponseEntity<?> start(@RequestBody StartRequest body, HttpServletRequest req) {
         if (!authorized(req)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         try {
-            return ResponseEntity.ok(flowSessionService.start(body.pageFlowId()));
+            return ResponseEntity.ok(publicFlowRuntimeService.startSimulated(body.pageFlowId()));
         } catch (NoSuchElementException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));
         } catch (IllegalArgumentException e) {
@@ -41,7 +46,7 @@ public class FlowSessionController {
     public ResponseEntity<?> get(@PathVariable String token, HttpServletRequest req) {
         if (!authorized(req)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         try {
-            return ResponseEntity.ok(flowSessionService.get(token));
+            return ResponseEntity.ok(publicFlowRuntimeService.resume(token));
         } catch (NoSuchElementException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));
         }
@@ -51,7 +56,7 @@ public class FlowSessionController {
     public ResponseEntity<?> updateContext(@PathVariable String token, @RequestBody ContextPatchRequest body, HttpServletRequest req) {
         if (!authorized(req)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         try {
-            return ResponseEntity.ok(flowSessionService.updateContext(token, body.contextPatchJson()));
+            return ResponseEntity.ok(publicFlowRuntimeService.updateContext(token, body.contextPatchJson()));
         } catch (NoSuchElementException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));
         } catch (IllegalArgumentException e) {
@@ -63,8 +68,7 @@ public class FlowSessionController {
     public ResponseEntity<?> advance(@PathVariable String token, @RequestBody AdvanceRequest body, HttpServletRequest req) {
         if (!authorized(req)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         try {
-            FlowSessionService.AdvanceResult result = flowSessionService.advance(token, body.outcomeKey());
-            return ResponseEntity.ok(new AdvanceResponse(result.session(), result.redirectToFlowId()));
+            return ResponseEntity.ok(publicFlowRuntimeService.advance(token, body.outcomeKey()));
         } catch (NoSuchElementException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));
         } catch (IllegalArgumentException | IllegalStateException e) {
@@ -89,6 +93,5 @@ public class FlowSessionController {
     public record StartRequest(String pageFlowId) {}
     public record ContextPatchRequest(String contextPatchJson) {}
     public record AdvanceRequest(String outcomeKey) {}
-    public record AdvanceResponse(FlowSession session, String redirectToFlowId) {}
     public record ErrorResponse(String message) {}
 }

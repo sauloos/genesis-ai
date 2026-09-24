@@ -688,8 +688,8 @@ This brand challenges the idea that good coffee has to be precious or intimidati
       <h2 id="pf-title">Page Flow</h2>
       <div class="sub" id="pf-sub"></div>
     </div>
-    <div style="flex:1;overflow:auto;padding:20px 28px 28px;max-width:520px;">
-      <div id="pf-sim-body"></div>
+    <div style="flex:1;display:flex;overflow:hidden;padding:20px 28px 28px;">
+      <iframe id="pf-sim-frame" src="about:blank" style="flex:1;width:100%;min-height:480px;border:1px solid var(--theme-divider,#333);border-radius:8px;background:#fff;"></iframe>
     </div>
   </div>
 
@@ -814,8 +814,6 @@ let ADMIN_KEY = null;          // fetched from /api/admin/key — distinct from 
 let pageFlows = [];
 let PF_WIDGET_TYPES = [];
 let currentPageFlowDetail = null; // { flow, pages, widgets, transitions }
-let pfSimSession = null;
-let pfSimHistory = [];
 
 async function pfApiFetch(path, opts = {}) {
   const r = await fetch(path, {
@@ -861,118 +859,19 @@ function renderPageFlowList() {
 async function openPageFlowSim(flowId) {
   const titleEl = document.getElementById('pf-title');
   const subEl = document.getElementById('pf-sub');
-  const bodyEl = document.getElementById('pf-sim-body');
+  const frameEl = document.getElementById('pf-sim-frame');
   titleEl.textContent = 'Loading…';
   subEl.textContent = '';
-  bodyEl.innerHTML = '';
+  frameEl.src = 'about:blank';
   try {
     currentPageFlowDetail = await pfApiFetch(`/api/admin/page-flows/${flowId}`);
     titleEl.textContent = currentPageFlowDetail.flow.name;
     subEl.textContent = (currentPageFlowDetail.flow.live ? 'Live at ' : 'Not live · would resolve to ') + currentPageFlowDetail.flow.livePath;
-    pfSimSession = null;
-    pfSimHistory = [];
-    await pfSimStart();
+    frameEl.src = `/flow-runtime.html?simulate=1&pageFlowId=${encodeURIComponent(flowId)}`;
   } catch (err) {
     titleEl.textContent = 'Failed to load page flow';
     subEl.textContent = err.message || String(err);
   }
-}
-
-// Mirrors PageTransitionService.outcomesForPage() — see page-flows.html's outcomesForPage().
-function pfOutcomesForPage(pageId) {
-  const widgets = currentPageFlowDetail.widgets
-    .filter(w => w.pageId === pageId)
-    .slice()
-    .sort((a, b) => (a.slotKey < b.slotKey ? -1 : a.slotKey > b.slotKey ? 1 : a.orderInSlot - b.orderInSlot));
-
-  const byKey = new Map();
-  for (const w of widgets) {
-    const descriptor = PF_WIDGET_TYPES.find(t => t.widgetType === w.widgetType);
-    if (!descriptor) continue;
-    for (const o of (descriptor.outcomes || [])) {
-      if (!byKey.has(o.key)) byKey.set(o.key, o);
-    }
-  }
-  if (byKey.size === 0) byKey.set('next', { key: 'next', label: 'Next' });
-  byKey.delete('error');
-  byKey.set('error', { key: 'error', label: 'Error' });
-  return [...byKey.values()];
-}
-
-async function pfSimStart() {
-  if (!currentPageFlowDetail) return;
-  try {
-    pfSimSession = await pfApiFetch('/api/admin/flow-sessions', {
-      method: 'POST', body: JSON.stringify({ pageFlowId: currentPageFlowDetail.flow.id })
-    });
-    pfSimHistory = [];
-    renderPageFlowSimBody();
-  } catch (e) {
-    document.getElementById('pf-sim-body').innerHTML = `<div style="color:#c66;font-size:12px;">Failed to start simulation: ${esc(e.message || String(e))}</div>`;
-  }
-}
-
-async function pfSimAdvance(outcomeKey) {
-  try {
-    const result = await pfApiFetch(`/api/admin/flow-sessions/${pfSimSession.token}/advance`, {
-      method: 'POST', body: JSON.stringify({ outcomeKey })
-    });
-    pfSimSession = result.session;
-    pfSimHistory = await pfApiFetch(`/api/admin/flow-sessions/${pfSimSession.token}/history`);
-    if (result.redirectToFlowId) {
-      // The target flow's pages/widgets aren't loaded yet — resolve them before
-      // starting the new session, same as page-flows.html's simAdvance().
-      await openPageFlowSim(result.redirectToFlowId);
-      return;
-    }
-    renderPageFlowSimBody();
-  } catch (e) {
-    document.getElementById('pf-sim-body').insertAdjacentHTML('beforeend',
-      `<div style="color:#c66;font-size:12px;margin-top:8px;">Failed to advance: ${esc(e.message || String(e))}</div>`);
-  }
-}
-
-function renderPageFlowSimHistory() {
-  if (!pfSimHistory.length) return '';
-  return `
-    <details class="sim-history">
-      <summary>History (${pfSimHistory.length})</summary>
-      ${pfSimHistory.map(ev => {
-        const src = currentPageFlowDetail.pages.find(p => p.id === ev.sourcePageId);
-        const tgt = ev.targetPageId ? currentPageFlowDetail.pages.find(p => p.id === ev.targetPageId) : null;
-        const targetLabel = ev.targetKind === 'FLOW_END' ? 'Flow End' : esc(tgt ? tgt.name : '—');
-        return `<div class="sim-history-row"><span>${esc(src ? src.name : ev.sourcePageId)} → <em>${esc(ev.outcomeKey)}</em></span><span>${targetLabel}</span></div>`;
-      }).join('')}
-    </details>`;
-}
-
-function renderPageFlowSimBody() {
-  const el = document.getElementById('pf-sim-body');
-  if (!pfSimSession) { el.innerHTML = ''; return; }
-
-  if (pfSimSession.ended) {
-    const endPage = pfSimSession.currentPageId ? currentPageFlowDetail.pages.find(p => p.id === pfSimSession.currentPageId) : null;
-    const label = endPage ? `Ended — showing end page "${esc(endPage.name)}"` : 'Ended.';
-    el.innerHTML = `
-      <div class="sim-ended">${label}</div>
-      ${renderPageFlowSimHistory()}
-      <div class="panel-actions"><button class="tbtn tbtn-ghost" onclick="pfSimStart()">Reset</button></div>`;
-    return;
-  }
-
-  const page = currentPageFlowDetail.pages.find(p => p.id === pfSimSession.currentPageId);
-  const outcomes = page ? pfOutcomesForPage(page.id) : [];
-  el.innerHTML = `
-    <div class="sim-current">${page ? esc(page.name) : '(unknown page)'}</div>
-    <div style="display:flex;flex-direction:column;gap:6px">
-      ${outcomes.map(o => `<button class="sim-outcome-btn" data-key="${esc(o.key)}">${esc(o.label)}</button>`).join('')}
-    </div>
-    ${renderPageFlowSimHistory()}
-    <div class="panel-actions"><button class="tbtn tbtn-ghost" onclick="pfSimStart()">Reset</button></div>`;
-
-  el.querySelectorAll('.sim-outcome-btn').forEach(btn => {
-    btn.addEventListener('click', () => pfSimAdvance(btn.dataset.key));
-  });
 }
 
 async function markPaid(id) {
@@ -1112,6 +1011,7 @@ function selectAgent(el) {
   const isChatAgent = !isPageFlow && !!meta.chatBased;
 
   // Toggle page-flow / chat-agent / normal agent panels
+  if (!isPageFlow) document.getElementById('pf-sim-frame').src = 'about:blank';
   document.getElementById('pageflow-area').style.display = isPageFlow ? 'flex' : 'none';
   document.getElementById('chat-agent-area').style.display = isChatAgent ? 'flex' : 'none';
   document.getElementById('view-parameters').style.display = (isPageFlow || isChatAgent) ? 'none' : 'flex';

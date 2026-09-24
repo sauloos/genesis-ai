@@ -50,11 +50,12 @@ public class QuestionnaireResponseService {
             .orElseThrow(() -> new NoSuchElementException("Response not found: " + responseId));
     }
 
-    public QuestionnaireResponse startResponse(String questionnaireId) {
+    public QuestionnaireResponse startResponse(String questionnaireId, boolean simulated) {
         questionnaireService.getQuestionnaire(questionnaireId); // validate exists
         QuestionnaireResponse response = new QuestionnaireResponse();
         response.setId(UUID.randomUUID().toString());
         response.setQuestionnaireId(questionnaireId);
+        response.setSimulated(simulated);
         return responseRepo.save(response);
     }
 

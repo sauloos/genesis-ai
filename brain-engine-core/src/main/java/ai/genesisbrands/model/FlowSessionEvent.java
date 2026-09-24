@@ -32,6 +32,9 @@ public class FlowSessionEvent {
     @Column(name = "target_page_id", length = 36)
     private String targetPageId;
 
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean simulated = false;
+
     @Column(name = "occurred_at", nullable = false)
     private Instant occurredAt = Instant.now();
 }

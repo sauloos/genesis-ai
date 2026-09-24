@@ -43,7 +43,7 @@ public class FlowSessionService {
     private final ObjectMapper objectMapper;
 
     @Transactional
-    public FlowSession start(String pageFlowId) {
+    public FlowSession start(String pageFlowId, boolean simulated) {
         PageFlow flow = pageFlowRepo.findById(pageFlowId)
             .orElseThrow(() -> new NoSuchElementException("PageFlow not found: " + pageFlowId));
         String startPageId = effectiveStartPageId(flow);
@@ -54,6 +54,7 @@ public class FlowSessionService {
         session.setToken(UUID.randomUUID().toString());
         session.setPageFlowId(pageFlowId);
         session.setCurrentPageId(startPageId);
+        session.setSimulated(simulated);
         session.setExpiresAt(Instant.now().plus(SESSION_HOURS, ChronoUnit.HOURS));
         return sessionRepo.save(session);
     }
@@ -120,6 +121,7 @@ public class FlowSessionService {
         event.setOutcomeKey(outcomeKey);
         event.setTargetKind(transition.getTargetKind());
         event.setTargetPageId(transition.getTargetPageId());
+        event.setSimulated(session.isSimulated());
         eventRepo.save(event);
 
         String redirectToFlowId = null;
@@ -138,7 +140,11 @@ public class FlowSessionService {
                 redirectToFlowId = flow.getEndTargetFlowId();
             } else if ("CREATE_ENGAGEMENT".equals(endAction)) {
                 session.setCurrentPageId(null);
-                engagementId = flowEngagementService.triggerEngagement(flow, session);
+                // Never trigger a real downstream engagement from an admin Simulate preview —
+                // the simulated session still ends normally, it just can't produce an id.
+                if (!session.isSimulated()) {
+                    engagementId = flowEngagementService.triggerEngagement(flow, session);
+                }
             } else {
                 session.setCurrentPageId(null);
             }
