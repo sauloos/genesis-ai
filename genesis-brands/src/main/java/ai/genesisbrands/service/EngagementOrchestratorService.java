@@ -74,19 +74,34 @@ public class EngagementOrchestratorService {
         Engagement engagement = engagementRepo.findById(engagementId)
             .orElseThrow(() -> new RuntimeException("Engagement not found: " + engagementId));
 
+        var response = responseRepo.findById(engagement.getQuestionnaireResponseId())
+            .orElseThrow();
+        List<QuestionnaireQuestion> questions =
+            questionRepo.findByQuestionnaireIdOrderByOrderIndexAsc(response.getQuestionnaireId());
+        List<QuestionnaireAnswer> answers =
+            answerRepo.findByResponseIdOrderByCreatedAtAsc(engagement.getQuestionnaireResponseId());
+
+        runEngagementCore(engagement, questions, answers);
+    }
+
+    /** Same pipeline as {@link #runEngagement(String)}, for callers that already have the Q&A in hand (e.g. a PageFlow's captured answers) instead of a QuestionnaireResponse to load. */
+    @Async
+    @Transactional
+    public void runEngagementWithAnswers(String engagementId, List<QuestionnaireQuestion> questions, List<QuestionnaireAnswer> answers) {
+        Engagement engagement = engagementRepo.findById(engagementId)
+            .orElseThrow(() -> new RuntimeException("Engagement not found: " + engagementId));
+
+        runEngagementCore(engagement, questions, answers);
+    }
+
+    private void runEngagementCore(Engagement engagement, List<QuestionnaireQuestion> questions, List<QuestionnaireAnswer> answers) {
+        String engagementId = engagement.getId();
+
         engagement.setStatus(Engagement.Status.RUNNING);
         engagement.setUpdatedAt(Instant.now());
         engagementRepo.save(engagement);
 
         try {
-            // Load Q&A
-            var response = responseRepo.findById(engagement.getQuestionnaireResponseId())
-                .orElseThrow();
-            List<QuestionnaireQuestion> questions =
-                questionRepo.findByQuestionnaireIdOrderByOrderIndexAsc(response.getQuestionnaireId());
-            List<QuestionnaireAnswer> answers =
-                answerRepo.findByResponseIdOrderByCreatedAtAsc(engagement.getQuestionnaireResponseId());
-
             // Derive 3 direction briefs
             List<DirectionBrief> briefs = briefDerivation.derive(engagementId, questions, answers);
             engagement.setBriefsJson(objectMapper.writeValueAsString(briefs));

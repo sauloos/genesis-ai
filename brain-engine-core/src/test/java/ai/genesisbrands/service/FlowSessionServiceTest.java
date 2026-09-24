@@ -30,12 +30,13 @@ class FlowSessionServiceTest {
     @Mock private FlowSessionEventRepository eventRepo;
     @Mock private PageFlowRepository pageFlowRepo;
     @Mock private PageTransitionService pageTransitionService;
+    @Mock private FlowEngagementService flowEngagementService;
 
     private FlowSessionService service;
 
     @BeforeEach
     void setUp() {
-        service = new FlowSessionService(sessionRepo, eventRepo, pageFlowRepo, pageTransitionService, new ObjectMapper());
+        service = new FlowSessionService(sessionRepo, eventRepo, pageFlowRepo, pageTransitionService, flowEngagementService, new ObjectMapper());
     }
 
     private PageFlow flow(String id, String startPageId, String endAction, String endPageId, String endTargetFlowId) {
@@ -155,6 +156,23 @@ class FlowSessionServiceTest {
         assertThat(result.session().isEnded()).isTrue();
         assertThat(result.session().getCurrentPageId()).isNull();
         assertThat(result.redirectToFlowId()).isEqualTo("f2");
+    }
+
+    @Test
+    void advance_flowEndWithCreateEngagementTriggersFlowEngagementService() {
+        FlowSession s = session("tok", "f1", "p1");
+        when(sessionRepo.findByTokenAndExpiresAtAfter(anyString(), any())).thenReturn(Optional.of(s));
+        when(pageTransitionService.resolve("p1", "next")).thenReturn(Optional.of(transition("FLOW_END", null)));
+        PageFlow f = flow("f1", "p1", "CREATE_ENGAGEMENT", null, null);
+        when(pageFlowRepo.findById("f1")).thenReturn(Optional.of(f));
+        when(sessionRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        FlowSessionService.AdvanceResult result = service.advance("tok", "next");
+
+        assertThat(result.session().isEnded()).isTrue();
+        assertThat(result.session().getCurrentPageId()).isNull();
+        assertThat(result.redirectToFlowId()).isNull();
+        org.mockito.Mockito.verify(flowEngagementService).triggerEngagement(f, s);
     }
 
     @Test

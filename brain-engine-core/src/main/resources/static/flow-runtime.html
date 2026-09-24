@@ -33,6 +33,15 @@
   .widget-content h2 { font-size: 17px; font-weight: 600; margin-bottom: 8px; line-height: 1.35; }
   .widget-content p { font-size: 14px; color: #555; line-height: 1.6; white-space: pre-wrap; }
 
+  .widget-question label.q-prompt { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  .widget-question .q-help { font-size: 12px; color: #999; margin-bottom: 10px; }
+  .widget-question input[type="text"], .widget-question textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px;
+    font-size: 14px; font-family: inherit; resize: vertical;
+  }
+  .widget-question .q-choices { display: flex; flex-direction: column; gap: 8px; }
+  .widget-question .q-choice { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+
   #outcomes { display: flex; gap: 10px; justify-content: flex-end; margin-top: 32px; flex-wrap: wrap; }
   .outcome-btn {
     padding: 11px 22px; border-radius: 10px; border: none; font-size: 14px; font-weight: 600;
@@ -75,6 +84,42 @@ const HEADERS = { 'Content-Type': 'application/json', 'X-Api-Key': KEY };
 let slug = null;
 let token = null;
 let layouts = [];
+let requiredPending = new Set();
+
+function parseChoices(json) {
+  try {
+    const arr = JSON.parse(json || '[]');
+    return Array.isArray(arr) ? arr : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function isRequired(config) {
+  return config.required === true || config.required === 'true';
+}
+
+async function saveAnswer(widgetId, value, required) {
+  const patch = {};
+  patch[widgetId] = value;
+  try {
+    await fetch(`${API}/api/public/flow-sessions/${token}/context`, {
+      method: 'PUT', headers: HEADERS, body: JSON.stringify({ contextPatchJson: JSON.stringify(patch) })
+    });
+  } catch (e) { /* best effort — outcome gating below only reflects local state */ }
+
+  const hasValue = Array.isArray(value) ? value.length > 0 : !!(value && String(value).trim());
+  if (hasValue) {
+    requiredPending.delete(widgetId);
+  } else if (required) {
+    requiredPending.add(widgetId);
+  }
+  updateOutcomeButtons();
+}
+
+function updateOutcomeButtons() {
+  document.querySelectorAll('.outcome-btn').forEach(b => b.disabled = requiredPending.size > 0);
+}
 
 const widgetRegistry = {
   content: (w) => {
@@ -86,6 +131,67 @@ const widgetRegistry = {
     p.textContent = w.config.body || '';
     div.appendChild(h);
     div.appendChild(p);
+    return div;
+  },
+  question: (w) => {
+    const div = document.createElement('div');
+    div.className = 'widget-question';
+    const required = isRequired(w.config);
+
+    const label = document.createElement('label');
+    label.className = 'q-prompt';
+    label.textContent = w.config.prompt || '';
+    label.htmlFor = 'q-' + w.id;
+    div.appendChild(label);
+
+    if (w.config.helpText) {
+      const help = document.createElement('div');
+      help.className = 'q-help';
+      help.textContent = w.config.helpText;
+      div.appendChild(help);
+    }
+
+    const questionType = w.config.questionType || 'short_text';
+    if (required) requiredPending.add(w.id);
+
+    if (questionType === 'long_text') {
+      const ta = document.createElement('textarea');
+      ta.id = 'q-' + w.id;
+      ta.rows = 4;
+      ta.onchange = () => saveAnswer(w.id, ta.value, required);
+      div.appendChild(ta);
+    } else if (questionType === 'single_select' || questionType === 'multi_select') {
+      const wrap = document.createElement('div');
+      wrap.className = 'q-choices';
+      parseChoices(w.config.choicesJson).forEach((choice, i) => {
+        const row = document.createElement('label');
+        row.className = 'q-choice';
+        const input = document.createElement('input');
+        input.type = questionType === 'single_select' ? 'radio' : 'checkbox';
+        input.name = 'q-' + w.id;
+        input.id = 'q-' + w.id + '-' + i;
+        input.value = choice;
+        input.onchange = () => {
+          if (questionType === 'single_select') {
+            saveAnswer(w.id, choice, required);
+          } else {
+            const checked = Array.from(wrap.querySelectorAll('input:checked')).map(el => el.value);
+            saveAnswer(w.id, checked, required);
+          }
+        };
+        row.appendChild(input);
+        row.appendChild(document.createTextNode(choice));
+        wrap.appendChild(row);
+      });
+      div.appendChild(wrap);
+    } else {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.id = 'q-' + w.id;
+      input.onchange = () => saveAnswer(w.id, input.value, required);
+      div.appendChild(input);
+    }
+
     return div;
   }
 };
@@ -154,6 +260,8 @@ function render(view) {
   document.getElementById('card').style.display = 'block';
   document.getElementById('page-title').textContent = page.name || '';
 
+  requiredPending = new Set();
+
   const layout = layouts.find(l => l.id === page.layoutKey) || layouts[0];
   const grid = document.getElementById('page-grid');
   grid.style.gridTemplateColumns = layout ? layout.gridTemplateColumns : '1fr';
@@ -178,6 +286,7 @@ function render(view) {
     btn.onclick = () => advance(o.key);
     outcomesEl.appendChild(btn);
   });
+  updateOutcomeButtons();
 }
 
 async function advance(outcomeKey) {

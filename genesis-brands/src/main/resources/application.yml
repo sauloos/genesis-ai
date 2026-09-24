@@ -123,7 +123,7 @@ genesis:
     visual-identity:
       model: claude-sonnet-5
       system-prompt: agents/visual-identity/system.md
-      max-tokens: 2500
+      max-tokens: 4000
       rag:
         enabled: true
         top-k: 3

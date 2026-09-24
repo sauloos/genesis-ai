@@ -35,6 +35,7 @@ public class FlowSessionService {
     private final FlowSessionEventRepository eventRepo;
     private final PageFlowRepository pageFlowRepo;
     private final PageTransitionService pageTransitionService;
+    private final FlowEngagementService flowEngagementService;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -116,6 +117,9 @@ public class FlowSessionService {
             } else if ("REDIRECT_FLOW".equals(endAction)) {
                 session.setCurrentPageId(null);
                 redirectToFlowId = flow.getEndTargetFlowId();
+            } else if ("CREATE_ENGAGEMENT".equals(endAction)) {
+                session.setCurrentPageId(null);
+                flowEngagementService.triggerEngagement(flow, session);
             } else {
                 session.setCurrentPageId(null);
             }

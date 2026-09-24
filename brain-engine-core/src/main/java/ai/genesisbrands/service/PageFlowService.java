@@ -77,7 +77,7 @@ public class PageFlowService {
     public PageFlow setEndConfig(String id, String endAction, String endPageId, String endTargetFlowId) {
         PageFlow flow = get(id);
         if (endAction != null) {
-            if (!Set.of("END_PAGE", "REDIRECT_FLOW").contains(endAction)) {
+            if (!Set.of("END_PAGE", "REDIRECT_FLOW", "CREATE_ENGAGEMENT").contains(endAction)) {
                 throw new IllegalArgumentException("Unknown endAction: " + endAction);
             }
             if (endAction.equals("END_PAGE")) {
@@ -92,12 +92,21 @@ public class PageFlowService {
                 if (!page.isEndPage()) {
                     throw new IllegalArgumentException("Page is not flagged as an End page: " + endPageId);
                 }
-            } else {
+            } else if (endAction.equals("REDIRECT_FLOW")) {
                 if (endTargetFlowId == null) {
                     throw new IllegalArgumentException("endTargetFlowId is required when endAction is REDIRECT_FLOW");
                 }
                 pageFlowRepo.findById(endTargetFlowId)
                     .orElseThrow(() -> new IllegalArgumentException("Target PageFlow not found: " + endTargetFlowId));
+            } else {
+                boolean hasQuestionWidget = pageRepo.findByPageFlowId(id).stream()
+                    .map(Page::getId)
+                    .flatMap(pageId -> pageWidgetRepo.findByPageIdOrderByOrderInSlotAsc(pageId).stream())
+                    .anyMatch(w -> "question".equals(w.getWidgetType()));
+                if (!hasQuestionWidget) {
+                    throw new IllegalArgumentException(
+                        "CREATE_ENGAGEMENT requires at least one question widget somewhere in this PageFlow");
+                }
             }
         }
         flow.setEndAction(endAction);
