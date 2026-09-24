@@ -46,6 +46,9 @@ public class PageController {
     @GetMapping("/page-flows")
     public String pageFlowsRedirect() { return "redirect:/dashboard/page-flows"; }
 
+    @GetMapping("/flow/{slug}")
+    public String flowRuntimePage() { return "forward:/flow-runtime.html"; }
+
     @GetMapping("/login")
     public String loginPage() {
         return "forward:/login.html";

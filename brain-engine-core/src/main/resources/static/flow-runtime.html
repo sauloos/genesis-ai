@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Genesis AI</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #fafafa; color: #1a1a1a; min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+  }
+
+  #topbar {
+    width: 100%; max-width: 640px; padding: 20px 20px 0;
+  }
+  #topbar .brand { font-size: 13px; font-weight: 700; letter-spacing: 0.4px; color: #999; }
+
+  #card {
+    display: none;
+    width: 100%; max-width: 640px; margin: 24px auto 60px; background: #fff;
+    border: 1px solid #eee; border-radius: 16px; padding: 40px 44px;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.04);
+  }
+
+  #page-title { font-size: 22px; font-weight: 700; line-height: 1.35; margin-bottom: 24px; text-wrap: balance; }
+
+  #page-grid { display: grid; gap: 24px; }
+  .slot { display: flex; flex-direction: column; gap: 16px; }
+
+  .widget-content h2 { font-size: 17px; font-weight: 600; margin-bottom: 8px; line-height: 1.35; }
+  .widget-content p { font-size: 14px; color: #555; line-height: 1.6; white-space: pre-wrap; }
+
+  #outcomes { display: flex; gap: 10px; justify-content: flex-end; margin-top: 32px; flex-wrap: wrap; }
+  .outcome-btn {
+    padding: 11px 22px; border-radius: 10px; border: none; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: background 0.15s; font-family: inherit;
+    background: #1a1a1a; color: #fff;
+  }
+  .outcome-btn:hover { background: #333; }
+  .outcome-btn:disabled { background: #ccc; cursor: default; }
+
+  #state-screen {
+    width: 100%; max-width: 640px; margin: 80px auto; text-align: center;
+    display: none; flex-direction: column; align-items: center; gap: 10px;
+  }
+  #state-screen h2 { font-size: 20px; color: #333; }
+  #state-screen p { font-size: 14px; color: #999; max-width: 400px; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="brand">GENESIS AI</div>
+</div>
+
+<div id="card">
+  <div id="page-title"></div>
+  <div id="page-grid"></div>
+  <div id="outcomes"></div>
+</div>
+
+<div id="state-screen">
+  <h2 id="state-title"></h2>
+  <p id="state-message"></p>
+</div>
+
+<script>
+const API     = '';
+const KEY     = 'genesis-ai-key';
+const HEADERS = { 'Content-Type': 'application/json', 'X-Api-Key': KEY };
+
+let slug = null;
+let token = null;
+let layouts = [];
+
+const widgetRegistry = {
+  content: (w) => {
+    const div = document.createElement('div');
+    div.className = 'widget-content';
+    const h = document.createElement('h2');
+    h.textContent = w.config.heading || '';
+    const p = document.createElement('p');
+    p.textContent = w.config.body || '';
+    div.appendChild(h);
+    div.appendChild(p);
+    return div;
+  }
+};
+
+function storageKey(s) { return 'flowSession:' + s; }
+
+async function boot() {
+  slug = window.location.pathname.split('/').filter(Boolean)[1];
+  if (!slug) {
+    showState('Nothing here', 'There is no live page available at this address.');
+    return;
+  }
+
+  try {
+    layouts = await fetch(`${API}/api/public/page-layouts`, { headers: HEADERS }).then(r => r.json());
+
+    let view = null;
+    const savedToken = localStorage.getItem(storageKey(slug));
+    if (savedToken) {
+      const res = await fetch(`${API}/api/public/flow-sessions/${savedToken}`, { headers: HEADERS });
+      if (res.ok) {
+        view = await res.json();
+      } else {
+        localStorage.removeItem(storageKey(slug));
+      }
+    }
+
+    if (!view) {
+      const res = await fetch(`${API}/api/public/flow-sessions`, {
+        method: 'POST', headers: HEADERS, body: JSON.stringify({ slug })
+      });
+      if (!res.ok) throw new Error('no live flow');
+      view = await res.json();
+      localStorage.setItem(storageKey(slug), view.token);
+    }
+
+    token = view.token;
+    render(view);
+  } catch (e) {
+    showState('Nothing here', 'There is no live page available at this address.');
+  }
+}
+
+function render(view) {
+  token = view.token;
+
+  if (view.ended) {
+    localStorage.removeItem(storageKey(slug));
+    showState('All done', 'Thanks — you have completed this flow.');
+    return;
+  }
+
+  const page = view.page;
+  if (page.redirectUrl) {
+    window.location.href = page.redirectUrl;
+    return;
+  }
+
+  if (view.slug !== slug) {
+    slug = view.slug;
+    localStorage.setItem(storageKey(slug), token);
+    history.replaceState(null, '', '/flow/' + slug);
+  }
+
+  document.getElementById('state-screen').style.display = 'none';
+  document.getElementById('card').style.display = 'block';
+  document.getElementById('page-title').textContent = page.name || '';
+
+  const layout = layouts.find(l => l.id === page.layoutKey) || layouts[0];
+  const grid = document.getElementById('page-grid');
+  grid.style.gridTemplateColumns = layout ? layout.gridTemplateColumns : '1fr';
+  grid.innerHTML = '';
+  (layout ? layout.slots : [{ key: 'main', label: 'Main' }]).forEach(slot => {
+    const slotEl = document.createElement('div');
+    slotEl.className = 'slot';
+    page.widgets.filter(w => w.slotKey === slot.key).forEach(w => {
+      const fn = widgetRegistry[w.widgetType];
+      const el = fn ? fn(w) : null;
+      if (el) slotEl.appendChild(el);
+    });
+    grid.appendChild(slotEl);
+  });
+
+  const outcomesEl = document.getElementById('outcomes');
+  outcomesEl.innerHTML = '';
+  (page.outcomes || []).forEach(o => {
+    const btn = document.createElement('button');
+    btn.className = 'outcome-btn';
+    btn.textContent = o.label;
+    btn.onclick = () => advance(o.key);
+    outcomesEl.appendChild(btn);
+  });
+}
+
+async function advance(outcomeKey) {
+  document.querySelectorAll('.outcome-btn').forEach(b => b.disabled = true);
+  try {
+    const res = await fetch(`${API}/api/public/flow-sessions/${token}/advance`, {
+      method: 'POST', headers: HEADERS, body: JSON.stringify({ outcomeKey })
+    });
+    if (!res.ok) throw new Error('advance failed');
+    render(await res.json());
+  } catch (e) {
+    document.querySelectorAll('.outcome-btn').forEach(b => b.disabled = false);
+    showState('Something went wrong', 'Please try again.');
+  }
+}
+
+function showState(title, message) {
+  document.getElementById('card').style.display = 'none';
+  const s = document.getElementById('state-screen');
+  s.style.display = 'flex';
+  document.getElementById('state-title').textContent = title;
+  document.getElementById('state-message').textContent = message;
+}
+
+boot();
+</script>
+</body>
+</html>
