@@ -693,16 +693,10 @@ This brand challenges the idea that good coffee has to be precious or intimidati
     </div>
   </div>
 
-  <!-- Consultant-style area (shown only for a chat-based agent, e.g. Consultant) -->
-  <div id="chat-agent-area" style="display:none; flex:1; overflow:auto;">
-    <div style="padding:24px 28px;">
-      <h2 id="chat-agent-title">Consultant</h2>
-      <div class="sub" id="chat-agent-sub"></div>
-      <p style="font-size:12px;color:#999;line-height:1.6;max-width:520px;margin-top:16px;">
-        Consultant is a stateful, multi-turn chat scoped to a brand — it doesn't fit
-        Playground's brief-in/result-out run form. Test it directly in Console instead.
-      </p>
-      <a href="/dashboard/console" style="display:inline-block;margin-top:12px;padding:9px 20px;background:#1a1a1a;color:#fff;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;">Open Console</a>
+  <!-- Chat-agent area (shown only for a chat-based agent, e.g. Consultant) -->
+  <div id="chat-agent-area" style="display:none; flex:1; overflow:auto; flex-direction:column;">
+    <div style="flex:1;display:flex;overflow:hidden;padding:20px 28px 28px;">
+      <iframe id="chat-agent-frame" src="about:blank" style="flex:1;width:100%;min-height:480px;border:1px solid var(--theme-divider,#333);border-radius:8px;background:#0a0b12;"></iframe>
     </div>
   </div>
 
@@ -1012,6 +1006,7 @@ function selectAgent(el) {
 
   // Toggle page-flow / chat-agent / normal agent panels
   if (!isPageFlow) document.getElementById('pf-sim-frame').src = 'about:blank';
+  if (!isChatAgent) document.getElementById('chat-agent-frame').src = 'about:blank';
   document.getElementById('pageflow-area').style.display = isPageFlow ? 'flex' : 'none';
   document.getElementById('chat-agent-area').style.display = isChatAgent ? 'flex' : 'none';
   document.getElementById('view-parameters').style.display = (isPageFlow || isChatAgent) ? 'none' : 'flex';
@@ -1030,8 +1025,7 @@ function selectAgent(el) {
   }
 
   if (isChatAgent) {
-    document.getElementById('chat-agent-title').textContent = meta.displayName || currentAgent;
-    document.getElementById('chat-agent-sub').textContent = meta.description || '';
+    document.getElementById('chat-agent-frame').src = '/console.html?embed=1';
     return;
   }
   document.getElementById('form-title').textContent = meta.displayName || currentAgent;

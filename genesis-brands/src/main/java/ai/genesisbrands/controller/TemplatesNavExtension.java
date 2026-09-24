@@ -20,4 +20,9 @@ public class TemplatesNavExtension implements AdminNavExtension {
     public String description() {
         return "Define and version the structure of playbooks and brand books. Control what the assembly agents produce.";
     }
+
+    @Override
+    public int order() {
+        return 200;
+    }
 }

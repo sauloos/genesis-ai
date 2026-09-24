@@ -237,6 +237,14 @@
     padding: 0 2px; line-height: 1; transition: color 0.15s;
   }
   #remove-attach:hover { color: #ff6b6b; }
+
+  /* ── Embed mode (e.g. hosted inside Playground) ── */
+  body.embed #sidebar-header .sidebar-logo,
+  body.embed #sidebar-header .mode-badge,
+  body.embed #nav-toggle,
+  body.embed #nav-menu,
+  body.embed #env-badge { display: none; }
+  body.embed #sidebar-header { padding-top: 12px; border-bottom: none; }
 </style>
 <link rel="stylesheet" href="/api/themes/active/styles.css">
 </head>
@@ -265,6 +273,7 @@
   </div>
   <script>
   (async () => {
+    if (new URLSearchParams(location.search).get('embed') === '1') return;
     try {
       const r = await fetch("/api/admin/nav-extensions", { credentials: "include" });
       if (!r.ok) return;
@@ -344,6 +353,9 @@ const HEADERS = { 'Content-Type': 'application/json', 'X-Api-Key': KEY };
 let currentSubjectId = null;
 let isStreaming      = false;
 let pendingFile      = null;
+
+const isEmbed = new URLSearchParams(location.search).get('embed') === '1';
+if (isEmbed) document.body.classList.add('embed');
 
 marked.use({ breaks: true, gfm: true });
 
@@ -586,6 +598,7 @@ boot();
 </script>
 <script>
 (async () => {
+  if (new URLSearchParams(location.search).get('embed') === '1') return;
   try {
     const r = await fetch("/api/admin/env", { credentials: "include" });
     if (!r.ok) return;
