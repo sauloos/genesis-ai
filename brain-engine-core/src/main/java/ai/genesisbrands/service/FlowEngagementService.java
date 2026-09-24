@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Turns a completed PageFlow's captured answers (FlowSession.contextJson, keyed by
@@ -35,7 +36,7 @@ public class FlowEngagementService {
     private final PageWidgetRepository pageWidgetRepo;
     private final QuestionnaireQuestionRepository questionnaireQuestionRepo;
     private final QuestionnaireAnswerRepository questionnaireAnswerRepo;
-    private final FlowEngagementTrigger flowEngagementTrigger;
+    private final Optional<FlowEngagementTrigger> flowEngagementTrigger;
     private final ObjectMapper objectMapper;
 
     public String triggerEngagement(PageFlow flow, FlowSession session) {
@@ -68,7 +69,10 @@ public class FlowEngagementService {
             }
         }
 
-        return flowEngagementTrigger.createAndRun(questions, answers);
+        return flowEngagementTrigger
+            .orElseThrow(() -> new IllegalStateException(
+                "No FlowEngagementTrigger bean available — this tenant app doesn't support CREATE_ENGAGEMENT flows"))
+            .createAndRun(questions, answers);
     }
 
     private QuestionnaireQuestion toQuestion(PageWidget widget) {

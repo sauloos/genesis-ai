@@ -21,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -41,7 +42,7 @@ class FlowEngagementServiceTest {
     @BeforeEach
     void setUp() {
         service = new FlowEngagementService(pageRepo, pageWidgetRepo, questionnaireQuestionRepo,
-            questionnaireAnswerRepo, flowEngagementTrigger, new ObjectMapper());
+            questionnaireAnswerRepo, Optional.of(flowEngagementTrigger), new ObjectMapper());
     }
 
     private PageFlow flow(String id) {

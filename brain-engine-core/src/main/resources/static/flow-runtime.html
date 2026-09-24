@@ -270,7 +270,11 @@ const widgetRegistry = {
       el = document.createElement('iframe');
       el.className = 'widget-content-iframe';
       el.src = w.config.htmlFileUrl || '';
-      el.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups');
+      // allow-top-navigation lets an embedded full page's own internal links (e.g. a
+      // "Sign in" link meant to leave the landing page) navigate the real top-level tab
+      // instead of getting stuck loading inside the iframe — matches how the same HTML
+      // behaved when served directly, before it was wrapped in a Content widget.
+      el.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation');
       el.setAttribute('frameborder', '0');
     } else {
       el = document.createElement('div');
@@ -857,7 +861,12 @@ function render(view) {
 
   const outcomesEl = document.getElementById('outcomes');
   outcomesEl.innerHTML = '';
-  (page.outcomes || []).forEach(o => {
+  // A full-bleed page (e.g. a standalone landing page embedded via a full HTML file)
+  // is a terminal display, not a step in a guided flow — showing the generic
+  // Next/Error advance buttons (or even their empty container's margin) underneath it
+  // would be page chrome the design never had.
+  outcomesEl.style.display = isFullBleed ? 'none' : '';
+  (isFullBleed ? [] : (page.outcomes || [])).forEach(o => {
     const btn = document.createElement('button');
     btn.className = 'outcome-btn';
     btn.textContent = o.label;

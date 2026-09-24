@@ -103,6 +103,28 @@
   .agent-desc { color: #777; font-size: 11px; margin-top: 2px; line-height: 1.4; }
   .agent-item.active .agent-name { color: #fff; }
 
+  /* ── Page Flow simulate panel ── */
+  .tbtn {
+    padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; font-family: inherit;
+    cursor: pointer; border: 1px solid transparent; transition: all 0.15s;
+  }
+  .tbtn-primary { background: rgba(255,255,255,0.9); color: #0a0b12; }
+  .tbtn-primary:hover { background: #fff; }
+  .tbtn-ghost { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.12); }
+  .tbtn-ghost:hover { border-color: rgba(255,255,255,0.25); color: rgba(255,255,255,0.85); }
+  .sim-current { font-size: 14px; font-weight: 700; color: #fff; }
+  .sim-ended { font-size: 12px; color: #6fe0a5; }
+  .sim-outcome-btn {
+    padding: 10px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; font-family: inherit;
+    cursor: pointer; text-align: left; background: rgba(255,255,255,0.05); color: #f2f2f2;
+    border: 1px solid rgba(255,255,255,0.12); transition: all 0.15s;
+  }
+  .sim-outcome-btn:hover { border-color: rgba(255,255,255,0.3); }
+  .sim-history { font-size: 11px; color: rgba(255,255,255,0.45); display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
+  .sim-history summary { cursor: pointer; font-size: 11px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px; }
+  .sim-history-row { display: flex; justify-content: space-between; gap: 6px; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .panel-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+
   #compare-toggle-wrap {
     padding: 14px 16px; margin: 4px 12px 12px; background: #1a1a1a; border-radius: 8px;
     border: 1px solid #2a2a2a;
@@ -445,11 +467,10 @@
     </div>
   </div>
 
-  <div id="agent-list-journey" style="margin-top:8px;border-top:1px solid #2a2a2a;padding-top:8px;">
-    <div class="side-label">Brand Journey</div>
-    <div class="agent-item" data-agent="journey" onclick="selectAgent(this)">
-      <div class="agent-name">🚀 Full Journey</div>
-      <div class="agent-desc">Run the complete pipeline from questionnaire to brand assets — or audit real client engagements</div>
+  <div id="agent-list-pageflows" style="margin-top:8px;border-top:1px solid #2a2a2a;padding-top:8px;">
+    <div class="side-label">Page Flows</div>
+    <div id="pageflow-items">
+      <div style="padding:12px 4px;color:#666;font-size:12px;">Loading page flows…</div>
     </div>
   </div>
 
@@ -642,39 +663,14 @@ This brand challenges the idea that good coffee has to be precious or intimidati
   </div>
   </div>
 
-  <!-- Journey area (shown only when journey agent selected) -->
-  <div id="journey-area" style="display:none; flex:1; overflow:auto; display:flex; flex-direction:column;">
+  <!-- Page Flow simulate area (shown only when a page flow is selected) -->
+  <div id="pageflow-area" style="display:none; flex:1; overflow:auto; flex-direction:column;">
     <div style="padding:24px 28px 0;">
-      <h2>Full Journey</h2>
-      <div class="sub">Simulate the complete client experience, or audit real engagements.</div>
-      <div style="display:flex;gap:6px;margin-top:16px;margin-bottom:20px;">
-        <button class="results-tab active" id="jtab-simulate" onclick="switchJourneyTab('simulate')">Simulate</button>
-        <button class="results-tab" id="jtab-history" onclick="switchJourneyTab('history')">History</button>
-        <button class="results-tab" id="jtab-audit" onclick="switchJourneyTab('audit')">Audit</button>
-      </div>
+      <h2 id="pf-title">Page Flow</h2>
+      <div class="sub" id="pf-sub"></div>
     </div>
-
-    <!-- Simulate tab -->
-    <div id="journey-simulate" style="flex:1;overflow:auto;padding:0 28px 28px;">
-      <div id="journey-q-list" style="margin-bottom:16px;"></div>
-      <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
-        <button id="journey-run-btn" onclick="runJourney()" style="padding:9px 20px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Run journey</button>
-        <span id="journey-status" style="font-size:12px;color:#999;"></span>
-      </div>
-      <div id="journey-results" style="display:none;"></div>
-    </div>
-
-    <!-- Audit tab -->
-    <!-- History tab (SIMULATION runs) -->
-    <div id="journey-history" style="display:none;flex:1;overflow:auto;padding:0 28px 28px;">
-      <div id="journey-history-list"></div>
-      <div id="journey-history-detail" style="display:none;"></div>
-    </div>
-
-    <!-- Audit tab (CLIENT engagements) -->
-    <div id="journey-audit" style="display:none;flex:1;overflow:auto;padding:0 28px 28px;">
-      <div id="audit-list"></div>
-      <div id="audit-detail" style="display:none;"></div>
+    <div style="flex:1;overflow:auto;padding:20px 28px 28px;max-width:520px;">
+      <div id="pf-sim-body"></div>
     </div>
   </div>
 
@@ -780,365 +776,170 @@ function renderAgentList() {
   `).join('');
 }
 
-// ── Journey state ─────────────────────────────────────────────────────────────
-let journeyTab = 'simulate';
-let journeyQuestions = [];
-let journeyQAnswers = {};  // questionId -> value
-let journeyEngagementId = null;
-let journeyPollTimer = null;
+// ── Page Flow state (mirrors page-flows.html's Simulate panel) ────────────────
+let ADMIN_KEY = null;          // fetched from /api/admin/key — distinct from the public KEY above
+let pageFlows = [];
+let PF_WIDGET_TYPES = [];
+let currentPageFlowDetail = null; // { flow, pages, widgets, transitions }
+let pfSimSession = null;
+let pfSimHistory = [];
 
-function switchJourneyTab(tab) {
-  journeyTab = tab;
-  document.getElementById('jtab-simulate').classList.toggle('active', tab === 'simulate');
-  document.getElementById('jtab-history').classList.toggle('active', tab === 'history');
-  document.getElementById('jtab-audit').classList.toggle('active', tab === 'audit');
-  document.getElementById('journey-simulate').style.display = tab === 'simulate' ? 'block' : 'none';
-  document.getElementById('journey-history').style.display = tab === 'history' ? 'block' : 'none';
-  document.getElementById('journey-audit').style.display = tab === 'audit' ? 'block' : 'none';
-  if (tab === 'history') loadJourneyHistory();
-  if (tab === 'audit') loadAudit();
+async function pfApiFetch(path, opts = {}) {
+  const r = await fetch(path, {
+    ...opts,
+    headers: { 'X-Api-Key': ADMIN_KEY, 'Content-Type': 'application/json', ...(opts.headers || {}) }
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.status === 204 ? null : r.json();
 }
 
-async function loadJourneyQuestionnaire() {
-  const statusEl = document.getElementById('journey-status');
-  const listEl = document.getElementById('journey-q-list');
-  statusEl.textContent = '';
-  listEl.innerHTML = '<div style="color:#bbb;font-size:13px;">Loading questionnaire…</div>';
-  journeyQuestions = [];
-  journeyQAnswers = {};
-
+async function loadAdminKey() {
   try {
-    const live = await fetch(`${API}/api/questionnaires/live`, { headers: HEADERS }).then(r => {
-      if (!r.ok) throw new Error('no live questionnaire');
-      return r.json();
-    });
-    const detail = await fetch(`${API}/api/questionnaires/${live.id}`, { headers: HEADERS }).then(r => r.json());
-    journeyQuestions = detail.questions || [];
-
-    if (!journeyQuestions.length) {
-      listEl.innerHTML = '<div style="color:#bbb;font-size:13px;">No questions on the published questionnaire.</div>';
-      return;
-    }
-
-    listEl.innerHTML = `
-      <div style="font-size:11px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:14px;">
-        ${esc(live.title)}
-      </div>
-      ${journeyQuestions.map((q, i) => renderJourneyQuestion(q, i)).join('')}
-    `;
-  } catch(e) {
-    listEl.innerHTML = '<div style="color:#bbb;font-size:13px;">No published questionnaire found. Publish one in Questionnaires.</div>';
-  }
+    const r = await fetch('/api/admin/key', { credentials: 'include' });
+    if (r.ok) { const { key } = await r.json(); ADMIN_KEY = key; }
+  } catch {}
 }
 
-function renderJourneyQuestion(q, i) {
-  const config = q.configJson ? JSON.parse(q.configJson) : {};
-  let input = '';
-  if (q.type === 'SHORT_TEXT') {
-    input = `<input type="text" class="jq-input" data-qid="${esc(q.id)}" placeholder="Your answer…" style="width:100%;padding:9px 11px;border:1px solid #ddd;border-radius:7px;font-size:13px;font-family:inherit;outline:none;">`;
-  } else if (q.type === 'LONG_TEXT') {
-    input = `<textarea class="jq-input" data-qid="${esc(q.id)}" rows="3" placeholder="Your answer…" style="width:100%;padding:9px 11px;border:1px solid #ddd;border-radius:7px;font-size:13px;font-family:inherit;outline:none;resize:vertical;"></textarea>`;
-  } else if (q.type === 'SLIDER') {
-    const min = config.min ?? 0, max = config.max ?? 100, mid = Math.round((min+max)/2);
-    input = `<div style="padding:4px 0;">
-      <input type="range" class="jq-input" data-qid="${esc(q.id)}" min="${min}" max="${max}" value="${mid}"
-             oninput="this.nextElementSibling.textContent=this.value" style="width:100%;accent-color:#1a1a1a;">
-      <div style="text-align:center;font-size:13px;font-weight:600;margin-top:4px;">${mid}</div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:#aaa;">
-        <span>${esc(config.minLabel || min)}</span><span>${esc(config.maxLabel || max)}</span>
-      </div>
-    </div>`;
-  } else if (q.type === 'SINGLE_SELECT') {
-    const opts = (config.options || []);
-    input = `<div style="display:flex;flex-direction:column;gap:6px;">${opts.map(opt =>
-      `<label style="display:flex;gap:8px;align-items:center;font-size:13px;cursor:pointer;">
-        <input type="radio" name="jq-${esc(q.id)}" class="jq-input" data-qid="${esc(q.id)}" value="${esc(opt)}">
-        ${esc(opt)}
-      </label>`
-    ).join('')}</div>`;
-  } else if (q.type === 'MULTI_SELECT') {
-    const opts = (config.options || []);
-    input = `<div style="display:flex;flex-direction:column;gap:6px;">${opts.map(opt =>
-      `<label style="display:flex;gap:8px;align-items:center;font-size:13px;cursor:pointer;">
-        <input type="checkbox" class="jq-input" data-qid="${esc(q.id)}" value="${esc(opt)}">
-        ${esc(opt)}
-      </label>`
-    ).join('')}</div>`;
-  } else if (q.type === 'IMAGE_UPLOAD') {
-    input = `<input type="file" accept="image/*" class="jq-input" data-qid="${esc(q.id)}"
-               style="font-size:12px;color:#666;">`;
-  }
-
-  return `
-    <div style="margin-bottom:18px;">
-      <div style="font-size:13px;font-weight:600;margin-bottom:8px;">
-        ${i+1}. ${esc(q.prompt)}${q.required ? ' <span style="color:#d33;">*</span>' : ''}
-      </div>
-      ${q.helpText ? `<div style="font-size:11px;color:#aaa;margin-bottom:6px;">${esc(q.helpText)}</div>` : ''}
-      ${input}
-    </div>
-  `;
-}
-
-function collectJourneyAnswers() {
-  const answers = {};
-  for (const q of journeyQuestions) {
-    if (q.type === 'SHORT_TEXT' || q.type === 'LONG_TEXT' || q.type === 'SLIDER') {
-      const el = document.querySelector(`.jq-input[data-qid="${q.id}"]`);
-      if (el) answers[q.id] = el.type === 'range' ? Number(el.value) : el.value;
-    } else if (q.type === 'SINGLE_SELECT') {
-      const checked = document.querySelector(`input[name="jq-${q.id}"]:checked`);
-      if (checked) answers[q.id] = checked.value;
-    } else if (q.type === 'MULTI_SELECT') {
-      const checked = [...document.querySelectorAll(`.jq-input[data-qid="${q.id}"]:checked`)];
-      answers[q.id] = checked.map(c => c.value);
-    }
-  }
-  return answers;
-}
-
-async function runJourney() {
-  if (!journeyQuestions.length) return;
-  const statusEl = document.getElementById('journey-status');
-  const btn = document.getElementById('journey-run-btn');
-  const resultsEl = document.getElementById('journey-results');
-  const evalMode = document.getElementById('eval-toggle').checked;
-
-  btn.disabled = true; btn.textContent = 'Starting…'; statusEl.textContent = '';
-  resultsEl.style.display = 'none'; resultsEl.innerHTML = '';
-
-  // Create a temporary questionnaire response for the simulation
-  // First we need the live questionnaire ID to create a response
-  let liveId = null;
+async function loadPageFlows() {
+  const container = document.getElementById('pageflow-items');
   try {
-    const live = await fetch(`${API}/api/questionnaires/live`, { headers: HEADERS }).then(r => r.json());
-    liveId = live.id;
-  } catch(e) {
-    statusEl.textContent = 'Error: no live questionnaire'; btn.disabled = false; btn.textContent = 'Run journey'; return;
-  }
-
-  // Start a questionnaire response, persist answers, submit
-  const startRes = await fetch(`${API}/api/questionnaires/${liveId}/responses`, {
-    method: 'POST', headers: HEADERS
-  }).then(r => r.json());
-  const responseId = startRes.id;
-
-  // Persist text/slider/select answers
-  const collected = collectJourneyAnswers();
-  for (const [qid, val] of Object.entries(collected)) {
-    await fetch(`${API}/api/questionnaires/responses/${responseId}/answers/${qid}`, {
-      method: 'PUT', headers: HEADERS, body: JSON.stringify({ value: val })
-    }).catch(() => {});
-  }
-  await fetch(`${API}/api/questionnaires/responses/${responseId}/submit`, { method: 'POST', headers: HEADERS });
-
-  // Create engagement
-  const eng = await fetch(`${API}/api/engagements`, {
-    method: 'POST', headers: HEADERS,
-    body: JSON.stringify({ source: 'SIMULATION', questionnaireResponseId: responseId, evalMode })
-  }).then(r => r.json());
-  journeyEngagementId = eng.id;
-
-  btn.textContent = 'Run journey';
-  statusEl.textContent = 'Generating… (poll every 5s)';
-  clearTimeout(journeyPollTimer);
-  pollJourney();
-}
-
-async function pollJourney() {
-  try {
-    const data = await fetch(`${API}/api/engagements/${journeyEngagementId}`, { headers: HEADERS }).then(r => r.json());
-    const status = data.summary.status;
-    const statusEl = document.getElementById('journey-status');
-    if (status === 'DONE') {
-      statusEl.textContent = 'Complete.';
-      document.getElementById('journey-run-btn').disabled = false;
-      renderJourneyResults(data);
-    } else if (status === 'FAILED') {
-      statusEl.textContent = 'Failed: ' + (data.summary.errorMessage || 'unknown error');
-      document.getElementById('journey-run-btn').disabled = false;
-    } else {
-      statusEl.textContent = `${status.toLowerCase()}… (refreshes every 5s)`;
-      journeyPollTimer = setTimeout(pollJourney, 5000);
-    }
-  } catch(e) {
-    document.getElementById('journey-status').textContent = 'Poll error — retrying…';
-    journeyPollTimer = setTimeout(pollJourney, 5000);
+    pageFlows = await pfApiFetch('/api/admin/page-flows');
+    PF_WIDGET_TYPES = await pfApiFetch('/api/admin/widget-types');
+    renderPageFlowList();
+  } catch (err) {
+    container.innerHTML = `<div style="padding:12px 4px;color:#c66;font-size:12px;">Failed to load page flows: ${esc(err.message || String(err))}</div>`;
   }
 }
 
-function renderJourneyResults(data) {
-  const el = document.getElementById('journey-results');
-  el.style.display = 'block';
-  const dirs = data.results?.directions || [];
-  if (!dirs.length) { el.innerHTML = '<div style="color:#bbb;font-size:13px;">No results.</div>'; return; }
-
-  const tabsHtml = dirs.map((d, i) => {
-    const label = d.direction.charAt(0) + d.direction.slice(1).toLowerCase();
-    return `<button class="results-tab ${i===0?'active':''}" onclick="switchJourneyResultDir(${i},this)">${label}</button>`;
-  }).join('');
-
-  const panelsHtml = dirs.map((d, i) => `
-    <div id="jrdir-${i}" style="display:${i===0?'block':'none'};margin-top:16px;">
-      ${buildJourneyDirPanel(d, data.downloadAllowed)}
+function renderPageFlowList() {
+  const container = document.getElementById('pageflow-items');
+  if (!pageFlows.length) {
+    container.innerHTML = '<div style="padding:12px 4px;color:#666;font-size:12px;">No page flows yet.</div>';
+    return;
+  }
+  container.innerHTML = pageFlows.map(f => `
+    <div class="agent-item" data-agent="pageflow:${esc(f.id)}" onclick="selectAgent(this)">
+      <div class="agent-name">${f.live ? '🟢' : '⚪️'} ${esc(f.name)}</div>
+      <div class="agent-desc">${esc(f.livePath)}</div>
     </div>
   `).join('');
-
-  el.innerHTML = `
-    <div style="border-top:1px solid #eee;padding-top:16px;margin-top:8px;">
-      <div style="font-size:11px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">
-        Brand — ${esc(dirs[0].brief.brand.name)}
-      </div>
-      <div style="display:flex;gap:6px;margin-bottom:16px;">${tabsHtml}</div>
-      ${panelsHtml}
-    </div>
-    <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
-      ${dirs.map(d => `<button onclick="downloadJourneyPdf('${d.direction}')"
-        style="padding:8px 14px;background:#f2f2f2;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">
-        ↓ ${d.direction.charAt(0)+d.direction.slice(1).toLowerCase()} PDF
-      </button>`).join('')}
-      <a href="/your-brand/${journeyEngagementId}" target="_blank"
-         style="padding:8px 14px;background:#1a1a1a;color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;">
-        Open client view ↗
-      </a>
-    </div>
-  `;
 }
 
-function switchJourneyResultDir(idx, btn) {
-  document.querySelectorAll('[id^="jrdir-"]').forEach((el, i) => el.style.display = i === idx ? 'block' : 'none');
-  btn.parentElement.querySelectorAll('button').forEach((b, i) => b.classList.toggle('active', i === idx));
+async function openPageFlowSim(flowId) {
+  const titleEl = document.getElementById('pf-title');
+  const subEl = document.getElementById('pf-sub');
+  const bodyEl = document.getElementById('pf-sim-body');
+  titleEl.textContent = 'Loading…';
+  subEl.textContent = '';
+  bodyEl.innerHTML = '';
+  try {
+    currentPageFlowDetail = await pfApiFetch(`/api/admin/page-flows/${flowId}`);
+    titleEl.textContent = currentPageFlowDetail.flow.name;
+    subEl.textContent = (currentPageFlowDetail.flow.live ? 'Live at ' : 'Not live · would resolve to ') + currentPageFlowDetail.flow.livePath;
+    pfSimSession = null;
+    pfSimHistory = [];
+    await pfSimStart();
+  } catch (err) {
+    titleEl.textContent = 'Failed to load page flow';
+    subEl.textContent = err.message || String(err);
+  }
 }
 
-function buildJourneyDirPanel(dir, downloadAllowed) {
-  const swatches = (dir.visualIdentity?.colorPalette || []).map(s =>
-    `<span style="display:inline-block;width:28px;height:28px;background:${esc(s.hex)};border-radius:5px;title='${esc(s.hex)}'"></span>`
-  ).join(' ');
+// Mirrors PageTransitionService.outcomesForPage() — see page-flows.html's outcomesForPage().
+function pfOutcomesForPage(pageId) {
+  const widgets = currentPageFlowDetail.widgets
+    .filter(w => w.pageId === pageId)
+    .slice()
+    .sort((a, b) => (a.slotKey < b.slotKey ? -1 : a.slotKey > b.slotKey ? 1 : a.orderInSlot - b.orderInSlot));
 
-  const logoHtml = dir.logo?.imageUrl
-    ? `<img src="${esc(dir.logo.imageUrl)}" style="max-height:120px;max-width:100%;border-radius:8px;margin-top:4px;">`
-    : `<div style="font-size:12px;color:#aaa;font-style:italic;margin-top:4px;">${esc(dir.logo?.conceptDescription || 'No logo generated')}</div>`;
+  const byKey = new Map();
+  for (const w of widgets) {
+    const descriptor = PF_WIDGET_TYPES.find(t => t.widgetType === w.widgetType);
+    if (!descriptor) continue;
+    for (const o of (descriptor.outcomes || [])) {
+      if (!byKey.has(o.key)) byKey.set(o.key, o);
+    }
+  }
+  if (byKey.size === 0) byKey.set('next', { key: 'next', label: 'Next' });
+  byKey.delete('error');
+  byKey.set('error', { key: 'error', label: 'Error' });
+  return [...byKey.values()];
+}
 
+async function pfSimStart() {
+  if (!currentPageFlowDetail) return;
+  try {
+    pfSimSession = await pfApiFetch('/api/admin/flow-sessions', {
+      method: 'POST', body: JSON.stringify({ pageFlowId: currentPageFlowDetail.flow.id })
+    });
+    pfSimHistory = [];
+    renderPageFlowSimBody();
+  } catch (e) {
+    document.getElementById('pf-sim-body').innerHTML = `<div style="color:#c66;font-size:12px;">Failed to start simulation: ${esc(e.message || String(e))}</div>`;
+  }
+}
+
+async function pfSimAdvance(outcomeKey) {
+  try {
+    const result = await pfApiFetch(`/api/admin/flow-sessions/${pfSimSession.token}/advance`, {
+      method: 'POST', body: JSON.stringify({ outcomeKey })
+    });
+    pfSimSession = result.session;
+    pfSimHistory = await pfApiFetch(`/api/admin/flow-sessions/${pfSimSession.token}/history`);
+    if (result.redirectToFlowId) {
+      // The target flow's pages/widgets aren't loaded yet — resolve them before
+      // starting the new session, same as page-flows.html's simAdvance().
+      await openPageFlowSim(result.redirectToFlowId);
+      return;
+    }
+    renderPageFlowSimBody();
+  } catch (e) {
+    document.getElementById('pf-sim-body').insertAdjacentHTML('beforeend',
+      `<div style="color:#c66;font-size:12px;margin-top:8px;">Failed to advance: ${esc(e.message || String(e))}</div>`);
+  }
+}
+
+function renderPageFlowSimHistory() {
+  if (!pfSimHistory.length) return '';
   return `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-      <div style="background:#fafafa;border-radius:10px;padding:14px;grid-column:1/-1;">
-        <div style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Tagline</div>
-        <div style="font-size:18px;font-weight:700;">${esc(dir.copy?.tagline || '')}</div>
-        <div style="font-size:12px;color:#666;margin-top:6px;line-height:1.5;">${esc(dir.copy?.missionStatement || '')}</div>
-      </div>
-      <div style="background:#fafafa;border-radius:10px;padding:14px;">
-        <div style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Visual Identity</div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;">${swatches}</div>
-        <div style="font-size:12px;color:#555;margin-top:8px;">
-          ${esc(dir.visualIdentity?.typography?.headlineFont || '')} / ${esc(dir.visualIdentity?.typography?.bodyFont || '')}
-        </div>
-      </div>
-      <div style="background:#fafafa;border-radius:10px;padding:14px;">
-        <div style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Logo</div>
-        ${logoHtml}
-      </div>
-    </div>
-  `;
+    <details class="sim-history">
+      <summary>History (${pfSimHistory.length})</summary>
+      ${pfSimHistory.map(ev => {
+        const src = currentPageFlowDetail.pages.find(p => p.id === ev.sourcePageId);
+        const tgt = ev.targetPageId ? currentPageFlowDetail.pages.find(p => p.id === ev.targetPageId) : null;
+        const targetLabel = ev.targetKind === 'FLOW_END' ? 'Flow End' : esc(tgt ? tgt.name : '—');
+        return `<div class="sim-history-row"><span>${esc(src ? src.name : ev.sourcePageId)} → <em>${esc(ev.outcomeKey)}</em></span><span>${targetLabel}</span></div>`;
+      }).join('')}
+    </details>`;
 }
 
-function downloadJourneyPdf(direction) {
-  if (!journeyEngagementId) return;
-  window.open(`${API}/api/engagements/${journeyEngagementId}/pdf/${direction}`, '_blank');
-}
+function renderPageFlowSimBody() {
+  const el = document.getElementById('pf-sim-body');
+  if (!pfSimSession) { el.innerHTML = ''; return; }
 
-// ── Audit tab ─────────────────────────────────────────────────────────────────
-async function loadAudit() {
-  const listEl = document.getElementById('audit-list');
-  const detailEl = document.getElementById('audit-detail');
-  detailEl.style.display = 'none';
-  detailEl.innerHTML = '';
-  listEl.style.display = 'block';
-  listEl.innerHTML = '<div style="color:#bbb;font-size:13px;">Loading…</div>';
-
-  const rows = await fetch(`${API}/api/engagements?source=CLIENT`, { headers: HEADERS })
-    .then(r => r.json()).catch(() => []);
-
-  if (!rows.length) {
-    listEl.innerHTML = '<div style="color:#bbb;font-size:13px;">No client engagements yet. Client submissions through /discover appear here.</div>';
+  if (pfSimSession.ended) {
+    const endPage = pfSimSession.currentPageId ? currentPageFlowDetail.pages.find(p => p.id === pfSimSession.currentPageId) : null;
+    const label = endPage ? `Ended — showing end page "${esc(endPage.name)}"` : 'Ended.';
+    el.innerHTML = `
+      <div class="sim-ended">${label}</div>
+      ${renderPageFlowSimHistory()}
+      <div class="panel-actions"><button class="tbtn tbtn-ghost" onclick="pfSimStart()">Reset</button></div>`;
     return;
   }
 
-  listEl.innerHTML = rows.map(e => `
-    <div class="history-item" onclick="openAuditItem('${esc(e.id)}')" data-id="${esc(e.id)}"
-         style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
-      <div>
-        <div class="history-label">${esc(e.clientName || e.clientEmail || 'Anonymous')}</div>
-        <div class="history-sub">
-          ${esc(e.clientEmail || '')} · ${esc(e.status)} · Payment: ${esc(e.paymentStatus)} ·
-          ${new Date(e.createdAt).toLocaleString()}
-        </div>
-      </div>
-      ${e.paymentStatus === 'REQUESTED' ? `<span style="background:#fbf1d8;color:#a3800f;font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;flex-shrink:0;">PAYMENT REQUEST</span>` : ''}
+  const page = currentPageFlowDetail.pages.find(p => p.id === pfSimSession.currentPageId);
+  const outcomes = page ? pfOutcomesForPage(page.id) : [];
+  el.innerHTML = `
+    <div class="sim-current">${page ? esc(page.name) : '(unknown page)'}</div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      ${outcomes.map(o => `<button class="sim-outcome-btn" data-key="${esc(o.key)}">${esc(o.label)}</button>`).join('')}
     </div>
-  `).join('');
-}
+    ${renderPageFlowSimHistory()}
+    <div class="panel-actions"><button class="tbtn tbtn-ghost" onclick="pfSimStart()">Reset</button></div>`;
 
-async function openAuditItem(id) {
-  document.querySelectorAll('#audit-list .history-item').forEach(el =>
-    el.classList.toggle('active', el.dataset.id === id));
-
-  const listEl = document.getElementById('audit-list');
-  const detailEl = document.getElementById('audit-detail');
-  listEl.style.display = 'none';
-  detailEl.style.display = 'block';
-  detailEl.innerHTML = '<div style="color:#bbb;font-size:13px;padding:12px 0;">Loading…</div>';
-
-  const data = await fetch(`${API}/api/engagements/${id}`, { headers: HEADERS }).then(r => r.json());
-  const e = data.summary;
-
-  let resultsHtml = '';
-  if (data.results?.directions?.length) {
-    const tabsHtml = data.results.directions.map((d, i) => {
-      const label = d.direction.charAt(0) + d.direction.slice(1).toLowerCase();
-      return `<button class="results-tab ${i===0?'active':''}" onclick="switchAuditDir(${i},this)">${label}</button>`;
-    }).join('');
-    const panelsHtml = data.results.directions.map((d, i) => `
-      <div id="audit-dir-${i}" style="display:${i===0?'block':'none'};margin-top:12px;">
-        ${buildJourneyDirPanel(d, true)}
-      </div>
-    `).join('');
-    resultsHtml = `<div style="margin-top:16px;">${tabsHtml}${panelsHtml}</div>`;
-  } else if (e.status === 'RUNNING' || e.status === 'PENDING') {
-    resultsHtml = '<div style="color:#aaa;font-size:13px;margin-top:12px;">Generation in progress…</div>';
-  } else if (e.status === 'FAILED') {
-    resultsHtml = '<div style="color:#d33;font-size:13px;margin-top:12px;">Generation failed.</div>';
-  }
-
-  detailEl.innerHTML = `
-    <button onclick="backToAuditList()" style="background:none;border:none;color:#999;font-size:12px;cursor:pointer;padding:0;margin-bottom:14px;">← Back to list</button>
-    <div style="font-size:16px;font-weight:700;margin-bottom:4px;">${esc(e.clientName || 'Unknown')}</div>
-    <div style="font-size:12px;color:#999;margin-bottom:12px;">${esc(e.clientEmail || '')} · Submitted ${new Date(e.createdAt).toLocaleString()}</div>
-    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
-      <span style="background:#f0f0f0;color:#555;font-size:11px;padding:3px 9px;border-radius:10px;">Status: ${esc(e.status)}</span>
-      <span style="background:#f0f0f0;color:#555;font-size:11px;padding:3px 9px;border-radius:10px;">Payment: ${esc(e.paymentStatus)}</span>
-      ${e.paymentStatus === 'REQUESTED' ? `<button onclick="markPaid('${esc(id)}')" style="background:#1e8a4c;color:#fff;border:none;border-radius:10px;font-size:11px;padding:3px 10px;cursor:pointer;font-family:inherit;">Mark as paid</button>` : ''}
-      <a href="/your-brand/${esc(id)}" target="_blank" style="background:#1a1a1a;color:#fff;font-size:11px;padding:3px 10px;border-radius:10px;text-decoration:none;">View client page ↗</a>
-    </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      ${(data.results?.directions || []).map(d =>
-        `<button onclick="downloadEngPdf('${esc(id)}','${d.direction}')"
-           style="padding:7px 12px;background:#f2f2f2;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;">
-          ↓ ${d.direction.charAt(0)+d.direction.slice(1).toLowerCase()} PDF
-        </button>`
-      ).join('')}
-    </div>
-    ${resultsHtml}
-  `;
-}
-
-function switchAuditDir(idx, btn) {
-  document.querySelectorAll('[id^="audit-dir-"]').forEach((el, i) => el.style.display = i === idx ? 'block' : 'none');
-  btn.parentElement.querySelectorAll('button').forEach((b, i) => b.classList.toggle('active', i === idx));
-}
-
-function backToAuditList() {
-  document.getElementById('audit-list').style.display = 'block';
-  document.getElementById('audit-detail').style.display = 'none';
+  el.querySelectorAll('.sim-outcome-btn').forEach(btn => {
+    btn.addEventListener('click', () => pfSimAdvance(btn.dataset.key));
+  });
 }
 
 async function markPaid(id) {
@@ -1148,86 +949,6 @@ async function markPaid(id) {
 
 function downloadEngPdf(id, direction) {
   window.open(`${API}/api/engagements/${id}/pdf/${direction}`, '_blank');
-}
-
-// ── Journey History tab (SIMULATION runs) ────────────────────────────────────
-
-async function loadJourneyHistory() {
-  const listEl = document.getElementById('journey-history-list');
-  const detailEl = document.getElementById('journey-history-detail');
-  detailEl.style.display = 'none'; detailEl.innerHTML = '';
-  listEl.style.display = 'block';
-  listEl.innerHTML = '<div style="color:#bbb;font-size:13px;">Loading…</div>';
-
-  const rows = await fetch(`${API}/api/engagements?source=SIMULATION`, { headers: HEADERS })
-    .then(r => r.json()).catch(() => []);
-
-  if (!rows.length) {
-    listEl.innerHTML = '<div style="color:#bbb;font-size:13px;">No simulation runs yet. Use the Simulate tab to run the full journey.</div>';
-    return;
-  }
-
-  listEl.innerHTML = rows.map(e => `
-    <div class="history-item" onclick="openJourneyHistoryItem('${esc(e.id)}')" data-id="${esc(e.id)}">
-      <div class="history-meta">
-        <div class="history-label">${esc(e.clientName || 'Simulation')}</div>
-        <div class="history-sub">${new Date(e.createdAt).toLocaleString()} · ${esc(e.status)}</div>
-      </div>
-    </div>
-  `).join('');
-}
-
-async function openJourneyHistoryItem(id) {
-  document.querySelectorAll('#journey-history-list .history-item').forEach(el =>
-    el.classList.toggle('active', el.dataset.id === id));
-
-  const listEl = document.getElementById('journey-history-list');
-  const detailEl = document.getElementById('journey-history-detail');
-  listEl.style.display = 'none';
-  detailEl.style.display = 'block';
-  detailEl.innerHTML = '<div style="color:#bbb;font-size:13px;padding:12px 0;">Loading…</div>';
-
-  const data = await fetch(`${API}/api/engagements/${id}`, { headers: HEADERS }).then(r => r.json());
-  const e = data.summary;
-
-  let resultsHtml = '';
-  if (data.results?.directions?.length) {
-    const tabsHtml = data.results.directions.map((d, i) => {
-      const label = d.direction.charAt(0) + d.direction.slice(1).toLowerCase();
-      return `<button class="results-tab ${i===0?'active':''}" onclick="switchJHDir(${i},this)">${label}</button>`;
-    }).join('');
-    const panelsHtml = data.results.directions.map((d, i) => `
-      <div id="jh-dir-${i}" style="display:${i===0?'block':'none'};margin-top:12px;">
-        ${buildJourneyDirPanel(d, true)}
-      </div>
-    `).join('');
-    resultsHtml = `<div style="margin-top:16px;"><div style="display:flex;gap:6px;margin-bottom:4px;">${tabsHtml}</div>${panelsHtml}</div>`;
-  } else {
-    resultsHtml = `<div style="color:#aaa;font-size:13px;margin-top:12px;">${e.status === 'FAILED' ? 'Generation failed.' : 'Generation in progress…'}</div>`;
-  }
-
-  detailEl.innerHTML = `
-    <button onclick="document.getElementById('journey-history-list').style.display='block';document.getElementById('journey-history-detail').style.display='none';"
-            style="background:none;border:none;color:#999;font-size:12px;cursor:pointer;padding:0;margin-bottom:14px;">← Back</button>
-    <div style="font-size:16px;font-weight:700;margin-bottom:4px;">Simulation — ${new Date(e.createdAt).toLocaleString()}</div>
-    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-      <span style="background:#f0f0f0;color:#555;font-size:11px;padding:3px 9px;border-radius:10px;">${esc(e.status)}</span>
-      ${(data.results?.directions || []).map(d =>
-        `<button onclick="downloadEngPdf('${esc(id)}','${d.direction}')"
-           style="padding:3px 10px;background:#f2f2f2;border:none;border-radius:10px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;">
-          ↓ ${d.direction.charAt(0)+d.direction.slice(1).toLowerCase()} PDF
-        </button>`
-      ).join('')}
-      <a href="/your-brand/${esc(id)}" target="_blank"
-         style="background:#1a1a1a;color:#fff;font-size:11px;padding:3px 10px;border-radius:10px;text-decoration:none;">View results ↗</a>
-    </div>
-    ${resultsHtml}
-  `;
-}
-
-function switchJHDir(idx, btn) {
-  document.querySelectorAll('[id^="jh-dir-"]').forEach((el, i) => el.style.display = i === idx ? 'block' : 'none');
-  btn.parentElement.querySelectorAll('button').forEach((b, i) => b.classList.toggle('active', i === idx));
 }
 
 // ── Per-agent Audit tab ───────────────────────────────────────────────────────
@@ -1353,18 +1074,18 @@ function selectAgent(el) {
   el.classList.add('active');
   currentAgent = el.dataset.agent;
 
-  const isJourney = currentAgent === 'journey';
+  const isPageFlow = currentAgent.startsWith('pageflow:');
   const meta = AGENT_CATALOG[currentAgent] || {};
-  const isChatAgent = !isJourney && !!meta.chatBased;
+  const isChatAgent = !isPageFlow && !!meta.chatBased;
 
-  // Toggle journey / chat-agent / normal agent panels
-  document.getElementById('journey-area').style.display = isJourney ? 'flex' : 'none';
+  // Toggle page-flow / chat-agent / normal agent panels
+  document.getElementById('pageflow-area').style.display = isPageFlow ? 'flex' : 'none';
   document.getElementById('chat-agent-area').style.display = isChatAgent ? 'flex' : 'none';
-  document.getElementById('view-parameters').style.display = (isJourney || isChatAgent) ? 'none' : 'flex';
-  document.getElementById('view-tabs').style.display = (isJourney || isChatAgent) ? 'none' : 'flex';
+  document.getElementById('view-parameters').style.display = (isPageFlow || isChatAgent) ? 'none' : 'flex';
+  document.getElementById('view-tabs').style.display = (isPageFlow || isChatAgent) ? 'none' : 'flex';
 
-  if (isJourney) {
-    loadJourneyQuestionnaire();
+  if (isPageFlow) {
+    openPageFlowSim(currentAgent.slice('pageflow:'.length));
     return;
   }
 
@@ -2601,8 +2322,10 @@ document.addEventListener('click', (e) => {
   const sessionId = params.get('session');
 
   await loadAgentCatalog();
+  await loadAdminKey();
+  await loadPageFlows();
 
-  const requestedAvailable = agentId === 'journey'
+  const requestedAvailable = (typeof agentId === 'string' && agentId.startsWith('pageflow:'))
     || (AGENT_CATALOG[agentId] && AGENT_CATALOG[agentId].availableForPlayground);
   const initialAgentId = requestedAvailable
     ? agentId
