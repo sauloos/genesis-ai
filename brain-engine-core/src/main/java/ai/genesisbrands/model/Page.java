@@ -7,9 +7,12 @@ import lombok.NoArgsConstructor;
 import java.time.Instant;
 
 /**
- * A node within a PageFlow's flow chart. nextPageId/previousPageId/errorPageId are
- * nullable targets within the same PageFlow, drawn as arrows on the builder canvas.
- * canvasX/canvasY persist the node's dragged position.
+ * A node within a PageFlow's flow chart. "Next"/"error" outgoing edges are owned by
+ * PageTransition (one row per (pageId, outcomeKey), driven by the page's placed
+ * widgets' declared outcomes). previousPageId remains an explicit, optional override
+ * here — it isn't a widget outcome, so it doesn't fit the transition model; when null
+ * it falls back to effectivePreviousPageId (computed: whichever other page's outcome
+ * points here). canvasX/canvasY persist the node's dragged position.
  */
 @Entity
 @Table(name = "pages")
@@ -40,18 +43,8 @@ public class Page {
     @Column(name = "layout_key", nullable = false, length = 64)
     private String layoutKey = "SINGLE_COLUMN";
 
-    @Column(name = "next_page_id", length = 36)
-    private String nextPageId;
-
     @Column(name = "previous_page_id", length = 36)
     private String previousPageId;
-
-    @Column(name = "error_page_id", length = 36)
-    private String errorPageId;
-
-    /** True when this page's "next" is explicitly wired to the flow's End node instead of another page. */
-    @Column(name = "ends_flow", nullable = false, columnDefinition = "boolean default false")
-    private boolean endsFlow = false;
 
     @Column(name = "canvas_x", nullable = false)
     private double canvasX = 0;
@@ -65,11 +58,11 @@ public class Page {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
 
-    /** Computed at read time: previousPageId if set, else whichever page most recently pointed its "next" here. */
+    /** Computed at read time: previousPageId if set, else whichever page most recently pointed an outcome here. */
     @Transient
     private String effectivePreviousPageId;
 
-    /** Computed at read time: errorPageId if set, else the flow's designated error page. */
+    /** Computed at read time: this page's explicit "error" PageTransition if set, else the flow's designated error page. */
     @Transient
     private String effectiveErrorPageId;
 }

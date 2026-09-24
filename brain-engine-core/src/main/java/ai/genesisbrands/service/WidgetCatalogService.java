@@ -3,6 +3,7 @@ package ai.genesisbrands.service;
 import ai.genesisbrands.platform.PageLayout;
 import ai.genesisbrands.platform.WidgetConfigOption;
 import ai.genesisbrands.platform.WidgetDescriptor;
+import ai.genesisbrands.platform.WidgetOutcome;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -16,7 +17,7 @@ public class WidgetCatalogService {
 
     public List<WidgetTypeEntry> listWidgetTypes() {
         return widgetDescriptors.stream()
-            .map(d -> new WidgetTypeEntry(d.widgetType(), d.displayName(), d.description(), d.configOptions()))
+            .map(d -> new WidgetTypeEntry(d.widgetType(), d.displayName(), d.description(), d.configOptions(), d.outcomes()))
             .toList();
     }
 
@@ -28,6 +29,7 @@ public class WidgetCatalogService {
         String widgetType,
         String displayName,
         String description,
-        List<WidgetConfigOption> configOptions
+        List<WidgetConfigOption> configOptions,
+        List<WidgetOutcome> outcomes
     ) {}
 }

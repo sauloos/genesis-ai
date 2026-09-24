@@ -22,6 +22,7 @@ public class PageService {
 
     private final PageRepository pageRepo;
     private final PageWidgetRepository pageWidgetRepo;
+    private final PageTransitionService pageTransitionService;
 
     public List<Page> listByFlow(String pageFlowId) {
         return pageRepo.findByPageFlowId(pageFlowId);
@@ -58,23 +59,16 @@ public class PageService {
         return pageRepo.save(page);
     }
 
-    public Page updateNavTargets(String id, String nextPageId, String previousPageId, String errorPageId, boolean endsFlow) {
+    public Page updatePreviousPage(String id, String previousPageId) {
         Page page = get(id);
-        if (endsFlow) {
-            nextPageId = null;
-        }
-        for (String targetId : new String[] { nextPageId, previousPageId, errorPageId }) {
-            if (targetId == null) continue;
-            Page target = pageRepo.findById(targetId)
-                .orElseThrow(() -> new IllegalArgumentException("Target page not found: " + targetId));
+        if (previousPageId != null) {
+            Page target = pageRepo.findById(previousPageId)
+                .orElseThrow(() -> new IllegalArgumentException("Target page not found: " + previousPageId));
             if (!target.getPageFlowId().equals(page.getPageFlowId())) {
-                throw new IllegalArgumentException("Target page must belong to the same PageFlow: " + targetId);
+                throw new IllegalArgumentException("Target page must belong to the same PageFlow: " + previousPageId);
             }
         }
-        page.setNextPageId(nextPageId);
         page.setPreviousPageId(previousPageId);
-        page.setErrorPageId(errorPageId);
-        page.setEndsFlow(endsFlow);
         page.setUpdatedAt(Instant.now());
         return pageRepo.save(page);
     }
@@ -105,6 +99,7 @@ public class PageService {
     public void delete(String id) {
         get(id); // validate exists
         pageWidgetRepo.deleteByPageId(id);
+        pageTransitionService.deleteForPage(id);
         pageRepo.deleteById(id);
     }
 }

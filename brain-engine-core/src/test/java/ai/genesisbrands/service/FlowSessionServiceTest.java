@@ -1,0 +1,197 @@
+package ai.genesisbrands.service;
+
+import ai.genesisbrands.model.FlowSession;
+import ai.genesisbrands.model.PageFlow;
+import ai.genesisbrands.model.PageTransition;
+import ai.genesisbrands.repository.FlowSessionEventRepository;
+import ai.genesisbrands.repository.FlowSessionRepository;
+import ai.genesisbrands.repository.PageFlowRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.Instant;
+import java.util.NoSuchElementException;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class FlowSessionServiceTest {
+
+    @Mock private FlowSessionRepository sessionRepo;
+    @Mock private FlowSessionEventRepository eventRepo;
+    @Mock private PageFlowRepository pageFlowRepo;
+    @Mock private PageTransitionService pageTransitionService;
+
+    private FlowSessionService service;
+
+    @BeforeEach
+    void setUp() {
+        service = new FlowSessionService(sessionRepo, eventRepo, pageFlowRepo, pageTransitionService, new ObjectMapper());
+    }
+
+    private PageFlow flow(String id, String startPageId, String endAction, String endPageId, String endTargetFlowId) {
+        PageFlow f = new PageFlow();
+        f.setId(id);
+        f.setStartPageId(startPageId);
+        f.setEndAction(endAction);
+        f.setEndPageId(endPageId);
+        f.setEndTargetFlowId(endTargetFlowId);
+        return f;
+    }
+
+    private FlowSession session(String token, String flowId, String currentPageId) {
+        FlowSession s = new FlowSession();
+        s.setToken(token);
+        s.setPageFlowId(flowId);
+        s.setCurrentPageId(currentPageId);
+        s.setExpiresAt(Instant.now().plusSeconds(3600));
+        return s;
+    }
+
+    private PageTransition transition(String targetKind, String targetPageId) {
+        PageTransition t = new PageTransition();
+        t.setTargetKind(targetKind);
+        t.setTargetPageId(targetPageId);
+        return t;
+    }
+
+    @Test
+    void start_requiresStartPageId() {
+        when(pageFlowRepo.findById("f1")).thenReturn(Optional.of(flow("f1", null, null, null, null)));
+
+        assertThatThrownBy(() -> service.start("f1")).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void start_missingFlowThrows() {
+        when(pageFlowRepo.findById("missing")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.start("missing")).isInstanceOf(NoSuchElementException.class);
+    }
+
+    @Test
+    void start_createsSessionAtFlowsStartPage() {
+        when(pageFlowRepo.findById("f1")).thenReturn(Optional.of(flow("f1", "p1", null, null, null)));
+        when(sessionRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        FlowSession s = service.start("f1");
+
+        assertThat(s.getPageFlowId()).isEqualTo("f1");
+        assertThat(s.getCurrentPageId()).isEqualTo("p1");
+        assertThat(s.isEnded()).isFalse();
+        assertThat(s.getExpiresAt()).isAfter(Instant.now().plusSeconds(3600 * 23));
+    }
+
+    @Test
+    void get_expiredOrMissingThrows() {
+        when(sessionRepo.findByTokenAndExpiresAtAfter(anyString(), any())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.get("tok")).isInstanceOf(NoSuchElementException.class);
+    }
+
+    @Test
+    void advance_movesToTargetPageOnPageTransition() {
+        FlowSession s = session("tok", "f1", "p1");
+        when(sessionRepo.findByTokenAndExpiresAtAfter(anyString(), any())).thenReturn(Optional.of(s));
+        when(pageTransitionService.resolve("p1", "next")).thenReturn(Optional.of(transition("PAGE", "p2")));
+        when(sessionRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        FlowSessionService.AdvanceResult result = service.advance("tok", "next");
+
+        assertThat(result.session().getCurrentPageId()).isEqualTo("p2");
+        assertThat(result.session().isEnded()).isFalse();
+        assertThat(result.redirectToFlowId()).isNull();
+    }
+
+    @Test
+    void advance_flowEndWithNoEndActionJustEnds() {
+        FlowSession s = session("tok", "f1", "p1");
+        when(sessionRepo.findByTokenAndExpiresAtAfter(anyString(), any())).thenReturn(Optional.of(s));
+        when(pageTransitionService.resolve("p1", "next")).thenReturn(Optional.of(transition("FLOW_END", null)));
+        when(pageFlowRepo.findById("f1")).thenReturn(Optional.of(flow("f1", "p1", null, null, null)));
+        when(sessionRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        FlowSessionService.AdvanceResult result = service.advance("tok", "next");
+
+        assertThat(result.session().isEnded()).isTrue();
+        assertThat(result.session().getCurrentPageId()).isNull();
+        assertThat(result.redirectToFlowId()).isNull();
+    }
+
+    @Test
+    void advance_flowEndWithEndPageShowsIt() {
+        FlowSession s = session("tok", "f1", "p1");
+        when(sessionRepo.findByTokenAndExpiresAtAfter(anyString(), any())).thenReturn(Optional.of(s));
+        when(pageTransitionService.resolve("p1", "next")).thenReturn(Optional.of(transition("FLOW_END", null)));
+        when(pageFlowRepo.findById("f1")).thenReturn(Optional.of(flow("f1", "p1", "END_PAGE", "pEnd", null)));
+        when(sessionRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        FlowSessionService.AdvanceResult result = service.advance("tok", "next");
+
+        assertThat(result.session().isEnded()).isTrue();
+        assertThat(result.session().getCurrentPageId()).isEqualTo("pEnd");
+        assertThat(result.redirectToFlowId()).isNull();
+    }
+
+    @Test
+    void advance_flowEndWithRedirectFlowReturnsTargetFlowId() {
+        FlowSession s = session("tok", "f1", "p1");
+        when(sessionRepo.findByTokenAndExpiresAtAfter(anyString(), any())).thenReturn(Optional.of(s));
+        when(pageTransitionService.resolve("p1", "next")).thenReturn(Optional.of(transition("FLOW_END", null)));
+        when(pageFlowRepo.findById("f1")).thenReturn(Optional.of(flow("f1", "p1", "REDIRECT_FLOW", null, "f2")));
+        when(sessionRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        FlowSessionService.AdvanceResult result = service.advance("tok", "next");
+
+        assertThat(result.session().isEnded()).isTrue();
+        assertThat(result.session().getCurrentPageId()).isNull();
+        assertThat(result.redirectToFlowId()).isEqualTo("f2");
+    }
+
+    @Test
+    void advance_alreadyEndedSessionThrows() {
+        FlowSession s = session("tok", "f1", null);
+        s.setEnded(true);
+        when(sessionRepo.findByTokenAndExpiresAtAfter(anyString(), any())).thenReturn(Optional.of(s));
+
+        assertThatThrownBy(() -> service.advance("tok", "next")).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void advance_unresolvableOutcomeThrows() {
+        FlowSession s = session("tok", "f1", "p1");
+        when(sessionRepo.findByTokenAndExpiresAtAfter(anyString(), any())).thenReturn(Optional.of(s));
+        when(pageTransitionService.resolve("p1", "ghost")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.advance("tok", "ghost")).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void updateContext_mergesPatchIntoExistingContext() {
+        FlowSession s = session("tok", "f1", "p1");
+        s.setContextJson("{\"a\":1,\"b\":2}");
+        when(sessionRepo.findByTokenAndExpiresAtAfter(anyString(), any())).thenReturn(Optional.of(s));
+        when(sessionRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        FlowSession updated = service.updateContext("tok", "{\"b\":3,\"c\":4}");
+
+        assertThat(updated.getContextJson()).contains("\"a\":1").contains("\"b\":3").contains("\"c\":4");
+    }
+
+    @Test
+    void updateContext_invalidJsonThrows() {
+        FlowSession s = session("tok", "f1", "p1");
+        when(sessionRepo.findByTokenAndExpiresAtAfter(anyString(), any())).thenReturn(Optional.of(s));
+
+        assertThatThrownBy(() -> service.updateContext("tok", "not json")).isInstanceOf(IllegalArgumentException.class);
+    }
+}

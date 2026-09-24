@@ -2,10 +2,14 @@ package ai.genesisbrands.controller;
 
 import ai.genesisbrands.model.Page;
 import ai.genesisbrands.model.PageFlow;
+import ai.genesisbrands.model.PageTransition;
+import ai.genesisbrands.model.PageWidget;
+import ai.genesisbrands.repository.PageWidgetRepository;
 import ai.genesisbrands.security.AdminAuthHelper;
 import ai.genesisbrands.security.AdminSessionService;
 import ai.genesisbrands.service.PageFlowService;
 import ai.genesisbrands.service.PageService;
+import ai.genesisbrands.service.PageTransitionService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,6 +28,8 @@ public class PageFlowController {
     private final AdminSessionService adminSession;
     private final PageFlowService pageFlowService;
     private final PageService pageService;
+    private final PageTransitionService pageTransitionService;
+    private final PageWidgetRepository pageWidgetRepo;
 
     @GetMapping
     public ResponseEntity<List<PageFlow>> list(HttpServletRequest req) {
@@ -37,7 +43,10 @@ public class PageFlowController {
         try {
             PageFlow flow = pageFlowService.get(id);
             List<Page> pages = pageFlowService.withEffectiveNav(pageService.listByFlow(id));
-            return ResponseEntity.ok(new PageFlowDetail(flow, pages));
+            List<String> pageIds = pages.stream().map(Page::getId).toList();
+            List<PageWidget> widgets = pageWidgetRepo.findByPageIdInOrderByOrderInSlotAsc(pageIds);
+            List<PageTransition> transitions = pageTransitionService.listByFlow(id);
+            return ResponseEntity.ok(new PageFlowDetail(flow, pages, widgets, transitions));
         } catch (NoSuchElementException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));
         }
@@ -112,7 +121,7 @@ public class PageFlowController {
 
     public record SetEndRequest(String endAction, String endPageId, String endTargetFlowId) {}
 
-    public record PageFlowDetail(PageFlow flow, List<Page> pages) {}
+    public record PageFlowDetail(PageFlow flow, List<Page> pages, List<PageWidget> widgets, List<PageTransition> transitions) {}
 
     public record ErrorResponse(String message) {}
 }

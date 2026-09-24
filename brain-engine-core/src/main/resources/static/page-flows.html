@@ -132,6 +132,22 @@
     padding: 18px; overflow-y: auto; display: none; flex-direction: column; gap: 14px;
   }
   #end-panel.visible { display: flex; }
+  #sim-panel {
+    width: 300px; min-width: 300px; border-left: 1px solid var(--theme-divider); background: var(--theme-card-bg);
+    padding: 18px; overflow-y: auto; display: none; flex-direction: column; gap: 14px;
+  }
+  #sim-panel.visible { display: flex; }
+  #sim-panel h3 { font-size: 13px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.5px; }
+  .sim-current { font-size: 14px; font-weight: 700; color: #fff; }
+  .sim-ended { font-size: 12px; color: #6fe0a5; }
+  .sim-outcome-btn {
+    width: 100%; text-align: left; padding: 9px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.04); color: #ddd; font-size: 12px; cursor: pointer; transition: border-color 0.15s;
+  }
+  .sim-outcome-btn:hover { border-color: rgba(255,255,255,0.3); }
+  .sim-history { font-size: 11px; color: rgba(255,255,255,0.45); display: flex; flex-direction: column; gap: 4px; }
+  .sim-history summary { cursor: pointer; font-size: 11px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px; }
+  .sim-history-row { display: flex; justify-content: space-between; gap: 6px; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
   #meta-panel h3 { font-size: 13px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.5px; }
   .form-field { display: flex; flex-direction: column; gap: 4px; }
   .form-field label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.4px; }
@@ -162,12 +178,18 @@
   .page-node .pn-badge.pn-endpage { background: rgba(167,139,250,0.18); color: #b9a4fb; }
 
   .drawflow .connection .main-path { stroke: #6fe0a5; stroke-width: 2; }
-  .drawflow .drawflow-node .output_1 { background: #6fe0a5 !important; }
-  .drawflow .drawflow-node .output_2 { background: #999 !important; }
-  .drawflow .drawflow-node .output_3 { background: #ef4444 !important; }
-  .drawflow .connection[class*="output_1"] .main-path { stroke: #6fe0a5; }
-  .drawflow .connection[class*="output_2"] .main-path { stroke: #999; stroke-dasharray: 4, 4; }
-  .drawflow .connection[class*="output_3"] .main-path { stroke: #ef4444; }
+  .drawflow .drawflow-node .outcome-next { background: #6fe0a5 !important; }
+  .drawflow .drawflow-node .outcome-custom { background: #60a5fa !important; }
+  .drawflow .drawflow-node .outcome-error { background: #ef4444 !important; }
+  .drawflow .drawflow-node .outcome-previous { background: #999 !important; }
+  .drawflow .connection .main-path.outcome-next { stroke: #6fe0a5; }
+  .drawflow .connection .main-path.outcome-custom { stroke: #60a5fa; }
+  .drawflow .connection .main-path.outcome-error { stroke: #ef4444; }
+  .drawflow .connection .main-path.outcome-previous { stroke: #999; stroke-dasharray: 4, 4; }
+
+  .page-node .pn-outcomes { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .page-node .pn-outcome-row { display: flex; align-items: center; gap: 6px; font-size: 10.5px; color: rgba(255,255,255,0.55); }
+  .page-node .pn-outcome-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 
   .drawflow .drawflow-node.flow-anchor-node { width: auto; padding: 0; background: transparent; border: none; box-shadow: none; }
   .anchor-node {
@@ -278,12 +300,14 @@
     <div id="toolbar">
       <h2 id="flow-title"></h2>
       <div class="legend">
-        <span><span class="legend-dot" style="background:#6fe0a5"></span>next</span>
-        <span><span class="legend-dot" style="background:#999"></span>previous</span>
+        <span><span class="legend-dot" style="background:#6fe0a5"></span>outcome</span>
+        <span><span class="legend-dot" style="background:#60a5fa"></span>custom outcome</span>
         <span><span class="legend-dot" style="background:#ef4444"></span>error</span>
-        <span style="color:rgba(255,255,255,0.3)">Start/End are fixed anchors — drag from Start's dot, or a page's next dot into End</span>
+        <span><span class="legend-dot" style="background:#999"></span>previous</span>
+        <span style="color:rgba(255,255,255,0.3)">Each page's outcome ports come from its widgets. Start/End are fixed anchors — drag any outcome dot into End to end the flow there.</span>
       </div>
       <button class="tbtn tbtn-ghost" onclick="addPage()">+ Add page</button>
+      <button class="tbtn tbtn-ghost" onclick="openSimulatePanel()">▶ Simulate</button>
       <button class="tbtn tbtn-primary" id="mark-live-btn" onclick="markLive()">Mark live</button>
     </div>
     <div id="canvas-wrap">
@@ -332,6 +356,10 @@
           <button class="tbtn tbtn-primary" onclick="saveEndConfig()">Save</button>
         </div>
       </div>
+      <div id="sim-panel">
+        <h3>Simulate</h3>
+        <div id="sim-body"></div>
+      </div>
     </div>
   </div>
 
@@ -358,6 +386,8 @@ let API_KEY = '';
 let flows = [];
 let currentFlow = null;
 let currentPages = [];
+let currentWidgets = [];
+let currentTransitions = [];
 let editor = null;
 let restoringCanvas = false;
 let selectedPageId = null;
@@ -366,6 +396,8 @@ let widgetTypes = [];
 let l2PageId = null;
 let l2Widgets = [];
 let l2SelectedWidgetId = null;
+let simSession = null;
+let simHistory = [];
 
 function esc(s) { return (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
@@ -449,7 +481,36 @@ function initDrawflow() {
   });
 }
 
-const OUTPUT_FIELD = { output_1: 'nextPageId', output_2: 'previousPageId', output_3: 'errorPageId' };
+function outcomeClassFor(o) {
+  if (o.key === 'error') return 'outcome-error';
+  if (o.key === 'next') return 'outcome-next';
+  return 'outcome-custom';
+}
+
+// Mirrors PageTransitionService.outcomesForPage(): union (by key, first-seen wins) of
+// outcomes() declared by each widget placed on the page, ordered by (slotKey, orderInSlot);
+// falls back to a single "next" outcome when the page has no widgets; "error" always last.
+function outcomesForPage(pageId) {
+  const widgets = currentWidgets
+    .filter(w => w.pageId === pageId)
+    .slice()
+    .sort((a, b) => (a.slotKey < b.slotKey ? -1 : a.slotKey > b.slotKey ? 1 : a.orderInSlot - b.orderInSlot));
+
+  const byKey = new Map();
+  for (const w of widgets) {
+    const descriptor = widgetTypes.find(t => t.widgetType === w.widgetType);
+    if (!descriptor) continue;
+    for (const o of (descriptor.outcomes || [])) {
+      if (!byKey.has(o.key)) byKey.set(o.key, o);
+    }
+  }
+  if (byKey.size === 0) {
+    byKey.set('next', { key: 'next', label: 'Next' });
+  }
+  byKey.delete('error');
+  byKey.set('error', { key: 'error', label: 'Error' });
+  return [...byKey.values()];
+}
 
 function dedupeToLast(nodeId, outputClass) {
   const conns = editor.getNodeFromId(nodeId).outputs[outputClass].connections;
@@ -469,40 +530,46 @@ async function onConnectionChanged(info) {
   }
 
   const sourcePageId = sourceNode.data.pageId;
-  const field = OUTPUT_FIELD[info.output_class];
-  if (!field) return;
+  const outcomes = sourceNode.data.outcomes || [];
+  const outputIdx = parseInt(info.output_class.replace('output_', ''), 10) - 1; // 0-based
+  const isPreviousPort = outputIdx === outcomes.length;
 
   // Enforce single connection per output port: keep only the most recent.
   const remaining = dedupeToLast(info.output_id, info.output_class);
   const targetNode = remaining.length ? editor.getNodeFromId(remaining[0].node) : null;
   const targetIsEnd = !!(targetNode && targetNode.data && targetNode.data.isEnd);
 
-  if (targetIsEnd && field !== 'nextPageId') {
+  if (targetIsEnd && isPreviousPort) {
     editor.removeSingleConnection(info.output_id, remaining[0].node, info.output_class, remaining[0].output);
-    toast('The End node can only be connected from a page\'s "next" output.', false);
+    toast('The End node can only be connected from an outcome output, not the previous port.', false);
     return;
   }
-  const targetPageId = targetNode && !targetIsEnd ? targetNode.data.pageId : null;
 
-  const page = currentPages.find(p => p.id === sourcePageId);
-  const targets = {
-    nextPageId: page.nextPageId, previousPageId: page.previousPageId,
-    errorPageId: page.errorPageId, endsFlow: page.endsFlow
-  };
-  if (field === 'nextPageId') {
-    targets.nextPageId = targetIsEnd ? null : targetPageId;
-    targets.endsFlow = targetIsEnd;
-  } else {
-    targets[field] = targetPageId;
+  if (isPreviousPort) {
+    const previousPageId = targetNode ? targetNode.data.pageId : null;
+    try {
+      await apiFetch(`/api/admin/pages/${sourcePageId}/previous-page`, {
+        method: 'PUT', body: JSON.stringify({ previousPageId })
+      });
+      await openFlow(currentFlow.id);
+    } catch (e) { toast('Failed to link pages: ' + e.message, false); }
+    return;
   }
 
+  const outcome = outcomes[outputIdx];
+  if (!outcome) return;
+
+  const body = !targetNode
+    ? { outcomeKey: outcome.key, targetKind: null, targetPageId: null }
+    : targetIsEnd
+      ? { outcomeKey: outcome.key, targetKind: 'FLOW_END', targetPageId: null }
+      : { outcomeKey: outcome.key, targetKind: 'PAGE', targetPageId: targetNode.data.pageId };
+
   try {
-    await apiFetch(`/api/admin/pages/${sourcePageId}/nav-targets`, {
-      method: 'PUT', body: JSON.stringify(targets)
-    });
+    await apiFetch(`/api/admin/pages/${sourcePageId}/transitions`, { method: 'PUT', body: JSON.stringify(body) });
     // Re-fetch rather than patch just this page: connecting/disconnecting can shift another
-    // page's effectivePreviousPageId/effectiveErrorPageId fallback, and badges (e.g. "Ends flow")
-    // are baked into each node's static HTML, so only a full re-render keeps the canvas honest.
+    // page's effectivePreviousPageId/effectiveErrorPageId fallback, and badges are baked into
+    // each node's static HTML, so only a full re-render keeps the canvas honest.
     await openFlow(currentFlow.id);
   } catch (e) {
     toast('Failed to link pages: ' + e.message, false);
@@ -574,9 +641,12 @@ async function deleteFlow(e, id) {
 }
 
 async function openFlow(id) {
+  const isSameFlow = currentFlow && currentFlow.id === id;
   const detail = await apiFetch(`/api/admin/page-flows/${id}`);
   currentFlow = detail.flow;
   currentPages = detail.pages;
+  currentWidgets = detail.widgets;
+  currentTransitions = detail.transitions;
 
   document.getElementById('empty').style.display = 'none';
   document.getElementById('level2').style.display = 'none';
@@ -584,6 +654,12 @@ async function openFlow(id) {
   document.getElementById('flow-title').textContent = currentFlow.name;
   document.getElementById('mark-live-btn').textContent = currentFlow.live ? 'Live' : 'Mark live';
   document.getElementById('meta-panel').classList.remove('visible');
+  if (!isSameFlow) {
+    document.getElementById('end-panel').classList.remove('visible');
+    document.getElementById('sim-panel').classList.remove('visible');
+    simSession = null;
+    simHistory = [];
+  }
   selectedPageId = null;
   renderFlowList();
   renderCanvas();
@@ -607,11 +683,50 @@ function effectiveStartPageId() {
   return [...currentPages].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))[0].id;
 }
 
+function applyOutputDotClasses(nodeId, outcomes) {
+  const nodeEl = document.getElementById('node-' + nodeId);
+  if (!nodeEl) return;
+  const total = outcomes.length + 1; // +1 for the trailing "previous" port
+  for (let i = 0; i < total; i++) {
+    const dot = nodeEl.querySelector('.output_' + (i + 1));
+    if (!dot) continue;
+    dot.classList.remove('outcome-next', 'outcome-error', 'outcome-custom', 'outcome-previous');
+    dot.classList.add(i === outcomes.length ? 'outcome-previous' : outcomeClassFor(outcomes[i]));
+  }
+}
+
+function applyConnectionColors() {
+  document.querySelectorAll('#drawflow .connection').forEach(connEl => {
+    const cls = [...connEl.classList];
+    const outNode = cls.find(c => c.startsWith('node_out_node-'));
+    const outputClass = cls.find(c => /^output_\d+$/.test(c));
+    if (!outNode || !outputClass) return;
+    const sourceNodeId = outNode.replace('node_out_node-', '');
+    const node = editor.getNodeFromId(sourceNodeId);
+    if (!node || !node.data) return;
+
+    let outcomeClass;
+    if (node.data.isStart) {
+      outcomeClass = 'outcome-next';
+    } else {
+      const outcomes = node.data.outcomes || [];
+      const idx = parseInt(outputClass.replace('output_', ''), 10) - 1;
+      outcomeClass = idx === outcomes.length ? 'outcome-previous' : (outcomes[idx] ? outcomeClassFor(outcomes[idx]) : 'outcome-next');
+    }
+    connEl.querySelectorAll('.main-path').forEach(p => {
+      p.classList.remove('outcome-next', 'outcome-error', 'outcome-custom', 'outcome-previous');
+      p.classList.add(outcomeClass);
+    });
+  });
+}
+
 function renderCanvas() {
   restoringCanvas = true;
   editor.clear();
   const idMap = {};
   for (const p of currentPages) {
+    const outcomes = outcomesForPage(p.id);
+    const hasFlowEnd = currentTransitions.some(t => t.sourcePageId === p.id && t.targetKind === 'FLOW_END');
     const html = `
       <div class="page-node">
         <div class="pn-name">${esc(p.name)}</div>
@@ -620,10 +735,15 @@ function renderCanvas() {
           ${p.requiresAuth ? '<span class="pn-badge pn-auth">Auth</span>' : ''}
           ${p.errorPage ? '<span class="pn-badge pn-error">Error</span>' : ''}
           ${p.endPage ? '<span class="pn-badge pn-endpage">End page</span>' : ''}
-          ${p.endsFlow ? '<span class="pn-badge pn-error">Ends flow</span>' : ''}
+          ${hasFlowEnd ? '<span class="pn-badge pn-error">Ends flow</span>' : ''}
+        </div>
+        <div class="pn-outcomes">
+          ${outcomes.map(o => `<div class="pn-outcome-row"><span class="pn-outcome-dot ${outcomeClassFor(o)}"></span>${esc(o.label)}</div>`).join('')}
+          <div class="pn-outcome-row"><span class="pn-outcome-dot outcome-previous"></span>Previous</div>
         </div>
       </div>`;
-    const nodeId = editor.addNode('page', 1, 3, p.canvasX || 0, p.canvasY || 0, 'page-node-wrap', { pageId: p.id }, html);
+    const nodeId = editor.addNode('page', 1, outcomes.length + 1, p.canvasX || 0, p.canvasY || 0, 'page-node-wrap', { pageId: p.id, outcomes }, html);
+    applyOutputDotClasses(nodeId, outcomes);
     idMap[p.id] = nodeId;
   }
 
@@ -643,16 +763,27 @@ function renderCanvas() {
 
   for (const p of currentPages) {
     const sourceId = idMap[p.id];
-    if (p.endsFlow) {
-      editor.addConnection(sourceId, endNodeId, 'output_1', 'input_1');
-    } else if (p.nextPageId && idMap[p.nextPageId] != null) {
-      editor.addConnection(sourceId, idMap[p.nextPageId], 'output_1', 'input_1');
-    }
+    const outcomes = outcomesForPage(p.id);
+    outcomes.forEach((o, i) => {
+      // The "error" port's target is effectiveErrorPageId (explicit PageTransition row, else
+      // the flow's fallback error page) — precomputed server-side by withEffectiveNav(), same
+      // as previousPageId's fallback. Every other outcome only draws when explicitly set.
+      if (o.key === 'error') {
+        if (p.effectiveErrorPageId && idMap[p.effectiveErrorPageId] != null) {
+          editor.addConnection(sourceId, idMap[p.effectiveErrorPageId], 'output_' + (i + 1), 'input_1');
+        }
+        return;
+      }
+      const t = currentTransitions.find(tr => tr.sourcePageId === p.id && tr.outcomeKey === o.key);
+      if (!t) return;
+      if (t.targetKind === 'FLOW_END') {
+        editor.addConnection(sourceId, endNodeId, 'output_' + (i + 1), 'input_1');
+      } else if (t.targetKind === 'PAGE' && idMap[t.targetPageId] != null) {
+        editor.addConnection(sourceId, idMap[t.targetPageId], 'output_' + (i + 1), 'input_1');
+      }
+    });
     if (p.effectivePreviousPageId && idMap[p.effectivePreviousPageId] != null) {
-      editor.addConnection(sourceId, idMap[p.effectivePreviousPageId], 'output_2', 'input_1');
-    }
-    if (p.effectiveErrorPageId && idMap[p.effectiveErrorPageId] != null) {
-      editor.addConnection(sourceId, idMap[p.effectiveErrorPageId], 'output_3', 'input_1');
+      editor.addConnection(sourceId, idMap[p.effectivePreviousPageId], 'output_' + (outcomes.length + 1), 'input_1');
     }
   }
 
@@ -661,6 +792,7 @@ function renderCanvas() {
     editor.addConnection(startNodeId, idMap[startTarget], 'output_1', 'input_1');
   }
 
+  applyConnectionColors();
   restoringCanvas = false;
 }
 
@@ -685,6 +817,7 @@ function selectPage(pageId) {
   selectedPageId = pageId;
   const page = currentPages.find(p => p.id === pageId);
   if (!page) return;
+  document.getElementById('sim-panel').classList.remove('visible');
   document.getElementById('pg-name').value = page.name;
   document.getElementById('pg-auth').checked = page.requiresAuth;
   document.getElementById('pg-error').checked = page.errorPage;
@@ -735,6 +868,7 @@ async function deleteSelectedPage() {
 // ── End node config ──────────────────────────────────────────────────
 function openEndConfig() {
   document.getElementById('meta-panel').classList.remove('visible');
+  document.getElementById('sim-panel').classList.remove('visible');
   selectedPageId = null;
 
   const endPages = currentPages.filter(p => p.endPage);
@@ -937,6 +1071,93 @@ async function deleteWidget() {
     document.getElementById('widget-config-panel').classList.remove('visible');
     renderLayoutGrid();
   } catch (e) { toast(e.message, false); }
+}
+
+// ── Simulate panel ──────────────────────────────────────────────────────
+async function openSimulatePanel() {
+  if (!currentFlow) return;
+  document.getElementById('meta-panel').classList.remove('visible');
+  document.getElementById('end-panel').classList.remove('visible');
+  selectedPageId = null;
+  document.getElementById('sim-panel').classList.add('visible');
+  await simStart();
+}
+
+async function simStart() {
+  if (!currentFlow) return;
+  try {
+    simSession = await apiFetch('/api/admin/flow-sessions', {
+      method: 'POST', body: JSON.stringify({ pageFlowId: currentFlow.id })
+    });
+    simHistory = [];
+    renderSimBody();
+  } catch (e) { toast('Failed to start simulation: ' + e.message, false); }
+}
+
+async function simAdvance(outcomeKey) {
+  try {
+    const result = await apiFetch(`/api/admin/flow-sessions/${simSession.token}/advance`, {
+      method: 'POST', body: JSON.stringify({ outcomeKey })
+    });
+    simSession = result.session;
+    simHistory = await apiFetch(`/api/admin/flow-sessions/${simSession.token}/history`);
+    if (result.redirectToFlowId) {
+      toast('Flow ended with a redirect — starting a new session on the target flow.');
+      // The target flow's pages/widgets aren't loaded yet — renderSimBody() resolves
+      // page names and outcome buttons from currentPages/currentWidgets, so switch
+      // the open flow before starting the session, or the panel can't render it.
+      await openFlow(result.redirectToFlowId);
+      simSession = await apiFetch('/api/admin/flow-sessions', {
+        method: 'POST', body: JSON.stringify({ pageFlowId: result.redirectToFlowId })
+      });
+      simHistory = [];
+      document.getElementById('sim-panel').classList.add('visible');
+    }
+    renderSimBody();
+  } catch (e) { toast('Failed to advance: ' + e.message, false); }
+}
+
+function renderSimHistory() {
+  if (!simHistory.length) return '';
+  return `
+    <details class="sim-history">
+      <summary>History (${simHistory.length})</summary>
+      ${simHistory.map(ev => {
+        const src = currentPages.find(p => p.id === ev.sourcePageId);
+        const tgt = ev.targetPageId ? currentPages.find(p => p.id === ev.targetPageId) : null;
+        const targetLabel = ev.targetKind === 'FLOW_END' ? 'Flow End' : esc(tgt ? tgt.name : '—');
+        return `<div class="sim-history-row"><span>${esc(src ? src.name : ev.sourcePageId)} → <em>${esc(ev.outcomeKey)}</em></span><span>${targetLabel}</span></div>`;
+      }).join('')}
+    </details>`;
+}
+
+function renderSimBody() {
+  const el = document.getElementById('sim-body');
+  if (!simSession) { el.innerHTML = ''; return; }
+
+  if (simSession.ended) {
+    const endPage = simSession.currentPageId ? currentPages.find(p => p.id === simSession.currentPageId) : null;
+    const label = endPage ? `Ended — showing end page "${esc(endPage.name)}"` : 'Ended.';
+    el.innerHTML = `
+      <div class="sim-ended">${label}</div>
+      ${renderSimHistory()}
+      <div class="panel-actions"><button class="tbtn tbtn-ghost" onclick="simStart()">Reset</button></div>`;
+    return;
+  }
+
+  const page = currentPages.find(p => p.id === simSession.currentPageId);
+  const outcomes = page ? outcomesForPage(page.id) : [];
+  el.innerHTML = `
+    <div class="sim-current">${page ? esc(page.name) : '(unknown page)'}</div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      ${outcomes.map(o => `<button class="sim-outcome-btn" data-key="${esc(o.key)}">${esc(o.label)}</button>`).join('')}
+    </div>
+    ${renderSimHistory()}
+    <div class="panel-actions"><button class="tbtn tbtn-ghost" onclick="simStart()">Reset</button></div>`;
+
+  el.querySelectorAll('.sim-outcome-btn').forEach(btn => {
+    btn.addEventListener('click', () => simAdvance(btn.dataset.key));
+  });
 }
 
 boot();

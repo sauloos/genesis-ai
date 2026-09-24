@@ -2,6 +2,7 @@ package ai.genesisbrands.service;
 
 import ai.genesisbrands.model.Page;
 import ai.genesisbrands.model.PageFlow;
+import ai.genesisbrands.model.PageTransition;
 import ai.genesisbrands.repository.PageFlowRepository;
 import ai.genesisbrands.repository.PageRepository;
 import ai.genesisbrands.repository.PageWidgetRepository;
@@ -23,6 +24,7 @@ public class PageFlowService {
     private final PageFlowRepository pageFlowRepo;
     private final PageRepository pageRepo;
     private final PageWidgetRepository pageWidgetRepo;
+    private final PageTransitionService pageTransitionService;
 
     public List<PageFlow> list() {
         return pageFlowRepo.findAll();
@@ -107,24 +109,20 @@ public class PageFlowService {
 
     /** Populates each page's effectivePreviousPageId/effectiveErrorPageId (explicit value, else the computed default). */
     public List<Page> withEffectiveNav(List<Page> pages) {
-        Page errorPage = pages.stream()
-            .filter(Page::isErrorPage)
-            .min(Comparator.comparing(Page::getCreatedAt))
-            .orElse(null);
+        List<PageTransition> flowTransitions = pages.isEmpty()
+            ? List.of()
+            : pageTransitionService.listByFlow(pages.get(0).getPageFlowId());
         for (Page page : pages) {
             if (page.getPreviousPageId() != null) {
                 page.setEffectivePreviousPageId(page.getPreviousPageId());
             } else {
-                pages.stream()
-                    .filter(p -> page.getId().equals(p.getNextPageId()))
-                    .max(Comparator.comparing(Page::getUpdatedAt))
-                    .ifPresent(p -> page.setEffectivePreviousPageId(p.getId()));
+                flowTransitions.stream()
+                    .filter(t -> "PAGE".equals(t.getTargetKind()) && page.getId().equals(t.getTargetPageId()))
+                    .max(Comparator.comparing(PageTransition::getUpdatedAt))
+                    .ifPresent(t -> page.setEffectivePreviousPageId(t.getSourcePageId()));
             }
-            if (page.getErrorPageId() != null) {
-                page.setEffectiveErrorPageId(page.getErrorPageId());
-            } else if (errorPage != null && !errorPage.getId().equals(page.getId())) {
-                page.setEffectiveErrorPageId(errorPage.getId());
-            }
+            pageTransitionService.resolve(page.getId(), PageTransitionService.ERROR_OUTCOME)
+                .ifPresent(t -> page.setEffectiveErrorPageId(t.getTargetPageId()));
         }
         return pages;
     }
@@ -135,6 +133,7 @@ public class PageFlowService {
         for (Page page : pageRepo.findByPageFlowId(id)) {
             pageWidgetRepo.deleteByPageId(page.getId());
         }
+        pageTransitionService.deleteByFlow(id);
         pageRepo.deleteByPageFlowId(id);
         pageFlowRepo.deleteById(id);
     }

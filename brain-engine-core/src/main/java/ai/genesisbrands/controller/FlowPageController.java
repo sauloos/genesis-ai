@@ -38,10 +38,10 @@ public class FlowPageController {
         return handle(req, () -> pageService.updatePosition(id, body.x(), body.y()));
     }
 
-    @PutMapping("/api/admin/pages/{id}/nav-targets")
-    public ResponseEntity<?> updateNavTargets(@PathVariable String id, @RequestBody UpdateNavTargetsRequest body, HttpServletRequest req) {
+    @PutMapping("/api/admin/pages/{id}/previous-page")
+    public ResponseEntity<?> updatePreviousPage(@PathVariable String id, @RequestBody UpdatePreviousPageRequest body, HttpServletRequest req) {
         if (!authorized(req)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        return handle(req, () -> pageService.updateNavTargets(id, body.nextPageId(), body.previousPageId(), body.errorPageId(), body.endsFlow()));
+        return handle(req, () -> pageService.updatePreviousPage(id, body.previousPageId()));
     }
 
     @PutMapping("/api/admin/pages/{id}/layout")
@@ -78,7 +78,7 @@ public class FlowPageController {
     public record CreatePageRequest(String name) {}
     public record UpdateMetadataRequest(String name, boolean requiresAuth, boolean errorPage, boolean endPage) {}
     public record UpdatePositionRequest(double x, double y) {}
-    public record UpdateNavTargetsRequest(String nextPageId, String previousPageId, String errorPageId, boolean endsFlow) {}
+    public record UpdatePreviousPageRequest(String previousPageId) {}
     public record UpdateLayoutRequest(String layoutKey) {}
     public record ErrorResponse(String message) {}
 }

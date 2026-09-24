@@ -18,4 +18,9 @@ public interface WidgetDescriptor {
     default List<WidgetConfigOption> configOptions() {
         return List.of();
     }
+
+    /** Named exits this widget type can produce. Defaults to a single implicit "next". */
+    default List<WidgetOutcome> outcomes() {
+        return List.of(WidgetOutcome.DEFAULT);
+    }
 }

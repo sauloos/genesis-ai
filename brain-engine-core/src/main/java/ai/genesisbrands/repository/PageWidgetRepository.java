@@ -7,5 +7,6 @@ import java.util.List;
 
 public interface PageWidgetRepository extends JpaRepository<PageWidget, String> {
     List<PageWidget> findByPageIdOrderByOrderInSlotAsc(String pageId);
+    List<PageWidget> findByPageIdInOrderByOrderInSlotAsc(List<String> pageIds);
     void deleteByPageId(String pageId);
 }
