@@ -50,7 +50,7 @@ public class BriefDerivationService implements BriefDerivationExtension {
         String raw = chatClient.prompt()
             .options(AnthropicChatOptions.builder()
                 .model("claude-opus-5")
-                .maxTokens(4000)
+                .maxTokens(8000)
                 .build())
             .system(tenantBriefConfig.systemPrompt())
             .user("Client intake responses:\n\n" + qa)
@@ -107,9 +107,15 @@ public class BriefDerivationService implements BriefDerivationExtension {
                     d.path("additionalContext").asText("")
                 ));
             }
+            if (briefs.isEmpty()) {
+                log.error("Brief derivation returned zero directions for engagement {}. Raw response:\n{}",
+                    engagementId, raw);
+                throw new RuntimeException("Brief derivation returned zero directions — expected 3");
+            }
             return briefs;
         } catch (Exception e) {
-            log.error("Brief derivation parse failed: {}", e.getMessage());
+            log.error("Brief derivation parse failed for engagement {}: {}. Raw response:\n{}",
+                engagementId, e.getMessage(), raw);
             throw new RuntimeException("Failed to parse direction briefs from Brain Engine response", e);
         }
     }
