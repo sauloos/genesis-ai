@@ -36,7 +36,9 @@ public class ProductOptionsWidget implements WidgetDescriptor {
     public List<WidgetConfigOption> configOptions() {
         return List.of(
             new WidgetConfigOption("productId", "Product", OptionType.STRING, List.of(), ""),
-            new WidgetConfigOption("heading", "Heading (optional)", OptionType.STRING, List.of(), "")
+            new WidgetConfigOption("heading", "Heading (optional)", OptionType.STRING, List.of(), ""),
+            new WidgetConfigOption("advanceOnSelect", "Show a Continue button that advances the flow once an option is selected", OptionType.BOOLEAN, List.of(), "false"),
+            new WidgetConfigOption("continueLabel", "Continue button label (optional)", OptionType.STRING, List.of(), "")
         );
     }
 }

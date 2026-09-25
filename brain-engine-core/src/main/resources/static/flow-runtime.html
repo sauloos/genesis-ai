@@ -231,6 +231,12 @@
   }
   .po-card.selected .po-select-btn { background: var(--theme-text-primary); color: var(--theme-body-bg); border-color: var(--theme-text-primary); }
   .po-error { font-size: 13px; color: #d33; }
+  .po-continue-btn {
+    margin-top: 22px; padding: 12px 28px; border-radius: 9px; border: none;
+    background: var(--theme-text-primary); color: var(--theme-body-bg);
+    font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+  .po-continue-btn:disabled { opacity: 0.5; cursor: default; }
 
   .widget-payment { display: flex; flex-direction: column; align-items: center; text-align: center; }
   .pay-heading { font-size: 18px; font-weight: 700; margin-bottom: 14px; color: var(--theme-text-primary); }
@@ -1090,6 +1096,12 @@ async function bootProductOptionsWidget(w, container) {
 function renderProductOptions(w, container, product, options, selectedOptionId) {
   container.innerHTML = '';
 
+  const advanceOnSelect = widgetConfigBool(w.config.advanceOnSelect, false);
+  if (advanceOnSelect) {
+    if (selectedOptionId) requiredPending.delete(w.id); else requiredPending.add(w.id);
+    updateOutcomeButtons();
+  }
+
   const heading = document.createElement('h2');
   heading.className = 'po-heading';
   heading.textContent = w.config.heading || product.name;
@@ -1148,6 +1160,16 @@ function renderProductOptions(w, container, product, options, selectedOptionId) 
   });
 
   container.appendChild(grid);
+
+  if (advanceOnSelect) {
+    const continueBtn = document.createElement('button');
+    continueBtn.type = 'button';
+    continueBtn.className = 'po-continue-btn';
+    continueBtn.textContent = w.config.continueLabel || 'Continue';
+    continueBtn.disabled = !selectedOptionId;
+    continueBtn.onclick = () => advance('next');
+    container.appendChild(continueBtn);
+  }
 }
 
 async function selectProductOption(w, container, product, options, optionId) {
