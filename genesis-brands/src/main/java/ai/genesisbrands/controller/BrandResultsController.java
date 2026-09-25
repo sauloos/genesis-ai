@@ -10,6 +10,9 @@ import ai.genesisbrands.service.FlowSessionService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -33,11 +36,16 @@ import java.util.NoSuchElementException;
 @RequiredArgsConstructor
 public class BrandResultsController {
 
+    private static final Logger log = LoggerFactory.getLogger(BrandResultsController.class);
+
     private final FlowSessionService flowSessionService;
     private final PageFlowRepository pageFlowRepo;
     private final FlowEngagementService flowEngagementService;
     private final EngagementRepository engagementRepo;
     private final ObjectMapper objectMapper;
+
+    @Value("${genesis.flow.mock-brand-results:false}")
+    private boolean mockBrandResults;
 
     @Transactional
     @PostMapping("/flow-sessions/{token}/widgets/{widgetId}/start")
@@ -64,9 +72,23 @@ public class BrandResultsController {
             }
         }
 
-        PageFlow flow = pageFlowRepo.findById(session.getPageFlowId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PageFlow not found: " + session.getPageFlowId()));
-        String engagementId = flowEngagementService.triggerEngagement(flow, session);
+        String engagementId;
+        Engagement.Status status;
+        if (mockBrandResults) {
+            Engagement mocked = engagementRepo.findFirstByStatusOrderByCreatedAtDesc(Engagement.Status.DONE).orElse(null);
+            if (mocked != null) {
+                log.info("genesis.flow.mock-brand-results is on — reusing completed engagement {} for widget {} instead of running the pipeline", mocked.getId(), widgetId);
+                engagementId = mocked.getId();
+                status = Engagement.Status.DONE;
+            } else {
+                log.warn("genesis.flow.mock-brand-results is on but no DONE engagement exists to reuse — running the real pipeline for widget {}", widgetId);
+                engagementId = triggerRealEngagement(session);
+                status = Engagement.Status.PENDING;
+            }
+        } else {
+            engagementId = triggerRealEngagement(session);
+            status = Engagement.Status.PENDING;
+        }
 
         try {
             flowSessionService.updateContext(token, objectMapper.writeValueAsString(Map.of(contextKey, engagementId)));
@@ -74,7 +96,13 @@ public class BrandResultsController {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to persist engagement id onto session");
         }
 
-        return new StartResponse(engagementId, Engagement.Status.PENDING.name());
+        return new StartResponse(engagementId, status.name());
+    }
+
+    private String triggerRealEngagement(FlowSession session) {
+        PageFlow flow = pageFlowRepo.findById(session.getPageFlowId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PageFlow not found: " + session.getPageFlowId()));
+        return flowEngagementService.triggerEngagement(flow, session);
     }
 
     private Map<String, Object> parseContext(String json) {
