@@ -50,23 +50,24 @@ public class ConsultantService {
     }
 
     public Flux<String> chat(String subjectId, String userMessage) {
-        return chat(subjectId, userMessage, null, List.of());
+        return chat(subjectId, userMessage, null, List.of(), ConversationMessage.Source.CONSULTANT);
     }
 
     public Flux<String> chat(String subjectId, String userMessage,
                              String attachmentText,
-                             List<ContextEnrichmentService.UrlContent> urlContents) {
+                             List<ContextEnrichmentService.UrlContent> urlContents,
+                             ConversationMessage.Source source) {
         ConsultantSubject subject = subjectProvider.find(subjectId);
 
-        save(subjectId, "user", userMessage);
+        save(subjectId, "user", userMessage, source);
 
         if (tenantConfig.isOutOfScope(userMessage)) {
             String response = tenantConfig.outOfScopeResponse();
-            save(subjectId, "assistant", response);
+            save(subjectId, "assistant", response, source);
             return Flux.just(response);
         }
 
-        List<Message> messages = buildMessages(subject, userMessage, attachmentText, urlContents);
+        List<Message> messages = buildMessages(subject, userMessage, attachmentText, urlContents, source);
         Prompt prompt = new Prompt(messages);
 
         StringBuilder responseBuffer = new StringBuilder();
@@ -84,20 +85,35 @@ public class ConsultantService {
             .doOnComplete(() -> {
                 String fullResponse = responseBuffer.toString();
                 if (!fullResponse.isBlank()) {
-                    save(subjectId, "assistant", fullResponse);
+                    save(subjectId, "assistant", fullResponse, source);
                 }
             });
     }
 
+    public List<ConversationMessage> history(String subjectId, ConversationMessage.Source source) {
+        return historyFor(subjectId, source);
+    }
+
+    public void clearHistory(String subjectId, ConversationMessage.Source source) {
+        messageRepo.deleteAll(historyFor(subjectId, source));
+    }
+
+    private List<ConversationMessage> historyFor(String subjectId, ConversationMessage.Source source) {
+        return source == ConversationMessage.Source.PLAYGROUND
+            ? messageRepo.findBySubjectIdAndSourceOrderByCreatedAtAsc(subjectId, ConversationMessage.Source.PLAYGROUND)
+            : messageRepo.findConsultantHistoryBySubjectId(subjectId);
+    }
+
     private List<Message> buildMessages(ConsultantSubject subject, String userMessage,
                                         String attachmentText,
-                                        List<ContextEnrichmentService.UrlContent> urlContents) {
+                                        List<ContextEnrichmentService.UrlContent> urlContents,
+                                        ConversationMessage.Source source) {
         List<Message> messages = new ArrayList<>();
 
         String systemContent = buildSystemContent(subject, userMessage, attachmentText, urlContents);
         messages.add(new SystemMessage(systemContent));
 
-        List<ConversationMessage> history = messageRepo.findBySubjectIdOrderByCreatedAtAsc(subject.id());
+        List<ConversationMessage> history = historyFor(subject.id(), source);
         int start = Math.max(0, history.size() - (HISTORY_TURNS * 2));
         for (int i = start; i < history.size(); i++) {
             ConversationMessage m = history.get(i);
@@ -159,12 +175,13 @@ public class ConsultantService {
         return sb.toString();
     }
 
-    private void save(String subjectId, String role, String content) {
+    private void save(String subjectId, String role, String content, ConversationMessage.Source source) {
         var msg = new ConversationMessage();
         msg.setId(UUID.randomUUID().toString());
         msg.setSubjectId(subjectId);
         msg.setRole(role);
         msg.setContent(content);
+        msg.setSource(source);
         messageRepo.save(msg);
     }
 }

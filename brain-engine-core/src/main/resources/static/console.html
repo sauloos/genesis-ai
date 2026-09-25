@@ -357,6 +357,12 @@ let pendingFile      = null;
 const isEmbed = new URLSearchParams(location.search).get('embed') === '1';
 if (isEmbed) document.body.classList.add('embed');
 
+// Playground embeds this page with ?origin=playground so its test conversations are
+// stored and read separately from real client-facing Consultant history (same subject,
+// different `source` on ConversationMessage — see ConsultantController#sourceOf).
+const originParam = new URLSearchParams(location.search).get('origin');
+const originQS = originParam ? `?origin=${encodeURIComponent(originParam)}` : '';
+
 marked.use({ breaks: true, gfm: true });
 
 // ── Boot ──────────────────────────────────────────────
@@ -408,7 +414,7 @@ async function openConversation(id, name) {
   const msgs = document.getElementById('messages');
   msgs.innerHTML = '';
 
-  const history = await fetch(`${API}/api/consultant/subjects/${id}/chat/history`, { headers: HEADERS })
+  const history = await fetch(`${API}/api/consultant/subjects/${id}/chat/history${originQS}`, { headers: HEADERS })
     .then(r => r.json()).catch(() => []);
 
   for (const m of history) {
@@ -426,7 +432,7 @@ async function deleteConv(e, id) {
 
 async function clearHistory() {
   if (!currentSubjectId) return;
-  await fetch(`${API}/api/consultant/subjects/${currentSubjectId}/chat/history`, { method: 'DELETE', headers: HEADERS });
+  await fetch(`${API}/api/consultant/subjects/${currentSubjectId}/chat/history${originQS}`, { method: 'DELETE', headers: HEADERS });
   document.getElementById('messages').innerHTML = '';
 }
 
@@ -499,7 +505,7 @@ async function sendMessage() {
     if (file) formData.append('file', file);
 
     const chatHeaders = { 'X-Api-Key': KEY }; // no Content-Type — browser sets multipart boundary
-    const response = await fetch(`${API}/api/consultant/subjects/${currentSubjectId}/chat`, {
+    const response = await fetch(`${API}/api/consultant/subjects/${currentSubjectId}/chat${originQS}`, {
       method: 'POST', headers: chatHeaders, body: formData
     });
 

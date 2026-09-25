@@ -1025,7 +1025,9 @@ function selectAgent(el) {
   }
 
   if (isChatAgent) {
-    document.getElementById('chat-agent-frame').src = '/console.html?embed=1';
+    // origin=playground keeps this test conversation separate from real client-facing
+    // Consultant history — same subject, different stored `source`.
+    document.getElementById('chat-agent-frame').src = '/console.html?embed=1&origin=playground';
     return;
   }
   document.getElementById('form-title').textContent = meta.displayName || currentAgent;

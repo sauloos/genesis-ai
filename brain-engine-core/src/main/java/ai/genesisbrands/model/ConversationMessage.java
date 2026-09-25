@@ -29,4 +29,13 @@ public class ConversationMessage {
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
+
+    // Nullable so adding this column to an already-populated table doesn't require a
+    // migration under Hibernate ddl-auto=update; existing rows read back as null and are
+    // treated as CONSULTANT (see ConsultantService/ConversationMessageRepository).
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private Source source;
+
+    public enum Source { CONSULTANT, PLAYGROUND }
 }

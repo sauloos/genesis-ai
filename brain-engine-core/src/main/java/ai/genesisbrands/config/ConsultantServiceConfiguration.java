@@ -50,10 +50,9 @@ public class ConsultantServiceConfiguration {
     public ConsultantController consultantController(
         ConsultantService consultantService,
         ConsultantSubjectProvider subjectProvider,
-        ContextEnrichmentService enrichment,
-        ConversationMessageRepository messageRepo
+        ContextEnrichmentService enrichment
     ) {
-        return new ConsultantController(consultantService, subjectProvider, enrichment, messageRepo);
+        return new ConsultantController(consultantService, subjectProvider, enrichment);
     }
 
     @Bean

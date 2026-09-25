@@ -1,7 +1,6 @@
 package ai.genesisbrands.controller;
 
 import ai.genesisbrands.model.ConversationMessage;
-import ai.genesisbrands.repository.ConversationMessageRepository;
 import ai.genesisbrands.service.ConsultantService;
 import ai.genesisbrands.service.ConsultantSubjectProvider;
 import ai.genesisbrands.service.ConsultantSubjectSummary;
@@ -45,7 +44,6 @@ public class ConsultantController {
     private final ConsultantService consultant;
     private final ConsultantSubjectProvider subjectProvider;
     private final ContextEnrichmentService enrichment;
-    private final ConversationMessageRepository messageRepo;
 
     @GetMapping("/subjects")
     @Operation(summary = "List all consultant subjects (e.g. brands)")
@@ -78,24 +76,39 @@ public class ConsultantController {
     public Flux<String> chat(
         @PathVariable String id,
         @RequestPart("message") String message,
-        @RequestPart(value = "file", required = false) MultipartFile file
+        @RequestPart(value = "file", required = false) MultipartFile file,
+        @RequestParam(value = "origin", required = false, defaultValue = "consultant") String origin
     ) {
         String attachmentText = enrichment.extractFromFile(file);
         List<ContextEnrichmentService.UrlContent> urlContents = enrichment.fetchUrls(message);
-        return consultant.chat(id, message, attachmentText, urlContents);
+        return consultant.chat(id, message, attachmentText, urlContents, sourceOf(origin));
     }
 
     @GetMapping("/subjects/{id}/chat/history")
     @Operation(summary = "Get conversation history for a subject")
-    public List<ConversationMessage> history(@PathVariable String id) {
-        return messageRepo.findBySubjectIdOrderByCreatedAtAsc(id);
+    public List<ConversationMessage> history(
+        @PathVariable String id,
+        @RequestParam(value = "origin", required = false, defaultValue = "consultant") String origin
+    ) {
+        return consultant.history(id, sourceOf(origin));
     }
 
     @DeleteMapping("/subjects/{id}/chat/history")
     @Operation(summary = "Clear conversation history for a subject")
-    public void clearHistory(@PathVariable String id) {
-        var messages = messageRepo.findBySubjectIdOrderByCreatedAtAsc(id);
-        messageRepo.deleteAll(messages);
+    public void clearHistory(
+        @PathVariable String id,
+        @RequestParam(value = "origin", required = false, defaultValue = "consultant") String origin
+    ) {
+        consultant.clearHistory(id, sourceOf(origin));
+    }
+
+    // "origin" is the wire-level name (matches the ?origin= query param callers pass);
+    // Source is the internal enum. Anything but an exact "playground" match falls back to
+    // CONSULTANT, which is also what absorbs legacy rows saved before this column existed.
+    private ConversationMessage.Source sourceOf(String origin) {
+        return "playground".equalsIgnoreCase(origin)
+            ? ConversationMessage.Source.PLAYGROUND
+            : ConversationMessage.Source.CONSULTANT;
     }
 
     public record CreateSubjectRequest(String name, String industry, String audience, String brief) {}
