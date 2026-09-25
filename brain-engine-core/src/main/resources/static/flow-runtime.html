@@ -232,6 +232,29 @@
   .po-card.selected .po-select-btn { background: var(--theme-text-primary); color: var(--theme-body-bg); border-color: var(--theme-text-primary); }
   .po-error { font-size: 13px; color: #d33; }
 
+  .widget-payment { display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .pay-heading { font-size: 18px; font-weight: 700; margin-bottom: 14px; color: var(--theme-text-primary); }
+  .pay-summary {
+    width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 4px;
+    border: 1px solid var(--theme-card-border); border-radius: 12px; padding: 16px; margin-bottom: 16px;
+  }
+  .pay-summary-product { font-size: 13px; color: var(--theme-text-muted); }
+  .pay-summary-option { font-size: 15px; font-weight: 700; color: var(--theme-text-primary); }
+  .pay-summary-price { font-size: 22px; font-weight: 700; color: var(--theme-text-primary); }
+  .pay-summary-price .pay-interval { font-size: 12px; font-weight: 500; color: var(--theme-text-muted); }
+  .pay-btn {
+    padding: 12px 28px; border-radius: 9px; border: none;
+    background: var(--theme-text-primary); color: var(--theme-body-bg);
+    font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+  .pay-btn:disabled { opacity: 0.6; cursor: default; }
+  .pay-mode-note { font-size: 11px; color: var(--theme-text-muted); margin-top: 10px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .pay-error { font-size: 13px; color: #d33; margin-top: 10px; }
+  .pay-success { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .pay-success-icon { font-size: 30px; color: var(--theme-text-primary); }
+  .pay-success-text { font-size: 14px; font-weight: 700; color: var(--theme-text-primary); }
+  .pay-success-sub { font-size: 12px; color: var(--theme-text-muted); }
+
   .widget-brand-results { display: flex; flex-direction: column; align-items: center; text-align: center; }
   .br-heading { font-size: 18px; font-weight: 700; margin-bottom: 18px; color: var(--theme-text-primary); }
   .br-spinner {
@@ -543,6 +566,12 @@ const widgetRegistry = {
     const div = document.createElement('div');
     div.className = 'widget-product-options';
     bootProductOptionsWidget(w, div);
+    return div;
+  },
+  payment: (w) => {
+    const div = document.createElement('div');
+    div.className = 'widget-payment';
+    bootPaymentWidget(w, div);
     return div;
   },
   pageNav: (w) => {
@@ -1143,6 +1172,124 @@ function formatMoney(cents, currency) {
 function parseFeatures(json) {
   if (!json) return [];
   try { return JSON.parse(json); } catch (e) { return []; }
+}
+
+async function bootPaymentWidget(w, container) {
+  const sourceWidgetId = w.config.sourceWidgetId;
+  if (!sourceWidgetId) {
+    container.innerHTML = '';
+    const err = document.createElement('div');
+    err.className = 'pay-error';
+    err.textContent = 'This widget has no source product widget configured.';
+    container.appendChild(err);
+    return;
+  }
+
+  let selection = null, status = null;
+  try {
+    const res = await fetch(`${API}/api/public/flow-sessions/${token}/widgets/${sourceWidgetId}/selection`, { headers: HEADERS });
+    if (res.ok) selection = await res.json();
+  } catch (e) { /* no selection yet */ }
+  try {
+    const res = await fetch(`${API}/api/public/flow-sessions/${token}/widgets/${w.id}/checkout/status`, { headers: HEADERS });
+    if (res.ok) status = await res.json();
+  } catch (e) { /* no prior payment attempt */ }
+
+  renderPayment(w, container, sourceWidgetId, selection, status);
+}
+
+function renderPayment(w, container, sourceWidgetId, selection, status) {
+  container.innerHTML = '';
+
+  const heading = document.createElement('h2');
+  heading.className = 'pay-heading';
+  heading.textContent = w.config.heading || 'Complete your purchase';
+  container.appendChild(heading);
+
+  if (status && status.status === 'SUCCEEDED') {
+    const box = document.createElement('div');
+    box.className = 'pay-success';
+    const icon = document.createElement('div');
+    icon.className = 'pay-success-icon';
+    icon.textContent = '✓';
+    box.appendChild(icon);
+    const text = document.createElement('div');
+    text.className = 'pay-success-text';
+    text.textContent = 'Payment complete';
+    box.appendChild(text);
+    const sub = document.createElement('div');
+    sub.className = 'pay-success-sub';
+    sub.textContent = formatMoney(status.amountCents, status.currency) + ' — thank you!';
+    box.appendChild(sub);
+    container.appendChild(box);
+    return;
+  }
+
+  if (!selection || !selection.optionId || !selection.productId) {
+    const err = document.createElement('div');
+    err.className = 'pay-error';
+    err.textContent = 'Select an option above first.';
+    container.appendChild(err);
+    return;
+  }
+
+  const summary = document.createElement('div');
+  summary.className = 'pay-summary';
+  const product = document.createElement('div');
+  product.className = 'pay-summary-product';
+  product.textContent = selection.productName || '';
+  summary.appendChild(product);
+  const option = document.createElement('div');
+  option.className = 'pay-summary-option';
+  option.textContent = selection.optionName || '';
+  summary.appendChild(option);
+  const price = document.createElement('div');
+  price.className = 'pay-summary-price';
+  price.textContent = formatMoney(selection.priceCents, selection.currency);
+  if (selection.billingInterval) {
+    const interval = document.createElement('span');
+    interval.className = 'pay-interval';
+    interval.textContent = ' / ' + selection.billingInterval;
+    price.appendChild(interval);
+  }
+  summary.appendChild(price);
+  container.appendChild(summary);
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'pay-btn';
+  btn.textContent = w.config.buttonLabel || 'Pay now';
+  btn.onclick = () => startPayment(w, container, sourceWidgetId, btn);
+  container.appendChild(btn);
+
+  const errDiv = document.createElement('div');
+  errDiv.className = 'pay-error';
+  errDiv.style.display = 'none';
+  container.appendChild(errDiv);
+}
+
+async function startPayment(w, container, sourceWidgetId, btn) {
+  btn.disabled = true;
+  btn.textContent = 'Processing…';
+  try {
+    const res = await fetch(`${API}/api/public/flow-sessions/${token}/widgets/${w.id}/checkout`, {
+      method: 'POST', headers: HEADERS,
+      body: JSON.stringify({ sourceWidgetId })
+    });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.message || 'Checkout failed');
+    if (body.checkoutUrl) {
+      window.location.href = body.checkoutUrl;
+      return;
+    }
+    // MOCK mode: succeeded immediately, no redirect needed
+    renderPayment(w, container, sourceWidgetId, null, { status: body.status, amountCents: body.amountCents, currency: body.currency });
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = w.config.buttonLabel || 'Pay now';
+    const errDiv = container.querySelector('.pay-error');
+    if (errDiv) { errDiv.textContent = e.message || 'Payment could not be started. Please try again.'; errDiv.style.display = 'block'; }
+  }
 }
 
 function renderLoginForm(w, container) {

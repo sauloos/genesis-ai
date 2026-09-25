@@ -124,6 +124,13 @@ public class ProductService {
             .orElseThrow(() -> new NoSuchElementException("Option not found: " + optionId));
     }
 
+    /** Looks up an option without already knowing its parent product — used by the payment
+     *  widget, which only has an optionId (persisted by ProductSelectionController) and
+     *  needs to resolve the rest (price, product name) to render and charge correctly. */
+    public java.util.Optional<ProductOption> findOptionById(String optionId) {
+        return optionRepo.findById(optionId);
+    }
+
     private void touchProduct(String id) {
         productRepo.findById(id).ifPresent(p -> {
             p.setUpdatedAt(Instant.now());

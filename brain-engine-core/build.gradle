@@ -47,6 +47,9 @@ dependencies {
     // Google ID token verification (Sign in with Google)
     implementation 'com.google.api-client:google-api-client:2.7.0'
 
+    // Stripe Checkout (payment widget)
+    implementation 'com.stripe:stripe-java:29.5.0'
+
     // Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

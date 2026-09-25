@@ -1151,6 +1151,14 @@ async function selectWidget(id) {
           ${products.map(p => `<option value="${esc(p.id)}"${p.id === value ? ' selected' : ''}>${esc(p.name)} (${esc(p.type)})</option>`).join('')}
         </select></div>`;
     }
+    if (o.key === 'sourceWidgetId') {
+      const sourceWidgets = l2Widgets.filter(sw => sw.widgetType === 'productOptions' && sw.id !== widget.id);
+      return `<div class="form-field"><label>${esc(o.label)}</label>
+        <select id="${id}" data-key="${esc(o.key)}">
+          <option value="">— Select a Product Options widget —</option>
+          ${sourceWidgets.map(sw => `<option value="${esc(sw.id)}"${sw.id === value ? ' selected' : ''}>${esc(sw.label || sw.widgetType)} (${esc(sw.slotKey)})</option>`).join('')}
+        </select></div>`;
+    }
     if (o.type === 'BOOLEAN') {
       return `<label class="check-field"><input type="checkbox" id="${id}" data-key="${esc(o.key)}" ${value === true || value === 'true' ? 'checked' : ''}> ${esc(o.label)}</label>`;
     }

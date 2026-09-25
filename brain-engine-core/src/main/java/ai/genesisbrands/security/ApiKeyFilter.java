@@ -37,10 +37,14 @@ public class ApiKeyFilter extends OncePerRequestFilter {
         // /api/engagements/**/preview/** is excluded for the same <img src> reason: the
         // brandResults widget loads direction preview images as plain <img> tags, and the
         // route already enforces its own session-based ownership check.
+        // /api/public/payments/webhook/** is excluded because Stripe's own servers call it
+        // directly and can't attach our custom header — authenticity is instead verified via
+        // the Stripe-Signature header against the mode-specific webhook secret.
         boolean isEngagementPreview = path.startsWith("/api/engagements/") && path.contains("/preview/");
+        boolean isPaymentWebhook = path.startsWith("/api/public/payments/webhook/");
         if (!path.startsWith("/api/") || path.equals("/api/waitlist") || path.startsWith("/api/assets/")
                 || path.startsWith("/api/admin/") || path.equals("/api/themes/active/styles.css")
-                || path.equals("/api/themes/active/logo") || isEngagementPreview) {
+                || path.equals("/api/themes/active/logo") || isEngagementPreview || isPaymentWebhook) {
             chain.doFilter(req, res);
             return;
         }

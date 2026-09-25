@@ -40,8 +40,22 @@ public class ProductSelectionController {
         } catch (NoSuchElementException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));
         }
-        Object optionId = contextOf(session).get("product-selection:" + widgetId);
-        return ResponseEntity.ok(new SelectionResponse(optionId != null ? String.valueOf(optionId) : null));
+        Object optionIdObj = contextOf(session).get("product-selection:" + widgetId);
+        if (optionIdObj == null) {
+            return ResponseEntity.ok(new SelectionResponse(null, null, null, null, null, null, null));
+        }
+        String optionId = String.valueOf(optionIdObj);
+        // Re-resolve the option/product here (rather than just echoing the id back) so a
+        // sibling payment widget can read productId/price/name straight off this response
+        // without needing its own product config — if the option was since deleted, fall
+        // back to just the bare id so the caller can still tell a selection was made.
+        ProductOption option = productService.findOptionById(optionId).orElse(null);
+        if (option == null) {
+            return ResponseEntity.ok(new SelectionResponse(optionId, null, null, null, null, null, null));
+        }
+        Product product = productService.getProduct(option.getProductId());
+        return ResponseEntity.ok(new SelectionResponse(optionId, option.getProductId(), option.getPriceCents(),
+            option.getCurrency(), option.getBillingInterval(), option.getName(), product.getName()));
     }
 
     @PostMapping
@@ -77,7 +91,8 @@ public class ProductSelectionController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorResponse("Failed to persist selection"));
         }
-        return ResponseEntity.ok(new SelectionResponse(option.getId()));
+        return ResponseEntity.ok(new SelectionResponse(option.getId(), option.getProductId(), option.getPriceCents(),
+            option.getCurrency(), option.getBillingInterval(), option.getName(), product.getName()));
     }
 
     private Map<String, Object> contextOf(FlowSession session) {
@@ -92,6 +107,7 @@ public class ProductSelectionController {
     }
 
     public record SelectRequest(String productId, String optionId) {}
-    public record SelectionResponse(String optionId) {}
+    public record SelectionResponse(String optionId, String productId, Long priceCents, String currency,
+                                     String billingInterval, String optionName, String productName) {}
     public record ErrorResponse(String message) {}
 }
