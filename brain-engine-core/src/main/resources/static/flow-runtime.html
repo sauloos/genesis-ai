@@ -865,8 +865,8 @@ function appendQuestionnaireFooter(w, container, state) {
     if (state.index === state.questions.length - 1) {
       await fetch(`${API}/api/questionnaires/responses/${state.responseId}/submit`, { method: 'POST', headers: HEADERS });
       requiredPending.delete(w.id);
-      updateOutcomeButtons();
       renderQuestionnaireDone(container);
+      advance('next');
       return;
     }
     state.index++;
