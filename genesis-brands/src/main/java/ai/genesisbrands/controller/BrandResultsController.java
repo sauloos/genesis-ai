@@ -82,8 +82,22 @@ public class BrandResultsController {
                 .findFirst()
                 .orElse(null);
             if (mocked != null) {
-                log.info("genesis.flow.mock-brand-results is on — reusing completed engagement {} for widget {} instead of running the pipeline", mocked.getId(), widgetId);
-                engagementId = mocked.getId();
+                // Clone the mocked engagement's results into a fresh row owned by this
+                // session, rather than reusing the same shared row — so owner-gated
+                // actions (choose-direction, preview) work normally through the existing
+                // ownership check with no change to auth logic. Testing/demo aid only;
+                // each session that hits this path gets its own throwaway copy.
+                Engagement clone = new Engagement();
+                clone.setId(java.util.UUID.randomUUID().toString());
+                clone.setSource(Engagement.Source.CLIENT);
+                clone.setStatus(Engagement.Status.DONE);
+                clone.setEvalMode(mocked.isEvalMode());
+                clone.setBriefsJson(mocked.getBriefsJson());
+                clone.setResultsJson(mocked.getResultsJson());
+                clone.setClientUserId(session.getClientUserId());
+                engagementRepo.save(clone);
+                log.info("genesis.flow.mock-brand-results is on — cloned engagement {} as {} for widget {} instead of running the pipeline", mocked.getId(), clone.getId(), widgetId);
+                engagementId = clone.getId();
                 status = Engagement.Status.DONE;
             } else {
                 log.warn("genesis.flow.mock-brand-results is on but no DONE engagement exists to reuse — running the real pipeline for widget {}", widgetId);
