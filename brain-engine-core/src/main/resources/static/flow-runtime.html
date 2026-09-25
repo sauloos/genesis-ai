@@ -1330,6 +1330,10 @@ async function pollBrandResults(w, container, engagementId) {
   }
   const status = body.summary.status;
   if (status === 'DONE') {
+    if (!body.results || !body.results.directions || body.results.directions.length === 0) {
+      renderBrandResultsError(w, container, 'Something went wrong generating your brand directions.');
+      return;
+    }
     renderBrandResultsDirections(w, container, engagementId, body.results);
   } else if (status === 'FAILED') {
     renderBrandResultsError(w, container, 'Something went wrong generating your brand directions.');

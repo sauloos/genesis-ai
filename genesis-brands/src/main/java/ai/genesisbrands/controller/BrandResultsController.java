@@ -66,7 +66,9 @@ public class BrandResultsController {
 
         if (existing != null) {
             Engagement e = engagementRepo.findById(String.valueOf(existing)).orElse(null);
-            boolean retryAllowed = retry && e != null && e.getStatus() == Engagement.Status.FAILED;
+            boolean stuckEmpty = e != null && e.getStatus() == Engagement.Status.DONE && hasNoDirections(e);
+            boolean retryAllowed = retry && e != null
+                && (e.getStatus() == Engagement.Status.FAILED || stuckEmpty);
             if (!retryAllowed) {
                 return new StartResponse(String.valueOf(existing), e != null ? e.getStatus().name() : "UNKNOWN");
             }
@@ -75,7 +77,10 @@ public class BrandResultsController {
         String engagementId;
         Engagement.Status status;
         if (mockBrandResults) {
-            Engagement mocked = engagementRepo.findFirstByStatusOrderByCreatedAtDesc(Engagement.Status.DONE).orElse(null);
+            Engagement mocked = engagementRepo.findAllByStatusOrderByCreatedAtDesc(Engagement.Status.DONE).stream()
+                .filter(e -> !hasNoDirections(e))
+                .findFirst()
+                .orElse(null);
             if (mocked != null) {
                 log.info("genesis.flow.mock-brand-results is on — reusing completed engagement {} for widget {} instead of running the pipeline", mocked.getId(), widgetId);
                 engagementId = mocked.getId();
@@ -97,6 +102,18 @@ public class BrandResultsController {
         }
 
         return new StartResponse(engagementId, status.name());
+    }
+
+    /** A DONE engagement whose pipeline run produced zero directions (e.g. brief derivation
+     *  failed silently) is functionally broken — treat it the same as FAILED for retry/mock
+     *  reuse purposes rather than letting the widget get permanently stuck on it. */
+    private boolean hasNoDirections(Engagement e) {
+        if (e.getResultsJson() == null) return true;
+        try {
+            return objectMapper.readTree(e.getResultsJson()).path("directions").isEmpty();
+        } catch (Exception ex) {
+            return true;
+        }
     }
 
     private String triggerRealEngagement(FlowSession session) {
