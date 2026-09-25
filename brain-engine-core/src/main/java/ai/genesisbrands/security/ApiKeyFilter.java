@@ -34,9 +34,13 @@ public class ApiKeyFilter extends OncePerRequestFilter {
         // based, and the pages that reference them already sit behind BasicAuthFilter.
         // /api/themes/active/logo is excluded for the same reason as styles.css: it's
         // loaded via a CSS mask-image url(), which can't attach a custom header either.
+        // /api/engagements/**/preview/** is excluded for the same <img src> reason: the
+        // brandResults widget loads direction preview images as plain <img> tags, and the
+        // route already enforces its own session-based ownership check.
+        boolean isEngagementPreview = path.startsWith("/api/engagements/") && path.contains("/preview/");
         if (!path.startsWith("/api/") || path.equals("/api/waitlist") || path.startsWith("/api/assets/")
                 || path.startsWith("/api/admin/") || path.equals("/api/themes/active/styles.css")
-                || path.equals("/api/themes/active/logo")) {
+                || path.equals("/api/themes/active/logo") || isEngagementPreview) {
             chain.doFilter(req, res);
             return;
         }
