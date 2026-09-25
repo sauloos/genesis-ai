@@ -47,8 +47,10 @@ public class ConsultantController {
 
     @GetMapping("/subjects")
     @Operation(summary = "List all consultant subjects (e.g. brands)")
-    public List<ConsultantSubjectSummary> list() {
-        return subjectProvider.list();
+    public List<ConsultantSubjectSummary> list(
+        @RequestParam(value = "origin", required = false, defaultValue = "consultant") String origin
+    ) {
+        return consultant.listSubjects(sourceOf(origin));
     }
 
     @PostMapping("/subjects")

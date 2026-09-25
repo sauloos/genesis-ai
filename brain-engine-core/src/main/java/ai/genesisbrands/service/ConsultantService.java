@@ -94,6 +94,17 @@ public class ConsultantService {
         return historyFor(subjectId, source);
     }
 
+    // The real subject/brand roster (CONSULTANT) is unfiltered, as before. PLAYGROUND
+    // only sees subjects that already have a playground-tagged message, so testing
+    // never browses or exposes the real client-facing conversation list.
+    public List<ConsultantSubjectSummary> listSubjects(ConversationMessage.Source source) {
+        List<ConsultantSubjectSummary> all = subjectProvider.list();
+        if (source != ConversationMessage.Source.PLAYGROUND) return all;
+        var playgroundSubjectIds = new java.util.HashSet<>(
+            messageRepo.findDistinctSubjectIdsBySource(ConversationMessage.Source.PLAYGROUND));
+        return all.stream().filter(s -> playgroundSubjectIds.contains(s.id())).toList();
+    }
+
     public void clearHistory(String subjectId, ConversationMessage.Source source) {
         messageRepo.deleteAll(historyFor(subjectId, source));
     }

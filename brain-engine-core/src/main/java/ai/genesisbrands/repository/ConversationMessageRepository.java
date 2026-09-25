@@ -20,4 +20,10 @@ public interface ConversationMessageRepository extends JpaRepository<Conversatio
         + "AND (m.source IS NULL OR m.source = ai.genesisbrands.model.ConversationMessage.Source.CONSULTANT) "
         + "ORDER BY m.createdAt ASC")
     List<ConversationMessage> findConsultantHistoryBySubjectId(@Param("subjectId") String subjectId);
+
+    // Backs the Playground subject picker: only subjects that already have a
+    // playground-tagged message should be listed there — never the full, real
+    // client-facing subject/brand roster (see ConsultantService#listSubjects).
+    @Query("SELECT DISTINCT m.subjectId FROM ConversationMessage m WHERE m.source = :source")
+    List<String> findDistinctSubjectIdsBySource(@Param("source") ConversationMessage.Source source);
 }

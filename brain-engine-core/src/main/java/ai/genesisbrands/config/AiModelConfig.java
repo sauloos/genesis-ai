@@ -40,20 +40,19 @@ public class AiModelConfig {
      * ("temperature is deprecated for this model"), so it must never be sent unless
      * a caller explicitly opts in.
      *
-     * Also disables extended thinking by default. claude-sonnet-5 returns a
-     * "thinking" content block ahead of the "text" block even when thinking was
-     * never requested. Spring AI 1.1.7 turns each content block into its own
-     * Generation, so ChatClient.call().content() — which reads only the first
-     * Generation — silently returns the (empty) thinking text instead of the
-     * real JSON output. Same null-never-overrides-bean-default merge behavior as
-     * temperature, so this has to be set here rather than per-agent.
+     * Extended thinking is left unset here (not explicitly disabled): Anthropic's API
+     * now rejects an explicit "thinking.type: disabled" outright ("is not supported
+     * for this model") on the current Opus/Sonnet 5 model family — confirmed via a
+     * direct API call — so the only valid way to keep thinking off is to omit the
+     * field entirely, which Spring AI does by default when `.thinking(...)` is never
+     * called. Verified directly against the API that omitting it returns a clean
+     * single "text" content block, with no stray "thinking" block ahead of it.
      */
     @Bean
     public AnthropicChatModel anthropicChatModel(AnthropicApi anthropicApi, AnthropicChatProperties chatProperties) {
         AnthropicChatOptions options = AnthropicChatOptions.builder()
             .model(chatProperties.getOptions().getModel())
             .maxTokens(chatProperties.getOptions().getMaxTokens())
-            .thinking(AnthropicApi.ThinkingType.DISABLED, null)
             .build();
         return AnthropicChatModel.builder()
             .anthropicApi(anthropicApi)

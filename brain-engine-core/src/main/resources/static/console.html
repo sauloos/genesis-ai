@@ -376,7 +376,7 @@ async function boot() {
 
 // ── Conversations ─────────────────────────────────────
 async function loadConversations() {
-  const subjects = await fetch(`${API}/api/consultant/subjects`, { headers: HEADERS }).then(r => r.json()).catch(() => []);
+  const subjects = await fetch(`${API}/api/consultant/subjects${originQS}`, { headers: HEADERS }).then(r => r.json()).catch(() => []);
   subjects.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
   const el = document.getElementById('conversations');
   el.innerHTML = '';
