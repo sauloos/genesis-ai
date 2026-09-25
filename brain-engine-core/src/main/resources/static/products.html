@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Genesis AI — Products</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --theme-bg-image: url('/bg-earth.jpg');
+    --theme-bg-transform: rotate(180deg);
+    --theme-bg-overlay: rgba(0, 0, 10, 0.75);
+    --theme-body-bg: #0a0b12;
+    --theme-text-primary: #f2f2f2;
+    --theme-text-muted: rgba(255, 255, 255, 0.5);
+    --theme-text-label: rgba(255, 255, 255, 0.4);
+    --theme-card-bg: rgba(255, 255, 255, 0.05);
+    --theme-card-bg-hover: rgba(255, 255, 255, 0.12);
+    --theme-card-border: rgba(255, 255, 255, 0.1);
+    --theme-card-shadow: rgba(0, 0, 0, 0.3);
+    --theme-divider: rgba(255, 255, 255, 0.07);
+    --theme-backdrop: none;
+  }
+
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+         background: var(--theme-body-bg); display: flex; height: 100vh; overflow: hidden; color: var(--theme-text-primary); }
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: -2;
+    background: var(--theme-bg-image) var(--theme-bg-position, center center) / var(--theme-bg-size, cover) no-repeat;
+    transform: var(--theme-bg-transform, none);
+  }
+  body::after {
+    content: ''; position: fixed; inset: 0; z-index: -1;
+    background: var(--theme-bg-overlay);
+  }
+
+  /* ── Sidebar ── */
+  #sidebar {
+    width: 260px; min-width: 260px; background: #111; display: flex;
+    flex-direction: column; border-right: 1px solid #222;
+  }
+  #sidebar-header { padding: 20px 16px 12px; border-bottom: 1px solid #222; position: relative; }
+  .sidebar-logo {
+    height: 22px; width: auto; aspect-ratio: 805 / 220; display: block; margin-bottom: 4px;
+    background-color: var(--theme-text-primary, currentColor);
+    -webkit-mask-image: url(/api/themes/active/logo);
+    mask-image: url(/api/themes/active/logo);
+    -webkit-mask-size: contain; mask-size: contain;
+    -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+    -webkit-mask-position: center; mask-position: center;
+  }
+  #sidebar-header p  { color: #666; font-size: 11px; margin-top: 2px; }
+  .mode-badge {
+    display: inline-block; margin-top: 8px; padding: 3px 9px;
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+    color: #6fe0a5; background: rgba(111,224,165,0.12); border: 1px solid rgba(111,224,165,0.3);
+    border-radius: 20px;
+  }
+
+  /* ── Nav menu (hamburger) ── */
+  #nav-toggle {
+    position: absolute; top: 16px; right: 12px; width: 26px; height: 26px;
+    background: none; border: none; color: #888; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; border-radius: 5px;
+    transition: background 0.15s, color 0.15s;
+  }
+  #nav-toggle:hover { background: #1e1e1e; color: #fff; }
+  #nav-menu {
+    display: none; position: absolute; top: 100%; right: 12px; margin-top: 6px;
+    background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px;
+    overflow: hidden; z-index: 20; min-width: 150px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  }
+  #nav-menu.open { display: block; }
+  #nav-menu .nav-item {
+    display: block; padding: 9px 14px; font-size: 13px; color: #ccc;
+    text-decoration: none; transition: background 0.15s, color 0.15s;
+  }
+  #nav-menu .nav-item:hover { background: #242424; color: #fff; }
+  #nav-menu .nav-item.active {
+    color: #fff; font-weight: 600; background: #222; pointer-events: none;
+  }
+
+  #new-p-btn {
+    margin: 8px 12px; padding: 10px 14px; background: #1a1a1a; border: 1px solid #333;
+    border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500;
+    cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background 0.15s;
+  }
+  #new-p-btn:hover { background: #222; }
+
+  #p-list { flex: 1; overflow-y: auto; padding: 4px 8px 12px; }
+  #p-list::-webkit-scrollbar { width: 4px; }
+  #p-list::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+  .p-item {
+    padding: 9px 10px; border-radius: 7px; cursor: pointer; margin-bottom: 2px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .p-item:hover { background: #1c1c1c; }
+  .p-item.active { background: #222; }
+  .p-meta { flex: 1; min-width: 0; }
+  .p-name { color: #ccc; font-size: 13px; white-space: nowrap; overflow: hidden;
+                  text-overflow: ellipsis; }
+  .p-item.active .p-name { color: #fff; }
+  .pill {
+    font-size: 10px; padding: 1px 5px; border-radius: 3px; margin-top: 3px;
+    display: inline-block; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  .pill-onetime   { background: #1a2a3a; color: #6fb8e0; }
+  .pill-recurring { background: #2a1a3a; color: #b06fe0; }
+  .pill-inactive  { background: #262626; color: #666; margin-left: 4px; }
+  .p-delete {
+    opacity: 0; background: none; border: none; color: #666; cursor: pointer;
+    padding: 2px 4px; border-radius: 4px; font-size: 14px; flex-shrink: 0;
+    transition: opacity 0.15s, color 0.15s;
+  }
+  .p-item:hover .p-delete { opacity: 1; }
+  .p-delete:hover { color: #ff6b6b; }
+
+  /* ── Main ── */
+  #main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+  #empty {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 12px; color: rgba(255,255,255,0.35);
+  }
+  #empty svg { opacity: 0.25; }
+  #empty h2  { font-size: 18px; font-weight: 600; color: rgba(255,255,255,0.5); }
+  #empty p   { font-size: 14px; text-align: center; max-width: 360px; line-height: 1.5; }
+
+  #detail { flex: 1; display: none; flex-direction: column; min-height: 0; overflow-y: auto; }
+
+  #detail-header { padding: 20px 28px 12px; border-bottom: 1px solid var(--theme-divider); flex-shrink: 0; }
+  #title-input {
+    width: 100%; font-size: 20px; font-weight: 700; border: none; outline: none;
+    font-family: inherit; color: var(--theme-text-primary); background: transparent; margin-bottom: 6px;
+  }
+  #title-input::placeholder { color: rgba(255,255,255,0.3); font-weight: 400; }
+  #desc-input {
+    width: 100%; font-size: 13px; border: none; outline: none; resize: none;
+    font-family: inherit; color: var(--theme-text-muted); background: transparent; line-height: 1.5;
+  }
+  #desc-input::placeholder { color: rgba(255,255,255,0.25); }
+
+  /* ── Meta bar ── */
+  #meta-bar {
+    padding: 12px 28px; border-bottom: 1px solid var(--theme-divider); background: var(--theme-card-bg);
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex-shrink: 0;
+  }
+  .seg-btn {
+    padding: 5px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.04); font-size: 12px; color: rgba(255,255,255,0.55); cursor: pointer;
+    transition: all 0.15s; font-family: inherit; margin-right: 6px;
+  }
+  .seg-btn.active { background: rgba(255,255,255,0.12); color: #fff; border-color: rgba(255,255,255,0.3); }
+  #meta-label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.4px; margin-right: 4px; }
+
+  /* ── Options ── */
+  #options-area { flex: 1; padding: 20px 28px 40px; }
+  #options-header {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
+  }
+  #options-header h3 { font-size: 13px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.5px; }
+  #add-opt-btn {
+    padding: 7px 14px; background: rgba(255,255,255,0.9); border: none; border-radius: 8px;
+    color: #0a0b12; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s;
+  }
+  #add-opt-btn:hover { background: #fff; }
+
+  .oc-item {
+    border: 1px solid var(--theme-card-border); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px;
+    background: var(--theme-card-bg); display: flex; gap: 12px; align-items: flex-start;
+  }
+  .oc-price {
+    width: 64px; flex-shrink: 0; text-align: center; font-size: 15px; font-weight: 700; color: #fff;
+    background: rgba(255,255,255,0.08); border-radius: 8px; padding: 8px 4px;
+  }
+  .oc-price small { display: block; font-size: 9px; font-weight: 500; color: rgba(255,255,255,0.4); text-transform: uppercase; margin-top: 2px; }
+  .oc-body { flex: 1; min-width: 0; }
+  .oc-name { font-size: 14px; font-weight: 600; color: var(--theme-text-primary); margin-bottom: 2px; }
+  .oc-desc { font-size: 12px; color: rgba(255,255,255,0.45); margin-bottom: 6px; }
+  .oc-flags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .oc-flag {
+    font-size: 10px; padding: 1px 6px; border-radius: 3px; background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.5);
+    text-transform: uppercase; letter-spacing: 0.3px; font-weight: 600;
+  }
+  .oc-actions { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+  .oc-btn-row { display: flex; gap: 4px; }
+  .oc-btn {
+    width: 26px; height: 26px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;
+    color: rgba(255,255,255,0.45); cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; transition: all 0.15s;
+  }
+  .oc-btn:hover { border-color: rgba(255,255,255,0.25); color: rgba(255,255,255,0.8); }
+  .oc-btn:disabled { opacity: 0.3; cursor: default; }
+  .oc-btn.danger:hover { color: #e53935; border-color: #e53935; }
+
+  .empty-o { color: rgba(255,255,255,0.35); font-size: 13px; padding: 20px 0; text-align: center; }
+
+  /* ── Add/edit option form ── */
+  #o-form {
+    display: none; border: 1px solid var(--theme-card-border); border-radius: 12px; padding: 18px;
+    margin-top: 8px; background: var(--theme-card-bg);
+  }
+  #o-form.visible { display: block; }
+  #o-form h4 { font-size: 12px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+
+  .form-field { margin-bottom: 12px; }
+  .form-field label { display: block; font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.4);
+    text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
+  .form-field input[type=text], .form-field textarea, .form-field input[type=number] {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--theme-card-border); border-radius: 7px;
+    font-size: 13px; font-family: inherit; outline: none; color: var(--theme-text-primary);
+    background: var(--theme-card-bg);
+  }
+  .form-field input:focus, .form-field textarea:focus { border-color: rgba(255,255,255,0.3); }
+  .form-row { display: flex; gap: 12px; }
+  .form-row .form-field { flex: 1; }
+
+  .form-actions { display: flex; gap: 8px; margin-top: 16px; }
+  .pbtn {
+    padding: 6px 14px; border-radius: 7px; border: none; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: background 0.15s; letter-spacing: 0.2px;
+  }
+  .pbtn-primary { background: rgba(255,255,255,0.9); color: #0a0b12; }
+  .pbtn-primary:hover { background: #fff; }
+  .pbtn-ghost { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.12); }
+  .pbtn-ghost:hover { border-color: rgba(255,255,255,0.25); color: rgba(255,255,255,0.85); }
+
+  .hint-text { font-size: 11px; color: rgba(255,255,255,0.3); margin-top: 12px; }
+</style>
+<link rel="stylesheet" href="/api/themes/active/styles.css">
+</head>
+<body>
+
+<div id="sidebar">
+  <div id="sidebar-header">
+    <a href="/dashboard"><div class="sidebar-logo" role="img" aria-label="Genesis"></div></a>
+
+    <div class="mode-badge">Products</div>
+    <button id="nav-toggle" onclick="toggleNavMenu(event)" aria-label="Menu">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+        <line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/>
+      </svg>
+    </button>
+    <div id="nav-menu">
+      <a href="/dashboard" class="nav-item">Dashboard</a>
+      <a href="/dashboard/console" class="nav-item">Consultant</a>
+      <a href="/dashboard/training" class="nav-item">Training</a>
+      <a href="/dashboard/playground" class="nav-item">Playground</a>
+      <a href="/dashboard/questionnaires" class="nav-item">Questionnaires</a>
+      <a href="/dashboard/products" class="nav-item active">Products</a>
+      <a href="/dashboard/knowledge" class="nav-item">Knowledge</a>
+    </div>
+  </div>
+  <script>
+  (async () => {
+    try {
+      const r = await fetch("/api/admin/nav-extensions", { credentials: "include" });
+      if (!r.ok) return;
+      const items = await r.json();
+      const nav = document.getElementById("nav-menu");
+      if (!nav) return;
+      items.forEach(item => {
+        const a = document.createElement("a");
+        a.href = item.path;
+        a.className = "nav-item";
+        a.textContent = item.label;
+        nav.appendChild(a);
+      });
+    } catch {}
+  })();
+  </script>
+
+  <button id="new-p-btn" onclick="newProduct()">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    New product
+  </button>
+  <div id="p-list"></div>
+</div>
+
+<div id="main">
+  <div id="empty">
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <rect x="6" y="10" width="36" height="28" rx="6" stroke="#999" stroke-width="2"/>
+      <path d="M6 18h36" stroke="#999" stroke-width="2"/>
+      <circle cx="14" cy="14" r="1.5" fill="#999"/>
+    </svg>
+    <h2>Build a product</h2>
+    <p>Create a product — a one-time package or a recurring subscription — then add its
+       priced options (tiers). The Product Options widget renders whichever product you
+       point it at.</p>
+  </div>
+
+  <div id="detail">
+    <div id="detail-header">
+      <input id="title-input" type="text" placeholder="Product name…" oninput="debounceSaveMeta()">
+      <textarea id="desc-input" rows="1" placeholder="Short description (optional)…" oninput="autoResize(this); debounceSaveMeta()"></textarea>
+    </div>
+
+    <div id="meta-bar">
+      <span id="meta-label">Type</span>
+      <button type="button" class="seg-btn" id="type-onetime" onclick="setType('ONE_TIME')">One-time</button>
+      <button type="button" class="seg-btn" id="type-recurring" onclick="setType('RECURRING')">Recurring</button>
+      <span id="meta-label" style="margin-left:12px">Active</span>
+      <button type="button" class="seg-btn" id="active-yes" onclick="setActive(true)">Yes</button>
+      <button type="button" class="seg-btn" id="active-no" onclick="setActive(false)">No</button>
+    </div>
+
+    <div id="options-area">
+      <div id="options-header">
+        <h3>Options</h3>
+        <button id="add-opt-btn" onclick="showAddForm()">+ Add option</button>
+      </div>
+      <div id="oc-list"></div>
+
+      <div id="o-form">
+        <h4 id="o-form-title">Add an option</h4>
+        <div id="o-fields"></div>
+        <div class="form-actions">
+          <button class="pbtn pbtn-primary" onclick="saveOption()">Save</button>
+          <button class="pbtn pbtn-ghost" onclick="hideAddForm()">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API     = '';
+const KEY     = 'genesis-ai-key';
+const HEADERS = { 'Content-Type': 'application/json', 'X-Api-Key': KEY };
+
+let currentId = null;
+let currentProduct = null;
+let currentOptions = [];
+let saveTimer = null;
+let editingOptionId = null;
+
+async function boot() {
+  await loadProducts();
+}
+
+// ── Products ──────────────────────────────────────────────────────────────────
+async function loadProducts() {
+  const list = await fetch(`${API}/api/products?all=true`, { headers: HEADERS }).then(r => r.json()).catch(() => []);
+  const el = document.getElementById('p-list');
+  el.innerHTML = '';
+  for (const p of list) {
+    const div = document.createElement('div');
+    div.className = 'p-item' + (p.id === currentId ? ' active' : '');
+    div.dataset.id = p.id;
+    div.innerHTML = `
+      <div class="p-meta">
+        <div class="p-name">${esc(p.name || 'Untitled')}</div>
+        <span class="pill pill-${p.type === 'RECURRING' ? 'recurring' : 'onetime'}">${p.type === 'RECURRING' ? 'Recurring' : 'One-time'}</span>
+        ${!p.active ? '<span class="pill pill-inactive">Inactive</span>' : ''}
+      </div>
+      <button class="p-delete" onclick="deleteProduct(event,'${p.id}')" title="Delete">✕</button>`;
+    div.addEventListener('click', () => openProduct(p.id));
+    el.appendChild(div);
+  }
+}
+
+async function newProduct() {
+  const p = await fetch(`${API}/api/products`, {
+    method: 'POST', headers: HEADERS,
+    body: JSON.stringify({ name: 'New product', description: '', type: 'ONE_TIME', active: true })
+  }).then(r => r.json());
+  await loadProducts();
+  openProduct(p.id);
+}
+
+async function openProduct(id) {
+  const detail = await fetch(`${API}/api/products/${id}`, { headers: HEADERS }).then(r => r.json());
+  currentId = id;
+  currentProduct = detail.product;
+  currentOptions = detail.options;
+
+  document.getElementById('empty').style.display = 'none';
+  document.getElementById('detail').style.display = 'flex';
+  document.querySelectorAll('.p-item').forEach(el => el.classList.toggle('active', el.dataset.id === id));
+
+  document.getElementById('title-input').value = currentProduct.name || '';
+  document.getElementById('desc-input').value = currentProduct.description || '';
+  autoResize(document.getElementById('desc-input'));
+
+  hideAddForm();
+  renderMetaBar();
+  renderOptions();
+}
+
+async function deleteProduct(e, id) {
+  e.stopPropagation();
+  if (!confirm('Delete this product and all its options?')) return;
+  await fetch(`${API}/api/products/${id}`, { method: 'DELETE', headers: HEADERS });
+  if (currentId === id) {
+    currentId = null;
+    document.getElementById('detail').style.display = 'none';
+    document.getElementById('empty').style.display = 'flex';
+  }
+  await loadProducts();
+}
+
+function debounceSaveMeta() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveMeta, 600);
+}
+
+async function saveMeta() {
+  if (!currentId) return;
+  const name = document.getElementById('title-input').value.trim() || 'Untitled';
+  const description = document.getElementById('desc-input').value;
+  currentProduct = await fetch(`${API}/api/products/${currentId}`, {
+    method: 'PUT', headers: HEADERS,
+    body: JSON.stringify({ name, description, type: currentProduct.type, active: currentProduct.active })
+  }).then(r => r.json());
+  await loadProducts();
+  document.querySelectorAll('.p-item').forEach(el => el.classList.toggle('active', el.dataset.id === currentId));
+}
+
+function renderMetaBar() {
+  document.getElementById('type-onetime').classList.toggle('active', currentProduct.type !== 'RECURRING');
+  document.getElementById('type-recurring').classList.toggle('active', currentProduct.type === 'RECURRING');
+  document.getElementById('active-yes').classList.toggle('active', !!currentProduct.active);
+  document.getElementById('active-no').classList.toggle('active', !currentProduct.active);
+}
+
+async function setType(type) {
+  currentProduct.type = type;
+  renderMetaBar();
+  renderOptions();
+  await persistMeta();
+}
+
+async function setActive(active) {
+  currentProduct.active = active;
+  renderMetaBar();
+  await persistMeta();
+}
+
+async function persistMeta() {
+  currentProduct = await fetch(`${API}/api/products/${currentId}`, {
+    method: 'PUT', headers: HEADERS,
+    body: JSON.stringify({ name: currentProduct.name, description: currentProduct.description,
+                            type: currentProduct.type, active: currentProduct.active })
+  }).then(r => r.json());
+  await loadProducts();
+}
+
+// ── Options list ──────────────────────────────────────────────────────────────
+function renderOptions() {
+  const el = document.getElementById('oc-list');
+  if (!currentOptions.length) {
+    el.innerHTML = '<div class="empty-o">No options yet — add one below.</div>';
+    return;
+  }
+  el.innerHTML = '';
+  currentOptions.forEach((o, i) => {
+    const flags = [];
+    if (currentProduct.type === 'RECURRING' && o.billingInterval) flags.push('per ' + o.billingInterval);
+    if (!o.active) flags.push('Inactive');
+    const features = (o.featuresJson ? JSON.parse(o.featuresJson) : []);
+    if (features.length) flags.push(features.length + ' feature' + (features.length === 1 ? '' : 's'));
+
+    const div = document.createElement('div');
+    div.className = 'oc-item';
+    div.innerHTML = `
+      <div class="oc-price">${formatPrice(o.priceCents, o.currency)}<small>${o.currency || 'usd'}</small></div>
+      <div class="oc-body">
+        <div class="oc-name">${esc(o.name)}</div>
+        ${o.description ? `<div class="oc-desc">${esc(o.description)}</div>` : ''}
+        <div class="oc-flags">${flags.map(f => `<span class="oc-flag">${esc(f)}</span>`).join('')}</div>
+      </div>
+      <div class="oc-actions">
+        <div class="oc-btn-row">
+          <button class="oc-btn" title="Move up" ${i === 0 ? 'disabled' : ''} onclick="moveOption('${o.id}',-1)">↑</button>
+          <button class="oc-btn" title="Move down" ${i === currentOptions.length - 1 ? 'disabled' : ''} onclick="moveOption('${o.id}',1)">↓</button>
+        </div>
+        <div class="oc-btn-row">
+          <button class="oc-btn" title="Edit" onclick="editOption('${o.id}')">✎</button>
+          <button class="oc-btn danger" title="Delete" onclick="deleteOption('${o.id}')">✕</button>
+        </div>
+      </div>`;
+    el.appendChild(div);
+  });
+}
+
+function formatPrice(cents, currency) {
+  const amount = (cents || 0) / 100;
+  const symbol = (currency || 'usd').toLowerCase() === 'usd' ? '$' : '';
+  return symbol + amount.toLocaleString(undefined, { minimumFractionDigits: amount % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 });
+}
+
+async function moveOption(id, delta) {
+  const idx = currentOptions.findIndex(o => o.id === id);
+  const newIdx = idx + delta;
+  if (newIdx < 0 || newIdx >= currentOptions.length) return;
+  const reordered = [...currentOptions];
+  const [item] = reordered.splice(idx, 1);
+  reordered.splice(newIdx, 0, item);
+  currentOptions = reordered;
+  renderOptions();
+  await fetch(`${API}/api/products/${currentId}/options/reorder`, {
+    method: 'POST', headers: HEADERS,
+    body: JSON.stringify({ orderedOptionIds: reordered.map(o => o.id) })
+  });
+}
+
+async function deleteOption(id) {
+  if (!confirm('Delete this option?')) return;
+  await fetch(`${API}/api/products/${currentId}/options/${id}`, { method: 'DELETE', headers: HEADERS });
+  currentOptions = currentOptions.filter(o => o.id !== id);
+  renderOptions();
+}
+
+// ── Add/edit option form ─────────────────────────────────────────────────────
+function showAddForm() {
+  editingOptionId = null;
+  document.getElementById('o-form-title').textContent = 'Add an option';
+  document.getElementById('o-form').classList.add('visible');
+  renderFormFields({});
+  document.getElementById('o-form').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function editOption(id) {
+  const o = currentOptions.find(o => o.id === id);
+  if (!o) return;
+  editingOptionId = id;
+  document.getElementById('o-form-title').textContent = 'Edit option';
+  document.getElementById('o-form').classList.add('visible');
+  renderFormFields(o);
+  document.getElementById('o-form').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function hideAddForm() {
+  editingOptionId = null;
+  document.getElementById('o-form').classList.remove('visible');
+}
+
+function renderFormFields(o) {
+  const features = o.featuresJson ? JSON.parse(o.featuresJson) : [];
+  const el = document.getElementById('o-fields');
+  const isRecurring = currentProduct.type === 'RECURRING';
+
+  el.innerHTML = `
+    <div class="form-field">
+      <label>Name</label>
+      <input type="text" id="f-name" value="${esc(o.name || '')}">
+    </div>
+    <div class="form-field">
+      <label>Description (optional)</label>
+      <input type="text" id="f-desc" value="${esc(o.description || '')}">
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label>Price (${o.currency || 'usd'})</label>
+        <input type="number" id="f-price" step="0.01" min="0" value="${((o.priceCents || 0) / 100).toFixed(2)}">
+      </div>
+      ${isRecurring ? `
+      <div class="form-field">
+        <label>Billing interval</label>
+        <input type="text" id="f-interval" placeholder="month" value="${esc(o.billingInterval || 'month')}">
+      </div>` : ''}
+    </div>
+    <div class="form-field">
+      <label>Features (one per line, optional)</label>
+      <textarea id="f-features" rows="4">${esc(features.join('\n'))}</textarea>
+    </div>
+    <div class="form-field">
+      <label>Active</label>
+      <button type="button" class="seg-btn ${o.active !== false ? 'active' : ''}" id="f-active-yes" onclick="toggleSeg('f-active',true)">Yes</button>
+      <button type="button" class="seg-btn ${o.active === false ? 'active' : ''}" id="f-active-no" onclick="toggleSeg('f-active',false)">No</button>
+    </div>
+  `;
+}
+
+function toggleSeg(prefix, value) {
+  document.getElementById(prefix + '-yes').classList.toggle('active', value === true);
+  document.getElementById(prefix + '-no').classList.toggle('active', value === false);
+}
+
+async function saveOption() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { alert('A name is required.'); return; }
+  const description = document.getElementById('f-desc').value.trim();
+  const priceCents = Math.round(parseFloat(document.getElementById('f-price').value || '0') * 100);
+  const intervalEl = document.getElementById('f-interval');
+  const billingInterval = intervalEl ? intervalEl.value.trim() : null;
+  const features = document.getElementById('f-features').value.split('\n').map(s => s.trim()).filter(Boolean);
+  const active = document.getElementById('f-active-yes').classList.contains('active');
+
+  const body = {
+    name, description, priceCents, currency: 'usd', billingInterval,
+    featuresJson: JSON.stringify(features), active
+  };
+
+  if (editingOptionId) {
+    await fetch(`${API}/api/products/${currentId}/options/${editingOptionId}`, {
+      method: 'PUT', headers: HEADERS, body: JSON.stringify(body)
+    });
+  } else {
+    await fetch(`${API}/api/products/${currentId}/options`, {
+      method: 'POST', headers: HEADERS, body: JSON.stringify(body)
+    });
+  }
+
+  const detail = await fetch(`${API}/api/products/${currentId}`, { headers: HEADERS }).then(r => r.json());
+  currentOptions = detail.options;
+  renderOptions();
+  hideAddForm();
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+           .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function toggleNavMenu(e) {
+  if (e) e.stopPropagation();
+  document.getElementById('nav-menu').classList.toggle('open');
+}
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('nav-menu');
+  const toggle = document.getElementById('nav-toggle');
+  if (menu && menu.classList.contains('open') && !menu.contains(e.target) && !toggle.contains(e.target)) {
+    menu.classList.remove('open');
+  }
+});
+
+boot();
+</script>
+<script>
+(async () => {
+  try {
+    const r = await fetch("/api/admin/env", { credentials: "include" });
+    if (!r.ok) return;
+    const { env } = await r.json();
+    const col = { PRODUCTION: "#ef4444", QA: "#f59e0b", DEV: "#6b7280" }[env] || "#888";
+    const el = document.createElement("div");
+    el.id = "env-badge";
+    el.style.cssText = "margin-top:auto;padding:10px 16px;border-top:1px solid #222;display:flex;align-items:center;gap:7px;flex-shrink:0";
+    el.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:${col};flex-shrink:0"></span>`
+      + `<span style="font-size:10px;font-weight:700;letter-spacing:0.5px;color:${col};text-transform:uppercase">${env}</span>`;
+    const sb = document.getElementById("sidebar");
+    if (sb) sb.appendChild(el);
+  } catch {}
+})();
+</script>
+</body>
+</html>

@@ -186,6 +186,33 @@
   .logout-btn:hover { color: var(--theme-text-primary); border-color: var(--theme-text-primary); }
   .logout-btn:disabled { opacity: 0.5; cursor: default; }
 
+  .widget-product-options { display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .po-heading { font-size: 18px; font-weight: 700; margin-bottom: 18px; color: var(--theme-text-primary); }
+  .po-cards {
+    width: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 18px;
+  }
+  .po-card {
+    display: flex; flex-direction: column; align-items: stretch; gap: 8px; text-align: left;
+    border: 1px solid var(--theme-card-border); border-radius: 12px; padding: 18px;
+    cursor: pointer; background: none; font-family: inherit; transition: border-color 0.15s;
+  }
+  .po-card:hover { border-color: var(--theme-text-muted); }
+  .po-card.selected { border-color: var(--theme-text-primary); border-width: 2px; padding: 17px; }
+  .po-name { font-size: 14px; font-weight: 700; color: var(--theme-text-primary); }
+  .po-price { font-size: 22px; font-weight: 700; color: var(--theme-text-primary); }
+  .po-price .po-interval { font-size: 12px; font-weight: 500; color: var(--theme-text-muted); }
+  .po-desc { font-size: 12px; color: var(--theme-text-muted); line-height: 1.4; }
+  .po-features { list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--theme-text-muted); }
+  .po-features li::before { content: '✓ '; color: var(--theme-text-primary); }
+  .po-select-btn {
+    margin-top: 8px; padding: 9px; border-radius: 9px; border: 1px solid var(--theme-btn-border);
+    background: none; color: var(--theme-text-primary); font-size: 13px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+  }
+  .po-card.selected .po-select-btn { background: var(--theme-text-primary); color: var(--theme-body-bg); border-color: var(--theme-text-primary); }
+  .po-error { font-size: 13px; color: #d33; }
+
   .widget-brand-results { display: flex; flex-direction: column; align-items: center; text-align: center; }
   .br-heading { font-size: 18px; font-weight: 700; margin-bottom: 18px; color: var(--theme-text-primary); }
   .br-spinner {
@@ -474,6 +501,12 @@ const widgetRegistry = {
     const div = document.createElement('div');
     div.className = 'widget-logout';
     bootLogoutWidget(w, div);
+    return div;
+  },
+  productOptions: (w) => {
+    const div = document.createElement('div');
+    div.className = 'widget-product-options';
+    bootProductOptionsWidget(w, div);
     return div;
   }
 };
@@ -919,6 +952,131 @@ async function bootLogoutWidget(w, container) {
     window.location.reload();
   };
   container.appendChild(btn);
+}
+
+async function bootProductOptionsWidget(w, container) {
+  const productId = w.config.productId;
+  if (!productId) {
+    container.innerHTML = '';
+    const err = document.createElement('div');
+    err.className = 'po-error';
+    err.textContent = 'This widget has no product configured.';
+    container.appendChild(err);
+    return;
+  }
+
+  let product, options, selectedOptionId = null;
+  try {
+    const res = await fetch(`${API}/api/products/${productId}`, { headers: HEADERS });
+    if (!res.ok) throw new Error('product fetch failed');
+    const detail = await res.json();
+    product = detail.product;
+    options = (detail.options || []).filter(o => o.active);
+  } catch (e) {
+    container.innerHTML = '';
+    const err = document.createElement('div');
+    err.className = 'po-error';
+    err.textContent = 'Could not load this product.';
+    container.appendChild(err);
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API}/api/public/flow-sessions/${token}/widgets/${w.id}/selection`, { headers: HEADERS });
+    if (res.ok) {
+      const body = await res.json();
+      selectedOptionId = body.optionId || null;
+    }
+  } catch (e) { /* no prior selection — proceed unselected */ }
+
+  renderProductOptions(w, container, product, options, selectedOptionId);
+}
+
+function renderProductOptions(w, container, product, options, selectedOptionId) {
+  container.innerHTML = '';
+
+  const heading = document.createElement('h2');
+  heading.className = 'po-heading';
+  heading.textContent = w.config.heading || product.name;
+  container.appendChild(heading);
+
+  const grid = document.createElement('div');
+  grid.className = 'po-cards';
+
+  options.forEach(o => {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'po-card' + (o.id === selectedOptionId ? ' selected' : '');
+
+    const name = document.createElement('div');
+    name.className = 'po-name';
+    name.textContent = o.name;
+    card.appendChild(name);
+
+    const price = document.createElement('div');
+    price.className = 'po-price';
+    price.textContent = formatMoney(o.priceCents, o.currency);
+    if (o.billingInterval) {
+      const interval = document.createElement('span');
+      interval.className = 'po-interval';
+      interval.textContent = ' / ' + o.billingInterval;
+      price.appendChild(interval);
+    }
+    card.appendChild(price);
+
+    if (o.description) {
+      const desc = document.createElement('div');
+      desc.className = 'po-desc';
+      desc.textContent = o.description;
+      card.appendChild(desc);
+    }
+
+    const features = parseFeatures(o.featuresJson);
+    if (features.length) {
+      const ul = document.createElement('ul');
+      ul.className = 'po-features';
+      features.forEach(f => {
+        const li = document.createElement('li');
+        li.textContent = f;
+        ul.appendChild(li);
+      });
+      card.appendChild(ul);
+    }
+
+    const selectBtn = document.createElement('div');
+    selectBtn.className = 'po-select-btn';
+    selectBtn.textContent = o.id === selectedOptionId ? 'Selected' : 'Select';
+    card.appendChild(selectBtn);
+
+    card.onclick = () => selectProductOption(w, container, product, options, o.id);
+    grid.appendChild(card);
+  });
+
+  container.appendChild(grid);
+}
+
+async function selectProductOption(w, container, product, options, optionId) {
+  try {
+    const res = await fetch(`${API}/api/public/flow-sessions/${token}/widgets/${w.id}/selection`, {
+      method: 'POST', headers: HEADERS,
+      body: JSON.stringify({ productId: product.id, optionId })
+    });
+    if (!res.ok) throw new Error('selection failed');
+    renderProductOptions(w, container, product, options, optionId);
+  } catch (e) {
+    alert('Could not save your selection. Please try again.');
+  }
+}
+
+function formatMoney(cents, currency) {
+  const amount = (cents || 0) / 100;
+  const symbol = (currency || 'usd').toLowerCase() === 'usd' ? '$' : '';
+  return symbol + amount.toLocaleString(undefined, { minimumFractionDigits: amount % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 });
+}
+
+function parseFeatures(json) {
+  if (!json) return [];
+  try { return JSON.parse(json); } catch (e) { return []; }
 }
 
 function renderLoginForm(w, container) {

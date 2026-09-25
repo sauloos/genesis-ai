@@ -248,6 +248,7 @@
       <a href="/dashboard/playground" class="nav-item">Playground</a>
       <a href="/dashboard/agents" class="nav-item">Agents</a>
       <a href="/dashboard/questionnaires" class="nav-item">Questionnaires</a>
+      <a href="/dashboard/products" class="nav-item">Products</a>
       <a href="/dashboard/knowledge" class="nav-item">Knowledge</a>
       <a href="/dashboard/page-flows" class="nav-item active">Page Flows</a>
     </div>
@@ -1128,6 +1129,10 @@ async function selectWidget(id) {
   if (options.some(o => o.key === 'questionnaireId')) {
     try { questionnaires = await apiFetch('/api/questionnaires'); } catch (e) { questionnaires = []; }
   }
+  let products = [];
+  if (options.some(o => o.key === 'productId')) {
+    try { products = await apiFetch('/api/products?all=true'); } catch (e) { products = []; }
+  }
 
   fields.innerHTML = options.map(o => {
     const id = `w-opt-${o.key}`;
@@ -1137,6 +1142,13 @@ async function selectWidget(id) {
         <select id="${id}" data-key="${esc(o.key)}">
           <option value="">— Select a questionnaire —</option>
           ${questionnaires.map(q => `<option value="${esc(q.id)}"${q.id === value ? ' selected' : ''}>${esc(q.title)} (${esc(q.status)})</option>`).join('')}
+        </select></div>`;
+    }
+    if (o.key === 'productId') {
+      return `<div class="form-field"><label>${esc(o.label)}</label>
+        <select id="${id}" data-key="${esc(o.key)}">
+          <option value="">— Select a product —</option>
+          ${products.map(p => `<option value="${esc(p.id)}"${p.id === value ? ' selected' : ''}>${esc(p.name)} (${esc(p.type)})</option>`).join('')}
         </select></div>`;
     }
     if (o.type === 'BOOLEAN') {

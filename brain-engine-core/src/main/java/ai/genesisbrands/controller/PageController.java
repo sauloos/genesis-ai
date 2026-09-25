@@ -102,6 +102,11 @@ public class PageController {
     @GetMapping("/knowledge")
     public String knowledgeRedirect() { return "redirect:/dashboard/knowledge"; }
 
+    @GetMapping("/dashboard/products")
+    public String productsPage() { return "forward:/products.html"; }
+    @GetMapping("/products")
+    public String productsRedirect() { return "redirect:/dashboard/products"; }
+
     @GetMapping("/dashboard/themes")
     public String themesPage() { return "forward:/themes.html"; }
     @GetMapping("/themes")
