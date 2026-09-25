@@ -26,4 +26,13 @@ public interface ConversationMessageRepository extends JpaRepository<Conversatio
     // client-facing subject/brand roster (see ConsultantService#listSubjects).
     @Query("SELECT DISTINCT m.subjectId FROM ConversationMessage m WHERE m.source = :source")
     List<String> findDistinctSubjectIdsBySource(@Param("source") ConversationMessage.Source source);
+
+    // Backs the Dashboard/Consultant subject picker's exclusion of playground-only test
+    // subjects: a subject counts as "real" if it has never been chatted with (no rows at
+    // all — still a legitimate brand to start a first conversation with) or if it has at
+    // least one real (non-playground) message. Legacy null-source rows count as real, same
+    // as findConsultantHistoryBySubjectId.
+    @Query("SELECT DISTINCT m.subjectId FROM ConversationMessage m "
+        + "WHERE m.source IS NULL OR m.source = ai.genesisbrands.model.ConversationMessage.Source.CONSULTANT")
+    List<String> findDistinctSubjectIdsWithConsultantActivity();
 }
