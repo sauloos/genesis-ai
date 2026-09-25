@@ -100,7 +100,12 @@ public class PublicFlowRuntimeService {
     }
 
     private PublicSessionView toView(FlowSession session, PageFlow flow, String engagementId) {
-        PageRenderView page = session.isEnded() ? null : renderCurrentPage(session);
+        // An ended session still has a page to render when the flow's endAction is
+        // END_PAGE — advance() points currentPageId at that designated end page rather
+        // than clearing it (REDIRECT_FLOW/CREATE_ENGAGEMENT/unconfigured clear it to
+        // null instead), so only a null currentPageId means "no page to show".
+        boolean hasEndPage = session.isEnded() && session.getCurrentPageId() != null;
+        PageRenderView page = (!session.isEnded() || hasEndPage) ? renderCurrentPage(session) : null;
         return new PublicSessionView(session.getToken(), flow.getSlug(), flow.getLivePath(), page, session.isEnded(), engagementId, session.isSimulated());
     }
 
