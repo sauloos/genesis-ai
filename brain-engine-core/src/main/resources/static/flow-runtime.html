@@ -113,7 +113,9 @@
   .q-embed-nav-ghost:disabled { opacity: 0.3; cursor: default; }
   .q-embed-done { font-size: 14px; color: var(--theme-text-primary); font-weight: 600; }
 
-  #outcomes { display: flex; gap: 10px; justify-content: flex-end; margin-top: 32px; flex-wrap: wrap; }
+  .widget-page-nav { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 32px; flex-wrap: wrap; }
+  .page-nav-left, .page-nav-right { display: flex; gap: 10px; flex-wrap: wrap; }
+  .page-nav-right { margin-left: auto; }
   .outcome-btn {
     padding: 11px 22px; border-radius: 10px; border: none; font-size: 14px; font-weight: 600;
     cursor: pointer; transition: opacity 0.15s; font-family: inherit;
@@ -121,6 +123,23 @@
   }
   .outcome-btn:hover { opacity: 0.85; }
   .outcome-btn:disabled { background: var(--theme-btn-border); color: var(--theme-text-muted); cursor: default; opacity: 1; }
+  .outcome-btn-back { background: none; border: 1px solid var(--theme-btn-border); color: var(--theme-text-muted); }
+  .outcome-btn-back:hover { color: var(--theme-text-primary); border-color: var(--theme-text-primary); opacity: 1; }
+
+  .widget-header-hero { text-align: center; padding: 8px 4px 28px; }
+  .widget-header-hero-logo {
+    height: 40px; width: auto; aspect-ratio: 805 / 220; display: block; margin: 0 auto 16px;
+    background-color: var(--theme-text-primary, currentColor);
+    -webkit-mask-image: url(/api/themes/active/logo); mask-image: url(/api/themes/active/logo);
+    -webkit-mask-size: contain; mask-size: contain;
+    -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+    -webkit-mask-position: center; mask-position: center;
+  }
+  .widget-header-hero-label {
+    font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--theme-text-label); margin-bottom: 8px;
+  }
+  .widget-header-hero h1 { font-size: clamp(20px, 3.5vw, 28px); font-weight: 600; letter-spacing: -0.3px; color: var(--theme-text-primary); }
 
   #state-screen {
     width: 100%; max-width: 640px; margin: 80px auto; text-align: center;
@@ -266,7 +285,6 @@
 
 <div id="card">
   <div id="page-grid"></div>
-  <div id="outcomes"></div>
 </div>
 
 <div id="state-screen">
@@ -309,6 +327,7 @@ let rootPrefix = null;
 let token = null;
 let layouts = [];
 let requiredPending = new Set();
+let currentPageOutcomes = [];
 let questionnaireStates = {};
 
 // Simulate mode: an admin previewing a (possibly draft, never-live) PageFlow from
@@ -392,6 +411,23 @@ const widgetRegistry = {
       el.className = 'widget-content-image';
       el.src = w.config.imageUrl || '';
       el.alt = w.config.imageAlt || '';
+    } else if (mode === 'header') {
+      el = document.createElement('div');
+      el.className = 'widget-header-hero';
+      const logo = document.createElement('div');
+      logo.className = 'widget-header-hero-logo';
+      logo.setAttribute('role', 'img');
+      logo.setAttribute('aria-label', w.config.heading || 'Genesis Brands');
+      el.appendChild(logo);
+      if (w.config.label) {
+        const label = document.createElement('div');
+        label.className = 'widget-header-hero-label';
+        label.textContent = w.config.label;
+        el.appendChild(label);
+      }
+      const h1 = document.createElement('h1');
+      h1.textContent = w.config.heading || '';
+      el.appendChild(h1);
     } else if (mode === 'htmlFile') {
       el = document.createElement('iframe');
       el.className = 'widget-content-iframe';
@@ -507,6 +543,36 @@ const widgetRegistry = {
     const div = document.createElement('div');
     div.className = 'widget-product-options';
     bootProductOptionsWidget(w, div);
+    return div;
+  },
+  pageNav: (w) => {
+    const div = document.createElement('div');
+    div.className = 'widget-page-nav';
+    const backOutcome = currentPageOutcomes.find(o => o.key === 'back');
+    const otherOutcomes = currentPageOutcomes.filter(o => o.key !== 'back');
+
+    const left = document.createElement('div');
+    left.className = 'page-nav-left';
+    if (backOutcome) {
+      const btn = document.createElement('button');
+      btn.className = 'outcome-btn outcome-btn-back';
+      btn.textContent = backOutcome.label;
+      btn.onclick = () => advance(backOutcome.key);
+      left.appendChild(btn);
+    }
+    div.appendChild(left);
+
+    const right = document.createElement('div');
+    right.className = 'page-nav-right';
+    otherOutcomes.forEach(o => {
+      const btn = document.createElement('button');
+      btn.className = 'outcome-btn';
+      btn.textContent = o.label;
+      btn.onclick = () => advance(o.key);
+      right.appendChild(btn);
+    });
+    div.appendChild(right);
+
     return div;
   }
 };
@@ -1441,6 +1507,14 @@ function render(view) {
 
   if (view.ended) {
     if (!simulate) localStorage.removeItem(storageKey(slug));
+    // An END_PAGE flow sets a designated page as the true final destination — show
+    // it instead of the generic completion screen, which is reserved for flows that
+    // have no end page at all (REDIRECT_FLOW/CREATE_ENGAGEMENT already navigated away,
+    // or a plain end-of-flow with nothing configured).
+    if (view.page) {
+      renderPage(view.page, true);
+      return;
+    }
     if (view.engagementId) {
       showRegisterScreen(view.engagementId);
     } else {
@@ -1449,7 +1523,16 @@ function render(view) {
     return;
   }
 
-  const page = view.page;
+  if (!simulate && view.slug !== slug) {
+    slug = view.slug;
+    localStorage.setItem(storageKey(slug), token);
+    history.replaceState(null, '', view.livePath || ('/live/' + slug));
+  }
+
+  renderPage(view.page, false);
+}
+
+function renderPage(page, isEnded) {
   // A sole-redirect page (no other widgets) forwards immediately with no flash. A
   // redirect widget mixed with other widgets renders the rest of the page first, then
   // redirects after a brief, human-perceptible pause.
@@ -1461,12 +1544,6 @@ function render(view) {
     setTimeout(() => { window.location.href = page.redirectUrl; }, 1500);
   }
 
-  if (!simulate && view.slug !== slug) {
-    slug = view.slug;
-    localStorage.setItem(storageKey(slug), token);
-    history.replaceState(null, '', view.livePath || ('/live/' + slug));
-  }
-
   const layout = layouts.find(l => l.id === page.layoutKey) || layouts[0];
   const isFullBleed = !!layout && layout.id === 'FULL_BLEED';
 
@@ -1476,6 +1553,12 @@ function render(view) {
   document.getElementById('card').classList.toggle('no-border', page.bordered === false);
 
   requiredPending = new Set();
+  currentPageOutcomes = page.outcomes || [];
+
+  // Navigation is opt-in, not layout-driven: a page only gets Back/Next buttons when
+  // it's been given a pageNav widget. A flow's designated end page is terminal — the
+  // session has already ended server-side — so pageNav is skipped there even if present.
+  const widgets = isEnded ? page.widgets.filter(w => w.widgetType !== 'pageNav') : page.widgets;
 
   const grid = document.getElementById('page-grid');
   grid.style.gridTemplateColumns = layout ? layout.gridTemplateColumns : '1fr';
@@ -1483,7 +1566,7 @@ function render(view) {
   (layout ? layout.slots : [{ key: 'main', label: 'Main' }]).forEach(slot => {
     const slotEl = document.createElement('div');
     slotEl.className = 'slot';
-    page.widgets.filter(w => w.slotKey === slot.key).forEach(w => {
+    widgets.filter(w => w.slotKey === slot.key).forEach(w => {
       const fn = widgetRegistry[w.widgetType];
       const el = fn ? fn(w) : null;
       if (el) slotEl.appendChild(el);
@@ -1491,20 +1574,6 @@ function render(view) {
     grid.appendChild(slotEl);
   });
 
-  const outcomesEl = document.getElementById('outcomes');
-  outcomesEl.innerHTML = '';
-  // A full-bleed page (e.g. a standalone landing page embedded via a full HTML file)
-  // is a terminal display, not a step in a guided flow — showing the generic
-  // Next/Error advance buttons (or even their empty container's margin) underneath it
-  // would be page chrome the design never had.
-  outcomesEl.style.display = isFullBleed ? 'none' : '';
-  (isFullBleed ? [] : (page.outcomes || [])).forEach(o => {
-    const btn = document.createElement('button');
-    btn.className = 'outcome-btn';
-    btn.textContent = o.label;
-    btn.onclick = () => advance(o.key);
-    outcomesEl.appendChild(btn);
-  });
   updateOutcomeButtons();
 }
 

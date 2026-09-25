@@ -9,10 +9,11 @@ import java.util.List;
 
 /**
  * A flexible content block: heading + body text (default), a raw HTML fragment
- * composed inline with sibling widgets, an image, or a full HTML document embedded via
- * a sandboxed iframe — plus optional width/height boundaries. Ships alongside
- * RedirectWidget as a second widget type so the layout editor has more than one type
- * to place, order, and configure.
+ * composed inline with sibling widgets, an image, a full HTML document embedded via
+ * a sandboxed iframe, or a centered header hero (theme logo + eyebrow label + title,
+ * matching the admin dashboard's masthead) — plus optional width/height boundaries.
+ * Ships alongside RedirectWidget as a second widget type so the layout editor has more
+ * than one type to place, order, and configure.
  */
 @Component
 public class ContentWidget implements WidgetDescriptor {
@@ -36,9 +37,10 @@ public class ContentWidget implements WidgetDescriptor {
     public List<WidgetConfigOption> configOptions() {
         return List.of(
             new WidgetConfigOption("contentMode", "Content mode", OptionType.SELECT,
-                List.of("text", "html", "image", "htmlFile"), "text"),
+                List.of("text", "html", "image", "htmlFile", "header"), "text"),
             new WidgetConfigOption("heading", "Heading", OptionType.STRING, List.of(), ""),
             new WidgetConfigOption("body", "Body", OptionType.STRING, List.of(), ""),
+            new WidgetConfigOption("label", "Eyebrow label (header mode)", OptionType.STRING, List.of(), ""),
             new WidgetConfigOption("html", "HTML", OptionType.STRING, List.of(), ""),
             new WidgetConfigOption("imageUrl", "Image URL", OptionType.STRING, List.of(), ""),
             new WidgetConfigOption("imageAlt", "Image alt text", OptionType.STRING, List.of(), ""),
