@@ -357,6 +357,7 @@ let token = null;
 let layouts = [];
 let requiredPending = new Set();
 let currentPageOutcomes = [];
+let currentPageWidgets = [];
 let questionnaireStates = {};
 
 // Simulate mode: an admin previewing a (possibly draft, never-live) PageFlow from
@@ -576,6 +577,7 @@ const widgetRegistry = {
   },
   payment: (w) => {
     const div = document.createElement('div');
+    div.id = 'payment-widget-' + w.id;
     div.className = 'widget-payment';
     bootPaymentWidget(w, div);
     return div;
@@ -1167,9 +1169,25 @@ function renderProductOptions(w, container, product, options, selectedOptionId) 
     continueBtn.className = 'po-continue-btn';
     continueBtn.textContent = w.config.continueLabel || 'Continue';
     continueBtn.disabled = !selectedOptionId;
-    continueBtn.onclick = () => advance('next');
+    continueBtn.onclick = () => goToPayment(w);
     container.appendChild(continueBtn);
   }
+}
+
+function goToPayment(w) {
+  // A payment widget paired to this one via sourceWidgetId is usually stacked on the
+  // same (terminal) page rather than a separate one — reveal it in place instead of
+  // calling advance(), which has no real transition to follow from a terminal page.
+  const target = currentPageWidgets.find(pw => pw.widgetType === 'payment' && pw.config && pw.config.sourceWidgetId === w.id);
+  if (target) {
+    const el = document.getElementById('payment-widget-' + target.id);
+    if (el) {
+      bootPaymentWidget(target, el);
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+  }
+  advance('next');
 }
 
 async function selectProductOption(w, container, product, options, optionId) {
@@ -1727,6 +1745,7 @@ function renderPage(page, isEnded) {
 
   requiredPending = new Set();
   currentPageOutcomes = page.outcomes || [];
+  currentPageWidgets = page.widgets || [];
 
   // Navigation is opt-in, not layout-driven: a page only gets Back/Next buttons when
   // it's been given a pageNav widget. A flow's designated end page is terminal — the
