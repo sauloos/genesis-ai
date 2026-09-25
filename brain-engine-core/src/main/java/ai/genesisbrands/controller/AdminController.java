@@ -38,6 +38,23 @@ public class AdminController {
     @Value("${genesis.api-key}")
     private String apiKey;
 
+    @Value("${spring.application.name:}")
+    private String applicationName;
+
+    /**
+     * genesis-os is the platform itself — it has no tenant layer above it, so nothing
+     * running there can genuinely be a tenant "customisation." Per-item origin checks
+     * (ModuleOrigin, ThemeService.isActiveThemeCore, AdminNavExtension.core) only
+     * distinguish brain-engine-core from "some app's own module," which correctly
+     * separates genesis-brands' tenant overrides from shared platform code, but cannot
+     * tell genesis-os's own classes apart from a tenant's — every app's own classes land
+     * in the same unmarked path once packaged. So on genesis-os specifically, every
+     * dashboard card is forced to core=true regardless of where its code physically lives.
+     */
+    private boolean isPlatformApp() {
+        return "genesis-os".equals(applicationName);
+    }
+
     @GetMapping("/env")
     public ResponseEntity<Map<String, String>> env(HttpServletRequest req) {
         if (!adminAuth.isAdminRequest(req) && !adminSession.hasValidSession(req)) {
@@ -96,7 +113,7 @@ public class AdminController {
         if (subjectProvider != null) {
             cards.add(new DashboardCard("consultant", "Consultant",
                     "Chat with Genesis AI. Ask questions, explore strategy, or run a full engagement.",
-                    "/dashboard/console", "consultant", true, ModuleOrigin.isCore(subjectProvider.getClass())));
+                    "/dashboard/console", "consultant", true, isPlatformApp() || ModuleOrigin.isCore(subjectProvider.getClass())));
         }
 
         cards.add(new DashboardCard("knowledge", "Knowledge",
@@ -113,7 +130,7 @@ public class AdminController {
 
         cards.add(new DashboardCard("themes", "Themes",
                 "Manage the visual theme applied to this tenant. Import theme bundles, switch the active theme instantly.",
-                "/dashboard/themes", "themes", true, themeService.isActiveThemeCore()));
+                "/dashboard/themes", "themes", true, isPlatformApp() || themeService.isActiveThemeCore()));
 
         cards.add(new DashboardCard("agents", "Agents",
                 "Configure which registered agents are available in the live dashboard and Playground, and whether A/B compare is enabled.",
@@ -123,10 +140,14 @@ public class AdminController {
                 "Assemble pages into a visual flow chart, connect next / previous / error arrows, and configure widgets in each page's layout.",
                 "/dashboard/page-flows", "page-flows", true, true));
 
+        cards.add(new DashboardCard("products", "Products",
+                "Manage product catalogs and pricing tiers, selectable via Product Options widgets in page flows.",
+                "/dashboard/products", "products", true, true));
+
         navExtensions.stream()
                 .sorted(Comparator.comparingInt(AdminNavExtension::order))
                 .forEach(ext -> cards.add(new DashboardCard(
-                        ext.path(), ext.label(), ext.description(), ext.path(), "generic", true, ext.core())));
+                        ext.path(), ext.label(), ext.description(), ext.path(), "generic", true, isPlatformApp() || ext.core())));
 
         return ResponseEntity.ok(cards);
     }

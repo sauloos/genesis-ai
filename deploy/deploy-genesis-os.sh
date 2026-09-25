@@ -30,6 +30,16 @@ for var in ANTHROPIC_API_KEY OPENAI_API_KEY; do
   [ -z "${!var:-}" ] && echo "ERROR: $var not set in .env" && exit 1
 done
 
+# Blob storage: shares genesis-ai's storage account (looked up live, not in .env —
+# it was configured directly on the genesis-ai Container App), but its own container,
+# so platform/core-level assets stay isolated from Genesis Brands tenant content.
+AZURE_STORAGE_ACCOUNT_VALUE=$(az containerapp show --name genesis-ai --resource-group "$RESOURCE_GROUP" \
+  --query "properties.template.containers[0].env[?name=='AZURE_STORAGE_ACCOUNT'].value | [0]" -o tsv)
+AZURE_STORAGE_KEY_VALUE=$(az containerapp show --name genesis-ai --resource-group "$RESOURCE_GROUP" \
+  --query "properties.template.containers[0].env[?name=='AZURE_STORAGE_KEY'].value | [0]" -o tsv)
+AZURE_STORAGE_CONTAINER_VALUE="genesis-os"
+[ -z "$AZURE_STORAGE_ACCOUNT_VALUE" ] && echo "ERROR: could not read AZURE_STORAGE_ACCOUNT from genesis-ai" && exit 1
+
 echo ""
 echo "╔══════════════════════════════════════╗"
 echo "║        genesis-os — Deploy           ║"
@@ -125,6 +135,9 @@ az containerapp create \
     "QDRANT_REST_URL=$QDRANT_REST_URL" \
     "QDRANT_API_KEY=$QDRANT_API_KEY_VALUE" \
     "QDRANT_COLLECTION=genesis-os-knowledge" \
+    "AZURE_STORAGE_ACCOUNT=$AZURE_STORAGE_ACCOUNT_VALUE" \
+    "AZURE_STORAGE_KEY=$AZURE_STORAGE_KEY_VALUE" \
+    "AZURE_STORAGE_CONTAINER=$AZURE_STORAGE_CONTAINER_VALUE" \
   -o none
 
 APP_FQDN=$(az containerapp show -n "$APP_NAME" -g "$RESOURCE_GROUP" \
