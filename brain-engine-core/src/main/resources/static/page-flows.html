@@ -37,7 +37,7 @@
   #sidebar-header { padding: 20px 16px 12px; border-bottom: 1px solid #222; position: relative; }
   .sidebar-logo {
     height: 22px; width: auto; aspect-ratio: 805 / 220; display: block; margin-bottom: 4px;
-    background-color: var(--theme-text-primary, currentColor);
+    background-color: #f2f2f2;
     -webkit-mask-image: url(/api/themes/active/logo); mask-image: url(/api/themes/active/logo);
     -webkit-mask-size: contain; mask-size: contain;
     -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
@@ -95,9 +95,9 @@
 
   #empty {
     flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 12px; color: rgba(255,255,255,0.35);
+    gap: 12px; color: var(--theme-text-muted);
   }
-  #empty h2 { font-size: 18px; font-weight: 600; color: rgba(255,255,255,0.5); }
+  #empty h2 { font-size: 18px; font-weight: 600; color: var(--theme-text-primary); }
   #empty p { font-size: 14px; text-align: center; max-width: 360px; line-height: 1.5; }
 
   #level1, #level2 { flex: 1; display: none; min-height: 0; flex-direction: column; }
@@ -113,10 +113,10 @@
   }
   .tbtn-primary { background: rgba(255,255,255,0.9); color: #0a0b12; }
   .tbtn-primary:hover { background: #fff; }
-  .tbtn-ghost { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.12); }
-  .tbtn-ghost:hover { border-color: rgba(255,255,255,0.25); color: rgba(255,255,255,0.85); }
+  .tbtn-ghost { background: var(--theme-card-bg-hover); color: var(--theme-text-muted); border: 1px solid var(--theme-card-border); }
+  .tbtn-ghost:hover { border-color: var(--theme-btn-border-hover); color: var(--theme-text-primary); }
 
-  .legend { display: flex; gap: 12px; font-size: 11px; color: rgba(255,255,255,0.45); align-items: center; }
+  .legend { display: flex; gap: 12px; font-size: 11px; color: var(--theme-text-muted); align-items: center; }
   .legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
 
   #canvas-wrap { flex: 1; display: flex; min-height: 0; }
@@ -137,17 +137,17 @@
     padding: 18px; overflow-y: auto; display: none; flex-direction: column; gap: 14px;
   }
   #sim-panel.visible { display: flex; }
-  #sim-panel h3 { font-size: 13px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.5px; }
+  #sim-panel h3 { font-size: 13px; color: var(--theme-text-label); text-transform: uppercase; letter-spacing: 0.5px; }
   #sim-frame { flex: 1; width: 100%; min-height: 480px; border: 1px solid var(--theme-divider); border-radius: 8px; background: #fff; }
-  #meta-panel h3 { font-size: 13px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.5px; }
+  #meta-panel h3 { font-size: 13px; color: var(--theme-text-label); text-transform: uppercase; letter-spacing: 0.5px; }
   .form-field { display: flex; flex-direction: column; gap: 4px; }
-  .form-field label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.4px; }
+  .form-field label { font-size: 11px; font-weight: 600; color: var(--theme-text-label); text-transform: uppercase; letter-spacing: 0.4px; }
   .form-field input[type=text], .form-field select {
     width: 100%; padding: 8px 10px; border: 1px solid var(--theme-card-border); border-radius: 7px;
     font-size: 13px; font-family: inherit; outline: none; color: var(--theme-text-primary); background: var(--theme-card-bg);
   }
-  .form-field input:focus, .form-field select:focus { border-color: rgba(255,255,255,0.3); }
-  .check-field { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #ccc; cursor: pointer; }
+  .form-field input:focus, .form-field select:focus { border-color: var(--theme-btn-border-hover); }
+  .check-field { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--theme-text-muted); cursor: pointer; }
   .check-field input { accent-color: #6fe0a5; width: 15px; height: 15px; cursor: pointer; }
   .panel-actions { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
 
@@ -195,24 +195,24 @@
   #layout-grid-wrap { flex: 1; padding: 24px; overflow-y: auto; }
   #layout-picker { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
   .layout-chip {
-    padding: 6px 13px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(255,255,255,0.04); font-size: 12px; color: rgba(255,255,255,0.6); cursor: pointer; transition: all 0.15s;
+    padding: 6px 13px; border-radius: 8px; border: 1px solid var(--theme-card-border);
+    background: var(--theme-card-bg); font-size: 12px; color: var(--theme-text-muted); cursor: pointer; transition: all 0.15s;
   }
-  .layout-chip.active { background: rgba(255,255,255,0.12); color: #fff; border-color: rgba(255,255,255,0.3); }
+  .layout-chip.active { background: var(--theme-card-bg-hover); color: var(--theme-text-primary); border-color: var(--theme-btn-border-hover); }
   #layout-grid { display: grid; gap: 14px; min-height: 240px; }
   .slot-box {
-    border: 1px dashed rgba(255,255,255,0.18); border-radius: 10px; padding: 12px; min-height: 120px;
+    border: 1px dashed var(--theme-card-border); border-radius: 10px; padding: 12px; min-height: 120px;
     display: flex; flex-direction: column; gap: 8px;
   }
-  .slot-label { font-size: 10px; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 0.5px; }
+  .slot-label { font-size: 10px; color: var(--theme-text-label); text-transform: uppercase; letter-spacing: 0.5px; }
   .widget-chip {
     background: var(--theme-card-bg); border: 1px solid var(--theme-card-border); border-radius: 8px;
     padding: 8px 10px; cursor: pointer; font-size: 12px; display: flex; justify-content: space-between; align-items: center; gap: 6px;
   }
-  .widget-chip:hover { border-color: rgba(255,255,255,0.3); }
+  .widget-chip:hover { border-color: var(--theme-btn-border-hover); }
   .widget-chip.selected { border-color: #6fe0a5; }
-  .widget-chip-type { color: rgba(255,255,255,0.4); font-size: 10px; text-transform: uppercase; }
-  .slot-add-select { width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); color: #ccc; font-size: 12px; }
+  .widget-chip-type { color: var(--theme-text-label); font-size: 10px; text-transform: uppercase; }
+  .slot-add-select { width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--theme-card-border); background: var(--theme-card-bg); color: var(--theme-text-primary); font-size: 12px; }
 
   #widget-config-panel {
     width: 300px; min-width: 300px; border-left: 1px solid var(--theme-divider); background: var(--theme-card-bg);
@@ -291,19 +291,19 @@
   <div id="level1">
     <div id="toolbar">
       <h2 id="flow-title"></h2>
-      <span style="display:flex; align-items:center; gap:4px; font-size:11px; color:rgba(255,255,255,0.5); font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">
+      <span style="display:flex; align-items:center; gap:4px; font-size:11px; color:var(--theme-text-muted); font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">
         <input type="checkbox" id="flow-root-checkbox" onchange="toggleRootPrefix()" style="cursor:pointer; margin:0;">
         <label for="flow-root-checkbox" id="flow-root-label" style="cursor:pointer;" title="Uncheck to mount this flow at the site root, with no prefix"></label>
         <span id="flow-slug" ondblclick="startEditSlug()" style="cursor:pointer; text-decoration:underline dotted;" title="Double-click to edit the URL slug"></span>
         <input type="text" id="flow-slug-input" onblur="commitSlugEdit()" onkeydown="handleSlugEditKey(event)" style="display:none; font-size:11px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; width:140px;">
       </span>
-      <span id="flow-theme" title="Click to set a theme override" style="cursor:pointer; font-size:11px; color:rgba(255,255,255,0.5); font-family:ui-monospace,SFMono-Regular,Menlo,monospace;" onclick="editTheme()"></span>
+      <span id="flow-theme" title="Click to set a theme override" style="cursor:pointer; font-size:11px; color:var(--theme-text-muted); font-family:ui-monospace,SFMono-Regular,Menlo,monospace;" onclick="editTheme()"></span>
       <div class="legend">
         <span><span class="legend-dot" style="background:#6fe0a5"></span>outcome</span>
         <span><span class="legend-dot" style="background:#60a5fa"></span>custom outcome</span>
         <span><span class="legend-dot" style="background:#ef4444"></span>error</span>
         <span><span class="legend-dot" style="background:#999"></span>previous</span>
-        <span style="color:rgba(255,255,255,0.3)">Each page's outcome ports come from its widgets. Start/End are fixed anchors — drag any outcome dot into End to end the flow there.</span>
+        <span style="color:var(--theme-text-label)">Each page's outcome ports come from its widgets. Start/End are fixed anchors — drag any outcome dot into End to end the flow there.</span>
       </div>
       <button class="tbtn tbtn-ghost" onclick="addPage()">+ Add page</button>
       <button class="tbtn tbtn-ghost" onclick="openSimulatePanel()">▶ Simulate</button>
@@ -344,7 +344,7 @@
         <div class="form-field" id="end-message-field">
           <label>End page</label>
           <select id="end-page"></select>
-          <div id="end-page-hint" style="font-size:11px;color:rgba(255,255,255,0.35);display:none">
+          <div id="end-page-hint" style="font-size:11px;color:var(--theme-text-label);display:none">
             Flag at least one page as "end-of-flow" first.
           </div>
         </div>

@@ -43,7 +43,7 @@
   #sidebar-header { padding: 20px 16px 12px; border-bottom: 1px solid #222; position: relative; }
   .sidebar-logo {
     height: 22px; width: auto; aspect-ratio: 805 / 220; display: block; margin-bottom: 4px;
-    background-color: var(--theme-text-primary, currentColor);
+    background-color: #f2f2f2;
     -webkit-mask-image: url(/api/themes/active/logo);
     mask-image: url(/api/themes/active/logo);
     -webkit-mask-size: contain; mask-size: contain;
@@ -123,10 +123,10 @@
 
   #empty {
     flex: 1; display: flex; flex-direction: column; align-items: center;
-    justify-content: center; gap: 12px; color: rgba(255,255,255,0.35);
+    justify-content: center; gap: 12px; color: var(--theme-text-label);
   }
   #empty svg { opacity: 0.25; }
-  #empty h2  { font-size: 18px; font-weight: 600; color: rgba(255,255,255,0.5); }
+  #empty h2  { font-size: 18px; font-weight: 600; color: var(--theme-text-muted); }
   #empty p   { font-size: 14px; text-align: center; max-width: 360px; line-height: 1.5; }
 
   #detail { flex: 1; display: none; flex-direction: column; min-height: 0; overflow-y: auto; }
@@ -136,12 +136,12 @@
     width: 100%; font-size: 20px; font-weight: 700; border: none; outline: none;
     font-family: inherit; color: var(--theme-text-primary); background: transparent; margin-bottom: 6px;
   }
-  #title-input::placeholder { color: rgba(255,255,255,0.3); font-weight: 400; }
+  #title-input::placeholder { color: var(--theme-text-label); font-weight: 400; }
   #desc-input {
     width: 100%; font-size: 13px; border: none; outline: none; resize: none;
     font-family: inherit; color: var(--theme-text-muted); background: transparent; line-height: 1.5;
   }
-  #desc-input::placeholder { color: rgba(255,255,255,0.25); }
+  #desc-input::placeholder { color: var(--theme-section-label); }
 
   /* ── Meta bar ── */
   #meta-bar {
@@ -149,19 +149,19 @@
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex-shrink: 0;
   }
   .seg-btn {
-    padding: 5px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(255,255,255,0.04); font-size: 12px; color: rgba(255,255,255,0.55); cursor: pointer;
+    padding: 5px 12px; border-radius: 6px; border: 1px solid var(--theme-card-border);
+    background: var(--theme-card-bg); font-size: 12px; color: var(--theme-text-muted); cursor: pointer;
     transition: all 0.15s; font-family: inherit; margin-right: 6px;
   }
-  .seg-btn.active { background: rgba(255,255,255,0.12); color: #fff; border-color: rgba(255,255,255,0.3); }
-  #meta-label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.4px; margin-right: 4px; }
+  .seg-btn.active { background: var(--theme-card-bg-hover); color: var(--theme-text-primary); border-color: var(--theme-btn-border-hover); }
+  #meta-label { font-size: 11px; font-weight: 600; color: var(--theme-text-label); text-transform: uppercase; letter-spacing: 0.4px; margin-right: 4px; }
 
   /* ── Options ── */
   #options-area { flex: 1; padding: 20px 28px 40px; }
   #options-header {
     display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
   }
-  #options-header h3 { font-size: 13px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.5px; }
+  #options-header h3 { font-size: 13px; color: var(--theme-section-label); text-transform: uppercase; letter-spacing: 0.5px; }
   #add-opt-btn {
     padding: 7px 14px; background: rgba(255,255,255,0.9); border: none; border-radius: 8px;
     color: #0a0b12; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s;
@@ -173,30 +173,30 @@
     background: var(--theme-card-bg); display: flex; gap: 12px; align-items: flex-start;
   }
   .oc-price {
-    width: 64px; flex-shrink: 0; text-align: center; font-size: 15px; font-weight: 700; color: #fff;
-    background: rgba(255,255,255,0.08); border-radius: 8px; padding: 8px 4px;
+    width: 64px; flex-shrink: 0; text-align: center; font-size: 15px; font-weight: 700; color: var(--theme-text-primary);
+    background: var(--theme-card-bg-hover); border-radius: 8px; padding: 8px 4px;
   }
-  .oc-price small { display: block; font-size: 9px; font-weight: 500; color: rgba(255,255,255,0.4); text-transform: uppercase; margin-top: 2px; }
+  .oc-price small { display: block; font-size: 9px; font-weight: 500; color: var(--theme-text-label); text-transform: uppercase; margin-top: 2px; }
   .oc-body { flex: 1; min-width: 0; }
   .oc-name { font-size: 14px; font-weight: 600; color: var(--theme-text-primary); margin-bottom: 2px; }
-  .oc-desc { font-size: 12px; color: rgba(255,255,255,0.45); margin-bottom: 6px; }
+  .oc-desc { font-size: 12px; color: var(--theme-text-muted); margin-bottom: 6px; }
   .oc-flags { display: flex; gap: 6px; flex-wrap: wrap; }
   .oc-flag {
-    font-size: 10px; padding: 1px 6px; border-radius: 3px; background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.5);
+    font-size: 10px; padding: 1px 6px; border-radius: 3px; background: var(--theme-card-bg-hover); color: var(--theme-text-muted);
     text-transform: uppercase; letter-spacing: 0.3px; font-weight: 600;
   }
   .oc-actions { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
   .oc-btn-row { display: flex; gap: 4px; }
   .oc-btn {
-    width: 26px; height: 26px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;
-    color: rgba(255,255,255,0.45); cursor: pointer; display: flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; background: var(--theme-card-bg); border: 1px solid var(--theme-card-border); border-radius: 6px;
+    color: var(--theme-text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center;
     font-size: 12px; transition: all 0.15s;
   }
-  .oc-btn:hover { border-color: rgba(255,255,255,0.25); color: rgba(255,255,255,0.8); }
+  .oc-btn:hover { border-color: var(--theme-btn-border-hover); color: var(--theme-btn-color-hover); }
   .oc-btn:disabled { opacity: 0.3; cursor: default; }
   .oc-btn.danger:hover { color: #e53935; border-color: #e53935; }
 
-  .empty-o { color: rgba(255,255,255,0.35); font-size: 13px; padding: 20px 0; text-align: center; }
+  .empty-o { color: var(--theme-text-label); font-size: 13px; padding: 20px 0; text-align: center; }
 
   /* ── Add/edit option form ── */
   #o-form {
@@ -204,17 +204,17 @@
     margin-top: 8px; background: var(--theme-card-bg);
   }
   #o-form.visible { display: block; }
-  #o-form h4 { font-size: 12px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+  #o-form h4 { font-size: 12px; color: var(--theme-section-label); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
 
   .form-field { margin-bottom: 12px; }
-  .form-field label { display: block; font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.4);
+  .form-field label { display: block; font-size: 11px; font-weight: 600; color: var(--theme-text-label);
     text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
   .form-field input[type=text], .form-field textarea, .form-field input[type=number] {
     width: 100%; padding: 8px 10px; border: 1px solid var(--theme-card-border); border-radius: 7px;
     font-size: 13px; font-family: inherit; outline: none; color: var(--theme-text-primary);
     background: var(--theme-card-bg);
   }
-  .form-field input:focus, .form-field textarea:focus { border-color: rgba(255,255,255,0.3); }
+  .form-field input:focus, .form-field textarea:focus { border-color: var(--theme-btn-border-hover); }
   .form-row { display: flex; gap: 12px; }
   .form-row .form-field { flex: 1; }
 
@@ -225,10 +225,10 @@
   }
   .pbtn-primary { background: rgba(255,255,255,0.9); color: #0a0b12; }
   .pbtn-primary:hover { background: #fff; }
-  .pbtn-ghost { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.12); }
-  .pbtn-ghost:hover { border-color: rgba(255,255,255,0.25); color: rgba(255,255,255,0.85); }
+  .pbtn-ghost { background: var(--theme-card-bg); color: var(--theme-text-muted); border: 1px solid var(--theme-card-border); }
+  .pbtn-ghost:hover { border-color: var(--theme-btn-border-hover); color: var(--theme-btn-color-hover); }
 
-  .hint-text { font-size: 11px; color: rgba(255,255,255,0.3); margin-top: 12px; }
+  .hint-text { font-size: 11px; color: var(--theme-text-label); margin-top: 12px; }
 </style>
 <link rel="stylesheet" href="/api/themes/active/styles.css">
 </head>
