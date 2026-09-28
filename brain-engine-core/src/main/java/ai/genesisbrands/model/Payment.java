@@ -22,11 +22,11 @@ public class Payment {
     @Column(name = "widget_id", nullable = false)
     private String widgetId;
 
-    @Column(name = "product_id", nullable = false, length = 36)
-    private String productId;
-
-    @Column(name = "product_option_id", nullable = false, length = 36)
-    private String productOptionId;
+    /** Snapshot of the cart's CartService.CartItem list charged by this payment, as JSON —
+     *  a payment can cover several selections (e.g. a one-time package plus a subscription)
+     *  charged together in one checkout. */
+    @Column(name = "cart_json", columnDefinition = "TEXT")
+    private String cartJson;
 
     @Column(name = "amount_cents", nullable = false)
     private long amountCents;

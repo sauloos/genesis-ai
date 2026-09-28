@@ -4,30 +4,28 @@ import ai.genesisbrands.model.ClientUser;
 import ai.genesisbrands.model.FlowSession;
 import ai.genesisbrands.model.Payment;
 import ai.genesisbrands.model.PageFlow;
-import ai.genesisbrands.model.ProductOption;
 import ai.genesisbrands.repository.PageFlowRepository;
 import ai.genesisbrands.security.ClientAuthHelper;
+import ai.genesisbrands.service.CartService;
+import ai.genesisbrands.service.CartService.CartItem;
 import ai.genesisbrands.service.FlowSessionService;
 import ai.genesisbrands.service.PaymentService;
-import ai.genesisbrands.service.ProductService;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
 /**
- * Public checkout endpoints for the PaymentWidget. Charges whatever was last selected on
- * a sibling ProductOptionsWidget (identified by sourceWidgetId, read out of the same
- * FlowSession.contextJson key ProductSelectionController writes) — the payment widget
- * itself carries no product config, so one payment widget instance can sit below any
- * productOptions widget on the page.
+ * Public checkout endpoints for the PaymentWidget. Charges the FlowSession's whole cart
+ * (every selection made across any number of ProductOptionsWidget instances, via
+ * CartService) in one Stripe Checkout — the payment widget itself carries no product
+ * config, so a single instance on its own page settles everything picked earlier in
+ * the flow.
  */
 @RestController
 @RequiredArgsConstructor
@@ -35,38 +33,41 @@ public class PaymentController {
 
     private final FlowSessionService flowSessionService;
     private final PaymentService paymentService;
-    private final ProductService productService;
+    private final CartService cartService;
     private final PageFlowRepository pageFlowRepo;
     private final ClientAuthHelper clientAuthHelper;
-    private final ObjectMapper objectMapper;
 
     @GetMapping("/api/public/payments/mode")
     public ResponseEntity<?> mode() {
         return ResponseEntity.ok(Map.of("mode", paymentService.currentMode().name()));
     }
 
-    @PostMapping("/api/public/flow-sessions/{token}/widgets/{widgetId}/checkout")
-    public ResponseEntity<?> checkout(@PathVariable String token, @PathVariable String widgetId,
-                                       @RequestBody CheckoutRequest body, HttpServletRequest req) {
-        FlowSession session;
+    @GetMapping("/api/public/flow-sessions/{token}/cart")
+    public ResponseEntity<?> cart(@PathVariable String token) {
+        List<CartItem> cart;
         try {
-            session = flowSessionService.get(token);
+            cart = cartService.getCart(token);
         } catch (NoSuchElementException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));
         }
-        if (body.sourceWidgetId() == null || body.sourceWidgetId().isBlank()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse("sourceWidgetId is required"));
-        }
-        Object selectionObj = contextOf(session).get("product-selection:" + body.sourceWidgetId());
-        if (selectionObj == null) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse("No product option has been selected yet"));
-        }
+        long totalCents = cart.stream().mapToLong(CartItem::priceCents).sum();
+        String currency = cart.isEmpty() ? null : cart.get(0).currency();
+        return ResponseEntity.ok(new CartResponse(cart, totalCents, currency));
+    }
 
-        Map<String, Object> selection = readSelection(session, body.sourceWidgetId());
-        String productId = (String) selection.get("productId");
-        String optionId = (String) selection.get("optionId");
-        if (productId == null || optionId == null) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse("Selected option is no longer available"));
+    @PostMapping("/api/public/flow-sessions/{token}/widgets/{widgetId}/checkout")
+    public ResponseEntity<?> checkout(@PathVariable String token, @PathVariable String widgetId,
+                                       HttpServletRequest req) {
+        FlowSession session;
+        List<CartItem> cart;
+        try {
+            session = flowSessionService.get(token);
+            cart = cartService.getCart(token);
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));
+        }
+        if (cart.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse("Your cart is empty"));
         }
 
         String host = req.getHeader("Host");
@@ -80,7 +81,7 @@ public class PaymentController {
 
         try {
             PaymentService.CheckoutOutcome outcome = paymentService.startCheckout(
-                token, widgetId, clientUserId, productId, optionId, successUrl, cancelUrl);
+                token, widgetId, clientUserId, cart, successUrl, cancelUrl);
             return ResponseEntity.ok(toResponse(outcome.payment(), outcome.checkoutUrl()));
         } catch (NoSuchElementException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));
@@ -100,41 +101,12 @@ public class PaymentController {
         return ResponseEntity.ok(payment == null ? Map.of("status", "NONE") : toResponse(payment, null));
     }
 
-    private Map<String, Object> readSelection(FlowSession session, String sourceWidgetId) {
-        // ProductSelectionController persists only the bare optionId under this context
-        // key; re-resolve the rest via its own GET route's logic isn't reachable here, so
-        // duplicate the minimal lookup (optionId -> productId) directly off the stored id.
-        Object optionIdObj = contextOf(session).get("product-selection:" + sourceWidgetId);
-        String optionId = optionIdObj == null ? null : String.valueOf(optionIdObj);
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("optionId", optionId);
-        if (optionId != null) {
-            productOf(optionId).ifPresent(productId -> result.put("productId", productId));
-        }
-        return result;
-    }
-
-    private java.util.Optional<String> productOf(String optionId) {
-        return productService.findOptionById(optionId).map(ai.genesisbrands.model.ProductOption::getProductId);
-    }
-
-    private Map<String, Object> contextOf(FlowSession session) {
-        if (session.getContextJson() == null || session.getContextJson().isBlank()) {
-            return new LinkedHashMap<>();
-        }
-        try {
-            return new LinkedHashMap<>(objectMapper.readValue(session.getContextJson(), new TypeReference<Map<String, Object>>() {}));
-        } catch (Exception e) {
-            return new LinkedHashMap<>();
-        }
-    }
-
     private PaymentResponse toResponse(Payment payment, String checkoutUrl) {
         return new PaymentResponse(payment.getId(), payment.getStatus().name(), payment.getMode().name(),
             payment.getAmountCents(), payment.getCurrency(), checkoutUrl);
     }
 
-    public record CheckoutRequest(String sourceWidgetId) {}
+    public record CartResponse(List<CartItem> items, long totalCents, String currency) {}
     public record PaymentResponse(String paymentId, String status, String mode, long amountCents,
                                    String currency, String checkoutUrl) {}
     public record ErrorResponse(String message) {}

@@ -1,9 +1,9 @@
 package ai.genesisbrands.service;
 
 import ai.genesisbrands.model.Payment;
-import ai.genesisbrands.model.Product;
-import ai.genesisbrands.model.ProductOption;
 import ai.genesisbrands.repository.PaymentRepository;
+import ai.genesisbrands.service.CartService.CartItem;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.stripe.Stripe;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
@@ -18,16 +18,20 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
- * Charges for a previously made ProductOptions selection via Stripe Checkout — or, when
- * genesis.payments.mode=MOCK (the default), simulates a successful payment without ever
- * contacting Stripe. Mirrors the genesis.flow.mock-brand-results pattern so the payment
- * widget can be exercised end-to-end in the live page flow at zero cost and without a
- * Stripe account. TEST and LIVE both go through real Stripe Checkout; which of the two
- * configured secret keys is used is driven by this same mode property, so switching
- * from test to live traffic is a single property flip rather than a key swap.
+ * Charges for a FlowSession's whole cart (one or more CartService.CartItem selections) in
+ * a single Stripe Checkout — or, when genesis.payments.mode=MOCK (the default), simulates
+ * a successful payment without ever contacting Stripe. Mirrors the
+ * genesis.flow.mock-brand-results pattern so the payment widget can be exercised
+ * end-to-end in the live page flow at zero cost and without a Stripe account. TEST and
+ * LIVE both go through real Stripe Checkout; which of the two configured secret keys is
+ * used is driven by this same mode property, so switching from test to live traffic is a
+ * single property flip rather than a key swap. A cart with any recurring item uses
+ * SUBSCRIPTION mode (Stripe allows one-time price_data line items alongside recurring
+ * ones there); an all-one-time cart uses PAYMENT mode.
  */
 @Service
 @RequiredArgsConstructor
@@ -36,7 +40,7 @@ public class PaymentService {
     private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
 
     private final PaymentRepository paymentRepo;
-    private final ProductService productService;
+    private final ObjectMapper objectMapper;
 
     @Value("${genesis.payments.mode:MOCK}")
     private String modeProperty;
@@ -62,22 +66,25 @@ public class PaymentService {
     }
 
     public CheckoutOutcome startCheckout(String token, String widgetId, String clientUserId,
-                                          String productId, String optionId,
-                                          String successUrl, String cancelUrl) {
-        Product product = productService.getProduct(productId);
-        ProductOption option = productService.getOption(productId, optionId);
-        if (!product.isActive() || !option.isActive()) {
-            throw new IllegalStateException("This option is not currently available");
+                                          List<CartItem> cart, String successUrl, String cancelUrl) {
+        if (cart.isEmpty()) {
+            throw new IllegalStateException("Your cart is empty");
         }
+        String currency = cart.get(0).currency();
+        boolean mixedCurrency = cart.stream().anyMatch(i -> !currency.equalsIgnoreCase(i.currency()));
+        if (mixedCurrency) {
+            throw new IllegalStateException("Cart items must share a single currency");
+        }
+        long totalCents = cart.stream().mapToLong(CartItem::priceCents).sum();
+        boolean recurring = cart.stream().anyMatch(i -> i.billingInterval() != null && !i.billingInterval().isBlank());
 
         Payment payment = new Payment();
         payment.setId(UUID.randomUUID().toString());
         payment.setFlowSessionToken(token);
         payment.setWidgetId(widgetId);
-        payment.setProductId(productId);
-        payment.setProductOptionId(optionId);
-        payment.setAmountCents(option.getPriceCents());
-        payment.setCurrency(option.getCurrency());
+        payment.setCartJson(writeCart(cart));
+        payment.setAmountCents(totalCents);
+        payment.setCurrency(currency);
         payment.setClientUserId(clientUserId);
 
         Payment.Mode mode = currentMode();
@@ -95,29 +102,32 @@ public class PaymentService {
         }
         Stripe.apiKey = secretKey;
 
-        boolean recurring = option.getBillingInterval() != null && !option.getBillingInterval().isBlank();
-        SessionCreateParams.LineItem.PriceData.Builder priceData = SessionCreateParams.LineItem.PriceData.builder()
-            .setCurrency(option.getCurrency())
-            .setUnitAmount(option.getPriceCents())
-            .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
-                .setName(product.getName() + " — " + option.getName())
-                .build());
-        if (recurring) {
-            priceData.setRecurring(SessionCreateParams.LineItem.PriceData.Recurring.builder()
-                .setInterval(mapInterval(option.getBillingInterval()))
-                .build());
-        }
-
-        SessionCreateParams params = SessionCreateParams.builder()
+        SessionCreateParams.Builder paramsBuilder = SessionCreateParams.builder()
             .setMode(recurring ? SessionCreateParams.Mode.SUBSCRIPTION : SessionCreateParams.Mode.PAYMENT)
             .setSuccessUrl(successUrl)
             .setCancelUrl(cancelUrl)
-            .putMetadata("paymentId", payment.getId())
-            .addLineItem(SessionCreateParams.LineItem.builder()
+            .putMetadata("paymentId", payment.getId());
+
+        for (CartItem item : cart) {
+            boolean itemRecurring = item.billingInterval() != null && !item.billingInterval().isBlank();
+            SessionCreateParams.LineItem.PriceData.Builder priceData = SessionCreateParams.LineItem.PriceData.builder()
+                .setCurrency(item.currency())
+                .setUnitAmount(item.priceCents())
+                .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                    .setName(item.productName() + " — " + item.optionName())
+                    .build());
+            if (itemRecurring) {
+                priceData.setRecurring(SessionCreateParams.LineItem.PriceData.Recurring.builder()
+                    .setInterval(mapInterval(item.billingInterval()))
+                    .build());
+            }
+            paramsBuilder.addLineItem(SessionCreateParams.LineItem.builder()
                 .setQuantity(1L)
                 .setPriceData(priceData.build())
-                .build())
-            .build();
+                .build());
+        }
+
+        SessionCreateParams params = paramsBuilder.build();
 
         try {
             Session session = Session.create(params);
@@ -197,6 +207,14 @@ public class PaymentService {
 
     private String secretKeyFor(Payment.Mode mode) {
         return mode == Payment.Mode.LIVE ? liveSecretKey : testSecretKey;
+    }
+
+    private String writeCart(List<CartItem> cart) {
+        try {
+            return objectMapper.writeValueAsString(cart);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to serialize cart snapshot", e);
+        }
     }
 
     private SessionCreateParams.LineItem.PriceData.Recurring.Interval mapInterval(String billingInterval) {

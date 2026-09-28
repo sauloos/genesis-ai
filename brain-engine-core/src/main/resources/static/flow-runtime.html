@@ -126,6 +126,11 @@
   .outcome-btn-back { background: none; border: 1px solid var(--theme-btn-border); color: var(--theme-text-muted); }
   .outcome-btn-back:hover { color: var(--theme-text-primary); border-color: var(--theme-text-primary); opacity: 1; }
 
+  .widget-button-row { display: flex; margin-top: 24px; }
+  .widget-button-row.align-left { justify-content: flex-start; }
+  .widget-button-row.align-center { justify-content: center; }
+  .widget-button-row.align-right { justify-content: flex-end; }
+
   .widget-header-hero { text-align: center; padding: 8px 4px 28px; }
   .widget-header-hero-logo {
     height: 40px; width: auto; aspect-ratio: 805 / 220; display: block; margin: 0 auto 16px;
@@ -231,23 +236,21 @@
   }
   .po-card.selected .po-select-btn { background: var(--theme-text-primary); color: var(--theme-body-bg); border-color: var(--theme-text-primary); }
   .po-error { font-size: 13px; color: #d33; }
-  .po-continue-btn {
-    margin-top: 22px; padding: 12px 28px; border-radius: 9px; border: none;
-    background: var(--theme-text-primary); color: var(--theme-body-bg);
-    font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit;
-  }
-  .po-continue-btn:disabled { opacity: 0.5; cursor: default; }
 
   .widget-payment { display: flex; flex-direction: column; align-items: center; text-align: center; }
   .pay-heading { font-size: 18px; font-weight: 700; margin-bottom: 14px; color: var(--theme-text-primary); }
   .pay-summary {
-    width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 4px;
+    width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 10px;
     border: 1px solid var(--theme-card-border); border-radius: 12px; padding: 16px; margin-bottom: 16px;
   }
-  .pay-summary-product { font-size: 13px; color: var(--theme-text-muted); }
-  .pay-summary-option { font-size: 15px; font-weight: 700; color: var(--theme-text-primary); }
-  .pay-summary-price { font-size: 22px; font-weight: 700; color: var(--theme-text-primary); }
-  .pay-summary-price .pay-interval { font-size: 12px; font-weight: 500; color: var(--theme-text-muted); }
+  .pay-summary-line { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .pay-summary-line-label { font-size: 13px; color: var(--theme-text-muted); text-align: left; }
+  .pay-summary-line-price { font-size: 14px; font-weight: 700; color: var(--theme-text-primary); white-space: nowrap; }
+  .pay-summary-line-price .pay-interval { font-size: 12px; font-weight: 500; color: var(--theme-text-muted); }
+  .pay-summary-total {
+    display: flex; justify-content: space-between; font-size: 18px; font-weight: 700;
+    color: var(--theme-text-primary); border-top: 1px solid var(--theme-card-border); padding-top: 10px;
+  }
   .pay-btn {
     padding: 12px 28px; border-radius: 9px; border: none;
     background: var(--theme-text-primary); color: var(--theme-body-bg);
@@ -581,6 +584,21 @@ const widgetRegistry = {
     div.className = 'widget-payment';
     bootPaymentWidget(w, div);
     return div;
+  },
+  button: (w) => {
+    const align = ['left', 'center', 'right'].includes(w.config.align) ? w.config.align : 'right';
+    const isBack = w.config.action === 'back';
+
+    const row = document.createElement('div');
+    row.className = 'widget-button-row align-' + align;
+
+    const btn = document.createElement('button');
+    btn.className = 'outcome-btn' + (isBack ? ' outcome-btn-back' : '');
+    btn.textContent = w.config.label || (isBack ? 'Back' : 'Continue');
+    btn.onclick = () => advance(isBack ? 'back' : 'next');
+    row.appendChild(btn);
+
+    return row;
   },
   pageNav: (w) => {
     const div = document.createElement('div');
@@ -1098,8 +1116,8 @@ async function bootProductOptionsWidget(w, container) {
 function renderProductOptions(w, container, product, options, selectedOptionId) {
   container.innerHTML = '';
 
-  const advanceOnSelect = widgetConfigBool(w.config.advanceOnSelect, false);
-  if (advanceOnSelect) {
+  const required = widgetConfigBool(w.config.required, false);
+  if (required) {
     if (selectedOptionId) requiredPending.delete(w.id); else requiredPending.add(w.id);
     updateOutcomeButtons();
   }
@@ -1162,32 +1180,6 @@ function renderProductOptions(w, container, product, options, selectedOptionId) 
   });
 
   container.appendChild(grid);
-
-  if (advanceOnSelect) {
-    const continueBtn = document.createElement('button');
-    continueBtn.type = 'button';
-    continueBtn.className = 'po-continue-btn';
-    continueBtn.textContent = w.config.continueLabel || 'Continue';
-    continueBtn.disabled = !selectedOptionId;
-    continueBtn.onclick = () => goToPayment(w);
-    container.appendChild(continueBtn);
-  }
-}
-
-function goToPayment(w) {
-  // A payment widget paired to this one via sourceWidgetId is usually stacked on the
-  // same (terminal) page rather than a separate one — reveal it in place instead of
-  // calling advance(), which has no real transition to follow from a terminal page.
-  const target = currentPageWidgets.find(pw => pw.widgetType === 'payment' && pw.config && pw.config.sourceWidgetId === w.id);
-  if (target) {
-    const el = document.getElementById('payment-widget-' + target.id);
-    if (el) {
-      bootPaymentWidget(target, el);
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      return;
-    }
-  }
-  advance('next');
 }
 
 async function selectProductOption(w, container, product, options, optionId) {
@@ -1215,30 +1207,20 @@ function parseFeatures(json) {
 }
 
 async function bootPaymentWidget(w, container) {
-  const sourceWidgetId = w.config.sourceWidgetId;
-  if (!sourceWidgetId) {
-    container.innerHTML = '';
-    const err = document.createElement('div');
-    err.className = 'pay-error';
-    err.textContent = 'This widget has no source product widget configured.';
-    container.appendChild(err);
-    return;
-  }
-
-  let selection = null, status = null;
+  let cart = null, status = null;
   try {
-    const res = await fetch(`${API}/api/public/flow-sessions/${token}/widgets/${sourceWidgetId}/selection`, { headers: HEADERS });
-    if (res.ok) selection = await res.json();
-  } catch (e) { /* no selection yet */ }
+    const res = await fetch(`${API}/api/public/flow-sessions/${token}/cart`, { headers: HEADERS });
+    if (res.ok) cart = await res.json();
+  } catch (e) { /* no cart yet */ }
   try {
     const res = await fetch(`${API}/api/public/flow-sessions/${token}/widgets/${w.id}/checkout/status`, { headers: HEADERS });
     if (res.ok) status = await res.json();
   } catch (e) { /* no prior payment attempt */ }
 
-  renderPayment(w, container, sourceWidgetId, selection, status);
+  renderPayment(w, container, cart, status);
 }
 
-function renderPayment(w, container, sourceWidgetId, selection, status) {
+function renderPayment(w, container, cart, status) {
   container.innerHTML = '';
 
   const heading = document.createElement('h2');
@@ -1265,7 +1247,7 @@ function renderPayment(w, container, sourceWidgetId, selection, status) {
     return;
   }
 
-  if (!selection || !selection.optionId || !selection.productId) {
+  if (!cart || !cart.items || !cart.items.length) {
     const err = document.createElement('div');
     err.className = 'pay-error';
     err.textContent = 'Select an option above first.';
@@ -1275,31 +1257,36 @@ function renderPayment(w, container, sourceWidgetId, selection, status) {
 
   const summary = document.createElement('div');
   summary.className = 'pay-summary';
-  const product = document.createElement('div');
-  product.className = 'pay-summary-product';
-  product.textContent = selection.productName || '';
-  summary.appendChild(product);
-  const option = document.createElement('div');
-  option.className = 'pay-summary-option';
-  option.textContent = selection.optionName || '';
-  summary.appendChild(option);
-  const price = document.createElement('div');
-  price.className = 'pay-summary-price';
-  price.textContent = formatMoney(selection.priceCents, selection.currency);
-  if (selection.billingInterval) {
-    const interval = document.createElement('span');
-    interval.className = 'pay-interval';
-    interval.textContent = ' / ' + selection.billingInterval;
-    price.appendChild(interval);
-  }
-  summary.appendChild(price);
+  cart.items.forEach(item => {
+    const line = document.createElement('div');
+    line.className = 'pay-summary-line';
+    const label = document.createElement('div');
+    label.className = 'pay-summary-line-label';
+    label.textContent = (item.productName || '') + ' — ' + (item.optionName || '');
+    line.appendChild(label);
+    const price = document.createElement('div');
+    price.className = 'pay-summary-line-price';
+    price.textContent = formatMoney(item.priceCents, item.currency);
+    if (item.billingInterval) {
+      const interval = document.createElement('span');
+      interval.className = 'pay-interval';
+      interval.textContent = ' / ' + item.billingInterval;
+      price.appendChild(interval);
+    }
+    line.appendChild(price);
+    summary.appendChild(line);
+  });
+  const total = document.createElement('div');
+  total.className = 'pay-summary-total';
+  total.textContent = 'Total: ' + formatMoney(cart.totalCents, cart.currency);
+  summary.appendChild(total);
   container.appendChild(summary);
 
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'pay-btn';
   btn.textContent = w.config.buttonLabel || 'Pay now';
-  btn.onclick = () => startPayment(w, container, sourceWidgetId, btn);
+  btn.onclick = () => startPayment(w, container, btn);
   container.appendChild(btn);
 
   const errDiv = document.createElement('div');
@@ -1308,13 +1295,12 @@ function renderPayment(w, container, sourceWidgetId, selection, status) {
   container.appendChild(errDiv);
 }
 
-async function startPayment(w, container, sourceWidgetId, btn) {
+async function startPayment(w, container, btn) {
   btn.disabled = true;
   btn.textContent = 'Processing…';
   try {
     const res = await fetch(`${API}/api/public/flow-sessions/${token}/widgets/${w.id}/checkout`, {
-      method: 'POST', headers: HEADERS,
-      body: JSON.stringify({ sourceWidgetId })
+      method: 'POST', headers: HEADERS, body: JSON.stringify({})
     });
     const body = await res.json();
     if (!res.ok) throw new Error(body.message || 'Checkout failed');
@@ -1323,7 +1309,7 @@ async function startPayment(w, container, sourceWidgetId, btn) {
       return;
     }
     // MOCK mode: succeeded immediately, no redirect needed
-    renderPayment(w, container, sourceWidgetId, null, { status: body.status, amountCents: body.amountCents, currency: body.currency });
+    renderPayment(w, container, null, { status: body.status, amountCents: body.amountCents, currency: body.currency });
   } catch (e) {
     btn.disabled = false;
     btn.textContent = w.config.buttonLabel || 'Pay now';

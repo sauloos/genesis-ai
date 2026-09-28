@@ -8,10 +8,12 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 /**
- * Charges for whatever tier was last picked on a sibling ProductOptionsWidget (named via
- * sourceWidgetId), through Stripe Checkout — or, in MOCK mode (the default), simulates a
- * successful charge with no Stripe involvement at all. Carries no product config itself;
- * it always defers to the source widget's current selection at checkout time.
+ * Charges for the visitor's whole session cart — every selection made across any number
+ * of ProductOptionsWidget instances, on this page or an earlier one — through Stripe
+ * Checkout, or in MOCK mode (the default) simulates a successful charge with no Stripe
+ * involvement at all. Carries no product config itself; it always reads the FlowSession's
+ * current cart at render and checkout time, so one payment widget on its own page can
+ * settle purchases from any number of product-selection widgets earlier in the flow.
  */
 @Component
 public class PaymentWidget implements WidgetDescriptor {
@@ -28,13 +30,12 @@ public class PaymentWidget implements WidgetDescriptor {
 
     @Override
     public String description() {
-        return "Charges for the currently selected option on a sibling Product Options widget, via Stripe Checkout (or mock).";
+        return "Charges the visitor's session cart via Stripe Checkout (or mock).";
     }
 
     @Override
     public List<WidgetConfigOption> configOptions() {
         return List.of(
-            new WidgetConfigOption("sourceWidgetId", "Product Options widget", OptionType.STRING, List.of(), ""),
             new WidgetConfigOption("heading", "Heading (optional)", OptionType.STRING, List.of(), ""),
             new WidgetConfigOption("buttonLabel", "Button label (optional)", OptionType.STRING, List.of(), "")
         );
