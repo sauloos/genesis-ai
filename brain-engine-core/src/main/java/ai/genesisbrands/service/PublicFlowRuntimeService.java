@@ -61,6 +61,10 @@ public class PublicFlowRuntimeService {
         return toView(flowSessionService.get(token));
     }
 
+    public void unlinkClientUser(String token) {
+        flowSessionService.unlinkClientUser(token);
+    }
+
     public PublicSessionView updateContext(String token, String contextPatchJson, String clientUserId) {
         flowSessionService.linkClientUser(token, clientUserId);
         return toView(flowSessionService.updateContext(token, contextPatchJson));

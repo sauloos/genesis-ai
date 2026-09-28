@@ -64,6 +64,16 @@ public class PublicFlowController {
         }
     }
 
+    @PostMapping("/flow-sessions/{token}/unlink-user")
+    public ResponseEntity<?> unlinkUser(@PathVariable String token) {
+        try {
+            publicFlowRuntimeService.unlinkClientUser(token);
+            return ResponseEntity.noContent().build();
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
     @PutMapping("/flow-sessions/{token}/context")
     public ResponseEntity<?> updateContext(@PathVariable String token, @RequestBody ContextPatchRequest body, HttpServletRequest req) {
         try {

@@ -103,6 +103,22 @@ public class FlowSessionService {
         sessionRepo.save(session);
     }
 
+    /** Reverses linkClientUser — called on sign-out so a session sitting on a
+     *  requiresAuth page re-triggers AuthRequiredException instead of continuing to
+     *  render from its now-stale cached link (the LogoutWidget has no effect on a
+     *  requiresAuth page otherwise, since renderCurrentPage only ever checks
+     *  session.getClientUserId(), never the request's live auth cookie). */
+    @Transactional
+    public void unlinkClientUser(String token) {
+        FlowSession session = get(token);
+        if (session.getClientUserId() == null) {
+            return;
+        }
+        session.setClientUserId(null);
+        session.setUpdatedAt(Instant.now());
+        sessionRepo.save(session);
+    }
+
     @Transactional
     public FlowSession updateContext(String token, String contextPatchJson) {
         FlowSession session = get(token);

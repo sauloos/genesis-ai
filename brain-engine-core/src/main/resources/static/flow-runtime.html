@@ -1069,6 +1069,7 @@ async function bootLogoutWidget(w, container) {
     btn.textContent = 'Signing out…';
     try {
       await fetch(`${API}/api/auth/logout`, { method: 'POST', headers: HEADERS });
+      await fetch(`${API}/api/public/flow-sessions/${token}/unlink-user`, { method: 'POST', headers: HEADERS });
     } catch (e) { /* best effort — the visitor is leaving this state regardless */ }
     window.location.reload();
   };
