@@ -9,6 +9,7 @@ import java.util.Optional;
 public interface EngagementRepository extends JpaRepository<Engagement, String> {
     List<Engagement> findAllByOrderByCreatedAtDesc();
     List<Engagement> findAllBySourceOrderByCreatedAtDesc(Engagement.Source source);
+    List<Engagement> findAllByClientUserIdOrderByCreatedAtDesc(String clientUserId);
     Optional<Engagement> findFirstByStatusOrderByCreatedAtDesc(Engagement.Status status);
     List<Engagement> findAllByStatusOrderByCreatedAtDesc(Engagement.Status status);
 }

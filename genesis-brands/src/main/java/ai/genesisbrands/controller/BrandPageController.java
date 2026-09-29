@@ -25,4 +25,9 @@ public class BrandPageController {
     public String yourBrandPage() {
         return "forward:/your-brand.html";
     }
+
+    @GetMapping("/live/dashboard")
+    public String liveDashboardPage() {
+        return "forward:/live-dashboard.html";
+    }
 }

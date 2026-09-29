@@ -94,6 +94,16 @@ public class EngagementController {
         return rows.stream().map(EngagementSummary::of).toList();
     }
 
+    @GetMapping("/mine")
+    public List<EngagementSummary> mine(HttpServletRequest req) {
+        String clientUserId = resolveClientUserId(req);
+        if (clientUserId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sign in required");
+        }
+        return engagementRepo.findAllByClientUserIdOrderByCreatedAtDesc(clientUserId).stream()
+            .map(EngagementSummary::of).toList();
+    }
+
     @GetMapping("/{id}")
     public EngagementDetail get(@PathVariable String id, HttpServletRequest req) {
         Engagement e = engagementRepo.findById(id)

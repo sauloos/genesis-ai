@@ -15,8 +15,8 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Guards /your-brand/** — requires either admin Basic Auth or a valid client session
- * cookie (_gst). Public pages (/login, /register) pass through without auth.
+ * Guards /your-brand/** and /live/** — requires either admin Basic Auth or a valid client
+ * session cookie (_gst). Public pages (/login, /register) pass through without auth.
  */
 @Component
 @RequiredArgsConstructor
@@ -33,7 +33,7 @@ public class ClientAuthFilter extends OncePerRequestFilter {
 
         String path = req.getRequestURI();
 
-        if (!path.startsWith("/your-brand")) {
+        if (!path.startsWith("/your-brand") && !path.startsWith("/live")) {
             chain.doFilter(req, res);
             return;
         }
