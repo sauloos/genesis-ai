@@ -104,6 +104,39 @@ Each runs within a Genesis AI evaluation loop.
 
 ---
 
+## Client-Facing Widget Architecture
+
+**Every customer-facing UI element is a widget, and every widget is its own
+independently developed, pluggable component.** This is a standing architectural
+principle, not a per-widget decision — it applies to all current and future widget
+types (questionnaire, login, logout, productOptions, payment, brandResults, content,
+and any tenant-custom widget added later).
+
+A widget bundles everything it needs to run — UI, logic, its simulate-mode behavior,
+and its config/outcome model — and is loaded dynamically by the app, never hardcoded
+inline in a page:
+
+- **Server-side metadata** — a plain `@Component` bean implementing `WidgetDescriptor`
+  (`platform/WidgetDescriptor.java`): `widgetType()`, `displayName()`, `configOptions()`,
+  `outcomes()`. Auto-collected, no registry wiring, no hardcoded type list anywhere —
+  mirrors `CoreAgent`.
+- **Client-side implementation** — a static module at `static/widgets/<widgetType>/widget.js`
+  (+ optional `widget.css`), resolved purely by the `widgetType` string and loaded via
+  `static/widgets/loader.js`'s dynamic `import()`. Contract:
+  `export function mount(container, widget, ctx)` where `widget = { id, slotKey,
+  orderInSlot, widgetType, config }` and `ctx = { simulate?, onOutcome?(key?) }`.
+
+Adding a new widget — including a tenant's own custom widget — means dropping one
+`@Component` bean plus one static JS module at the conventional path. It never requires
+editing a host page (`flow-runtime.html`, `login.html`, etc.) or any core dispatch table.
+A widget consumed from multiple places (in-flow, a standalone page, an admin preview)
+uses the *same* module every time — never a page-specific reimplementation. `login` is
+the reference implementation of this pattern (`static/widgets/login/`); the remaining
+widget types listed above still live inline in `flow-runtime.html` and are pending the
+same extraction.
+
+---
+
 ## Key documents
 
 | Document | What it covers |
