@@ -43,8 +43,15 @@
   .footer-link { text-align: center; margin-top: 20px; font-size: 13px; color: var(--theme-text-muted); }
   .footer-link a { color: var(--theme-text-primary); text-decoration: none; font-weight: 600; }
   .footer-link a:hover { text-decoration: underline; }
+  .wl-divider {
+    display: flex; align-items: center; gap: 10px; margin: 18px 0; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.5px; color: var(--theme-text-muted);
+  }
+  .wl-divider::before, .wl-divider::after { content: ''; flex: 1; height: 1px; background: var(--theme-card-border); }
+  .wl-google-btn { display: flex; justify-content: center; }
 </style>
 <link rel="stylesheet" href="/api/themes/active/styles.css">
+<!--PF_GOOGLE_INJECT-->
 </head>
 <body>
 <div class="brand">GENESIS AI</div>
@@ -56,6 +63,7 @@
   <div class="field"><label>Password</label><input id="password" type="password" placeholder="Min 8 characters" autocomplete="new-password"></div>
   <div class="err" id="err"></div>
   <button class="btn" id="btn" onclick="register()">Create account</button>
+  <div id="google-slot"></div>
   <div class="footer-link">Already have an account? <a id="login-link" href="/login">Sign in</a></div>
 </div>
 
@@ -98,6 +106,59 @@ async function register() {
   } else {
     window.location.href = nextUrl;
   }
+}
+
+let googleScriptPromise = null;
+function loadGoogleScript() {
+  if (googleScriptPromise) return googleScriptPromise;
+  googleScriptPromise = new Promise((resolve, reject) => {
+    if (window.google && window.google.accounts && window.google.accounts.id) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true; s.defer = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('Failed to load Google Identity script'));
+    document.head.appendChild(s);
+  });
+  return googleScriptPromise;
+}
+
+async function handleGoogleCredential(response) {
+  const err = document.getElementById('err');
+  err.textContent = '';
+  try {
+    const res = await fetch(`${API}/api/auth/google`, {
+      method: 'POST', headers: HEADERS, body: JSON.stringify({ idToken: response.credential })
+    });
+    const body = await res.json();
+    if (!res.ok || body.error) {
+      err.textContent = body.error || 'Google sign-in failed. Please try again.';
+      return;
+    }
+    window.location.href = nextUrl;
+  } catch (e) {
+    err.textContent = 'Google sign-in failed. Please try again.';
+  }
+}
+
+if (window.__PF_GOOGLE_CLIENT_ID__) {
+  const slot = document.getElementById('google-slot');
+  const divider = document.createElement('div');
+  divider.className = 'wl-divider';
+  divider.textContent = 'or';
+  slot.appendChild(divider);
+
+  const googleContainer = document.createElement('div');
+  googleContainer.className = 'wl-google-btn';
+  slot.appendChild(googleContainer);
+
+  loadGoogleScript().then(() => {
+    window.google.accounts.id.initialize({
+      client_id: window.__PF_GOOGLE_CLIENT_ID__,
+      callback: handleGoogleCredential
+    });
+    window.google.accounts.id.renderButton(googleContainer, { theme: 'outline', size: 'large', width: 280 });
+  }).catch(() => { /* Google button simply doesn't render — email/password still works */ });
 }
 </script>
 </body>

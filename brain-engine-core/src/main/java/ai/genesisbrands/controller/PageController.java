@@ -21,11 +21,14 @@ public class PageController {
 
     private static final String SLUG_MARKER = "<!--PF_SLUG_INJECT-->";
     private static final String THEME_MARKER = "<!--PF_THEME_INJECT-->";
+    private static final String GOOGLE_MARKER = "<!--PF_GOOGLE_INJECT-->";
     private static final String DEFAULT_THEME_STYLES_URL = "/api/themes/active/styles.css";
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private final PageFlowRepository pageFlowRepo;
     private final String flowRuntimeTemplate = readClasspathResource("static/flow-runtime.html");
+    private final String loginTemplate = readClasspathResource("static/login.html");
+    private final String registerTemplate = readClasspathResource("static/register.html");
 
     @Value("${genesis.google-oauth.client-id:}")
     private String googleOauthClientId;
@@ -131,12 +134,25 @@ public class PageController {
     public String flowRuntimeLegacyRedirect(@PathVariable String slug) { return "redirect:/live/" + slug; }
 
     @GetMapping("/login")
-    public String loginPage() {
-        return "forward:/login.html";
+    public ResponseEntity<String> loginPage() {
+        return ResponseEntity.ok().contentType(MediaType.TEXT_HTML)
+            .body(loginTemplate.replace(GOOGLE_MARKER, googleClientIdScriptTag()));
     }
 
     @GetMapping("/register")
-    public String registerPage() {
-        return "forward:/register.html";
+    public ResponseEntity<String> registerPage() {
+        return ResponseEntity.ok().contentType(MediaType.TEXT_HTML)
+            .body(registerTemplate.replace(GOOGLE_MARKER, googleClientIdScriptTag()));
+    }
+
+    private String googleClientIdScriptTag() {
+        String googleClientIdJson;
+        try {
+            googleClientIdJson = JSON.writeValueAsString(googleOauthClientId.isBlank() ? null : googleOauthClientId)
+                .replace("</", "<\\/");
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        return "<script>window.__PF_GOOGLE_CLIENT_ID__ = " + googleClientIdJson + ";</script>";
     }
 }
