@@ -3,6 +3,7 @@ package ai.genesisbrands.controller;
 import ai.genesisbrands.platform.CoreAgent;
 import ai.genesisbrands.security.AdminAuthHelper;
 import ai.genesisbrands.security.AdminSessionService;
+import ai.genesisbrands.service.AgentCatalogService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -27,6 +28,7 @@ public class AgentRegistryController {
     private final AdminAuthHelper adminAuth;
     private final AdminSessionService adminSession;
     private final List<CoreAgent> agents;
+    private final AgentCatalogService catalogService;
 
     @GetMapping
     public ResponseEntity<List<Map<String, Object>>> list(HttpServletRequest req) {
@@ -41,5 +43,16 @@ public class AgentRegistryController {
                         "testEndpoint", agent.testEndpoint()))
                 .toList();
         return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Public-safe agent list for client-facing widgets (e.g. dashboardAgents): only
+     * agents an admin has flagged availableForLiveView, with no admin-only fields.
+     * Reads are gated only by the shared X-Api-Key (ApiKeyFilter), same as
+     * ProductController, since the widget runs in a customer session, not an admin one.
+     */
+    @GetMapping("/live-view")
+    public ResponseEntity<List<AgentCatalogService.PublicAgentEntry>> liveView() {
+        return ResponseEntity.ok(catalogService.listAvailableForLiveView());
     }
 }

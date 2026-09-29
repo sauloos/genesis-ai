@@ -550,6 +550,24 @@ const widgetRegistry = {
     bootLogoutWidget(w, div);
     return div;
   },
+  dashboardAgents: (w) => {
+    const div = document.createElement('div');
+    div.className = 'widget-dashboard-agents';
+    import('/widgets/loader.js').then(({ mountWidget }) => mountWidget('dashboardAgents', div, w, { simulate }));
+    return div;
+  },
+  dashboardAssets: (w) => {
+    const div = document.createElement('div');
+    div.className = 'widget-dashboard-assets';
+    import('/widgets/loader.js').then(({ mountWidget }) => mountWidget('dashboardAssets', div, w, { simulate }));
+    return div;
+  },
+  dashboardCatalog: (w) => {
+    const div = document.createElement('div');
+    div.className = 'widget-dashboard-catalog';
+    import('/widgets/loader.js').then(({ mountWidget }) => mountWidget('dashboardCatalog', div, w, { simulate }));
+    return div;
+  },
   productOptions: (w) => {
     const div = document.createElement('div');
     div.className = 'widget-product-options';

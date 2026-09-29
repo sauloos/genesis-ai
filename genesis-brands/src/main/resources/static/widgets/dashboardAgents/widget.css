@@ -1,0 +1,12 @@
+.da-panel { background: #fff; border: 1px solid #eee; border-radius: 14px; padding: 24px 26px; }
+.da-panel-label { font-size: 10px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;
+  color: #999; margin-bottom: 16px; }
+.da-card { border: 1px solid #eee; border-radius: 12px; padding: 16px 18px; margin-bottom: 12px;
+  opacity: 0.55; }
+.da-card:last-child { margin-bottom: 0; }
+.da-name { font-size: 14px; font-weight: 700; }
+.da-desc { font-size: 12px; color: #888; margin-top: 4px; line-height: 1.4; }
+.da-badge { display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: 0.4px;
+  text-transform: uppercase; background: #f2f2f2; color: #999; padding: 2px 8px; border-radius: 20px;
+  margin-top: 8px; }
+.da-empty { font-size: 13px; color: #999; padding: 16px 0; }

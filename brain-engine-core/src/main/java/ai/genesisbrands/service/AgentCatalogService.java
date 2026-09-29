@@ -30,6 +30,15 @@ public class AgentCatalogService {
         return agents.stream().map(this::toEntry).toList();
     }
 
+    /** Public-safe view for client-facing widgets: only agents an admin has enabled for live view. */
+    public List<PublicAgentEntry> listAvailableForLiveView() {
+        return agents.stream()
+            .map(this::toEntry)
+            .filter(AgentCatalogEntry::availableForLiveView)
+            .map(e -> new PublicAgentEntry(e.agentId(), e.displayName(), e.description(), e.chatBased()))
+            .toList();
+    }
+
     @Transactional
     public AgentCatalogEntry updateConfig(String agentId, UpdateAgentConfigRequest req) {
         CoreAgent agent = findAgent(agentId);
@@ -96,4 +105,6 @@ public class AgentCatalogService {
     public record UpdateAgentConfigRequest(
         Boolean availableForLiveView, Boolean availableForPlayground, Boolean abCompareEnabled
     ) {}
+
+    public record PublicAgentEntry(String agentId, String displayName, String description, boolean chatBased) {}
 }
