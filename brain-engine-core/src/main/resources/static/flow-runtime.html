@@ -533,7 +533,20 @@ const widgetRegistry = {
     requiredPending.add(w.id);
     import('/widgets/loader.js').then(({ mountWidget }) => mountWidget('login', div, w, {
       simulate,
-      onOutcome: (key) => { requiredPending.delete(w.id); updateOutcomeButtons(); advance(key || 'next'); }
+      onOutcome: (key) => {
+        requiredPending.delete(w.id);
+        updateOutcomeButtons();
+        // Standalone /login and /register set this so a successful sign-in/sign-up
+        // honors the ?next= destination ClientAuthFilter attached, instead of trying
+        // to advance within this (single-page) flow. Off by default so login widgets
+        // embedded mid-flow (e.g. Brand Journey's "Sign in to see your brand") keep
+        // advancing to the flow's own next page.
+        if (w.config && w.config.redirectToNextParam) {
+          window.location.href = new URLSearchParams(window.location.search).get('next') || '/';
+          return;
+        }
+        advance(key || 'next');
+      }
     }));
     return div;
   },
@@ -1212,6 +1225,10 @@ function renderPayment(w, container, cart, status) {
     sub.textContent = formatMoney(status.amountCents, status.currency) + ' — thank you!';
     box.appendChild(sub);
     container.appendChild(box);
+    // Payment is this page's only route to its 'next' transition — nothing else on
+    // the page advances the flow, so a successful payment must trigger it itself.
+    // Brief pause so the visitor sees confirmation before the page navigates away.
+    setTimeout(() => advance('next'), 1200);
     return;
   }
 

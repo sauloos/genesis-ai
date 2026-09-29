@@ -13,12 +13,14 @@ public final class PageFlowRouting {
     public static final String DEFAULT_ROOT_PREFIX = "live";
 
     /** First-path-segment reserved list — mirrors BasicAuthFilter.PROTECTED_PATHS plus
-     *  api/assets/login/flow. "live" is deliberately NOT reserved: setting it explicitly
-     *  is just spelling out the default. "flow" is reserved as a permanent legacy-redirect prefix. */
+     *  api/assets/flow. "live" is deliberately NOT reserved: setting it explicitly
+     *  is just spelling out the default. "flow" is reserved as a permanent legacy-redirect
+     *  prefix. "login"/"register" are deliberately NOT reserved — both are real, root-mounted
+     *  PageFlows (see PageController), not static routes. */
     public static final Set<String> RESERVED_SEGMENTS = Set.of(
         "api", "dashboard", "console", "training", "playground", "questionnaires", "templates",
-        "knowledge", "themes", "agents", "page-flows", "questionnaire-run", "discover", "login",
-        "register", "assets", "flow"
+        "knowledge", "themes", "agents", "page-flows", "questionnaire-run", "discover",
+        "assets", "flow"
     );
 
     private PageFlowRouting() {}

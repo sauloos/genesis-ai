@@ -34,7 +34,10 @@ public class LoginWidget implements WidgetDescriptor {
     @Override
     public List<WidgetConfigOption> configOptions() {
         return List.of(
-            new WidgetConfigOption("googleEnabled", "Enable Google sign-in", OptionType.BOOLEAN, List.of(), "true")
+            new WidgetConfigOption("googleEnabled", "Enable Google sign-in", OptionType.BOOLEAN, List.of(), "true"),
+            new WidgetConfigOption("initialTab", "Default tab", OptionType.SELECT, List.of("signin", "signup"), "signin"),
+            new WidgetConfigOption("redirectToNextParam", "On success, redirect to ?next= instead of advancing the flow",
+                OptionType.BOOLEAN, List.of(), "false")
         );
     }
 }
