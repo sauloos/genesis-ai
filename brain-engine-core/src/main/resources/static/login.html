@@ -43,12 +43,6 @@
   .footer-link { text-align: center; margin-top: 20px; font-size: 13px; color: var(--theme-text-muted); }
   .footer-link a { color: var(--theme-text-primary); text-decoration: none; font-weight: 600; }
   .footer-link a:hover { text-decoration: underline; }
-  .wl-divider {
-    display: flex; align-items: center; gap: 10px; margin: 18px 0; font-size: 11px;
-    text-transform: uppercase; letter-spacing: 0.5px; color: var(--theme-text-muted);
-  }
-  .wl-divider::before, .wl-divider::after { content: ''; flex: 1; height: 1px; background: var(--theme-card-border); }
-  .wl-google-btn { display: flex; justify-content: center; }
 </style>
 <link rel="stylesheet" href="/api/themes/active/styles.css">
 <!--PF_GOOGLE_INJECT-->
@@ -58,100 +52,21 @@
 <div class="card">
   <h1>Sign in</h1>
   <div class="sub">Access your results</div>
-  <div class="field"><label>Email</label><input id="email" type="email" placeholder="your@email.com" autocomplete="email"></div>
-  <div class="field"><label>Password</label><input id="password" type="password" placeholder="Password" autocomplete="current-password"></div>
-  <div class="err" id="err"></div>
-  <button class="btn" id="btn" onclick="login()">Sign in</button>
-  <div id="google-slot"></div>
+  <div id="widget-mount"></div>
   <div class="footer-link">Don't have an account? <a id="register-link" href="/register">Create one</a></div>
 </div>
 
-<script>
-const API     = '';
-const KEY     = 'genesis-ai-key';
-const HEADERS = { 'Content-Type': 'application/json', 'X-Api-Key': KEY };
+<script type="module">
+import { mountWidget } from '/widgets/loader.js';
 
 const nextUrl = new URLSearchParams(window.location.search).get('next') || '/';
 if (nextUrl !== '/') {
   document.getElementById('register-link').href = '/register?next=' + encodeURIComponent(nextUrl);
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
-
-async function login() {
-  const email = document.getElementById('email').value.trim();
-  const password = document.getElementById('password').value;
-  document.getElementById('err').textContent = '';
-  if (!email || !password) { document.getElementById('err').textContent = 'Please enter your email and password.'; return; }
-
-  const btn = document.getElementById('btn');
-  btn.disabled = true; btn.textContent = 'Signing in…';
-
-  const res = await fetch(`${API}/api/auth/login`, {
-    method: 'POST', headers: HEADERS,
-    body: JSON.stringify({ email, password })
-  }).then(r => r.json());
-
-  if (res.error) {
-    document.getElementById('err').textContent = res.error;
-    btn.disabled = false; btn.textContent = 'Sign in';
-  } else {
-    window.location.href = nextUrl;
-  }
-}
-
-let googleScriptPromise = null;
-function loadGoogleScript() {
-  if (googleScriptPromise) return googleScriptPromise;
-  googleScriptPromise = new Promise((resolve, reject) => {
-    if (window.google && window.google.accounts && window.google.accounts.id) { resolve(); return; }
-    const s = document.createElement('script');
-    s.src = 'https://accounts.google.com/gsi/client';
-    s.async = true; s.defer = true;
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error('Failed to load Google Identity script'));
-    document.head.appendChild(s);
-  });
-  return googleScriptPromise;
-}
-
-async function handleGoogleCredential(response) {
-  const err = document.getElementById('err');
-  err.textContent = '';
-  try {
-    const res = await fetch(`${API}/api/auth/google`, {
-      method: 'POST', headers: HEADERS, body: JSON.stringify({ idToken: response.credential })
-    });
-    const body = await res.json();
-    if (!res.ok || body.error) {
-      err.textContent = body.error || 'Google sign-in failed. Please try again.';
-      return;
-    }
-    window.location.href = nextUrl;
-  } catch (e) {
-    err.textContent = 'Google sign-in failed. Please try again.';
-  }
-}
-
-if (window.__PF_GOOGLE_CLIENT_ID__) {
-  const slot = document.getElementById('google-slot');
-  const divider = document.createElement('div');
-  divider.className = 'wl-divider';
-  divider.textContent = 'or';
-  slot.appendChild(divider);
-
-  const googleContainer = document.createElement('div');
-  googleContainer.className = 'wl-google-btn';
-  slot.appendChild(googleContainer);
-
-  loadGoogleScript().then(() => {
-    window.google.accounts.id.initialize({
-      client_id: window.__PF_GOOGLE_CLIENT_ID__,
-      callback: handleGoogleCredential
-    });
-    window.google.accounts.id.renderButton(googleContainer, { theme: 'outline', size: 'large', width: 280 });
-  }).catch(() => { /* Google button simply doesn't render — email/password still works */ });
-}
+mountWidget('login', document.getElementById('widget-mount'), { widgetType: 'login', config: { googleEnabled: true } }, {
+  onOutcome: () => { window.location.href = nextUrl; }
+});
 </script>
 </body>
 </html>
