@@ -11,7 +11,8 @@ public record PageLayout(
     String id,
     String label,
     List<Slot> slots,
-    String gridTemplateColumns
+    String gridTemplateColumns,
+    boolean wide
 ) {
 
     public record Slot(String key, String label) {}
@@ -20,27 +21,27 @@ public record PageLayout(
         new PageLayout(
             "SINGLE_COLUMN", "Single column",
             List.of(new Slot("main", "Main")),
-            "1fr"
+            "1fr", false
         ),
         new PageLayout(
             "TWO_COLUMN", "Two column",
             List.of(new Slot("left", "Left"), new Slot("right", "Right")),
-            "1fr 1fr"
+            "1fr 1fr", false
         ),
         new PageLayout(
             "HERO_PLUS_BODY", "Hero + body",
             List.of(new Slot("hero", "Hero"), new Slot("body", "Body")),
-            "1fr"
+            "1fr", false
         ),
         new PageLayout(
             "SIDEBAR_LEFT", "Sidebar + main",
             List.of(new Slot("sidebar", "Sidebar"), new Slot("main", "Main")),
-            "280px 1fr"
+            "280px 1fr", true
         ),
         new PageLayout(
             "FULL_BLEED", "Full bleed",
             List.of(new Slot("main", "Main")),
-            "1fr"
+            "1fr", false
         )
     );
 
