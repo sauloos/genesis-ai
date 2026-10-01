@@ -25,6 +25,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class PageWidgetService {
 
+    /** Reserved slotKey, valid on every layout regardless of its declared grid slots: renders
+     *  full-width above the grid in flow-runtime.html's #page-header container (see render()). */
+    public static final String RESERVED_HEADER_SLOT = "header";
+
     private final PageWidgetRepository pageWidgetRepo;
     private final PageRepository pageRepo;
     private final List<WidgetDescriptor> widgetDescriptors;
@@ -101,6 +105,9 @@ public class PageWidgetService {
     }
 
     private void validateSlot(Page page, String slotKey) {
+        if (RESERVED_HEADER_SLOT.equals(slotKey)) {
+            return;
+        }
         PageLayout layout = PageLayout.byId(page.getLayoutKey());
         if (layout == null) {
             throw new IllegalArgumentException("Page has an unknown layout: " + page.getLayoutKey());

@@ -48,6 +48,9 @@
   #card.no-border { border: none; box-shadow: none; }
   #card.wide { max-width: 1280px; }
 
+  #page-header { display: flex; flex-direction: column; gap: 16px; }
+  #page-header:empty { display: none; }
+  #page-header:not(:empty) { margin-bottom: 24px; }
   #page-grid { display: grid; gap: 24px; }
   #card.full-bleed #page-grid { gap: 0; height: 100%; min-height: 100vh; }
   .slot { display: flex; flex-direction: column; gap: 16px; }
@@ -292,6 +295,7 @@
 <div id="sim-badge"><span class="dot"></span><span class="label">Simulated</span></div>
 
 <div id="card">
+  <div id="page-header"></div>
   <div id="page-grid"></div>
 </div>
 
@@ -1598,6 +1602,17 @@ function renderPage(page, isEnded) {
   // it's been given a pageNav widget. A flow's designated end page is terminal — the
   // session has already ended server-side — so pageNav is skipped there even if present.
   const widgets = isEnded ? page.widgets.filter(w => w.widgetType !== 'pageNav') : page.widgets;
+
+  // 'header' is a reserved slotKey, not a layout-declared one: any widget assigned to it
+  // renders full-width above the grid (spanning every column/slot below), regardless of
+  // which layout the page uses — the only way a widget can break out of its column today.
+  const headerEl = document.getElementById('page-header');
+  headerEl.innerHTML = '';
+  widgets.filter(w => w.slotKey === 'header').forEach(w => {
+    const fn = widgetRegistry[w.widgetType];
+    const el = fn ? fn(w) : null;
+    if (el) headerEl.appendChild(el);
+  });
 
   const grid = document.getElementById('page-grid');
   grid.style.gridTemplateColumns = layout ? layout.gridTemplateColumns : '1fr';

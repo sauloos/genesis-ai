@@ -1,6 +1,7 @@
 package ai.genesisbrands.service;
 
 import ai.genesisbrands.model.Payment;
+import ai.genesisbrands.platform.PaymentCompletionTrigger;
 import ai.genesisbrands.repository.PaymentRepository;
 import ai.genesisbrands.service.CartService.CartItem;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,6 +20,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -41,6 +43,7 @@ public class PaymentService {
 
     private final PaymentRepository paymentRepo;
     private final ObjectMapper objectMapper;
+    private final Optional<PaymentCompletionTrigger> paymentCompletionTrigger;
 
     @Value("${genesis.payments.mode:MOCK}")
     private String modeProperty;
@@ -93,6 +96,7 @@ public class PaymentService {
         if (mode == Payment.Mode.MOCK) {
             payment.setStatus(Payment.Status.SUCCEEDED);
             paymentRepo.save(payment);
+            notifyPaymentSucceeded(payment);
             return new CheckoutOutcome(payment, null);
         }
 
@@ -199,10 +203,16 @@ public class PaymentService {
             payment.setStatus(Payment.Status.SUCCEEDED);
             payment.setStripePaymentIntentId(session.getPaymentIntent());
             paymentRepo.save(payment);
+            notifyPaymentSucceeded(payment);
         } else if ("expired".equals(session.getStatus())) {
             payment.setStatus(Payment.Status.CANCELED);
             paymentRepo.save(payment);
         }
+    }
+
+    private void notifyPaymentSucceeded(Payment payment) {
+        paymentCompletionTrigger.ifPresent(t ->
+            t.onPaymentSucceeded(payment.getFlowSessionToken(), payment.getClientUserId()));
     }
 
     private String secretKeyFor(Payment.Mode mode) {

@@ -85,7 +85,8 @@ public class PageService {
             .collect(Collectors.toSet());
         List<PageWidget> widgets = pageWidgetRepo.findByPageIdOrderByOrderInSlotAsc(id);
         for (PageWidget widget : widgets) {
-            if (!validSlots.contains(widget.getSlotKey())) {
+            if (!PageWidgetService.RESERVED_HEADER_SLOT.equals(widget.getSlotKey())
+                    && !validSlots.contains(widget.getSlotKey())) {
                 throw new IllegalArgumentException(
                     "Layout '" + layoutKey + "' has no slot '" + widget.getSlotKey()
                         + "' used by an existing widget placement");
