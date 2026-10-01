@@ -83,6 +83,21 @@ public class BrandBookTemplateRenderer {
         if (playwright != null) try { playwright.close(); } catch (Exception ignored) {}
     }
 
+    /**
+     * The Chromium process behind `browser` can crash or have its pipe closed independently
+     * of the JVM (OOM, signal, host hiccup) — Playwright surfaces that as "connection closed"
+     * on the next call, and since `browser` is a long-lived singleton, every render after that
+     * would fail forever without this check relaunching it.
+     */
+    private synchronized Browser getBrowser() {
+        if (browser == null || !browser.isConnected()) {
+            log.warn("BrandBookTemplateRenderer: Playwright browser not connected — relaunching");
+            if (browser != null) try { browser.close(); } catch (Exception ignored) {}
+            browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));
+        }
+        return browser;
+    }
+
     // ── Public API ────────────────────────────────────────────────────────────
 
     public byte[] render(BrandBookInput input, BrandBookOutput output) {
@@ -169,7 +184,7 @@ public class BrandBookTemplateRenderer {
         // Chromium crashes with "Page crashed". file:// navigation reads from disk directly
         // and bypasses the IPC buffer limit entirely.
         Path tmpFile = null;
-        BrowserContext ctx = browser.newContext();
+        BrowserContext ctx = getBrowser().newContext();
         try {
             tmpFile = Files.createTempFile("brand-book-", ".html");
             Files.writeString(tmpFile, html, StandardCharsets.UTF_8);
@@ -201,7 +216,7 @@ public class BrandBookTemplateRenderer {
      */
     private byte[] renderPreviewScreenshot(String html) {
         Path tmpFile = null;
-        BrowserContext ctx = browser.newContext(new Browser.NewContextOptions()
+        BrowserContext ctx = getBrowser().newContext(new Browser.NewContextOptions()
             .setViewportSize(900, 1300)
             .setDeviceScaleFactor(0.756));
         try {

@@ -186,7 +186,13 @@ public class EngagementController {
         BrandBookInput input = new BrandBookInput(
             dir.brief(), dir.playbook(), dir.copy(), dir.visualIdentity(), dir.logo()
         );
-        byte[] jpeg = pdfRenderer.renderPreviewImage(input, dir.brandBook());
+        byte[] jpeg;
+        try {
+            jpeg = pdfRenderer.renderPreviewImage(input, dir.brandBook());
+        } catch (Exception ex) {
+            log.error("Preview render failed for engagement {} direction {}: {}", id, direction, ex.getMessage(), ex);
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        }
         return ResponseEntity.ok()
             .contentType(MediaType.IMAGE_JPEG)
             .body(jpeg);
@@ -304,7 +310,13 @@ public class EngagementController {
         BrandBookInput input = new BrandBookInput(
             dir.brief(), dir.playbook(), dir.copy(), dir.visualIdentity(), dir.logo()
         );
-        byte[] pdf = pdfRenderer.render(input, dir.brandBook());
+        byte[] pdf;
+        try {
+            pdf = pdfRenderer.render(input, dir.brandBook());
+        } catch (Exception ex) {
+            log.error("On-demand PDF render failed for engagement {} direction {}: {}", id, direction, ex.getMessage(), ex);
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        }
         return ResponseEntity.ok()
             .contentType(MediaType.APPLICATION_PDF)
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
