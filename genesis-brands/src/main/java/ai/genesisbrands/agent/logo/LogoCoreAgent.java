@@ -51,4 +51,9 @@ public class LogoCoreAgent implements CoreAgent {
             "DALLE"
         ));
     }
+
+    @Override
+    public boolean hasLiveView() {
+        return true;
+    }
 }

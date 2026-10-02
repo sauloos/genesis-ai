@@ -2,11 +2,14 @@ package ai.genesisbrands.controller;
 
 import ai.genesisbrands.agent.brandbook.BrandBookInput;
 import ai.genesisbrands.agent.brandbook.BrandBookTemplateRenderer;
+import ai.genesisbrands.model.AgentRegenerationJob;
 import ai.genesisbrands.model.ClientUser;
 import ai.genesisbrands.model.Engagement;
+import ai.genesisbrands.repository.AgentRegenerationJobRepository;
 import ai.genesisbrands.repository.EngagementRepository;
 import ai.genesisbrands.security.AdminAuthHelper;
 import ai.genesisbrands.security.ClientAuthHelper;
+import ai.genesisbrands.service.AgentRegenerationService;
 import ai.genesisbrands.service.BlobStorageService;
 import ai.genesisbrands.service.EngagementOrchestratorService;
 import ai.genesisbrands.service.PhotoSourcingService;
@@ -17,6 +20,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -27,7 +31,9 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.Instant;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -46,6 +52,22 @@ public class EngagementController {
     private final ObjectMapper objectMapper;
     private final AdminAuthHelper adminAuth;
     private final ClientAuthHelper clientAuthHelper;
+    private final AgentRegenerationJobRepository regenerationJobRepo;
+    private final AgentRegenerationService regenerationService;
+
+    private static final Set<String> REGENERATABLE_AGENT_IDS =
+        Set.of("copy", "visual-identity", "logo", "playbook", "brand-book");
+
+    // Per-(engagementId, direction) lock so the in-flight check and job insert below are
+    // atomic. Without this, two near-simultaneous requests can both read "nothing in
+    // flight" before either row is saved, both proceed, and race to read-modify-write the
+    // same engagement's resultsJson — silently dropping one side's write. In-process only
+    // (fine at current single-instance scale); revisit with a DB-level lock if this app is
+    // ever horizontally scaled.
+    private static final ConcurrentHashMap<String, Object> regenerationSlotLocks = new ConcurrentHashMap<>();
+
+    @Value("${genesis.regenerate.max-per-slot:3}")
+    private int maxRegeneratesPerSlot;
 
     // ── Create ────────────────────────────────────────────────────────────────
 
@@ -218,6 +240,76 @@ public class EngagementController {
             .orElse(null);
     }
 
+    // ── Agent regeneration (client-triggered, per agentId pluggable-agent view) ─
+
+    @PostMapping("/{id}/agents/{agentId}/regenerate")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public RegenerationJobSummary regenerate(@PathVariable String id,
+                                              @PathVariable String agentId,
+                                              @RequestBody RegenerateRequest req,
+                                              HttpServletRequest servletReq) {
+        if (!REGENERATABLE_AGENT_IDS.contains(agentId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Agent does not support regeneration: " + agentId);
+        }
+        Engagement e = engagementRepo.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Engagement not found: " + id));
+        requireOwner(e, servletReq);
+
+        if (e.getStatus() != Engagement.Status.DONE || e.getPaymentStatus() != Engagement.PaymentStatus.PAID) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Engagement is not paid/finished yet");
+        }
+        if (findDirection(e, req.direction()) == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown direction: " + req.direction());
+        }
+
+        String direction = req.direction().toUpperCase();
+        Object slotLock = regenerationSlotLocks.computeIfAbsent(id + ":" + direction, k -> new Object());
+        AgentRegenerationJob job;
+        synchronized (slotLock) {
+            boolean inFlight = regenerationJobRepo.findFirstByEngagementIdAndDirectionAndStatusIn(
+                id, direction,
+                List.of(AgentRegenerationJob.Status.QUEUED, AgentRegenerationJob.Status.RUNNING)
+            ).isPresent();
+            if (inFlight) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "A regeneration is already in progress for this direction");
+            }
+
+            long used = regenerationJobRepo.countByEngagementIdAndDirectionAndAgentId(id, direction, agentId);
+            if (used >= maxRegeneratesPerSlot) {
+                throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                    "Regeneration limit reached for this agent (" + maxRegeneratesPerSlot + " max)");
+            }
+
+            job = new AgentRegenerationJob();
+            job.setId(UUID.randomUUID().toString());
+            job.setEngagementId(id);
+            job.setDirection(direction);
+            job.setAgentId(agentId);
+            job.setFeedback(req.feedback());
+            regenerationJobRepo.save(job);
+        }
+
+        regenerationService.regenerate(job.getId());
+
+        return RegenerationJobSummary.of(job);
+    }
+
+    @GetMapping("/{id}/agents/regenerations/{jobId}")
+    public RegenerationJobSummary regenerationStatus(@PathVariable String id,
+                                                       @PathVariable String jobId,
+                                                       HttpServletRequest req) {
+        Engagement e = engagementRepo.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Engagement not found: " + id));
+        requireOwner(e, req);
+
+        AgentRegenerationJob job = regenerationJobRepo.findById(jobId)
+            .orElseThrow(() -> new NoSuchElementException("Regeneration job not found: " + jobId));
+        if (!job.getEngagementId().equals(id)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Job does not belong to this engagement");
+        }
+        return RegenerationJobSummary.of(job);
+    }
+
     // ── Payment placeholder ───────────────────────────────────────────────────
 
     @PostMapping("/{id}/request-payment")
@@ -383,6 +475,20 @@ public class EngagementController {
 
     public record ChooseDirectionRequest(String direction) {}
 
+    public record RegenerateRequest(String direction, String feedback) {}
+
+    public record RegenerationJobSummary(
+        String id, String engagementId, String direction, String agentId,
+        String status, String errorMessage, Instant createdAt, Instant completedAt
+    ) {
+        static RegenerationJobSummary of(AgentRegenerationJob job) {
+            return new RegenerationJobSummary(
+                job.getId(), job.getEngagementId(), job.getDirection(), job.getAgentId(),
+                job.getStatus().name(), job.getErrorMessage(), job.getCreatedAt(), job.getCompletedAt()
+            );
+        }
+    }
+
     public record ImportRequest(
         Engagement.Source source,
         String clientEmail,
@@ -397,6 +503,7 @@ public class EngagementController {
         String paymentStatus,
         String clientEmail,
         String clientName,
+        String chosenDirection,
         String errorMessage,
         Instant createdAt,
         Instant updatedAt
@@ -405,7 +512,7 @@ public class EngagementController {
             return new EngagementSummary(
                 e.getId(), e.getSource().name(), e.getStatus().name(),
                 e.getPaymentStatus().name(), e.getClientEmail(), e.getClientName(),
-                e.getErrorMessage(), e.getCreatedAt(), e.getUpdatedAt()
+                e.getChosenDirection(), e.getErrorMessage(), e.getCreatedAt(), e.getUpdatedAt()
             );
         }
     }

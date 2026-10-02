@@ -18,6 +18,24 @@ public interface CoreAgent {
 
     String testEndpoint();
 
+    /**
+     * Icon identifier for this agent's card (dashboard, playground, admin). Null means the
+     * host renders its own fallback glyph.
+     */
+    default String icon() {
+        return null;
+    }
+
+    /**
+     * Declares whether this agent ships its own Live Dashboard view module at
+     * {@code /agent-views/<agentId>/live.js}, resolved by convention — not probed at
+     * runtime. False means the agent's card (if shown at all on the live dashboard) is not
+     * clickable.
+     */
+    default boolean hasLiveView() {
+        return false;
+    }
+
     default boolean requiresQuestionnaire() {
         return false;
     }

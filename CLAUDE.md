@@ -137,6 +137,96 @@ same extraction.
 
 ---
 
+## Agent Pluggable Architecture
+
+**Agents are pluggable components, exactly like widgets.** This is a standing architectural
+principle, not a per-agent decision — it applies to every current and future agent, including
+ones not yet designed (e.g. flyer, banner, signage, standup-banner, or any other asset-type
+agent), whether built inside this application or shipped as its own module.
+
+An agent bundles three things, and is added to the app with zero core wiring — `CoreAgent`
+beans are already auto-collected via Spring component scan, same as `WidgetDescriptor`:
+
+- **Its full definition** — config (model/maxTokens in `application.yml`), system prompt, and
+  logic (the `*Agent.java` / `*RefinementLoop.java` classes).
+- **Its metadata** — `agentId`, `displayName`, `description`, `icon`.
+- **Its own screens** — a Playground view and a Live Dashboard view, each a self-contained
+  client-side module resolved by convention from `agentId` (`static/agent-views/<agentId>/
+  playground.js` and `.../live.js`), exactly like a widget's `widgetType` resolves to
+  `/widgets/<type>/widget.js` via `loader.js`. Resolution is convention-based — no registry.
+
+**An agent's module placement follows what it is, not where it's wired in** — same rule as
+widgets, and already reflected in the codebase today: **Consultant is a Genesis OS (core)
+agent** (`brain-engine-core/.../agent/consultant/ConsultantCoreAgent.java`) because every
+tenant gets a consultant — it's platform-level, sector-agnostic capability. **Copy, Visual
+Identity, Logo, Playbook, and Brand Book are Genesis Brands (tenant) agents** (`genesis-brands/
+.../agent/{copy,visualidentity,logo,playbook,brandbook}/...CoreAgent.java`) because they are
+specific to the brand-engagement product this tenant sells — a different tenant could ship a
+completely different set of SLOT/CREATE agents. This split is invisible to the pluggable
+mechanism itself: `AgentCatalogService` (core) auto-collects every `CoreAgent` bean via Spring
+component scan regardless of which module declared it, and `dashboardAgents`/Playground treat
+core and tenant agents identically — one catalog, one card list, one dialog/loader convention.
+When adding a future agent (or auditing an existing one), always ask "does every tenant need
+this, or is this specific to Genesis Brands' product" before picking its module — never default
+to genesis-brands out of convenience.
+
+**Enablement is per-surface and admin-configurable** — `AgentCatalogConfig.availableForPlayground`
+/ `availableForLiveView` (configured via the agents admin) gate whether an agent's card appears
+on each surface at all. This is orthogonal to whether the agent *has* a view module for that
+surface (declared via `CoreAgent.hasLiveView()` — no runtime probing).
+
+**The host surface is always pure chrome.** On Playground's right-hand panel, or in a dialog
+popped up on `/live/dashboard`, selecting an agent loads and renders **that agent's own view
+module** into the panel/dialog. The host (e.g. the `dashboardAgents` widget) only lists cards
+and provides the panel/dialog shell — it never owns agent-specific form fields, output
+rendering, or submit logic. Whatever a Live Dashboard view generates lands back in the Assets
+widget.
+
+**Two output modes** — declared per agent, because they're stored differently, not because
+either is less "pluggable":
+- **SLOT** — one canonical output per `(engagementId, direction, agentId)`, overwritten in
+  place. The 5 current specialists (Copy, Visual Identity, Logo, Playbook, Brand Book) are
+  SLOT agents, and are cascade-coupled (regenerating Copy/Visual Identity/Logo requires
+  re-running Playbook and Brand Book downstream, and re-rendering the PDF/logo ZIP).
+- **CREATE** — each invocation appends a new asset instance rather than overwriting a slot
+  (e.g. a future flyer/banner/signage/standup-banner agent — a client may want several). A
+  CREATE agent reads other agents' SLOT output as brief context but is not cascade-coupled to
+  them.
+
+**Playground vs. Live Dashboard scope differs for SLOT agents, deliberately.** Playground has
+no owning `Engagement`, so its view still needs brief/questionnaire controls. The Live
+Dashboard surface always has an owning, already-completed `Engagement` to fall back on, so a
+SLOT agent's Live Dashboard view exposes *only* a regenerate command (optionally with
+feedback) — never a questionnaire/brief form; the brief was already derived once.
+
+**Consultant has two contexts, not one:**
+- **Admin/Playground Consultant is the "pure consultant"** — no customer context at all
+  (today's standalone `Brand` sandbox via `BrandConsultantSubjectProvider`).
+- **The customer-logged-in Consultant chat must be fully customer-aware** — grounded in that
+  one client's own brief, tone/language, logo, palette, and other generated assets — and able
+  to invoke other specialist agents on the client's behalf using that context as the implicit
+  brief.
+- **Brand context is always derived server-side from the database, per request — never from
+  the session or anything the client supplies.** The session carries only identity
+  (`clientUserId`); a context-resolution service loads that client's own `PAID`/`DONE`
+  `Engagement`, parses `resultsJson`, and reduces it to a compact context DTO injected into the
+  system prompt only for the customer-aware chat origin. This is a security boundary, not just
+  a design preference: trusting client-supplied brand context would let one client's chat
+  produce output grounded in another client's brand. The Layer 2 vector store (above) is the
+  wrong source for this — it ingests only on engagement completion and exists for
+  cross-engagement precedent, not this-client-right-now freshness.
+- **The Consultant's tool roster (which specialist agents it can invoke) is enumerated live
+  from the agent catalog, never hardcoded** — so adding a new pluggable agent (any SLOT or
+  CREATE agent) automatically becomes available to the Consultant with zero Consultant-side
+  code changes.
+
+`login` is the reference implementation of the equivalent widget pattern; no agent has yet
+been fully migrated to this pattern end-to-end (Playground's current per-agent UI is generic/
+DirectionBrief-form-based rather than per-agent-view-module-based) — this section is the
+target state every agent, current or future, must be checked against.
+
+---
+
 ## Key documents
 
 | Document | What it covers |

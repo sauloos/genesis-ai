@@ -35,7 +35,7 @@ public class AgentCatalogService {
         return agents.stream()
             .map(this::toEntry)
             .filter(AgentCatalogEntry::availableForLiveView)
-            .map(e -> new PublicAgentEntry(e.agentId(), e.displayName(), e.description(), e.chatBased()))
+            .map(e -> new PublicAgentEntry(e.agentId(), e.displayName(), e.description(), e.icon(), e.chatBased(), e.hasLiveView()))
             .toList();
     }
 
@@ -83,6 +83,7 @@ public class AgentCatalogService {
             agent.displayName(),
             agent.description(),
             agent.testEndpoint(),
+            agent.icon(),
             agent.requiresQuestionnaire(),
             agent.supportsPlayground(),
             agent.supportsABCompare(),
@@ -90,21 +91,25 @@ public class AgentCatalogService {
             config.map(AgentCatalogConfig::isAvailableForLiveView).orElse(true),
             config.map(AgentCatalogConfig::isAvailableForPlayground).orElse(true),
             config.map(AgentCatalogConfig::isAbCompareEnabled).orElse(false),
-            agent.chatBased()
+            agent.chatBased(),
+            agent.hasLiveView()
         );
     }
 
     public record AgentCatalogEntry(
-        String agentId, String displayName, String description, String testEndpoint,
+        String agentId, String displayName, String description, String testEndpoint, String icon,
         boolean requiresQuestionnaire, boolean supportsPlayground, boolean supportsABCompare,
         List<AgentCustomOption> customOptions,
         boolean availableForLiveView, boolean availableForPlayground, boolean abCompareEnabled,
-        boolean chatBased
+        boolean chatBased, boolean hasLiveView
     ) {}
 
     public record UpdateAgentConfigRequest(
         Boolean availableForLiveView, Boolean availableForPlayground, Boolean abCompareEnabled
     ) {}
 
-    public record PublicAgentEntry(String agentId, String displayName, String description, boolean chatBased) {}
+    public record PublicAgentEntry(
+        String agentId, String displayName, String description, String icon,
+        boolean chatBased, boolean hasLiveView
+    ) {}
 }

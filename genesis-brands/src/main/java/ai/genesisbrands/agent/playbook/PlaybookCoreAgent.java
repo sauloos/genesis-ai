@@ -25,4 +25,9 @@ public class PlaybookCoreAgent implements CoreAgent {
     public String testEndpoint() {
         return "/api/agents/playbook/execute";
     }
+
+    @Override
+    public boolean hasLiveView() {
+        return true;
+    }
 }

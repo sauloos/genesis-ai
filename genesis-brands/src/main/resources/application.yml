@@ -32,7 +32,7 @@ spring:
       base-url: ${ANTHROPIC_BASE_URL:https://api.anthropic.com}
       chat:
         options:
-          model: claude-opus-5-5
+          model: claude-opus-5
           max-tokens: 8000
     openai:
       api-key: ${OPENAI_API_KEY:}
@@ -60,6 +60,8 @@ genesis:
     client-id: ${GOOGLE_OAUTH_CLIENT_ID:}
   logo:
     default-method: DALLE
+  regenerate:
+    max-per-slot: 3
   training:
     interpretation:
       enabled: true
@@ -113,7 +115,7 @@ genesis:
     copy:
       model: claude-sonnet-5
       system-prompt: agents/copy/system.md
-      max-tokens: 3000
+      max-tokens: 6000
       rag:
         enabled: true
         top-k: 3
@@ -121,11 +123,11 @@ genesis:
     copy-evaluator:
       model: claude-opus-5
       system-prompt: agents/evaluation/copy-evaluator.md
-      max-tokens: 1500
+      max-tokens: 2500
     visual-identity:
       model: claude-sonnet-5
       system-prompt: agents/visual-identity/system.md
-      max-tokens: 4000
+      max-tokens: 6000
       rag:
         enabled: true
         top-k: 3
@@ -133,11 +135,11 @@ genesis:
     visual-identity-evaluator:
       model: claude-opus-5
       system-prompt: agents/evaluation/visual-identity-evaluator.md
-      max-tokens: 1500
+      max-tokens: 2500
     logo-dalle:
       model: claude-sonnet-5
       system-prompt: agents/logo/system-dalle.md
-      max-tokens: 1500
+      max-tokens: 3000
       rag:
         enabled: true
         top-k: 3
@@ -145,7 +147,7 @@ genesis:
     logo-svg:
       model: claude-sonnet-5
       system-prompt: agents/logo/system-svg.md
-      max-tokens: 2500
+      max-tokens: 4500
       rag:
         enabled: true
         top-k: 3
@@ -153,7 +155,7 @@ genesis:
     logo-ideogram:
       model: claude-sonnet-5
       system-prompt: agents/logo/system-ideogram.md
-      max-tokens: 1500
+      max-tokens: 3000
       rag:
         enabled: true
         top-k: 3
@@ -161,15 +163,15 @@ genesis:
     logo-dalle-evaluator:
       model: claude-opus-5
       system-prompt: agents/evaluation/logo-evaluator-dalle.md
-      max-tokens: 1200
+      max-tokens: 2200
     logo-svg-evaluator:
       model: claude-opus-5
       system-prompt: agents/evaluation/logo-evaluator-svg.md
-      max-tokens: 1200
+      max-tokens: 2200
     playbook:
       model: claude-sonnet-5
       system-prompt: agents/playbook/system.md
-      max-tokens: 3500
+      max-tokens: 6000
       rag:
         enabled: true
         top-k: 3
@@ -177,11 +179,11 @@ genesis:
     playbook-evaluator:
       model: claude-opus-5
       system-prompt: agents/evaluation/playbook-evaluator.md
-      max-tokens: 1500
+      max-tokens: 2500
     brand-book:
       model: claude-sonnet-5
       system-prompt: agents/brand-book/system.md
-      max-tokens: 3000
+      max-tokens: 6000
       rag:
         enabled: true
         top-k: 3
@@ -189,7 +191,7 @@ genesis:
     brand-book-evaluator:
       model: claude-opus-5
       system-prompt: agents/evaluation/brand-book-evaluator.md
-      max-tokens: 1500
+      max-tokens: 2500
 
 ideogram:
   api-key: ${IDEOGRAM_API_KEY:}

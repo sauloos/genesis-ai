@@ -25,4 +25,9 @@ public class BrandBookCoreAgent implements CoreAgent {
     public String testEndpoint() {
         return "/api/agents/brand-book/execute";
     }
+
+    @Override
+    public boolean hasLiveView() {
+        return true;
+    }
 }

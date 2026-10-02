@@ -40,19 +40,28 @@ public class AiModelConfig {
      * ("temperature is deprecated for this model"), so it must never be sent unless
      * a caller explicitly opts in.
      *
-     * Extended thinking is left unset here (not explicitly disabled): Anthropic's API
-     * now rejects an explicit "thinking.type: disabled" outright ("is not supported
-     * for this model") on the current Opus/Sonnet 5 model family — confirmed via a
-     * direct API call — so the only valid way to keep thinking off is to omit the
-     * field entirely, which Spring AI does by default when `.thinking(...)` is never
-     * called. Verified directly against the API that omitting it returns a clean
-     * single "text" content block, with no stray "thinking" block ahead of it.
+     * Extended thinking is explicitly disabled here. Claude Sonnet 5 silently enables
+     * implicit thinking by default (no opt-in needed) when the field is left unset —
+     * confirmed via direct API calls against the real agent prompts in this codebase,
+     * burning anywhere from ~400 to ~900+ output tokens on hidden reasoning before any
+     * visible text. Since that cost is non-deterministic, an unlucky draw can exhaust
+     * an agent's max_tokens budget entirely before any text starts, producing a
+     * genuinely empty response that downstream JSON parsing then fails on ("No content
+     * to map due to end-of-input") — this is what caused CopyAgent/PlaybookAgent/
+     * BrandBookAgent to intermittently fail during live regeneration testing. An
+     * earlier version of this comment claimed Anthropic's API rejects an explicit
+     * "thinking.type: disabled" for this model family — re-verified directly against
+     * the live API on 2026-10-02 and that is no longer true (or never was for
+     * claude-sonnet-5): explicit disable is accepted, returns thinking_tokens: 0, and
+     * every agent here generates single-shot structured JSON with no need for
+     * chain-of-thought, so there's no reason to pay for or risk it.
      */
     @Bean
     public AnthropicChatModel anthropicChatModel(AnthropicApi anthropicApi, AnthropicChatProperties chatProperties) {
         AnthropicChatOptions options = AnthropicChatOptions.builder()
             .model(chatProperties.getOptions().getModel())
             .maxTokens(chatProperties.getOptions().getMaxTokens())
+            .thinking(AnthropicApi.ThinkingType.DISABLED, null)
             .build();
         return AnthropicChatModel.builder()
             .anthropicApi(anthropicApi)

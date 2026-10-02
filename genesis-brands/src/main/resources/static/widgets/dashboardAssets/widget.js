@@ -194,12 +194,7 @@ async function renderEngagementBlock(summary) {
   return block;
 }
 
-export async function mount(container) {
-  container.className = 'dass-panel';
-  container.innerHTML = `
-    <div class="dass-panel-label">Your Assets</div>
-    <div class="dass-list"><div class="dass-empty">Loading…</div></div>
-  `;
+async function render(container) {
   const listEl = container.querySelector('.dass-list');
 
   try {
@@ -223,4 +218,17 @@ export async function mount(container) {
   } catch (err) {
     listEl.innerHTML = '<div class="dass-empty">Could not load your assets right now.</div>';
   }
+}
+
+export async function mount(container) {
+  container.className = 'dass-panel';
+  container.innerHTML = `
+    <div class="dass-panel-label">Your Assets</div>
+    <div class="dass-list"><div class="dass-empty">Loading…</div></div>
+  `;
+  await render(container);
+
+  // A specialist agent's Live Dashboard view (dashboardAgents widget) just regenerated
+  // one of this engagement's assets — re-render so PDF/Logo ZIP tiles pick up the change.
+  window.addEventListener('genesis:assets-updated', () => render(container));
 }

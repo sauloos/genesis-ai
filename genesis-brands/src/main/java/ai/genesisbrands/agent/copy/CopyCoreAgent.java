@@ -30,4 +30,9 @@ public class CopyCoreAgent implements CoreAgent {
     public boolean supportsABCompare() {
         return true;
     }
+
+    @Override
+    public boolean hasLiveView() {
+        return true;
+    }
 }
