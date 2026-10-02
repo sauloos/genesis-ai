@@ -31,7 +31,7 @@ function openAgentDialog(agentId, displayName, target, ctx) {
         <div class="da-dialog-title">${esc(displayName)}</div>
         <button class="da-dialog-close" type="button" aria-label="Close">&times;</button>
       </div>
-      <div class="da-dialog-body"></div>
+      <div class="da-dialog-body"><div class="da-dialog-body-inner"></div></div>
     </div>
   `;
   document.body.appendChild(backdrop);
@@ -42,7 +42,10 @@ function openAgentDialog(agentId, displayName, target, ctx) {
   backdrop.onclick = (e) => { if (e.target === backdrop) close(); };
 
   import('/widgets/agent-loader.js').then(({ mountAgentLiveView }) => {
-    mountAgentLiveView(agentId, backdrop.querySelector('.da-dialog-body'),
+    // Pass the inner div, not .da-dialog-body itself — every agent view module does
+    // `container.className = '...'` on mount, which would otherwise wipe the shell's
+    // own scroll/flex class and silently break scrolling for longer content.
+    mountAgentLiveView(agentId, backdrop.querySelector('.da-dialog-body-inner'),
       { agentId, engagementId: target.engagementId, direction: target.direction },
       {
         simulate: ctx.simulate,
