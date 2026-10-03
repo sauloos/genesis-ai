@@ -18,7 +18,9 @@ public class ConversationMessage {
 
     // Physical column name kept as brand_id — predates the platform/tenant split and
     // renaming it would require a migration for no functional benefit.
-    @Column(name = "brand_id", nullable = false, length = 36)
+    // length 64, not 36: customer-chat subjects are "engagement:" + a 36-char UUID (47 chars),
+    // not a bare brand/UUID id.
+    @Column(name = "brand_id", nullable = false, length = 64)
     private String subjectId;
 
     @Column(nullable = false, length = 10)

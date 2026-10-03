@@ -1,16 +1,25 @@
 package ai.genesisbrands.service;
 
+import ai.genesisbrands.agent.core.DirectionBrief;
 import ai.genesisbrands.model.Brand;
 import ai.genesisbrands.model.Engagement;
+import ai.genesisbrands.model.QuestionnaireAnswer;
+import ai.genesisbrands.model.QuestionnaireQuestion;
+import ai.genesisbrands.model.QuestionnaireResponse;
 import ai.genesisbrands.repository.BrandRepository;
 import ai.genesisbrands.repository.EngagementRepository;
+import ai.genesisbrands.repository.QuestionnaireAnswerRepository;
+import ai.genesisbrands.repository.QuestionnaireQuestionRepository;
+import ai.genesisbrands.repository.QuestionnaireResponseRepository;
 import ai.genesisbrands.service.EngagementOrchestratorService.DirectionOutput;
 import ai.genesisbrands.service.EngagementOrchestratorService.EngagementResults;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -30,11 +39,21 @@ public class BrandConsultantSubjectProvider implements ConsultantSubjectProvider
 
     private final BrandRepository brandRepo;
     private final EngagementRepository engagementRepo;
+    private final QuestionnaireResponseRepository questionnaireResponseRepo;
+    private final QuestionnaireQuestionRepository questionnaireQuestionRepo;
+    private final QuestionnaireAnswerRepository questionnaireAnswerRepo;
     private final ObjectMapper objectMapper;
 
-    public BrandConsultantSubjectProvider(BrandRepository brandRepo, EngagementRepository engagementRepo, ObjectMapper objectMapper) {
+    public BrandConsultantSubjectProvider(BrandRepository brandRepo, EngagementRepository engagementRepo,
+                                           QuestionnaireResponseRepository questionnaireResponseRepo,
+                                           QuestionnaireQuestionRepository questionnaireQuestionRepo,
+                                           QuestionnaireAnswerRepository questionnaireAnswerRepo,
+                                           ObjectMapper objectMapper) {
         this.brandRepo = brandRepo;
         this.engagementRepo = engagementRepo;
+        this.questionnaireResponseRepo = questionnaireResponseRepo;
+        this.questionnaireQuestionRepo = questionnaireQuestionRepo;
+        this.questionnaireAnswerRepo = questionnaireAnswerRepo;
         this.objectMapper = objectMapper;
     }
 
@@ -72,12 +91,73 @@ public class BrandConsultantSubjectProvider implements ConsultantSubjectProvider
         return new ConsultantSubject(
             ENGAGEMENT_PREFIX + engagementId,
             brand.name(), brand.industry(), brand.targetAudience(),
-            buildBrief(dir)
+            buildQuestionnaireContext(e) + buildBrief(dir)
         );
+    }
+
+    /** Surfaces the client's own raw intake answers, not just the derived brief —
+     *  so the consultant can reference what the client actually said. */
+    private String buildQuestionnaireContext(Engagement e) {
+        if (e.getQuestionnaireResponseId() == null) return "";
+        QuestionnaireResponse response = questionnaireResponseRepo.findById(e.getQuestionnaireResponseId()).orElse(null);
+        if (response == null) return "";
+
+        List<QuestionnaireQuestion> questions =
+            questionnaireQuestionRepo.findByQuestionnaireIdOrderByOrderIndexAsc(response.getQuestionnaireId());
+        Map<String, String> answerByQuestion = questionnaireAnswerRepo
+            .findByResponseIdOrderByCreatedAtAsc(response.getId()).stream()
+            .collect(Collectors.toMap(QuestionnaireAnswer::getQuestionId, a -> cleanAnswerValue(a.getValueJson())));
+
+        var sb = new StringBuilder("## Original intake questionnaire\n");
+        for (QuestionnaireQuestion q : questions) {
+            sb.append("Q: ").append(q.getPrompt()).append("\n")
+              .append("A: ").append(answerByQuestion.getOrDefault(q.getId(), "(no answer)")).append("\n\n");
+        }
+        return sb.toString();
+    }
+
+    private String cleanAnswerValue(String valueJson) {
+        if (valueJson == null) return "(no answer)";
+        try {
+            JsonNode node = objectMapper.readTree(valueJson);
+            if (node.isTextual()) return node.asText();
+            if (node.isArray()) {
+                List<String> items = new java.util.ArrayList<>();
+                for (JsonNode item : node) items.add(item.asText());
+                return String.join(", ", items);
+            }
+            if (node.isNumber()) return node.asText();
+            if (node.has("blobPath")) return "(uploaded image)";
+            return node.toString();
+        } catch (Exception ex) {
+            return valueJson;
+        }
     }
 
     private String buildBrief(DirectionOutput dir) {
         var sb = new StringBuilder();
+
+        DirectionBrief brief = dir.brief();
+        DirectionBrief.BrandFoundation foundation = brief.foundation();
+        DirectionBrief.BrandContext brand = brief.brand();
+
+        sb.append("## Brand foundation (derived from the questionnaire)\n");
+        sb.append("Core offer: ").append(brand.coreOffer()).append("\n");
+        sb.append("Differentiator: ").append(foundation.differentiator()).append("\n");
+        sb.append("Target audience persona: ").append(foundation.targetAudiencePersona()).append("\n");
+        sb.append("Core positioning: ").append(foundation.corePositioning()).append("\n");
+        sb.append("Tone spectrum: ").append(foundation.toneSpectrum()).append("\n");
+        if (brand.personality() != null && !brand.personality().isEmpty()) {
+            sb.append("Personality traits: ").append(String.join(", ", brand.personality())).append("\n");
+        }
+        sb.append("Tone: ").append(brand.tone()).append("\n");
+
+        sb.append("\n## Chosen creative direction: ").append(brief.direction()).append("\n");
+        if (brief.additionalContext() != null && !brief.additionalContext().isBlank()) {
+            sb.append("Strategic rationale: ").append(brief.additionalContext()).append("\n");
+        }
+
+        sb.append("\n## Specialist agent output\n");
         var copy = dir.copy();
         var visual = dir.visualIdentity();
         var logo = dir.logo();
