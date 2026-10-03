@@ -35,4 +35,9 @@ public class ConsultantCoreAgent implements CoreAgent {
     public boolean chatBased() {
         return true;
     }
+
+    @Override
+    public boolean hasLiveView() {
+        return true;
+    }
 }

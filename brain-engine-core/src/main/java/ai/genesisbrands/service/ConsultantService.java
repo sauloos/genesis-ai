@@ -118,9 +118,11 @@ public class ConsultantService {
     }
 
     private List<ConversationMessage> historyFor(String subjectId, ConversationMessage.Source source) {
-        return source == ConversationMessage.Source.PLAYGROUND
-            ? messageRepo.findBySubjectIdAndSourceOrderByCreatedAtAsc(subjectId, ConversationMessage.Source.PLAYGROUND)
-            : messageRepo.findConsultantHistoryBySubjectId(subjectId);
+        return switch (source) {
+            case PLAYGROUND -> messageRepo.findBySubjectIdAndSourceOrderByCreatedAtAsc(subjectId, ConversationMessage.Source.PLAYGROUND);
+            case CUSTOMER -> messageRepo.findBySubjectIdAndSourceOrderByCreatedAtAsc(subjectId, ConversationMessage.Source.CUSTOMER);
+            case CONSULTANT -> messageRepo.findConsultantHistoryBySubjectId(subjectId);
+        };
     }
 
     private List<Message> buildMessages(ConsultantSubject subject, String userMessage,

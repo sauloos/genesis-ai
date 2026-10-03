@@ -37,5 +37,5 @@ public class ConversationMessage {
     @Column(length = 20)
     private Source source;
 
-    public enum Source { CONSULTANT, PLAYGROUND }
+    public enum Source { CONSULTANT, PLAYGROUND, CUSTOMER }
 }
