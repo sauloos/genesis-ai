@@ -142,15 +142,17 @@ public class BrandConsultantSubjectProvider implements ConsultantSubjectProvider
         DirectionBrief.BrandContext brand = brief.brand();
 
         sb.append("## Brand foundation (derived from the questionnaire)\n");
-        sb.append("Core offer: ").append(brand.coreOffer()).append("\n");
-        sb.append("Differentiator: ").append(foundation.differentiator()).append("\n");
-        sb.append("Target audience persona: ").append(foundation.targetAudiencePersona()).append("\n");
-        sb.append("Core positioning: ").append(foundation.corePositioning()).append("\n");
-        sb.append("Tone spectrum: ").append(foundation.toneSpectrum()).append("\n");
+        if (brand.coreOffer() != null) sb.append("Core offer: ").append(brand.coreOffer()).append("\n");
+        if (foundation != null) {
+            if (foundation.differentiator() != null) sb.append("Differentiator: ").append(foundation.differentiator()).append("\n");
+            if (foundation.targetAudiencePersona() != null) sb.append("Target audience persona: ").append(foundation.targetAudiencePersona()).append("\n");
+            if (foundation.corePositioning() != null) sb.append("Core positioning: ").append(foundation.corePositioning()).append("\n");
+            if (foundation.toneSpectrum() != null) sb.append("Tone spectrum: ").append(foundation.toneSpectrum()).append("\n");
+        }
         if (brand.personality() != null && !brand.personality().isEmpty()) {
             sb.append("Personality traits: ").append(String.join(", ", brand.personality())).append("\n");
         }
-        sb.append("Tone: ").append(brand.tone()).append("\n");
+        if (brand.tone() != null) sb.append("Tone: ").append(brand.tone()).append("\n");
 
         sb.append("\n## Chosen creative direction: ").append(brief.direction()).append("\n");
         if (brief.additionalContext() != null && !brief.additionalContext().isBlank()) {
