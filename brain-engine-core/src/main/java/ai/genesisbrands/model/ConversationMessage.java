@@ -39,5 +39,11 @@ public class ConversationMessage {
     @Column(length = 20)
     private Source source;
 
+    // Groups CUSTOMER messages into separate, browsable conversations (see
+    // ConsultantService#listConversations). Null for rows saved before this column existed,
+    // and for CONSULTANT/PLAYGROUND rows, which stay single continuous threads per subject.
+    @Column(name = "conversation_id", length = 36)
+    private String conversationId;
+
     public enum Source { CONSULTANT, PLAYGROUND, CUSTOMER }
 }

@@ -6,6 +6,7 @@ import ai.genesisbrands.model.Engagement;
 import ai.genesisbrands.repository.EngagementRepository;
 import ai.genesisbrands.security.ClientAuthHelper;
 import ai.genesisbrands.service.ConsultantService;
+import ai.genesisbrands.service.ConversationSummary;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -48,14 +49,25 @@ public class ClientConsultantController {
     @Operation(summary = "Send a message to your own consultant — returns a streaming SSE response, grounded in your brand.")
     public Flux<String> chat(@RequestBody ChatRequest req, HttpServletRequest servletReq) {
         String subjectId = resolveSubjectId(servletReq);
-        return consultant.chat(subjectId, req.message(), null, List.of(), ConversationMessage.Source.CUSTOMER);
+        return consultant.chat(subjectId, req.conversationId(), req.message(), null, List.of(), ConversationMessage.Source.CUSTOMER);
     }
 
-    @GetMapping("/chat/history")
-    @Operation(summary = "Get this client's own consultant conversation history")
-    public List<ConversationMessage> history(HttpServletRequest req) {
+    // conversationId is client-supplied (frontend generates it via crypto.randomUUID() for a
+    // new chat) but this is safe: every read/write below is also scoped by subjectId, which is
+    // always resolved server-side from the session — a guessed/collided conversationId under a
+    // different subjectId simply matches zero rows, never another client's data.
+    @GetMapping("/conversations")
+    @Operation(summary = "List this client's own past consultant conversations")
+    public List<ConversationSummary> conversations(HttpServletRequest req) {
         String subjectId = resolveSubjectId(req);
-        return consultant.history(subjectId, ConversationMessage.Source.CUSTOMER);
+        return consultant.listConversations(subjectId, ConversationMessage.Source.CUSTOMER);
+    }
+
+    @GetMapping("/conversations/{conversationId}/messages")
+    @Operation(summary = "Get the messages of one of this client's own past conversations")
+    public List<ConversationMessage> conversationMessages(@PathVariable String conversationId, HttpServletRequest req) {
+        String subjectId = resolveSubjectId(req);
+        return consultant.history(subjectId, conversationId, ConversationMessage.Source.CUSTOMER);
     }
 
     /** Resolves the caller's own paid/finished engagement server-side — never from a
@@ -75,5 +87,5 @@ public class ClientConsultantController {
         return ENGAGEMENT_PREFIX + target.getId();
     }
 
-    public record ChatRequest(String message) {}
+    public record ChatRequest(String conversationId, String message) {}
 }

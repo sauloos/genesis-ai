@@ -11,8 +11,12 @@ import org.springframework.ai.chat.prompt.Prompt;
 import reactor.core.publisher.Flux;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Platform consultant facade — builds prompts, retrieves context, streams responses.
@@ -25,6 +29,7 @@ public class ConsultantService {
 
     private static final int HISTORY_TURNS = 20;
     private static final int RETRIEVAL_TOP_K = 5;
+    private static final String LEGACY_CONVERSATION_ID = "legacy";
 
     private final ChatModel chatModel;
     private final RetrievalService retrieval;
@@ -50,24 +55,34 @@ public class ConsultantService {
     }
 
     public Flux<String> chat(String subjectId, String userMessage) {
-        return chat(subjectId, userMessage, null, List.of(), ConversationMessage.Source.CONSULTANT);
+        return chat(subjectId, null, userMessage, null, List.of(), ConversationMessage.Source.CONSULTANT);
     }
 
     public Flux<String> chat(String subjectId, String userMessage,
                              String attachmentText,
                              List<ContextEnrichmentService.UrlContent> urlContents,
                              ConversationMessage.Source source) {
+        return chat(subjectId, null, userMessage, attachmentText, urlContents, source);
+    }
+
+    // conversationId groups CUSTOMER messages into separate, browsable threads (see
+    // listConversations). Always null for CONSULTANT/PLAYGROUND, which stay single
+    // continuous threads per subject — behavior for those sources is unchanged.
+    public Flux<String> chat(String subjectId, String conversationId, String userMessage,
+                             String attachmentText,
+                             List<ContextEnrichmentService.UrlContent> urlContents,
+                             ConversationMessage.Source source) {
         ConsultantSubject subject = subjectProvider.find(subjectId);
 
-        save(subjectId, "user", userMessage, source);
+        save(subjectId, conversationId, "user", userMessage, source);
 
         if (tenantConfig.isOutOfScope(userMessage)) {
             String response = tenantConfig.outOfScopeResponse();
-            save(subjectId, "assistant", response, source);
+            save(subjectId, conversationId, "assistant", response, source);
             return Flux.just(response);
         }
 
-        List<Message> messages = buildMessages(subject, userMessage, attachmentText, urlContents, source);
+        List<Message> messages = buildMessages(subject, conversationId, userMessage, attachmentText, urlContents, source);
         Prompt prompt = new Prompt(messages);
 
         StringBuilder responseBuffer = new StringBuilder();
@@ -85,13 +100,52 @@ public class ConsultantService {
             .doOnComplete(() -> {
                 String fullResponse = responseBuffer.toString();
                 if (!fullResponse.isBlank()) {
-                    save(subjectId, "assistant", fullResponse, source);
+                    save(subjectId, conversationId, "assistant", fullResponse, source);
                 }
             });
     }
 
     public List<ConversationMessage> history(String subjectId, ConversationMessage.Source source) {
-        return historyFor(subjectId, source);
+        return historyFor(subjectId, null, source);
+    }
+
+    // conversationId scoping is applied in-memory over the subject's full per-source
+    // history (small per-subject volumes; avoids a new JPQL finder) — see historyFor.
+    public List<ConversationMessage> history(String subjectId, String conversationId, ConversationMessage.Source source) {
+        return historyFor(subjectId, conversationId, source);
+    }
+
+    // Groups a subject's CUSTOMER messages into separate conversations for the History tab.
+    // Rows saved before conversationId existed (null) are grouped under a "legacy" sentinel
+    // so they still surface as one browsable past conversation.
+    public List<ConversationSummary> listConversations(String subjectId, ConversationMessage.Source source) {
+        List<ConversationMessage> all = historyFor(subjectId, null, source);
+        Map<String, List<ConversationMessage>> byConversation = all.stream()
+            .collect(Collectors.groupingBy(
+                m -> m.getConversationId() != null ? m.getConversationId() : LEGACY_CONVERSATION_ID,
+                LinkedHashMap::new, Collectors.toList()));
+
+        List<ConversationSummary> summaries = new ArrayList<>();
+        for (var entry : byConversation.entrySet()) {
+            List<ConversationMessage> msgs = entry.getValue();
+            if (msgs.isEmpty()) continue;
+            String title = msgs.stream()
+                .filter(m -> "user".equals(m.getRole()))
+                .findFirst()
+                .map(ConversationMessage::getContent)
+                .map(this::truncate)
+                .orElse("Conversation");
+            summaries.add(new ConversationSummary(entry.getKey(), title,
+                msgs.get(0).getCreatedAt(), msgs.get(msgs.size() - 1).getCreatedAt()));
+        }
+        summaries.sort(Comparator.comparing(ConversationSummary::lastMessageAt).reversed());
+        return summaries;
+    }
+
+    private String truncate(String text) {
+        if (text == null) return "Conversation";
+        String trimmed = text.strip();
+        return trimmed.length() <= 60 ? trimmed : trimmed.substring(0, 60) + "…";
     }
 
     // PLAYGROUND only sees subjects that already have a playground-tagged message, so
@@ -114,18 +168,28 @@ public class ConsultantService {
     }
 
     public void clearHistory(String subjectId, ConversationMessage.Source source) {
-        messageRepo.deleteAll(historyFor(subjectId, source));
+        messageRepo.deleteAll(historyFor(subjectId, null, source));
     }
 
-    private List<ConversationMessage> historyFor(String subjectId, ConversationMessage.Source source) {
-        return switch (source) {
+    // conversationId == null returns the subject's full per-source history (current
+    // behavior for CONSULTANT/PLAYGROUND, and used internally by listConversations).
+    // conversationId != null filters that history down to one conversation, treating
+    // rows with a null conversationId field as the "legacy" bucket.
+    private List<ConversationMessage> historyFor(String subjectId, String conversationId, ConversationMessage.Source source) {
+        List<ConversationMessage> all = switch (source) {
             case PLAYGROUND -> messageRepo.findBySubjectIdAndSourceOrderByCreatedAtAsc(subjectId, ConversationMessage.Source.PLAYGROUND);
             case CUSTOMER -> messageRepo.findBySubjectIdAndSourceOrderByCreatedAtAsc(subjectId, ConversationMessage.Source.CUSTOMER);
             case CONSULTANT -> messageRepo.findConsultantHistoryBySubjectId(subjectId);
         };
+        if (conversationId == null) {
+            return all;
+        }
+        return all.stream()
+            .filter(m -> conversationId.equals(m.getConversationId() != null ? m.getConversationId() : LEGACY_CONVERSATION_ID))
+            .toList();
     }
 
-    private List<Message> buildMessages(ConsultantSubject subject, String userMessage,
+    private List<Message> buildMessages(ConsultantSubject subject, String conversationId, String userMessage,
                                         String attachmentText,
                                         List<ContextEnrichmentService.UrlContent> urlContents,
                                         ConversationMessage.Source source) {
@@ -134,7 +198,7 @@ public class ConsultantService {
         String systemContent = buildSystemContent(subject, userMessage, attachmentText, urlContents);
         messages.add(new SystemMessage(systemContent));
 
-        List<ConversationMessage> history = historyFor(subject.id(), source);
+        List<ConversationMessage> history = historyFor(subject.id(), conversationId, source);
         int start = Math.max(0, history.size() - (HISTORY_TURNS * 2));
         for (int i = start; i < history.size(); i++) {
             ConversationMessage m = history.get(i);
@@ -196,10 +260,11 @@ public class ConsultantService {
         return sb.toString();
     }
 
-    private void save(String subjectId, String role, String content, ConversationMessage.Source source) {
+    private void save(String subjectId, String conversationId, String role, String content, ConversationMessage.Source source) {
         var msg = new ConversationMessage();
         msg.setId(UUID.randomUUID().toString());
         msg.setSubjectId(subjectId);
+        msg.setConversationId(conversationId);
         msg.setRole(role);
         msg.setContent(content);
         msg.setSource(source);
