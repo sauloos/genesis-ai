@@ -260,14 +260,13 @@ export async function mount(container, agent, ctx) {
     input.focus();
   };
 
+  // Opening the dialog always starts a brand-new chat — past conversations are
+  // reached only by opening them from History, never auto-resumed into Current.
   openTabs = [];
-  if (conversations.length > 0) {
-    currentConversationId = conversations[0].conversationId;
-  } else {
-    currentConversationId = crypto.randomUUID();
-  }
+  currentConversationId = crypto.randomUUID();
+  panelConversationId = currentConversationId;
   renderTabs();
-  await loadConversationPanel(currentConversationId);
+  renderEmptyState();
 
   form.onsubmit = async (e) => {
     e.preventDefault();
