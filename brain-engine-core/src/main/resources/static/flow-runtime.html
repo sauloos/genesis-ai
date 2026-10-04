@@ -1531,6 +1531,13 @@ async function boot() {
       const res = await fetch(`${API}/api/public/flow-sessions`, {
         method: 'POST', headers: HEADERS, body: JSON.stringify({ slug, rootPrefix })
       });
+      // The flow's current page requires a signed-in client (PublicFlowRuntimeService
+      // throws AuthRequiredException) — send them to sign in rather than showing a
+      // generic "no live page" error, then bring them straight back here.
+      if (res.status === 403) {
+        window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname + window.location.search);
+        return;
+      }
       if (!res.ok) throw new Error('no live flow');
       view = await res.json();
       localStorage.setItem(storageKey(slug), view.token);

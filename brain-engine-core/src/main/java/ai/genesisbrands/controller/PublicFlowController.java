@@ -37,6 +37,8 @@ public class PublicFlowController {
             return ResponseEntity.ok(publicFlowRuntimeService.start(body.slug(), body.rootPrefix(), clientUserId(req)));
         } catch (NoSuchElementException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));
+        } catch (AuthRequiredException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponse(e.getMessage()));
         }
     }
 
