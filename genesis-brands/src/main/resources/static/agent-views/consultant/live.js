@@ -96,11 +96,8 @@ export async function mount(container, agent, ctx) {
   }
 
   container.innerHTML = `
-    <div class="cc-tabs">
-      <button class="cc-tab cc-tab-current active" type="button">Current</button>
-      <button class="cc-tab cc-tab-history" type="button">History</button>
-    </div>
-    <div class="cc-panel cc-panel-current">
+    <div class="cc-tabs"></div>
+    <div class="cc-panel cc-panel-conversation">
       <div class="cc-messages"></div>
       <form class="cc-composer">
         <input class="cc-input" type="text" placeholder="Ask your consultant about your brand…" autocomplete="off" />
@@ -115,9 +112,8 @@ export async function mount(container, agent, ctx) {
     </div>
   `;
 
-  const tabCurrent = container.querySelector('.cc-tab-current');
-  const tabHistory = container.querySelector('.cc-tab-history');
-  const panelCurrent = container.querySelector('.cc-panel-current');
+  const tabsEl = container.querySelector('.cc-tabs');
+  const panelConversation = container.querySelector('.cc-panel-conversation');
   const panelHistory = container.querySelector('.cc-panel-history');
   const list = container.querySelector('.cc-messages');
   const form = container.querySelector('.cc-composer');
@@ -126,15 +122,11 @@ export async function mount(container, agent, ctx) {
   const historyList = container.querySelector('.cc-history-list');
   const newChatBtn = container.querySelector('.cc-new-chat');
 
-  let currentConversationId;
-
-  function showTab(tab) {
-    const isCurrent = tab === 'current';
-    tabCurrent.classList.toggle('active', isCurrent);
-    tabHistory.classList.toggle('active', !isCurrent);
-    panelCurrent.hidden = !isCurrent;
-    panelHistory.hidden = isCurrent;
-  }
+  let currentConversationId;   // backing id for the always-present "Current" tab
+  let panelConversationId;     // id the shared conversation panel (+ composer) is bound to right now
+  let activeTab = 'current';   // 'current' | 'history' | <conversationId> (an opened history tab)
+  let openTabs = [];           // [{ conversationId, title }] — dynamically opened history tabs
+  let sending = false;         // guards tab switches while a message is in flight
 
   function renderEmptyState() {
     list.innerHTML = '';
@@ -144,11 +136,46 @@ export async function mount(container, agent, ctx) {
     list.appendChild(empty);
   }
 
-  async function loadConversation(conversationId) {
-    currentConversationId = conversationId;
+  function tabTitle(conversationId) {
+    const found = openTabs.find(t => t.conversationId === conversationId);
+    return found ? found.title : 'Conversation';
+  }
+
+  function renderTabs() {
+    tabsEl.innerHTML = '';
+    tabsEl.appendChild(makeTabButton('current', 'Current', false));
+    tabsEl.appendChild(makeTabButton('history', 'History', false));
+    openTabs.forEach(t => {
+      tabsEl.appendChild(makeTabButton(t.conversationId, t.title, true));
+    });
+  }
+
+  function makeTabButton(key, label, closable) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'cc-tab' + (key === activeTab ? ' active' : '');
+    const labelSpan = document.createElement('span');
+    labelSpan.className = 'cc-tab-label';
+    labelSpan.textContent = label;
+    btn.appendChild(labelSpan);
+    if (closable) {
+      const closeBtn = document.createElement('span');
+      closeBtn.className = 'cc-tab-close';
+      closeBtn.textContent = '×';
+      closeBtn.onclick = (e) => { e.stopPropagation(); closeTab(key); };
+      btn.appendChild(closeBtn);
+    }
+    btn.onclick = () => selectTab(key);
+    return btn;
+  }
+
+  async function loadConversationPanel(conversationId) {
+    panelConversationId = conversationId;
     list.innerHTML = '<div class="cc-empty">Loading…</div>';
     try {
       const messages = await fetchMessages(conversationId);
+      // A tab switch may have moved on while this fetch was in flight.
+      if (panelConversationId !== conversationId) return;
       list.innerHTML = '';
       if (messages.length === 0) {
         renderEmptyState();
@@ -156,7 +183,34 @@ export async function mount(container, agent, ctx) {
         messages.forEach(m => appendMessage(list, m.role === 'user' ? 'user' : 'assistant', m.content));
       }
     } catch (err) {
+      if (panelConversationId !== conversationId) return;
       list.innerHTML = `<div class="av-error">Could not load this conversation: ${esc(err.message)}</div>`;
+    }
+  }
+
+  async function selectTab(key) {
+    if (sending) return;
+    activeTab = key;
+    renderTabs();
+    if (key === 'history') {
+      panelConversation.hidden = true;
+      panelHistory.hidden = false;
+      renderHistoryList();
+      return;
+    }
+    panelHistory.hidden = true;
+    panelConversation.hidden = false;
+    const conversationId = key === 'current' ? currentConversationId : key;
+    await loadConversationPanel(conversationId);
+  }
+
+  function closeTab(conversationId) {
+    if (sending) return;
+    openTabs = openTabs.filter(t => t.conversationId !== conversationId);
+    if (activeTab === conversationId) {
+      selectTab('current');
+    } else {
+      renderTabs();
     }
   }
 
@@ -173,40 +227,55 @@ export async function mount(container, agent, ctx) {
       const item = document.createElement('button');
       item.type = 'button';
       item.className = 'cc-history-item';
-      if (c.conversationId === currentConversationId) item.classList.add('active');
+      if (c.conversationId === currentConversationId || openTabs.some(t => t.conversationId === c.conversationId)) {
+        item.classList.add('open');
+      }
       item.innerHTML = `<div class="cc-history-title"></div><div class="cc-history-date"></div>`;
       item.querySelector('.cc-history-title').textContent = c.title;
       item.querySelector('.cc-history-date').textContent = formatDate(c.lastMessageAt);
       item.onclick = async () => {
-        await loadConversation(c.conversationId);
-        showTab('current');
+        if (sending) return;
+        if (c.conversationId === currentConversationId) {
+          await selectTab('current');
+          return;
+        }
+        if (!openTabs.some(t => t.conversationId === c.conversationId)) {
+          openTabs.push({ conversationId: c.conversationId, title: c.title });
+        }
+        await selectTab(c.conversationId);
       };
       historyList.appendChild(item);
     });
   }
 
-  tabCurrent.onclick = () => showTab('current');
-  tabHistory.onclick = () => { renderHistoryList(); showTab('history'); };
-
   newChatBtn.onclick = () => {
+    if (sending) return;
     currentConversationId = crypto.randomUUID();
+    panelConversationId = currentConversationId;
+    activeTab = 'current';
+    renderTabs();
+    panelHistory.hidden = true;
+    panelConversation.hidden = false;
     renderEmptyState();
-    showTab('current');
     input.focus();
   };
 
+  openTabs = [];
   if (conversations.length > 0) {
-    await loadConversation(conversations[0].conversationId);
+    currentConversationId = conversations[0].conversationId;
   } else {
     currentConversationId = crypto.randomUUID();
-    renderEmptyState();
   }
+  renderTabs();
+  await loadConversationPanel(currentConversationId);
 
   form.onsubmit = async (e) => {
     e.preventDefault();
     const message = input.value.trim();
-    if (!message) return;
+    if (!message || sending) return;
 
+    const conversationId = panelConversationId;
+    sending = true;
     list.querySelector('.cc-empty')?.remove();
     appendMessage(list, 'user', message);
     input.value = '';
@@ -217,7 +286,7 @@ export async function mount(container, agent, ctx) {
     const textEl = assistantBubble.querySelector('.cc-msg-bubble');
     let full = '';
     try {
-      await streamChat(currentConversationId, message, (token) => {
+      await streamChat(conversationId, message, (token) => {
         full += token;
         textEl.textContent = full;
         list.scrollTop = list.scrollHeight;
@@ -226,11 +295,18 @@ export async function mount(container, agent, ctx) {
       // Refresh the conversation list in the background so History reflects this
       // conversation's new/updated title and timestamp next time it's opened.
       conversations = await fetchConversations().catch(() => conversations);
+      const openTab = openTabs.find(t => t.conversationId === conversationId);
+      if (openTab) {
+        const updated = conversations.find(c => c.conversationId === conversationId);
+        if (updated) openTab.title = updated.title;
+        renderTabs();
+      }
     } catch (err) {
       textEl.textContent = '';
       assistantBubble.classList.add('cc-msg-error');
       textEl.textContent = err.message || 'Something went wrong — please try again.';
     } finally {
+      sending = false;
       input.disabled = false;
       sendBtn.disabled = false;
       input.focus();
