@@ -7,7 +7,11 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.model.tool.ToolCallingChatOptions;
+import org.springframework.ai.tool.ToolCallback;
+import org.springframework.lang.Nullable;
 import reactor.core.publisher.Flux;
 
 import java.util.ArrayList;
@@ -31,12 +35,17 @@ public class ConsultantService {
     private static final int RETRIEVAL_TOP_K = 5;
     private static final String LEGACY_CONVERSATION_ID = "legacy";
 
+    private static final String TOOL_USE_AGENT_ID = "consultant";
+
     private final ChatModel chatModel;
     private final RetrievalService retrieval;
     private final Layer1Service layer1;
     private final ConsultantSubjectProvider subjectProvider;
     private final ConversationMessageRepository messageRepo;
     private final TenantConsultantConfig tenantConfig;
+    @Nullable
+    private final ConsultantToolProvider toolProvider;
+    private final AgentCatalogService catalogService;
 
     public ConsultantService(
         ChatModel chatModel,
@@ -44,7 +53,9 @@ public class ConsultantService {
         Layer1Service layer1,
         ConsultantSubjectProvider subjectProvider,
         ConversationMessageRepository messageRepo,
-        TenantConsultantConfig tenantConfig
+        TenantConsultantConfig tenantConfig,
+        @Nullable ConsultantToolProvider toolProvider,
+        AgentCatalogService catalogService
     ) {
         this.chatModel = chatModel;
         this.retrieval = retrieval;
@@ -52,6 +63,8 @@ public class ConsultantService {
         this.subjectProvider = subjectProvider;
         this.messageRepo = messageRepo;
         this.tenantConfig = tenantConfig;
+        this.toolProvider = toolProvider;
+        this.catalogService = catalogService;
     }
 
     public Flux<String> chat(String subjectId, String userMessage) {
@@ -83,7 +96,8 @@ public class ConsultantService {
         }
 
         List<Message> messages = buildMessages(subject, conversationId, userMessage, attachmentText, urlContents, source);
-        Prompt prompt = new Prompt(messages);
+        ChatOptions toolOptions = buildToolOptions(subjectId, source);
+        Prompt prompt = toolOptions != null ? new Prompt(messages, toolOptions) : new Prompt(messages);
 
         StringBuilder responseBuffer = new StringBuilder();
 
@@ -103,6 +117,25 @@ public class ConsultantService {
                     save(subjectId, conversationId, "assistant", fullResponse, source);
                 }
             });
+    }
+
+    // Tools are only ever attached to a CUSTOMER-sourced chat — the admin/Playground "pure
+    // consultant" sandbox never gets mutation capability, regardless of the toolsEnabled
+    // toggle — and only when a tenant has both supplied a ConsultantToolProvider bean and
+    // turned the toggle on via the agents admin page (AgentCatalogConfig.toolsEnabled).
+    @Nullable
+    private ChatOptions buildToolOptions(String subjectId, ConversationMessage.Source source) {
+        if (toolProvider == null || source != ConversationMessage.Source.CUSTOMER) {
+            return null;
+        }
+        if (!catalogService.isToolsEnabled(TOOL_USE_AGENT_ID)) {
+            return null;
+        }
+        List<ToolCallback> tools = toolProvider.toolsFor(subjectId);
+        if (tools == null || tools.isEmpty()) {
+            return null;
+        }
+        return ToolCallingChatOptions.builder().toolCallbacks(tools).build();
     }
 
     public List<ConversationMessage> history(String subjectId, ConversationMessage.Source source) {

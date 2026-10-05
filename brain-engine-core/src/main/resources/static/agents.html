@@ -326,6 +326,12 @@ function renderAgents(agents) {
             A/B compare enabled
           </label>
         ` : ''}
+        ${a.supportsToolUse ? `
+          <label class="toggle-item">
+            <input type="checkbox" data-field="toolsEnabled" ${a.toolsEnabled ? 'checked' : ''}>
+            Tools enabled
+          </label>
+        ` : ''}
       </div>
     </div>
   `).join('');

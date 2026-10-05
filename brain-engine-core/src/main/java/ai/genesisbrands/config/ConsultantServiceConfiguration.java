@@ -3,13 +3,16 @@ package ai.genesisbrands.config;
 import ai.genesisbrands.agent.consultant.ConsultantCoreAgent;
 import ai.genesisbrands.controller.ConsultantController;
 import ai.genesisbrands.repository.ConversationMessageRepository;
+import ai.genesisbrands.service.AgentCatalogService;
 import ai.genesisbrands.service.ConsultantService;
 import ai.genesisbrands.service.ConsultantSubjectProvider;
+import ai.genesisbrands.service.ConsultantToolProvider;
 import ai.genesisbrands.service.ContextEnrichmentService;
 import ai.genesisbrands.service.Layer1Service;
 import ai.genesisbrands.service.RetrievalService;
 import ai.genesisbrands.service.TenantConsultantConfig;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -40,9 +43,12 @@ public class ConsultantServiceConfiguration {
         Layer1Service layer1,
         ConsultantSubjectProvider subjectProvider,
         ConversationMessageRepository messageRepo,
-        TenantConsultantConfig tenantConfig
+        TenantConsultantConfig tenantConfig,
+        ObjectProvider<ConsultantToolProvider> toolProvider,
+        AgentCatalogService catalogService
     ) {
-        return new ConsultantService(chatModel, retrieval, layer1, subjectProvider, messageRepo, tenantConfig);
+        return new ConsultantService(chatModel, retrieval, layer1, subjectProvider, messageRepo, tenantConfig,
+            toolProvider.getIfAvailable(), catalogService);
     }
 
     @Bean

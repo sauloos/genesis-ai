@@ -30,6 +30,9 @@ public class AgentCatalogConfig {
     @Column(name = "ab_compare_enabled", nullable = false)
     private boolean abCompareEnabled = false;
 
+    @Column(name = "tools_enabled", nullable = false)
+    private boolean toolsEnabled = false;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 

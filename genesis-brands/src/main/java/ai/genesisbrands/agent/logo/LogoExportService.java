@@ -36,10 +36,13 @@ public class LogoExportService {
     /**
      * Builds the logo ZIP and uploads it to blob storage.
      *
+     * @param generationId unique per-generation suffix (e.g. a regeneration job id) so each
+     *                      new ZIP gets its own blob path instead of overwriting the last one —
+     *                      otherwise an unapproved draft's logo would clobber the current one.
      * @return blobPath of the stored ZIP, or null if packaging failed (non-fatal)
      */
     public String packageLogos(String engagementId, String direction,
-                                LogoOutput logo, String primaryHex) {
+                                LogoOutput logo, String primaryHex, String generationId) {
         String dir = direction.toLowerCase();
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -62,8 +65,8 @@ public class LogoExportService {
                     buildReadme(logo.method(), direction, primaryHex).getBytes(StandardCharsets.UTF_8));
             }
 
-            String blobPath = "assets/logos/%s/%s-logo-package.zip"
-                .formatted(engagementId, dir);
+            String blobPath = "assets/logos/%s/%s-%s-logo-package.zip"
+                .formatted(engagementId, dir, generationId);
             blobStorageService.upload(blobPath, baos.toByteArray());
             log.info("Logo package stored at {} for engagement {}", blobPath, engagementId);
             return blobPath;

@@ -39,6 +39,14 @@ public class AgentCatalogService {
             .toList();
     }
 
+    /** Cheap standalone check for a single agent's toolsEnabled flag — used by ConsultantService
+     *  on every chat turn, so it skips building the full catalog via toEntry(). */
+    public boolean isToolsEnabled(String agentId) {
+        return configRepository.findById(agentId)
+            .map(AgentCatalogConfig::isToolsEnabled)
+            .orElse(false);
+    }
+
     @Transactional
     public AgentCatalogEntry updateConfig(String agentId, UpdateAgentConfigRequest req) {
         CoreAgent agent = findAgent(agentId);
@@ -46,6 +54,10 @@ public class AgentCatalogService {
         if (Boolean.TRUE.equals(req.abCompareEnabled()) && !agent.supportsABCompare()) {
             throw new IllegalArgumentException(
                 "Agent '" + agentId + "' does not support A/B compare");
+        }
+        if (Boolean.TRUE.equals(req.toolsEnabled()) && !agent.supportsToolUse()) {
+            throw new IllegalArgumentException(
+                "Agent '" + agentId + "' does not support tool use");
         }
 
         AgentCatalogConfig config = configRepository.findById(agentId).orElseGet(() -> {
@@ -57,6 +69,7 @@ public class AgentCatalogService {
         if (req.availableForLiveView() != null) config.setAvailableForLiveView(req.availableForLiveView());
         if (req.availableForPlayground() != null) config.setAvailableForPlayground(req.availableForPlayground());
         if (req.abCompareEnabled() != null) config.setAbCompareEnabled(req.abCompareEnabled());
+        if (req.toolsEnabled() != null) config.setToolsEnabled(req.toolsEnabled());
         config.setUpdatedAt(Instant.now());
 
         configRepository.save(config);
@@ -92,7 +105,9 @@ public class AgentCatalogService {
             config.map(AgentCatalogConfig::isAvailableForPlayground).orElse(true),
             config.map(AgentCatalogConfig::isAbCompareEnabled).orElse(false),
             agent.chatBased(),
-            agent.hasLiveView()
+            agent.hasLiveView(),
+            agent.supportsToolUse(),
+            config.map(AgentCatalogConfig::isToolsEnabled).orElse(false)
         );
     }
 
@@ -101,11 +116,12 @@ public class AgentCatalogService {
         boolean requiresQuestionnaire, boolean supportsPlayground, boolean supportsABCompare,
         List<AgentCustomOption> customOptions,
         boolean availableForLiveView, boolean availableForPlayground, boolean abCompareEnabled,
-        boolean chatBased, boolean hasLiveView
+        boolean chatBased, boolean hasLiveView,
+        boolean supportsToolUse, boolean toolsEnabled
     ) {}
 
     public record UpdateAgentConfigRequest(
-        Boolean availableForLiveView, Boolean availableForPlayground, Boolean abCompareEnabled
+        Boolean availableForLiveView, Boolean availableForPlayground, Boolean abCompareEnabled, Boolean toolsEnabled
     ) {}
 
     public record PublicAgentEntry(

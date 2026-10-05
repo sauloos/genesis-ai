@@ -1,4 +1,4 @@
-import { fetchEngagementDetail, findDirectionOutput, submitRegeneration, pollRegeneration }
+import { fetchEngagementDetail, findDirectionOutput, submitRegeneration, pollRegeneration, renderApprovalGate }
   from '/agent-views/_shared/regenerate.js';
 
 function esc(s) {
@@ -25,14 +25,20 @@ export async function mount(container, agent, ctx) {
   render(container, agent, ctx, dir.playbook);
 }
 
-function render(container, agent, ctx, playbook) {
+function renderFields(el, playbook) {
   const applications = (playbook.recommendedApplications || []).map(a => `<li>${esc(a)}</li>`).join('');
 
-  container.innerHTML = `
+  el.innerHTML = `
     <div class="av-section"><div class="av-label">Strategic Summary</div><div class="av-value">${esc(playbook.strategicSummary)}</div></div>
     <div class="av-section"><div class="av-label">Brand Foundations</div><div class="av-value">${esc(playbook.brandFoundations)}</div></div>
     <div class="av-section"><div class="av-label">Verbal Identity</div><div class="av-value">${esc(playbook.verbalIdentity)}</div></div>
     <div class="av-section"><div class="av-label">Recommended Applications</div><ul class="av-list">${applications || '<li>None listed.</li>'}</ul></div>
+  `;
+}
+
+function render(container, agent, ctx, playbook) {
+  container.innerHTML = `
+    <div class="av-fields"></div>
     <div class="av-cascade">Regenerating your playbook will also update your Brand Book.</div>
     <div class="av-section">
       <div class="av-label">Feedback for this regeneration (optional)</div>
@@ -43,6 +49,7 @@ function render(container, agent, ctx, playbook) {
       <span class="av-status"></span>
     </div>
   `;
+  renderFields(container.querySelector('.av-fields'), playbook);
   wireSubmit(container, agent, ctx);
 }
 
@@ -56,15 +63,26 @@ function wireSubmit(container, agent, ctx) {
     status.textContent = 'Queuing…';
     container.querySelector('.av-error')?.remove();
     try {
-      const job = await submitRegeneration(agent.engagementId, agent.agentId, agent.direction, feedback.value.trim());
-      await pollRegeneration(agent.engagementId, job.id, (j) => {
+      const queued = await submitRegeneration(agent.engagementId, agent.agentId, agent.direction, feedback.value.trim());
+      const job = await pollRegeneration(agent.engagementId, queued.id, (j) => {
         status.textContent = j.status === 'RUNNING' ? 'Regenerating…' : 'Queued…';
       });
-      status.textContent = 'Done.';
-      ctx.onAssetGenerated?.();
-      const detail = await fetchEngagementDetail(agent.engagementId);
-      const dir = findDirectionOutput(detail, agent.direction);
-      render(container, agent, ctx, dir.playbook);
+      renderApprovalGate(container, {
+        engagementId: agent.engagementId,
+        job,
+        renderDraft: (el, draft) => renderFields(el, draft.playbook),
+        onApprove: async () => {
+          ctx.onAssetGenerated?.();
+          const detail = await fetchEngagementDetail(agent.engagementId);
+          const dir = findDirectionOutput(detail, agent.direction);
+          render(container, agent, ctx, dir.playbook);
+        },
+        onDiscard: async () => {
+          const detail = await fetchEngagementDetail(agent.engagementId);
+          const dir = findDirectionOutput(detail, agent.direction);
+          render(container, agent, ctx, dir.playbook);
+        },
+      });
     } catch (err) {
       button.disabled = false;
       status.textContent = '';

@@ -48,6 +48,16 @@ public interface CoreAgent {
         return false;
     }
 
+    /**
+     * True for an agent that can expose tool-use capabilities (e.g. Consultant's ability to
+     * trigger regeneration of other agents' output). Admin-gated via
+     * AgentCatalogConfig.toolsEnabled — this flag only declares that the capability exists to
+     * be turned on, mirroring supportsABCompare().
+     */
+    default boolean supportsToolUse() {
+        return false;
+    }
+
     default List<AgentCustomOption> customOptions() {
         return List.of();
     }

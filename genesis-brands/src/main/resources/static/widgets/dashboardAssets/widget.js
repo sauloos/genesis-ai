@@ -64,55 +64,61 @@ async function downloadLogos(engagementId, direction, tile, labelEl, originalLab
   }
 }
 
-function buildBookTile(summary, dir, downloadAllowed) {
+// `isCurrent` gates both the download action and the live preview-image fetch — the
+// pdf/logos/preview endpoints always resolve against the engagement's CURRENT resultsJson,
+// so a historical DirectionOutput snapshot (fetched from the versions endpoint) can only ever
+// be browsed, never downloaded or thumbnailed through those routes.
+function buildBookTile(summary, dir, downloadAllowed, isCurrent) {
   if (!dir.pdfBlobPath) return null;
   const label = dir.direction.charAt(0) + dir.direction.slice(1).toLowerCase();
   const tileLabel = `${label} Brand Book`;
+  const canDownload = downloadAllowed && isCurrent;
 
   const tile = document.createElement('button');
   tile.type = 'button';
   tile.className = 'dass-tile';
-  tile.disabled = !downloadAllowed;
+  tile.disabled = !canDownload;
 
   const thumb = document.createElement('div');
   thumb.className = 'dass-tile-thumb';
   thumb.innerHTML = BOOK_ICON;
   tile.appendChild(thumb);
 
-  fetchBlobUrl(`/api/engagements/${summary.id}/preview/${dir.direction}`).then(url => {
-    if (!url) return;
-    const img = document.createElement('img');
-    img.src = url;
-    img.alt = `${tileLabel} preview`;
-    thumb.innerHTML = '';
-    thumb.appendChild(img);
-    if (!downloadAllowed) addLock(thumb);
-  });
-
-  if (!downloadAllowed) addLock(thumb);
+  if (isCurrent) {
+    fetchBlobUrl(`/api/engagements/${summary.id}/preview/${dir.direction}`).then(url => {
+      if (!url) return;
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = `${tileLabel} preview`;
+      thumb.innerHTML = '';
+      thumb.appendChild(img);
+      if (!downloadAllowed) addLock(thumb);
+    });
+  }
+  if (!canDownload) addLock(thumb);
 
   const labelEl = document.createElement('div');
   labelEl.className = 'dass-tile-label';
   labelEl.textContent = tileLabel;
   tile.appendChild(labelEl);
 
-  if (downloadAllowed) {
+  if (canDownload) {
     tile.onclick = () => downloadPdf(summary.id, dir.direction, tile, labelEl, tileLabel);
   } else {
     const sub = document.createElement('div');
     sub.className = 'dass-tile-sub';
-    sub.textContent = 'Locked';
+    sub.textContent = isCurrent ? 'Locked' : 'Archived';
     tile.appendChild(sub);
   }
 
   return tile;
 }
 
-function buildLogoTile(summary, dir, downloadAllowed) {
+function buildLogoTile(summary, dir, downloadAllowed, isCurrent) {
   const logo = dir.logo;
   if (!logo) return null;
   const hasZip = !!dir.logoZipBlobPath;
-  const canDownload = downloadAllowed && hasZip;
+  const canDownload = downloadAllowed && isCurrent && hasZip;
   const label = dir.direction.charAt(0) + dir.direction.slice(1).toLowerCase();
   const tileLabel = `${label} Logo`;
 
@@ -135,7 +141,7 @@ function buildLogoTile(summary, dir, downloadAllowed) {
   }
   tile.appendChild(thumb);
 
-  if (!downloadAllowed) addLock(thumb);
+  if (!downloadAllowed && isCurrent) addLock(thumb);
 
   const labelEl = document.createElement('div');
   labelEl.className = 'dass-tile-label';
@@ -144,14 +150,109 @@ function buildLogoTile(summary, dir, downloadAllowed) {
 
   if (canDownload) {
     tile.onclick = () => downloadLogos(summary.id, dir.direction, tile, labelEl, tileLabel);
-  } else if (!downloadAllowed) {
+  } else {
     const sub = document.createElement('div');
     sub.className = 'dass-tile-sub';
-    sub.textContent = 'Locked';
+    sub.textContent = !isCurrent ? 'Archived' : (!downloadAllowed ? 'Locked' : 'Not ready');
     tile.appendChild(sub);
   }
 
   return tile;
+}
+
+function renderDirectionTiles(gridEl, summary, dir, downloadAllowed, isCurrent) {
+  gridEl.innerHTML = '';
+  const bookTile = buildBookTile(summary, dir, downloadAllowed, isCurrent);
+  if (bookTile) gridEl.appendChild(bookTile);
+  const logoTile = buildLogoTile(summary, dir, downloadAllowed, isCurrent);
+  if (logoTile) gridEl.appendChild(logoTile);
+}
+
+async function fetchVersions(engagementId, direction) {
+  try {
+    const res = await fetch(`/api/engagements/${engagementId}/directions/${direction}/versions`, { headers: HEADERS });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (_) {
+    return [];
+  }
+}
+
+async function fetchVersion(engagementId, direction, versionNumber) {
+  const res = await fetch(`/api/engagements/${engagementId}/directions/${direction}/versions/${versionNumber}`, { headers: HEADERS });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+function buildDirectionBlock(summary, dir, downloadAllowed, versions) {
+  const label = dir.direction.charAt(0) + dir.direction.slice(1).toLowerCase();
+
+  const block = document.createElement('div');
+  block.className = 'dass-direction-block';
+
+  const header = document.createElement('div');
+  header.className = 'dass-direction-header';
+
+  const title = document.createElement('div');
+  title.className = 'dass-direction-title';
+  title.textContent = label;
+  header.appendChild(title);
+
+  let select = null;
+  if (versions.length > 0) {
+    select = document.createElement('select');
+    select.className = 'dass-version-select';
+    const currentOpt = document.createElement('option');
+    currentOpt.value = 'current';
+    currentOpt.textContent = 'Current';
+    select.appendChild(currentOpt);
+    versions.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = String(v.versionNumber);
+      const when = v.createdAt ? new Date(v.createdAt).toLocaleDateString() : '';
+      opt.textContent = `Version ${v.versionNumber}${when ? ` — ${when}` : ''}`;
+      select.appendChild(opt);
+    });
+    header.appendChild(select);
+  }
+
+  block.appendChild(header);
+
+  const banner = document.createElement('div');
+  banner.className = 'dass-version-banner';
+  banner.hidden = true;
+  block.appendChild(banner);
+
+  const grid = document.createElement('div');
+  grid.className = 'dass-tile-grid';
+  block.appendChild(grid);
+
+  renderDirectionTiles(grid, summary, dir, downloadAllowed, true);
+
+  if (select) {
+    select.onchange = async () => {
+      if (select.value === 'current') {
+        banner.hidden = true;
+        renderDirectionTiles(grid, summary, dir, downloadAllowed, true);
+        return;
+      }
+      select.disabled = true;
+      try {
+        const snapshot = await fetchVersion(summary.id, dir.direction, Number(select.value));
+        banner.hidden = false;
+        banner.textContent = `Viewing version ${select.value} — read-only, downloads are only available for Current.`;
+        renderDirectionTiles(grid, summary, snapshot, downloadAllowed, false);
+      } catch (_) {
+        banner.hidden = false;
+        banner.textContent = 'Could not load that version.';
+        grid.innerHTML = '';
+      } finally {
+        select.disabled = false;
+      }
+    };
+  }
+
+  return block;
 }
 
 async function renderEngagementBlock(summary) {
@@ -167,15 +268,12 @@ async function renderEngagementBlock(summary) {
   const brandName = dirs[0]?.brief?.brand?.name || 'Your brand';
   const downloadAllowed = detail.downloadAllowed;
 
-  const grid = document.createElement('div');
-  grid.className = 'dass-tile-grid';
-  dirs.forEach(dir => {
-    const bookTile = buildBookTile(summary, dir, downloadAllowed);
-    if (bookTile) grid.appendChild(bookTile);
-    const logoTile = buildLogoTile(summary, dir, downloadAllowed);
-    if (logoTile) grid.appendChild(logoTile);
-  });
-  if (!grid.children.length) return null;
+  const relevantDirs = dirs.filter(dir => dir.pdfBlobPath || dir.logo);
+  if (!relevantDirs.length) return null;
+
+  const versionsByDirection = await Promise.all(
+    relevantDirs.map(dir => fetchVersions(summary.id, dir.direction))
+  );
 
   const block = document.createElement('div');
   block.className = 'dass-engagement-block';
@@ -190,7 +288,10 @@ async function renderEngagementBlock(summary) {
   sub.textContent = downloadAllowed ? 'Unlocked' : 'Payment required to unlock downloads';
   block.appendChild(sub);
 
-  block.appendChild(grid);
+  relevantDirs.forEach((dir, i) => {
+    block.appendChild(buildDirectionBlock(summary, dir, downloadAllowed, versionsByDirection[i]));
+  });
+
   return block;
 }
 
@@ -228,7 +329,8 @@ export async function mount(container) {
   `;
   await render(container);
 
-  // A specialist agent's Live Dashboard view (dashboardAgents widget) just regenerated
-  // one of this engagement's assets — re-render so PDF/Logo ZIP tiles pick up the change.
+  // A specialist agent's Live Dashboard view (dashboardAgents widget) just approved a draft
+  // for one of this engagement's assets — re-render so PDF/Logo ZIP tiles and the version
+  // selects pick up the newly archived version plus the updated current content.
   window.addEventListener('genesis:assets-updated', () => render(container));
 }

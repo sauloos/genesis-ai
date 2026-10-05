@@ -1,4 +1,4 @@
-import { fetchEngagementDetail, findDirectionOutput, submitRegeneration, pollRegeneration }
+import { fetchEngagementDetail, findDirectionOutput, submitRegeneration, pollRegeneration, renderApprovalGate }
   from '/agent-views/_shared/regenerate.js';
 
 function esc(s) {
@@ -25,7 +25,7 @@ export async function mount(container, agent, ctx) {
   render(container, agent, ctx, dir.visualIdentity);
 }
 
-function render(container, agent, ctx, visual) {
+function renderFields(el, visual) {
   const swatches = (visual.colorPalette || []).map(c => `
     <div class="av-swatch-item">
       <div class="av-swatch" style="background:${esc(c.hex)}"></div>
@@ -33,7 +33,7 @@ function render(container, agent, ctx, visual) {
     </div>
   `).join('');
 
-  container.innerHTML = `
+  el.innerHTML = `
     <div class="av-section">
       <div class="av-label">Color Palette</div>
       <div class="av-swatches">${swatches || '<div class="av-value">No palette yet.</div>'}</div>
@@ -46,6 +46,12 @@ function render(container, agent, ctx, visual) {
       <div class="av-label">Mood Direction</div>
       <div class="av-value">${esc(visual.moodDirection)}</div>
     </div>
+  `;
+}
+
+function render(container, agent, ctx, visual) {
+  container.innerHTML = `
+    <div class="av-fields"></div>
     <div class="av-cascade">Regenerating your visual identity will also update your Playbook, Brand Book, and Logo package.</div>
     <div class="av-section">
       <div class="av-label">Feedback for this regeneration (optional)</div>
@@ -56,6 +62,7 @@ function render(container, agent, ctx, visual) {
       <span class="av-status"></span>
     </div>
   `;
+  renderFields(container.querySelector('.av-fields'), visual);
   wireSubmit(container, agent, ctx);
 }
 
@@ -69,15 +76,26 @@ function wireSubmit(container, agent, ctx) {
     status.textContent = 'Queuing…';
     container.querySelector('.av-error')?.remove();
     try {
-      const job = await submitRegeneration(agent.engagementId, agent.agentId, agent.direction, feedback.value.trim());
-      await pollRegeneration(agent.engagementId, job.id, (j) => {
+      const queued = await submitRegeneration(agent.engagementId, agent.agentId, agent.direction, feedback.value.trim());
+      const job = await pollRegeneration(agent.engagementId, queued.id, (j) => {
         status.textContent = j.status === 'RUNNING' ? 'Regenerating…' : 'Queued…';
       });
-      status.textContent = 'Done.';
-      ctx.onAssetGenerated?.();
-      const detail = await fetchEngagementDetail(agent.engagementId);
-      const dir = findDirectionOutput(detail, agent.direction);
-      render(container, agent, ctx, dir.visualIdentity);
+      renderApprovalGate(container, {
+        engagementId: agent.engagementId,
+        job,
+        renderDraft: (el, draft) => renderFields(el, draft.visualIdentity),
+        onApprove: async () => {
+          ctx.onAssetGenerated?.();
+          const detail = await fetchEngagementDetail(agent.engagementId);
+          const dir = findDirectionOutput(detail, agent.direction);
+          render(container, agent, ctx, dir.visualIdentity);
+        },
+        onDiscard: async () => {
+          const detail = await fetchEngagementDetail(agent.engagementId);
+          const dir = findDirectionOutput(detail, agent.direction);
+          render(container, agent, ctx, dir.visualIdentity);
+        },
+      });
     } catch (err) {
       button.disabled = false;
       status.textContent = '';

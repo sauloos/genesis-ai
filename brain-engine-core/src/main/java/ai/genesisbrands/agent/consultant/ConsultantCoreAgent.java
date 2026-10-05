@@ -40,4 +40,9 @@ public class ConsultantCoreAgent implements CoreAgent {
     public boolean hasLiveView() {
         return true;
     }
+
+    @Override
+    public boolean supportsToolUse() {
+        return true;
+    }
 }

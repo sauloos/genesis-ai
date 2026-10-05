@@ -1,4 +1,4 @@
-import { fetchEngagementDetail, findDirectionOutput, submitRegeneration, pollRegeneration }
+import { fetchEngagementDetail, findDirectionOutput, submitRegeneration, pollRegeneration, renderApprovalGate }
   from '/agent-views/_shared/regenerate.js';
 
 function esc(s) {
@@ -25,12 +25,18 @@ export async function mount(container, agent, ctx) {
   render(container, agent, ctx, dir.copy);
 }
 
-function render(container, agent, ctx, copy) {
-  container.innerHTML = `
+function renderFields(el, copy) {
+  el.innerHTML = `
     <div class="av-section"><div class="av-label">Tagline</div><div class="av-value">${esc(copy.tagline)}</div></div>
     <div class="av-section"><div class="av-label">Mission</div><div class="av-value">${esc(copy.missionStatement)}</div></div>
     <div class="av-section"><div class="av-label">Brand Story</div><div class="av-value">${esc(copy.brandStory)}</div></div>
     <div class="av-section"><div class="av-label">Elevator Pitch</div><div class="av-value">${esc(copy.elevatorPitch)}</div></div>
+  `;
+}
+
+function render(container, agent, ctx, copy) {
+  container.innerHTML = `
+    <div class="av-fields"></div>
     <div class="av-cascade">Regenerating your copy will also update your Playbook and Brand Book.</div>
     <div class="av-section">
       <div class="av-label">Feedback for this regeneration (optional)</div>
@@ -41,10 +47,11 @@ function render(container, agent, ctx, copy) {
       <span class="av-status"></span>
     </div>
   `;
-  wireSubmit(container, agent, ctx, 'copy');
+  renderFields(container.querySelector('.av-fields'), copy);
+  wireSubmit(container, agent, ctx);
 }
 
-function wireSubmit(container, agent, ctx, field) {
+function wireSubmit(container, agent, ctx) {
   const button = container.querySelector('.av-submit');
   const status = container.querySelector('.av-status');
   const feedback = container.querySelector('.av-feedback');
@@ -54,15 +61,26 @@ function wireSubmit(container, agent, ctx, field) {
     status.textContent = 'Queuing…';
     container.querySelector('.av-error')?.remove();
     try {
-      const job = await submitRegeneration(agent.engagementId, agent.agentId, agent.direction, feedback.value.trim());
-      await pollRegeneration(agent.engagementId, job.id, (j) => {
+      const queued = await submitRegeneration(agent.engagementId, agent.agentId, agent.direction, feedback.value.trim());
+      const job = await pollRegeneration(agent.engagementId, queued.id, (j) => {
         status.textContent = j.status === 'RUNNING' ? 'Regenerating…' : 'Queued…';
       });
-      status.textContent = 'Done.';
-      ctx.onAssetGenerated?.();
-      const detail = await fetchEngagementDetail(agent.engagementId);
-      const dir = findDirectionOutput(detail, agent.direction);
-      render(container, agent, ctx, dir[field]);
+      renderApprovalGate(container, {
+        engagementId: agent.engagementId,
+        job,
+        renderDraft: (el, draft) => renderFields(el, draft.copy),
+        onApprove: async () => {
+          ctx.onAssetGenerated?.();
+          const detail = await fetchEngagementDetail(agent.engagementId);
+          const dir = findDirectionOutput(detail, agent.direction);
+          render(container, agent, ctx, dir.copy);
+        },
+        onDiscard: async () => {
+          const detail = await fetchEngagementDetail(agent.engagementId);
+          const dir = findDirectionOutput(detail, agent.direction);
+          render(container, agent, ctx, dir.copy);
+        },
+      });
     } catch (err) {
       button.disabled = false;
       status.textContent = '';

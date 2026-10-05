@@ -1,4 +1,4 @@
-import { fetchEngagementDetail, findDirectionOutput, submitRegeneration, pollRegeneration }
+import { fetchEngagementDetail, findDirectionOutput, submitRegeneration, pollRegeneration, renderApprovalGate }
   from '/agent-views/_shared/regenerate.js';
 
 function esc(s) {
@@ -25,7 +25,7 @@ export async function mount(container, agent, ctx) {
   render(container, agent, ctx, dir.logo);
 }
 
-function render(container, agent, ctx, logo) {
+function renderFields(el, logo) {
   let preview = '<div class="av-value">No preview available.</div>';
   if (logo.method === 'SVG_CONCEPT' && logo.svgMarkup) {
     preview = `<div class="av-logo-svg">${logo.svgMarkup}</div>`;
@@ -33,10 +33,16 @@ function render(container, agent, ctx, logo) {
     preview = `<img class="av-logo-image" src="${esc(logo.imageUrl)}" alt="Logo preview">`;
   }
 
-  container.innerHTML = `
+  el.innerHTML = `
     <div class="av-section"><div class="av-label">Mark</div>${preview}</div>
     <div class="av-section"><div class="av-label">Concept</div><div class="av-value">${esc(logo.conceptDescription)}</div></div>
     <div class="av-section"><div class="av-label">Symbolism</div><div class="av-value">${esc(logo.symbolism)}</div></div>
+  `;
+}
+
+function render(container, agent, ctx, logo) {
+  container.innerHTML = `
+    <div class="av-fields"></div>
     <div class="av-cascade">Regenerating your logo will also update your Playbook, Brand Book, and Logo package.</div>
     <div class="av-section">
       <div class="av-label">Feedback for this regeneration (optional)</div>
@@ -47,6 +53,7 @@ function render(container, agent, ctx, logo) {
       <span class="av-status"></span>
     </div>
   `;
+  renderFields(container.querySelector('.av-fields'), logo);
   wireSubmit(container, agent, ctx);
 }
 
@@ -60,15 +67,26 @@ function wireSubmit(container, agent, ctx) {
     status.textContent = 'Queuing…';
     container.querySelector('.av-error')?.remove();
     try {
-      const job = await submitRegeneration(agent.engagementId, agent.agentId, agent.direction, feedback.value.trim());
-      await pollRegeneration(agent.engagementId, job.id, (j) => {
+      const queued = await submitRegeneration(agent.engagementId, agent.agentId, agent.direction, feedback.value.trim());
+      const job = await pollRegeneration(agent.engagementId, queued.id, (j) => {
         status.textContent = j.status === 'RUNNING' ? 'Regenerating…' : 'Queued…';
       });
-      status.textContent = 'Done.';
-      ctx.onAssetGenerated?.();
-      const detail = await fetchEngagementDetail(agent.engagementId);
-      const dir = findDirectionOutput(detail, agent.direction);
-      render(container, agent, ctx, dir.logo);
+      renderApprovalGate(container, {
+        engagementId: agent.engagementId,
+        job,
+        renderDraft: (el, draft) => renderFields(el, draft.logo),
+        onApprove: async () => {
+          ctx.onAssetGenerated?.();
+          const detail = await fetchEngagementDetail(agent.engagementId);
+          const dir = findDirectionOutput(detail, agent.direction);
+          render(container, agent, ctx, dir.logo);
+        },
+        onDiscard: async () => {
+          const detail = await fetchEngagementDetail(agent.engagementId);
+          const dir = findDirectionOutput(detail, agent.direction);
+          render(container, agent, ctx, dir.logo);
+        },
+      });
     } catch (err) {
       button.disabled = false;
       status.textContent = '';

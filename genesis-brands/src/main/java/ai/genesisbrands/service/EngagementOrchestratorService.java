@@ -38,6 +38,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -203,7 +204,7 @@ public class EngagementOrchestratorService {
             ? visual.colorPalette().get(0).hex()
             : "#000000";
         return logoExportService.packageLogos(
-            dir.brief().engagementId(), dir.direction(), dir.logo(), primaryHex);
+            dir.brief().engagementId(), dir.direction(), dir.logo(), primaryHex, UUID.randomUUID().toString());
     }
 
     private String renderAndStorePdf(DirectionOutput dir) {
@@ -211,8 +212,8 @@ public class EngagementOrchestratorService {
             BrandBookInput input = new BrandBookInput(
                 dir.brief(), dir.playbook(), dir.copy(), dir.visualIdentity(), dir.logo());
             byte[] pdf = pdfRenderer.render(input, dir.brandBook());
-            String blobPath = "assets/brand-books/%s/%s.pdf".formatted(
-                dir.brief().engagementId(), dir.direction().toLowerCase());
+            String blobPath = "assets/brand-books/%s/%s-%s.pdf".formatted(
+                dir.brief().engagementId(), dir.direction().toLowerCase(), UUID.randomUUID());
             blobStorageService.upload(blobPath, pdf);
             log.info("Brand book PDF stored at {} for engagement {}",
                 blobPath, dir.brief().engagementId());

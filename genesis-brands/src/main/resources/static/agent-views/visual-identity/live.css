@@ -19,3 +19,13 @@
 .av-swatch { width: 40px; height: 40px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.08); }
 .av-swatch-name { font-size: 10px; color: #999; text-align: center; }
 
+.av-approval-banner { font-size: 12px; color: #1a7a4c; background: #eafbf1; border: 1px solid #bfeed5;
+  border-radius: 8px; padding: 10px 12px; margin-bottom: 16px; font-weight: 600; }
+.av-approval-footer { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+.av-approve { background: #1a7a4c; color: #fff; border: none; border-radius: 8px; padding: 10px 18px;
+  font-size: 13px; font-weight: 600; cursor: pointer; }
+.av-discard { background: none; color: #888; border: 1px solid #ddd; border-radius: 8px; padding: 10px 18px;
+  font-size: 13px; font-weight: 600; cursor: pointer; }
+.av-approve:disabled, .av-discard:disabled { opacity: 0.5; cursor: default; }
+.av-approval-status { font-size: 12px; color: #888; }
+

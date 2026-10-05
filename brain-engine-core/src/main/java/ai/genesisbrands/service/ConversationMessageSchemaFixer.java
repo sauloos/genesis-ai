@@ -13,7 +13,10 @@ import org.springframework.stereotype.Component;
  * never updates an existing CHECK constraint when an enum gains a value, so every insert with
  * {@code source=CUSTOMER} was rejected in production until this runs. Idempotent and safe to
  * leave in permanently — a no-op once the constraint is gone, since valid {@code Source} values
- * are enforced by the Java enum, not the database.
+ * are enforced by the Java enum, not the database. Also widens the H2-native {@code ENUM}
+ * column type that local dev gets for the same column instead of a CHECK constraint (H2 maps
+ * {@code @Enumerated(STRING)} to its own {@code ENUM(...)} column type, which has the identical
+ * stale-value problem but needs a different fix statement than Postgres).
  */
 @Component
 public class ConversationMessageSchemaFixer {
@@ -27,7 +30,12 @@ public class ConversationMessageSchemaFixer {
     }
 
     @PostConstruct
-    public void dropStaleSourceCheckConstraint() {
+    public void fixStaleSourceConstraint() {
+        dropStalePostgresCheckConstraint();
+        widenStaleH2EnumColumn();
+    }
+
+    private void dropStalePostgresCheckConstraint() {
         try {
             Integer count = jdbcTemplate.queryForObject(
                 "SELECT count(*) FROM information_schema.table_constraints " +
@@ -42,7 +50,26 @@ public class ConversationMessageSchemaFixer {
                 log.info("Dropped stale conversation_messages_source_check constraint");
             }
         } catch (Exception ex) {
-            log.warn("Could not check/drop conversation_messages_source_check constraint", ex);
+            log.debug("Could not check/drop conversation_messages_source_check constraint (likely not Postgres)", ex);
+        }
+    }
+
+    private void widenStaleH2EnumColumn() {
+        try {
+            String dataType = jdbcTemplate.queryForObject(
+                "SELECT data_type FROM information_schema.columns " +
+                "WHERE table_name = 'CONVERSATION_MESSAGES' AND column_name = 'SOURCE'",
+                String.class
+            );
+            if ("ENUM".equals(dataType)) {
+                jdbcTemplate.execute(
+                    "ALTER TABLE CONVERSATION_MESSAGES ALTER COLUMN SOURCE " +
+                    "ENUM('CONSULTANT','PLAYGROUND','CUSTOMER')"
+                );
+                log.info("Widened CONVERSATION_MESSAGES.SOURCE enum column to include CUSTOMER");
+            }
+        } catch (Exception ex) {
+            log.debug("Could not check/widen CONVERSATION_MESSAGES.SOURCE enum column (likely not H2)", ex);
         }
     }
 }

@@ -43,6 +43,13 @@ public class AgentRegenerationJob {
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 
+    /** Serialized draft DirectionOutput produced while this job sat in AWAITING_APPROVAL —
+     *  the agent's new output plus whatever cascaded (Playbook/Brand Book) and the new
+     *  PDF/logo-zip blob paths. Null until the draft is computed; never written into
+     *  Engagement.resultsJson until approve() is called. */
+    @Column(name = "draft_output_json", columnDefinition = "TEXT")
+    private String draftOutputJson;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
@@ -50,5 +57,5 @@ public class AgentRegenerationJob {
     private Instant completedAt;
 
     public enum Mode { SLOT, CREATE }
-    public enum Status { QUEUED, RUNNING, DONE, FAILED }
+    public enum Status { QUEUED, RUNNING, AWAITING_APPROVAL, DONE, REJECTED, FAILED }
 }
