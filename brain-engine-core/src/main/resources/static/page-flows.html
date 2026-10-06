@@ -204,6 +204,7 @@
     border: 1px dashed var(--theme-card-border); border-radius: 10px; padding: 12px; min-height: 120px;
     display: flex; flex-direction: column; gap: 8px;
   }
+  .slot-box.header-slot { grid-column: 1 / -1; min-height: 70px; border-color: var(--theme-btn-border-hover); }
   .slot-label { font-size: 10px; color: var(--theme-text-label); text-transform: uppercase; letter-spacing: 0.5px; }
   .widget-chip {
     background: var(--theme-card-bg); border: 1px solid var(--theme-card-border); border-radius: 8px;
@@ -1058,28 +1059,37 @@ async function loadL2Widgets() {
   renderLayoutGrid();
 }
 
+function renderSlotBox(slot, extraClass) {
+  const widgets = l2Widgets.filter(w => w.slotKey === slot.key).sort((a, b) => a.orderInSlot - b.orderInSlot);
+  return `
+    <div class="slot-box${extraClass ? ' ' + extraClass : ''}" data-slot="${esc(slot.key)}">
+      <div class="slot-label">${esc(slot.label)}</div>
+      ${widgets.map(w => `
+        <div class="widget-chip${w.id === l2SelectedWidgetId ? ' selected' : ''}" data-id="${w.id}">
+          <span>${esc(w.label || w.widgetType)}</span>
+          <span class="widget-chip-type">${esc(w.widgetType)}</span>
+        </div>
+      `).join('')}
+      <select class="slot-add-select" data-slot="${esc(slot.key)}">
+        <option value="">+ Add widget…</option>
+        ${widgetTypes.map(t => `<option value="${esc(t.widgetType)}">${esc(t.displayName)}</option>`).join('')}
+      </select>
+    </div>`;
+}
+
 function renderLayoutGrid() {
   const page = currentPages.find(p => p.id === l2PageId);
   const layout = layouts.find(l => l.id === page.layoutKey);
   const grid = document.getElementById('layout-grid');
   grid.style.gridTemplateColumns = layout.gridTemplateColumns;
-  grid.innerHTML = layout.slots.map(slot => {
-    const widgets = l2Widgets.filter(w => w.slotKey === slot.key).sort((a, b) => a.orderInSlot - b.orderInSlot);
-    return `
-      <div class="slot-box" data-slot="${esc(slot.key)}">
-        <div class="slot-label">${esc(slot.label)}</div>
-        ${widgets.map(w => `
-          <div class="widget-chip${w.id === l2SelectedWidgetId ? ' selected' : ''}" data-id="${w.id}">
-            <span>${esc(w.label || w.widgetType)}</span>
-            <span class="widget-chip-type">${esc(w.widgetType)}</span>
-          </div>
-        `).join('')}
-        <select class="slot-add-select" data-slot="${esc(slot.key)}">
-          <option value="">+ Add widget…</option>
-          ${widgetTypes.map(t => `<option value="${esc(t.widgetType)}">${esc(t.displayName)}</option>`).join('')}
-        </select>
-      </div>`;
-  }).join('');
+  // 'header' is a reserved slotKey handled outside any layout's own slot list — see
+  // flow-runtime.html's identical treatment: a widget placed there renders full-width
+  // above the grid regardless of which layout the page uses. Shown here first, in every
+  // layout, so it's never invisible in this editor the way it was before this slot box
+  // existed (data existed, nothing rendered it).
+  const headerBox = renderSlotBox({ key: 'header', label: 'Header — spans full width, all layouts' }, 'header-slot');
+  const slotBoxes = layout.slots.map(slot => renderSlotBox(slot)).join('');
+  grid.innerHTML = headerBox + slotBoxes;
 
   grid.querySelectorAll('.widget-chip').forEach(chip => {
     chip.addEventListener('click', () => selectWidget(chip.dataset.id));
