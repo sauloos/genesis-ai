@@ -127,6 +127,11 @@ public class PageController {
     @GetMapping("/playground")
     public String playgroundRedirect() { return "redirect:/dashboard/playground"; }
 
+    @GetMapping("/dashboard/onboarding")
+    public String onboardingPage() { return "forward:/onboarding.html"; }
+    @GetMapping("/onboarding")
+    public String onboardingRedirect() { return "redirect:/dashboard/onboarding"; }
+
     @GetMapping("/flow/{slug}")
     public String flowRuntimeLegacyRedirect(@PathVariable String slug) { return "redirect:/live/" + slug; }
 

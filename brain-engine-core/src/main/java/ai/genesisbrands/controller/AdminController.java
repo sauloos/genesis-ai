@@ -109,6 +109,10 @@ public class AdminController {
 
         List<DashboardCard> cards = new ArrayList<>();
 
+        cards.add(new DashboardCard("onboarding", "Onboarding",
+                "Personalize this deployment for a new tenant — theme & logo, which out-of-the-box agents are turned on, and what's registered so far.",
+                "/dashboard/onboarding", "onboarding", true, true));
+
         ConsultantSubjectProvider subjectProvider = consultantSubjectProvider.getIfAvailable();
         if (subjectProvider != null) {
             cards.add(new DashboardCard("consultant", "Consultant",

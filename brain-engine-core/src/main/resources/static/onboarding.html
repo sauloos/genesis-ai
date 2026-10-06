@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Genesis — Onboarding</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --theme-bg-image: url('/bg-earth.jpg');
+    --theme-bg-transform: rotate(180deg);
+    --theme-bg-overlay: rgba(0, 0, 10, 0.52);
+    --theme-body-bg: #000010;
+    --theme-text-primary: #f2f2f2;
+    --theme-text-muted: rgba(255, 255, 255, 0.52);
+    --theme-text-label: rgba(255, 255, 255, 0.38);
+    --theme-card-bg: rgba(255, 255, 255, 0.07);
+    --theme-card-bg-hover: rgba(255, 255, 255, 0.12);
+    --theme-card-border: rgba(255, 255, 255, 0.10);
+    --theme-backdrop: blur(12px);
+    --theme-btn-color: rgba(255, 255, 255, 0.4);
+    --theme-btn-border: rgba(255, 255, 255, 0.12);
+    --theme-btn-color-hover: rgba(255, 255, 255, 0.75);
+    --theme-btn-border-hover: rgba(255, 255, 255, 0.3);
+    --theme-env-badge-bg: rgba(0, 0, 0, 0.4);
+    --theme-env-badge-border: rgba(255, 255, 255, 0.08);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    min-height: 100vh;
+    color: var(--theme-text-primary);
+    background: var(--theme-body-bg);
+    position: relative;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: var(--theme-bg-image) var(--theme-bg-position, center center) / var(--theme-bg-size, cover) no-repeat;
+    transform: var(--theme-bg-transform, none);
+    z-index: -2;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: var(--theme-bg-overlay);
+    z-index: -1;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 40px 0;
+  }
+  .back-btn {
+    font-size: 12px;
+    color: var(--theme-btn-color);
+    background: none;
+    border: 1px solid var(--theme-btn-border);
+    border-radius: 6px;
+    padding: 5px 12px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .back-btn:hover { color: var(--theme-btn-color-hover); border-color: var(--theme-btn-border-hover); }
+
+  .hero { text-align: center; padding: 36px 24px 32px; }
+  .hero-logo {
+    height: 52px;
+    width: auto;
+    aspect-ratio: 805 / 220;
+    display: block;
+    margin: 0 auto 20px;
+    background-color: var(--theme-text-primary, currentColor);
+    -webkit-mask-image: url(/api/themes/active/logo);
+    mask-image: url(/api/themes/active/logo);
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+  }
+  .hero-label {
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--theme-text-label);
+    margin-bottom: 10px;
+  }
+  .hero h1 {
+    font-size: clamp(20px, 3vw, 28px);
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    color: var(--theme-text-primary);
+  }
+  .hero-sub {
+    font-size: 14px;
+    color: var(--theme-text-muted);
+    margin-top: 8px;
+    max-width: 560px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.5;
+  }
+
+  .main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 24px 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .step {
+    background: var(--theme-card-bg);
+    border: 1px solid var(--theme-card-border);
+    border-radius: 16px;
+    backdrop-filter: var(--theme-backdrop);
+    -webkit-backdrop-filter: var(--theme-backdrop);
+    padding: 22px 24px;
+  }
+  .step-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
+  .step-title-row { display: flex; align-items: baseline; gap: 10px; }
+  .step-num {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--theme-text-label);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .step-title { font-size: 16px; font-weight: 700; color: var(--theme-text-primary); }
+  .step-desc { font-size: 13px; color: var(--theme-text-muted); line-height: 1.55; margin: 6px 0 16px; max-width: 640px; }
+
+  .badge {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: var(--theme-card-bg-hover);
+    color: var(--theme-text-muted);
+    border: 1px solid var(--theme-card-border);
+    white-space: nowrap;
+  }
+  .badge-on { background: rgba(111,224,165,0.15); color: #6fe0a5; border-color: rgba(111,224,165,0.25); }
+  .badge-soon { background: rgba(245,158,11,0.14); color: #f5b942; border-color: rgba(245,158,11,0.28); }
+
+  .manage-link {
+    font-size: 12px;
+    color: var(--theme-btn-color);
+    text-decoration: none;
+    border-bottom: 1px solid var(--theme-btn-border);
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .manage-link:hover { color: var(--theme-btn-color-hover); border-color: var(--theme-btn-border-hover); }
+
+  /* Theme & branding */
+  .theme-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--theme-card-border);
+    margin-bottom: 8px;
+  }
+  .theme-row:last-of-type { margin-bottom: 0; }
+  .theme-name { font-size: 13px; font-weight: 600; }
+  .theme-id { font-size: 11px; color: var(--theme-text-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; margin-left: 6px; }
+  .activate-btn {
+    font-size: 11px;
+    font-weight: 600;
+    background: none;
+    border: 1px solid var(--theme-btn-border);
+    color: var(--theme-btn-color);
+    border-radius: 6px;
+    padding: 4px 10px;
+    cursor: pointer;
+  }
+  .activate-btn:hover { color: var(--theme-btn-color-hover); border-color: var(--theme-btn-border-hover); }
+  .logo-preview-row { display: flex; align-items: center; gap: 14px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--theme-card-border); }
+  .logo-preview-box {
+    width: 56px; height: 56px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--theme-card-border);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .logo-preview-box img { max-width: 36px; max-height: 36px; }
+  .logo-preview-caption { font-size: 12px; color: var(--theme-text-muted); }
+
+  /* Agent toggle rows */
+  .agent-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--theme-card-border);
+  }
+  .agent-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .agent-row-name { font-size: 13px; font-weight: 600; }
+  .toggle-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    color: var(--theme-text-muted);
+    cursor: pointer;
+  }
+  .toggle-item input { accent-color: #6fe0a5; width: 14px; height: 14px; cursor: pointer; }
+  .agent-toggles { display: flex; gap: 16px; flex-wrap: wrap; }
+
+  /* Installed components */
+  .component-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; }
+  .component-col-title {
+    font-size: 11px;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    color: var(--theme-text-label);
+    margin-bottom: 8px;
+  }
+  .chip-list { display: flex; flex-direction: column; gap: 6px; }
+  .chip {
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--theme-card-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .chip-origin { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; color: var(--theme-text-label); }
+
+  .empty-inline { font-size: 12px; color: var(--theme-text-muted); padding: 4px 0; }
+
+  .soon-box {
+    border: 1px dashed var(--theme-card-border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    font-size: 12px;
+    color: var(--theme-text-muted);
+    line-height: 1.6;
+  }
+  .soon-box code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    background: rgba(255,255,255,0.06);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+
+  #toast {
+    position: fixed;
+    bottom: 32px;
+    right: 24px;
+    background: rgba(30,30,40,0.95);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-size: 13px;
+    color: #f2f2f2;
+    backdrop-filter: blur(12px);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+    z-index: 100;
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+
+  #env-badge {
+    position: fixed;
+    bottom: 20px;
+    left: 24px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: var(--theme-env-badge-bg);
+    border: 1px solid var(--theme-env-badge-border);
+    border-radius: 20px;
+    padding: 5px 12px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  @media (max-width: 480px) {
+    header { padding: 20px 16px 0; }
+    .hero { padding: 28px 16px 24px; }
+    .main { padding: 0 12px 60px; }
+    .step { padding: 18px; }
+  }
+</style>
+<link rel="stylesheet" href="/api/themes/active/styles.css">
+</head>
+<body>
+
+<header>
+  <a href="/dashboard" class="back-btn">← Dashboard</a>
+</header>
+
+<div class="hero">
+  <div class="hero-logo" role="img" aria-label="Genesis"></div>
+  <div class="hero-label">Brain Engine Platform</div>
+  <h1>Onboarding</h1>
+  <p class="hero-sub">Personalize this deployment for a new tenant — branding, which out-of-the-box agents are turned on, and what's registered so far.</p>
+</div>
+
+<div class="main">
+
+  <div class="step" id="step-theme">
+    <div class="step-head">
+      <div class="step-title-row">
+        <span class="step-num">01</span>
+        <span class="step-title">Theme &amp; logo</span>
+      </div>
+      <a class="manage-link" href="/dashboard/themes">Manage themes & import a custom bundle →</a>
+    </div>
+    <p class="step-desc">Pick the active theme for this deployment. A custom theme bundle (with its own logo) can be imported from the full Themes page.</p>
+    <div id="themeList"><div class="empty-inline">Loading themes…</div></div>
+    <div class="logo-preview-row">
+      <div class="logo-preview-box"><img src="/api/themes/active/logo" alt="Active logo" onerror="this.style.display='none'"></div>
+      <div class="logo-preview-caption">Active logo, served from the current theme (falls back to the platform default if none is set).</div>
+    </div>
+  </div>
+
+  <div class="step" id="step-agents">
+    <div class="step-head">
+      <div class="step-title-row">
+        <span class="step-num">02</span>
+        <span class="step-title">Out-of-the-box agents</span>
+      </div>
+      <a class="manage-link" href="/dashboard/agents">Full agent catalog →</a>
+    </div>
+    <p class="step-desc">Every registered agent — core and tenant alike — appears here. Turn on only what this tenant should see in the live dashboard and Playground.</p>
+    <div id="agentList"><div class="empty-inline">Loading agents…</div></div>
+  </div>
+
+  <div class="step" id="step-components">
+    <div class="step-head">
+      <div class="step-title-row">
+        <span class="step-num">03</span>
+        <span class="step-title">Installed components</span>
+      </div>
+    </div>
+    <p class="step-desc">Agents, widgets, and admin nav extensions register themselves automatically — nothing here needs wiring. This is a read-only confirmation of what's currently loaded.</p>
+    <div class="component-cols">
+      <div>
+        <div class="component-col-title">Agents</div>
+        <div class="chip-list" id="compAgents"><div class="empty-inline">Loading…</div></div>
+      </div>
+      <div>
+        <div class="component-col-title">Widgets</div>
+        <div class="chip-list" id="compWidgets"><div class="empty-inline">Loading…</div></div>
+      </div>
+      <div>
+        <div class="component-col-title">Admin nav extensions</div>
+        <div class="chip-list" id="compNav"><div class="empty-inline">Loading…</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step" id="step-ingestion">
+    <div class="step-head">
+      <div class="step-title-row">
+        <span class="step-num">04</span>
+        <span class="step-title">Ingestion pipelines</span>
+      </div>
+      <span class="badge badge-soon">Coming soon</span>
+    </div>
+    <p class="step-desc">Knowledge ingestion isn't config-driven yet — each source is wired up ad hoc. The planned model: a pipeline declares its source type, a schedule, and which Layer 1/2 destination it feeds, configurable per tenant from this page.</p>
+    <div class="soon-box">
+      Not yet configurable here. Today, Layer 1 sources and Layer 2 project records are ingested
+      through <code>KnowledgeService</code> directly. Genesis Brands will move onto the config-driven
+      version once it ships — this card is the placeholder for that step.
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+let API_KEY = '';
+
+async function apiFetch(path, opts = {}) {
+  const r = await fetch(path, {
+    ...opts,
+    headers: { 'X-Api-Key': API_KEY, 'Content-Type': 'application/json', ...(opts.headers || {}) }
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.status === 204 ? null : r.json();
+}
+
+function toast(msg, ok = true) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.borderColor = ok ? 'rgba(111,224,165,0.35)' : 'rgba(239,68,68,0.35)';
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+async function loadThemes() {
+  const el = document.getElementById('themeList');
+  try {
+    const themes = await apiFetch('/api/themes');
+    if (!themes.length) { el.innerHTML = '<div class="empty-inline">No themes installed.</div>'; return; }
+    el.innerHTML = themes.map(t => `
+      <div class="theme-row" data-id="${t.id}">
+        <div><span class="theme-name">${t.name}</span><span class="theme-id">${t.id}</span></div>
+        ${t.active ? '<span class="badge badge-on">Active</span>' : '<button class="activate-btn">Activate</button>'}
+      </div>
+    `).join('');
+    el.querySelectorAll('.activate-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.closest('.theme-row').dataset.id;
+        try {
+          await apiFetch(`/api/themes/${id}/activate`, { method: 'PUT' });
+          toast('Theme activated.');
+          loadThemes();
+        } catch (e) { toast(e.message, false); }
+      });
+    });
+  } catch (e) {
+    el.innerHTML = `<div class="empty-inline">Error loading themes: ${e.message}</div>`;
+  }
+}
+
+async function loadAgents() {
+  const el = document.getElementById('agentList');
+  try {
+    const agents = await apiFetch('/api/admin/agents');
+    if (!agents.length) { el.innerHTML = '<div class="empty-inline">No agents registered on this platform instance.</div>'; return; }
+    el.innerHTML = agents.map(a => `
+      <div class="agent-row" data-id="${a.agentId}">
+        <span class="agent-row-name">${a.displayName}</span>
+        <div class="agent-toggles">
+          <label class="toggle-item">
+            <input type="checkbox" data-field="availableForLiveView" ${a.availableForLiveView ? 'checked' : ''}>
+            Live dashboard
+          </label>
+          <label class="toggle-item">
+            <input type="checkbox" data-field="availableForPlayground" ${a.availableForPlayground ? 'checked' : ''}>
+            Playground
+          </label>
+        </div>
+      </div>
+    `).join('');
+    el.querySelectorAll('.agent-row').forEach(row => {
+      const agentId = row.dataset.id;
+      row.querySelectorAll('input[type=checkbox]').forEach(input => {
+        input.addEventListener('change', async () => {
+          try {
+            await apiFetch(`/api/admin/agents/${agentId}/config`, {
+              method: 'PUT',
+              body: JSON.stringify({ [input.dataset.field]: input.checked })
+            });
+            toast('Saved.');
+          } catch (e) {
+            input.checked = !input.checked;
+            toast(e.message, false);
+          }
+        });
+      });
+    });
+    renderCompAgents(agents);
+  } catch (e) {
+    el.innerHTML = `<div class="empty-inline">Error loading agents: ${e.message}</div>`;
+  }
+}
+
+function renderCompAgents(agents) {
+  const el = document.getElementById('compAgents');
+  el.innerHTML = agents.length
+    ? agents.map(a => `<div class="chip"><span>${a.displayName}</span></div>`).join('')
+    : '<div class="empty-inline">None registered.</div>';
+}
+
+async function loadWidgets() {
+  const el = document.getElementById('compWidgets');
+  try {
+    const widgets = await apiFetch('/api/admin/widget-types');
+    el.innerHTML = widgets.length
+      ? widgets.map(w => `<div class="chip"><span>${w.displayName}</span></div>`).join('')
+      : '<div class="empty-inline">None registered.</div>';
+  } catch (e) {
+    el.innerHTML = `<div class="empty-inline">Error: ${e.message}</div>`;
+  }
+}
+
+async function loadNavExtensions() {
+  const el = document.getElementById('compNav');
+  try {
+    const exts = await apiFetch('/api/admin/nav-extensions');
+    el.innerHTML = exts.length
+      ? exts.map(x => `<div class="chip"><span>${x.label}</span></div>`).join('')
+      : '<div class="empty-inline">None registered — bare platform instance.</div>';
+  } catch (e) {
+    el.innerHTML = `<div class="empty-inline">Error: ${e.message}</div>`;
+  }
+}
+
+(async () => {
+  try {
+    const r = await fetch('/api/admin/key', { credentials: 'include' });
+    if (r.ok) { const { key } = await r.json(); API_KEY = key; }
+  } catch {}
+  loadThemes();
+  loadAgents();
+  loadWidgets();
+  loadNavExtensions();
+})();
+
+(async () => {
+  try {
+    const r = await fetch("/api/admin/env", { credentials: "include" });
+    if (!r.ok) return;
+    const { env } = await r.json();
+    const col = { PRODUCTION: "#ef4444", QA: "#f59e0b", DEV: "#6b7280" }[env] || "#888";
+    const el = document.createElement("div");
+    el.id = "env-badge";
+    el.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:${col};flex-shrink:0;display:inline-block"></span>`
+      + `<span style="font-size:10px;font-weight:700;letter-spacing:0.5px;color:${col};text-transform:uppercase">${env}</span>`;
+    document.body.appendChild(el);
+  } catch {}
+})();
+</script>
+</body>
+</html>
