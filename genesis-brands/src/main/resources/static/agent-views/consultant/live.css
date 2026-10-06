@@ -13,6 +13,7 @@
 
 .cc-panel-conversation { flex: 1 1 auto; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
 .cc-panel-history { flex: 1 1 auto; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+.cc-panel-conversation[hidden], .cc-panel-history[hidden] { display: none; }
 
 .cc-history-toolbar { flex: 0 0 auto; display: flex; justify-content: flex-end; padding-bottom: 10px; }
 .cc-new-chat { background: #1a1a1a; color: #fff; border: none; border-radius: 16px; padding: 7px 16px;
