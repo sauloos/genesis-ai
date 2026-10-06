@@ -189,12 +189,17 @@ generated assets — the mechanism is platform-level. What's tenant-specific is 
 it (Genesis Brands' `Engagement`/`resultsJson`). A widget here must not hardcode tenant REST
 endpoints (`/api/engagements/...`) directly into its client JS — it calls a core-owned
 generic endpoint/SPI that a tenant implements, the same way `ConsultantSubjectProvider` and
-`ConsultantToolProvider` do for Consultant (see below). **Known gap, not yet fixed:**
+`ConsultantToolProvider` do for Consultant (see below). **Fixed 2026-10-06:**
 `DashboardAgentsWidget`/`DashboardAssetsWidget` (both the `WidgetDescriptor` bean and the
-`widget.js`) currently live in `genesis-brands` and the JS calls `/api/engagements/mine` and
-`/api/engagements/{id}/preview/{direction}` directly — this needs the same core-interface/
-tenant-implementation split as Consultant before it's truly core, not just a file move to
-brain-engine-core.
+`widget.js`) now live in `brain-engine-core` and call the generic `GET /api/client/workspace`
+endpoint, backed by the core `ClientWorkspaceProvider` SPI
+(`ClientWorkspaceConfiguration`/`ClientWorkspaceController`, conditionally registered exactly
+like `ConsultantController`). `EngagementWorkspaceProvider` (genesis-brands) is the tenant
+implementation translating `Engagement`/`DirectionOutput` into the generic `ClientWorkItem`
+shape. The actual byte-serving mechanics (PDF render, logo zip, preview image,
+approve/reject) stay in genesis-brands' `EngagementController` — those are genuinely
+tenant-specific, not a platform mechanism; the SPI only supplies which URLs/labels/flags to
+show, same division of labor as `ConsultantSubjectProvider`.
 
 **Two output modes** — declared per agent, because they're stored differently, not because
 either is less "pluggable":
