@@ -8,18 +8,22 @@ function esc(s) {
 
 /**
  * Resolves the one (engagementId, direction) slot this client's agent cards act on: the
- * most recent paid, finished engagement with a chosen direction. Live Dashboard always has
+ * most recent unlocked, finished work item with a chosen variant. Live Dashboard always has
  * an owning Engagement to fall back on (unlike Playground), so each agent's view module
- * never needs a brief/questionnaire form — just this slot.
+ * never needs a brief/questionnaire form — just this slot. Sourced from the core
+ * ClientWorkspaceProvider SPI (/api/client/workspace), not a genesis-brands endpoint
+ * directly — this widget is core and must not know what a "work item" is made of.
  */
 async function resolveTarget() {
-  const res = await fetch('/api/engagements/mine', { headers: HEADERS });
+  const res = await fetch('/api/client/workspace', { headers: HEADERS });
   if (!res.ok) throw new Error(String(res.status));
-  const mine = await res.json();
-  const target = mine.find(e =>
-    e.status === 'DONE' && e.paymentStatus === 'PAID' && e.chosenDirection
-  );
-  return target ? { engagementId: target.id, direction: target.chosenDirection } : null;
+  const items = await res.json();
+  for (const item of items) {
+    if (!item.unlocked) continue;
+    const chosen = (item.variants || []).find(v => v.chosen);
+    if (chosen) return { engagementId: item.id, direction: chosen.key };
+  }
+  return null;
 }
 
 function openAgentDialog(agentId, displayName, target, ctx) {

@@ -182,6 +182,20 @@ and provides the panel/dialog shell — it never owns agent-specific form fields
 rendering, or submit logic. Whatever a Live Dashboard view generates lands back in the Assets
 widget.
 
+**The `/live/dashboard` chrome widgets (`dashboardAgents`, `dashboardAssets`, and the
+not-yet-built `catalog` widget) are core (Genesis OS), not tenant.** Same reasoning as the
+agents themselves: every tenant wants a card grid of available agents and a list of a client's
+generated assets — the mechanism is platform-level. What's tenant-specific is the data behind
+it (Genesis Brands' `Engagement`/`resultsJson`). A widget here must not hardcode tenant REST
+endpoints (`/api/engagements/...`) directly into its client JS — it calls a core-owned
+generic endpoint/SPI that a tenant implements, the same way `ConsultantSubjectProvider` and
+`ConsultantToolProvider` do for Consultant (see below). **Known gap, not yet fixed:**
+`DashboardAgentsWidget`/`DashboardAssetsWidget` (both the `WidgetDescriptor` bean and the
+`widget.js`) currently live in `genesis-brands` and the JS calls `/api/engagements/mine` and
+`/api/engagements/{id}/preview/{direction}` directly — this needs the same core-interface/
+tenant-implementation split as Consultant before it's truly core, not just a file move to
+brain-engine-core.
+
 **Two output modes** — declared per agent, because they're stored differently, not because
 either is less "pluggable":
 - **SLOT** — one canonical output per `(engagementId, direction, agentId)`, overwritten in
@@ -219,6 +233,31 @@ feedback) — never a questionnaire/brief form; the brief was already derived on
   from the agent catalog, never hardcoded** — so adding a new pluggable agent (any SLOT or
   CREATE agent) automatically becomes available to the Consultant with zero Consultant-side
   code changes.
+
+**Module placement for Consultant follows a strict fetch/provide split — this is the template
+for every future Consultant capability, not just brand context.** Consultant is a core agent,
+so the *mechanics* always live in brain-engine-core: the act of fetching context, the act of
+deciding when/whether to attach tools to the Prompt, the generic shape of "a subject" and "a
+tool." What a tenant supplies is the *content* behind those mechanics, through a core-defined
+interface it implements — never by core reaching into a tenant model directly:
+- **Fetching context is core; providing it is tenant.** `ConsultantSubjectProvider` (core
+  interface, brain-engine-core) is what `ConsultantService` calls to fetch a subject's context —
+  core owns retrieval, history, and streaming. `BrandConsultantSubjectProvider` (genesis-brands)
+  is the implementation that actually knows about `Engagement`/`resultsJson`/`Brand` and
+  produces the context DTO — that domain knowledge never belongs in brain-engine-core.
+- **The skill/tool-calling *pattern* is core; the specific skill mappings are tenant (or
+  whichever module owns the agent).** `ConsultantToolProvider` (core interface) is what lets
+  *any* module — tenant or future core utility agents alike — register Spring AI tools onto a
+  CUSTOMER-sourced chat; core only owns when tools get attached, never which agents exist or
+  what they do. `ConsultantRegenerationToolProvider` (genesis-brands) is the concrete mapping
+  of "regenerate_logo" → the Logo agent, "regenerate_copy" → the Copy agent, etc. — swapping in
+  a different tenant's agents means writing a new `ConsultantToolProvider`, with zero changes to
+  `ConsultantService` or the core tool-attachment mechanics.
+- Apply this same split to every future Consultant-adjacent capability (e.g. a future
+  "Consultant can browse version history" tool): define the generic interface in
+  brain-engine-core first, implement the tenant-specific content in genesis-brands second —
+  never let a convenience shortcut put tenant model types (`Engagement`, `Brand`, etc.) inside
+  brain-engine-core code.
 
 `login` is the reference implementation of the equivalent widget pattern; no agent has yet
 been fully migrated to this pattern end-to-end (Playground's current per-agent UI is generic/

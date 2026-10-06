@@ -1,5 +1,6 @@
 package ai.genesisbrands;
 
+import ai.genesisbrands.controller.ClientWorkspaceController;
 import ai.genesisbrands.controller.ConsultantController;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -9,12 +10,14 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
- * {@code ConsultantController} is excluded from component scan because it's registered
- * exclusively via the conditional @Bean in {@code ConsultantServiceConfiguration} — see
- * that class for why (scan-order sensitivity of @ConditionalOnBean on a scanned class).
+ * {@code ConsultantController}/{@code ClientWorkspaceController} are excluded from
+ * component scan because they're registered exclusively via the conditional @Bean in
+ * {@code ConsultantServiceConfiguration}/{@code ClientWorkspaceConfiguration} — see those
+ * classes for why (scan-order sensitivity of @ConditionalOnBean on a scanned class).
  */
 @SpringBootApplication
-@ComponentScan(excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = ConsultantController.class))
+@ComponentScan(excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE,
+    classes = { ConsultantController.class, ClientWorkspaceController.class }))
 @EnableScheduling
 @EnableAsync
 public class GenesisAiApplication {
