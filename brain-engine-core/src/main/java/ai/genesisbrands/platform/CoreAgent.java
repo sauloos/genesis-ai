@@ -71,4 +71,24 @@ public interface CoreAgent {
     default boolean chatBased() {
         return false;
     }
+
+    /**
+     * False for an agent whose Live Dashboard card should be clickable even with no
+     * owning, finished Engagement (e.g. a generic utility agent like a summarizer or
+     * FAQ bot) — true (the default) preserves today's behavior for every existing
+     * specialist, which needs a chosen-direction brief to act on.
+     */
+    default boolean requiresEngagementContext() {
+        return true;
+    }
+
+    /**
+     * Declares whether this agent ships its own Playground view module at
+     * {@code /agent-views/<agentId>/playground.js}, resolved by convention like
+     * {@link #hasLiveView()}'s {@code live.js}. False (the default) keeps every existing
+     * agent on Playground's current DirectionBrief-form/chat-iframe handling.
+     */
+    default boolean hasPlaygroundView() {
+        return false;
+    }
 }

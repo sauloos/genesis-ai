@@ -81,7 +81,7 @@ export async function mount(container, widget, ctx) {
 
     listEl.innerHTML = '';
     agents.forEach(a => {
-      const clickable = a.hasLiveView && !!target;
+      const clickable = a.hasLiveView && (!a.requiresEngagementContext || !!target);
       const card = document.createElement('div');
       card.className = clickable ? 'da-card clickable' : 'da-card';
       card.innerHTML = `
@@ -90,7 +90,7 @@ export async function mount(container, widget, ctx) {
         <div class="da-badge${clickable ? ' live' : ''}">${clickable ? 'Manage' : 'Coming soon'}</div>
       `;
       if (clickable) {
-        card.onclick = () => openAgentDialog(a.agentId, a.displayName, target, ctx || {});
+        card.onclick = () => openAgentDialog(a.agentId, a.displayName, target || {}, ctx || {});
       }
       listEl.appendChild(card);
     });

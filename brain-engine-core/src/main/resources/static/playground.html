@@ -701,6 +701,13 @@ This brand challenges the idea that good coffee has to be precious or intimidati
     </div>
   </div>
 
+  <!-- Generic agent Playground view area (shown for any agent declaring hasPlaygroundView) -->
+  <div id="agent-playground-area" style="display:none; flex:1; overflow:auto; flex-direction:column;">
+    <div style="flex:1;display:flex;overflow:hidden;padding:20px 28px 28px;">
+      <div id="agent-playground-mount" style="flex:1;width:100%;overflow:auto;"></div>
+    </div>
+  </div>
+
   <div id="results-area" style="display:none">
     <div id="results-tabs">
       <button class="results-tab active" data-tab="current" onclick="switchResultsTab('current')">Current</button>
@@ -1003,25 +1010,40 @@ function selectAgent(el) {
 
   const isPageFlow = currentAgent.startsWith('pageflow:');
   const meta = AGENT_CATALOG[currentAgent] || {};
-  const isChatAgent = !isPageFlow && !!meta.chatBased;
+  // hasPlaygroundView takes precedence over chatBased: a generic chat agent (e.g.
+  // Support/FAQ) declares both, but must mount its own view module, not Consultant's
+  // console.html iframe.
+  const isAgentPlaygroundView = !isPageFlow && !!meta.hasPlaygroundView;
+  const isChatAgent = !isPageFlow && !isAgentPlaygroundView && !!meta.chatBased;
 
-  // Toggle page-flow / chat-agent / normal agent panels
+  // Toggle page-flow / chat-agent / generic-playground-view / normal agent panels
   if (!isPageFlow) document.getElementById('pf-sim-frame').src = 'about:blank';
   if (!isChatAgent) document.getElementById('chat-agent-frame').src = 'about:blank';
   document.getElementById('pageflow-area').style.display = isPageFlow ? 'flex' : 'none';
   document.getElementById('chat-agent-area').style.display = isChatAgent ? 'flex' : 'none';
-  document.getElementById('view-parameters').style.display = (isPageFlow || isChatAgent) ? 'none' : 'flex';
-  document.getElementById('view-tabs').style.display = (isPageFlow || isChatAgent) ? 'none' : 'flex';
+  document.getElementById('agent-playground-area').style.display = isAgentPlaygroundView ? 'flex' : 'none';
+  document.getElementById('view-parameters').style.display = (isPageFlow || isChatAgent || isAgentPlaygroundView) ? 'none' : 'flex';
+  document.getElementById('view-tabs').style.display = (isPageFlow || isChatAgent || isAgentPlaygroundView) ? 'none' : 'flex';
 
   // Agent run options (A/B compare, evaluation loop) only apply to a running specialist
-  // agent — hide them for a page flow or a chat-based agent like Consultant.
-  if (isPageFlow || isChatAgent) {
+  // agent — hide them for a page flow, a chat-based agent like Consultant, or a generic
+  // agent with its own Playground view module.
+  if (isPageFlow || isChatAgent || isAgentPlaygroundView) {
     document.getElementById('compare-toggle-wrap').style.display = 'none';
     document.getElementById('eval-toggle-wrap').style.display = 'none';
   }
 
   if (isPageFlow) {
     openPageFlowSim(currentAgent.slice('pageflow:'.length));
+    return;
+  }
+
+  if (isAgentPlaygroundView) {
+    const mountEl = document.getElementById('agent-playground-mount');
+    mountEl.innerHTML = '';
+    import('/widgets/agent-loader.js').then(({ mountAgentPlaygroundView }) => {
+      mountAgentPlaygroundView(currentAgent, mountEl, { agentId: currentAgent }, {});
+    });
     return;
   }
 

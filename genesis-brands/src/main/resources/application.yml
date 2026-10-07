@@ -192,6 +192,48 @@ genesis:
       model: claude-opus-5
       system-prompt: agents/evaluation/brand-book-evaluator.md
       max-tokens: 2500
+    summarizer:
+      model: claude-haiku-4-5
+      system-prompt: agents/summarizer/system.md
+      max-tokens: 4000
+      rag:
+        enabled: true
+        top-k: 3
+    support-faq:
+      model: claude-haiku-4-5
+      system-prompt: agents/support-faq/system.md
+      max-tokens: 1500
+      rag:
+        enabled: true
+        top-k: 3
+    compliance-qa:
+      model: claude-sonnet-5
+      system-prompt: agents/compliance-qa/system.md
+      max-tokens: 2000
+      rag:
+        enabled: true
+        top-k: 5
+    rfp-response:
+      model: claude-opus-5
+      system-prompt: agents/rfp-response/system.md
+      max-tokens: 6000
+      rag:
+        enabled: true
+        top-k: 5
+    research-synthesis:
+      model: claude-sonnet-5
+      system-prompt: agents/research-synthesis/system.md
+      max-tokens: 5000
+      rag:
+        enabled: true
+        top-k: 5
+    writer:
+      model: claude-sonnet-5
+      system-prompt: agents/writer/system.md
+      max-tokens: 3000
+      rag:
+        enabled: true
+        top-k: 3
 
 ideogram:
   api-key: ${IDEOGRAM_API_KEY:}

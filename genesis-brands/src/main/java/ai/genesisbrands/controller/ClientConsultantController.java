@@ -2,9 +2,8 @@ package ai.genesisbrands.controller;
 
 import ai.genesisbrands.model.ClientUser;
 import ai.genesisbrands.model.ConversationMessage;
-import ai.genesisbrands.model.Engagement;
-import ai.genesisbrands.repository.EngagementRepository;
 import ai.genesisbrands.security.ClientAuthHelper;
+import ai.genesisbrands.service.ClientOwnSubjectResolver;
 import ai.genesisbrands.service.ConsultantService;
 import ai.genesisbrands.service.ConversationSummary;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,11 +34,9 @@ import java.util.List;
 @Tag(name = "Client Consultant", description = "Customer-aware consultant chat, scoped to the logged-in client's own brand")
 public class ClientConsultantController {
 
-    private static final String ENGAGEMENT_PREFIX = "engagement:";
-
     private final ConsultantService consultant;
     private final ClientAuthHelper clientAuthHelper;
-    private final EngagementRepository engagementRepo;
+    private final ClientOwnSubjectResolver subjectResolver;
 
     @PostMapping(
         value = "/chat",
@@ -77,14 +74,8 @@ public class ClientConsultantController {
         ClientUser client = clientAuthHelper.resolve(req)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sign in required"));
 
-        Engagement target = engagementRepo.findAllByClientUserIdOrderByCreatedAtDesc(client.getId()).stream()
-            .filter(e -> e.getStatus() == Engagement.Status.DONE
-                && e.getPaymentStatus() == Engagement.PaymentStatus.PAID
-                && e.getChosenDirection() != null)
-            .findFirst()
+        return subjectResolver.resolveOwnSubjectId(client)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Complete your brand journey first"));
-
-        return ENGAGEMENT_PREFIX + target.getId();
     }
 
     public record ChatRequest(String conversationId, String message) {}

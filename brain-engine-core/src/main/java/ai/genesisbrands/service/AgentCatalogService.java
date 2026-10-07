@@ -35,7 +35,7 @@ public class AgentCatalogService {
         return agents.stream()
             .map(this::toEntry)
             .filter(AgentCatalogEntry::availableForLiveView)
-            .map(e -> new PublicAgentEntry(e.agentId(), e.displayName(), e.description(), e.icon(), e.chatBased(), e.hasLiveView()))
+            .map(e -> new PublicAgentEntry(e.agentId(), e.displayName(), e.description(), e.icon(), e.chatBased(), e.hasLiveView(), e.requiresEngagementContext()))
             .toList();
     }
 
@@ -107,7 +107,9 @@ public class AgentCatalogService {
             agent.chatBased(),
             agent.hasLiveView(),
             agent.supportsToolUse(),
-            config.map(AgentCatalogConfig::isToolsEnabled).orElse(false)
+            config.map(AgentCatalogConfig::isToolsEnabled).orElse(false),
+            agent.requiresEngagementContext(),
+            agent.hasPlaygroundView()
         );
     }
 
@@ -117,7 +119,8 @@ public class AgentCatalogService {
         List<AgentCustomOption> customOptions,
         boolean availableForLiveView, boolean availableForPlayground, boolean abCompareEnabled,
         boolean chatBased, boolean hasLiveView,
-        boolean supportsToolUse, boolean toolsEnabled
+        boolean supportsToolUse, boolean toolsEnabled,
+        boolean requiresEngagementContext, boolean hasPlaygroundView
     ) {}
 
     public record UpdateAgentConfigRequest(
@@ -126,6 +129,6 @@ public class AgentCatalogService {
 
     public record PublicAgentEntry(
         String agentId, String displayName, String description, String icon,
-        boolean chatBased, boolean hasLiveView
+        boolean chatBased, boolean hasLiveView, boolean requiresEngagementContext
     ) {}
 }
