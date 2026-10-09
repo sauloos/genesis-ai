@@ -27,6 +27,12 @@ FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
 COPY --from=build /workspace/genesis-os/build/libs/genesis-os-0.0.1-SNAPSHOT.jar app.jar
+COPY ingestion ingestion
+
+# Install Python 3 + pip for the ingestion pipeline (Alpine syntax).
+# --break-system-packages is required on Alpine's externally-managed Python.
+RUN apk add --no-cache python3 py3-pip \
+  && pip3 install --no-cache-dir --break-system-packages -r ingestion/requirements.txt
 
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]

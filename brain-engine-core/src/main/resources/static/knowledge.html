@@ -389,6 +389,211 @@
   #confirm-box p { font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.5; margin-bottom: 20px; }
   .btn-row { display: flex; gap: 8px; justify-content: flex-end; }
 
+  /* ─── Mode toggle ────────────────────────────────────────────── */
+  .mode-toggle {
+    display: flex;
+    gap: 4px;
+    margin-top: 8px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 20px;
+    padding: 2px;
+    width: fit-content;
+  }
+  .mode-toggle button {
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    padding: 4px 12px;
+    border-radius: 16px;
+    border: none;
+    cursor: pointer;
+    background: none;
+    color: #666;
+    transition: background 0.15s, color 0.15s;
+  }
+  .mode-toggle button.active {
+    background: rgba(111,224,165,0.18);
+    color: #6fe0a5;
+    border: 1px solid rgba(111,224,165,0.3);
+  }
+
+  /* ─── Ingestion sidebar ───────────────────────────────────────── */
+  #tree-ingestion {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0 16px;
+    display: none;
+  }
+  #tree-ingestion.active { display: block; }
+  #tree-ingestion::-webkit-scrollbar { width: 4px; }
+  #tree-ingestion::-webkit-scrollbar-track { background: transparent; }
+  #tree-ingestion::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+
+  #ingest-actions {
+    padding: 8px 10px 6px;
+    display: none;
+    gap: 5px;
+    border-bottom: 1px solid #1e1e1e;
+  }
+  #ingest-actions.active { display: flex; }
+  .btn-ingest {
+    flex: 1;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 6px 8px;
+    border-radius: 7px;
+    border: 1px solid rgba(111,224,165,0.3);
+    background: rgba(111,224,165,0.08);
+    color: #6fe0a5;
+    cursor: pointer;
+    transition: background 0.12s;
+    white-space: nowrap;
+  }
+  .btn-ingest:hover { background: rgba(111,224,165,0.16); }
+
+  /* Status badges */
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .status-RUNNING  { background: rgba(59,130,246,0.15);  color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+  .status-SUCCESS  { background: rgba(16,185,129,0.12);  color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+  .status-PARTIAL  { background: rgba(245,158,11,0.12);  color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+  .status-FAILED   { background: rgba(239,68,68,0.12);   color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+  .status-ACTIVE   { background: rgba(16,185,129,0.1);   color: #34d399; border: 1px solid rgba(16,185,129,0.25); }
+  .status-PAUSED   { background: rgba(107,114,128,0.12); color: #9ca3af; border: 1px solid rgba(107,114,128,0.3); }
+
+  /* ─── Ingestion dashboard ─────────────────────────────────────── */
+  #ingestion-dashboard {
+    display: none;
+    flex: 1;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 20px 24px;
+  }
+  #ingestion-dashboard.visible { display: flex; }
+  #ingestion-dashboard::-webkit-scrollbar { width: 5px; }
+  #ingestion-dashboard::-webkit-scrollbar-thumb { background: var(--theme-card-bg-hover); border-radius: 3px; }
+
+  .dash-section-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: #555;
+    margin-bottom: 8px;
+  }
+
+  .running-strip {
+    background: rgba(59,130,246,0.06);
+    border: 1px solid rgba(59,130,246,0.2);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .running-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #60a5fa;
+    flex-shrink: 0;
+    animation: pulse-dot 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .running-info { flex: 1; min-width: 0; }
+  .running-label { font-size: 12px; color: #ddd; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .running-meta  { font-size: 11px; color: #666; margin-top: 2px; }
+  .running-empty { padding: 10px 0; font-size: 12px; color: #444; font-style: italic; }
+
+  .runs-table { width: 100%; border-collapse: collapse; }
+  .runs-table th {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+    color: #555; text-align: left; padding: 5px 10px 5px 0; border-bottom: 1px solid #1e1e1e;
+  }
+  .runs-table td {
+    font-size: 12px; color: #aaa; padding: 7px 10px 7px 0;
+    border-bottom: 1px solid #111; vertical-align: middle;
+  }
+  .runs-table tr:hover td { color: #ddd; cursor: pointer; }
+  .runs-table tr:last-child td { border-bottom: none; }
+
+  /* ─── Modals ─────────────────────────────────────────────────── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 150;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.visible { display: flex; }
+  .modal-box {
+    background: #1a1d26;
+    border-radius: 14px;
+    padding: 28px 32px;
+    max-width: 480px;
+    width: 94%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    border: 1px solid rgba(255,255,255,0.1);
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal-box h2 { font-size: 16px; font-weight: 700; color: #f2f2f2; margin-bottom: 20px; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 11px; font-weight: 600; color: #888; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .form-control {
+    width: 100%;
+    background: #111;
+    border: 1px solid #2a2a2a;
+    border-radius: 7px;
+    color: #ddd;
+    font-size: 13px;
+    padding: 8px 12px;
+    outline: none;
+    font-family: inherit;
+    transition: border-color 0.15s;
+  }
+  .form-control:focus { border-color: rgba(111,224,165,0.5); }
+  .form-control option { background: #1a1d26; }
+  textarea.form-control { resize: vertical; min-height: 60px; }
+  .form-row { display: flex; gap: 10px; }
+  .form-row .form-group { flex: 1; }
+  .form-check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .form-check input[type=checkbox] { width: 14px; height: 14px; accent-color: #6fe0a5; cursor: pointer; }
+  .form-check span { font-size: 12px; color: #aaa; }
+  .btn-primary { background: rgba(111,224,165,0.18); border-color: rgba(111,224,165,0.4); color: #6fe0a5; }
+  .btn-primary:hover { background: rgba(111,224,165,0.28); }
+  .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid #2a2a2a; }
+
+  /* Pipeline/Event detail extras */
+  .log-output {
+    background: #0d0f17;
+    border: 1px solid #1a1a1a;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-family: 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 11px;
+    color: #88aacc;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 340px;
+    overflow-y: auto;
+  }
+
   /* Toast */
   #toast {
     position: fixed;
@@ -415,7 +620,10 @@
   <div id="sidebar-header">
     <a href="/dashboard"><div class="sidebar-logo" role="img" aria-label="Genesis"></div></a>
 
-    <div class="mode-badge">Knowledge</div>
+    <div class="mode-toggle">
+      <button id="mode-view" class="active">View</button>
+      <button id="mode-ingest">Ingestion</button>
+    </div>
     <button id="nav-toggle" title="Navigation">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
         <rect x="1" y="3" width="12" height="1.5" rx="0.75" fill="currentColor"/>
@@ -453,6 +661,37 @@
 
   <div id="search-wrap">
     <input id="search-input" type="text" placeholder="Search knowledge…" autocomplete="off">
+  </div>
+
+  <!-- Ingestion mode: action buttons (shown only in Ingestion mode) -->
+  <div id="ingest-actions">
+    <button class="btn-ingest" id="btn-new-pipeline">+ New Pipeline</button>
+    <button class="btn-ingest" id="btn-ingest-item">+ Ingest Item</button>
+  </div>
+
+  <!-- Ingestion mode: sidebar tree (Pipelines + Events) -->
+  <div id="tree-ingestion">
+    <div class="layer-header" data-layer="ing-pipelines">
+      <svg class="layer-chevron open" width="8" height="8" viewBox="0 0 8 8" fill="none">
+        <path d="M2.5 1.5L5.5 4L2.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="layer-title">Pipelines</span>
+      <span class="layer-count" id="pipelines-count"></span>
+    </div>
+    <div class="layer-body open" id="ing-pipelines-body">
+      <div class="sidebar-msg">Loading…</div>
+    </div>
+
+    <div class="layer-header" data-layer="ing-events">
+      <svg class="layer-chevron open" width="8" height="8" viewBox="0 0 8 8" fill="none">
+        <path d="M2.5 1.5L5.5 4L2.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="layer-title">Ingestion Events</span>
+      <span class="layer-count" id="events-count"></span>
+    </div>
+    <div class="layer-body open" id="ing-events-body">
+      <div class="sidebar-msg">Loading…</div>
+    </div>
   </div>
 
   <div id="tree">
@@ -540,6 +779,124 @@
   </div>
 </div>
 
+<!-- Ingestion mode: default dashboard panel -->
+<div id="ingestion-dashboard">
+  <div style="margin-bottom:24px">
+    <div class="dash-section-title">Running Now</div>
+    <div id="running-now-list"><div class="running-empty">No ingestions in progress</div></div>
+  </div>
+  <div>
+    <div class="dash-section-title" style="margin-bottom:10px">Recent Runs</div>
+    <div id="recent-runs-wrap"><p style="font-size:12px;color:#444;font-style:italic">Loading…</p></div>
+  </div>
+</div>
+
+<!-- Pipeline modal -->
+<div class="modal-overlay" id="pipeline-modal">
+  <div class="modal-box">
+    <h2 id="pipeline-modal-title">New Pipeline</h2>
+    <input type="hidden" id="pipeline-modal-id">
+    <div class="form-group">
+      <label>Name</label>
+      <input class="form-control" id="pm-name" placeholder="e.g. Cre8ion Blog">
+    </div>
+    <div class="form-group">
+      <label>Type</label>
+      <select class="form-control" id="pm-type">
+        <option value="BLOG_CRAWL">Blog directory crawl</option>
+        <option value="YOUTUBE_CHANNEL">YouTube channel / playlist</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Target URL</label>
+      <input class="form-control" id="pm-url" placeholder="https://…">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Target Layer</label>
+        <select class="form-control" id="pm-layer">
+          <option value="layer1">Layer 1 — Foundation</option>
+          <option value="layer2">Layer 2 — Project Memory</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Schedule</label>
+        <select class="form-control" id="pm-schedule">
+          <option value="MANUAL">Manual only</option>
+          <option value="DAILY">Daily</option>
+          <option value="WEEKLY" selected>Weekly</option>
+          <option value="MONTHLY">Monthly</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Date From (optional)</label>
+        <input class="form-control" id="pm-date-from" type="date">
+      </div>
+      <div class="form-group">
+        <label>Date To (optional)</label>
+        <input class="form-control" id="pm-date-to" type="date">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-check">
+        <input type="checkbox" id="pm-active" checked>
+        <span>Active (schedule enabled)</span>
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="pipeline-modal-cancel">Cancel</button>
+      <button class="btn btn-primary" id="pipeline-modal-save">Create Pipeline</button>
+    </div>
+  </div>
+</div>
+
+<!-- Ingest Item modal -->
+<div class="modal-overlay" id="ingest-item-modal">
+  <div class="modal-box">
+    <h2>Ingest Item</h2>
+    <div class="form-group">
+      <label>Source Kind</label>
+      <select class="form-control" id="ii-kind" onchange="toggleIngestItemFields()">
+        <option value="url">Blog / web URL</option>
+        <option value="youtube">YouTube video URL</option>
+        <option value="vimeo">Vimeo video URL</option>
+        <option value="file">Upload file (PDF / PPTX / TXT)</option>
+      </select>
+    </div>
+    <div class="form-group" id="ii-url-group">
+      <label>URL</label>
+      <input class="form-control" id="ii-url" placeholder="https://…">
+    </div>
+    <div class="form-group" id="ii-file-group" style="display:none">
+      <label>File</label>
+      <input class="form-control" id="ii-file" type="file" accept=".pdf,.pptx,.txt,.md" style="padding:6px">
+    </div>
+    <div class="form-group">
+      <label>Target Layer</label>
+      <select class="form-control" id="ii-layer">
+        <option value="layer1">Layer 1 — Foundation</option>
+        <option value="layer2">Layer 2 — Project Memory</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Context Note (optional)</label>
+      <textarea class="form-control" id="ii-context" placeholder="Brief note about this source…"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-check">
+        <input type="checkbox" id="ii-force">
+        <span>Force re-ingest (override dedup)</span>
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="ingest-item-cancel">Cancel</button>
+      <button class="btn btn-primary" id="ingest-item-submit">Ingest</button>
+    </div>
+  </div>
+</div>
+
 <div id="confirm-overlay">
   <div id="confirm-box">
     <h2>Delete source?</h2>
@@ -578,8 +935,10 @@ let pendingDeleteId = null;
   renderSources();
 })();
 
-async function fetchJSON(url) {
-  const r = await fetch(url, { headers: HEADERS });
+async function fetchJSON(url, method, body) {
+  const opts = { headers: HEADERS };
+  if (method) { opts.method = method; if (body !== undefined) opts.body = JSON.stringify(body); }
+  const r = await fetch(url, opts);
   if (!r.ok) throw new Error(r.status);
   return r.json();
 }
@@ -739,9 +1098,11 @@ function bindItems(container) {
       e.currentTarget.classList.add('active');
       const { type, id } = e.currentTarget.dataset;
       selectedType = type; selectedId = id;
-      if (type === 'module') showModule(id);
+      if (type === 'module')        showModule(id);
       else if (type === 'training') showTraining(id);
-      else if (type === 'source') showSource(id);
+      else if (type === 'source')   showSource(id);
+      else if (type === 'pipeline') showPipelineDetail(id);
+      else if (type === 'event')    loadAndShowEvent(id);
     }));
   container.querySelectorAll('.group-header').forEach(el =>
     el.addEventListener('click', () => {
@@ -1014,6 +1375,7 @@ function setHeader(icon, title, subtitle, actions) {
 
 function showDetail() {
   document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('ingestion-dashboard').classList.remove('visible');
   document.getElementById('detail').classList.add('visible');
 }
 
@@ -1045,6 +1407,471 @@ function toast(msg) {
   el.textContent = msg;
   el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ── Mode toggle ───────────────────────────────────────────────────────────
+let currentMode = 'view';
+let ingestionDashboardPollTimer = null;
+
+document.getElementById('mode-view').addEventListener('click', () => switchMode('view'));
+document.getElementById('mode-ingest').addEventListener('click', () => switchMode('ingest'));
+
+function switchMode(mode) {
+  currentMode = mode;
+  document.getElementById('mode-view').classList.toggle('active', mode === 'view');
+  document.getElementById('mode-ingest').classList.toggle('active', mode === 'ingest');
+
+  document.getElementById('search-wrap').style.display  = mode === 'view'    ? '' : 'none';
+  document.getElementById('tree').style.display         = mode === 'view'    ? '' : 'none';
+  document.getElementById('ingest-actions').classList.toggle('active', mode === 'ingest');
+  document.getElementById('tree-ingestion').classList.toggle('active', mode === 'ingest');
+
+  if (mode === 'ingest') {
+    hideDetail();
+    showIngestionDashboard();
+    loadIngestionData();
+    startDashboardPolling();
+  } else {
+    stopDashboardPolling();
+    hideIngestionDashboard();
+  }
+}
+
+function showIngestionDashboard() {
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('detail').classList.remove('visible');
+  document.getElementById('ingestion-dashboard').classList.add('visible');
+}
+
+function hideIngestionDashboard() {
+  document.getElementById('ingestion-dashboard').classList.remove('visible');
+  document.getElementById('empty-state').style.display = '';
+}
+
+// ── Ingestion layer header collapse (for ing-pipelines / ing-events) ───────
+document.querySelectorAll('#tree-ingestion .layer-header').forEach(el => {
+  el.addEventListener('click', () => {
+    const body = document.getElementById(el.dataset.layer + '-body');
+    const chev = el.querySelector('.layer-chevron');
+    body && body.classList.toggle('open');
+    chev && chev.classList.toggle('open');
+  });
+});
+
+// ── Load ingestion data ───────────────────────────────────────────────────
+let allPipelines = [], allEvents = [];
+
+async function loadIngestionData() {
+  const [pipelines, events] = await Promise.all([
+    fetchJSON(`${API}/api/knowledge/ingestion/pipelines`).catch(() => []),
+    fetchJSON(`${API}/api/knowledge/ingestion/events`).catch(() => []),
+  ]);
+  allPipelines = pipelines || [];
+  allEvents    = events    || [];
+  renderPipelinesSidebar();
+  renderEventsSidebar();
+}
+
+function renderPipelinesSidebar() {
+  const body    = document.getElementById('ing-pipelines-body');
+  const countEl = document.getElementById('pipelines-count');
+  countEl.textContent = allPipelines.length;
+  if (!allPipelines.length) {
+    body.innerHTML = '<div class="sidebar-msg">No pipelines yet</div>';
+    return;
+  }
+  let html = '';
+  for (const p of allPipelines) {
+    const icon   = p.type === 'YOUTUBE_CHANNEL' ? '▶' : '🕸';
+    const active = selectedType === 'pipeline' && selectedId === p.id ? ' active' : '';
+    const pause  = p.active ? '' : ' style="opacity:0.5"';
+    html += `<div class="tree-item${active}" data-type="pipeline" data-id="${escAttr(p.id)}"${pause}>
+      <span class="item-icon">${icon}</span><span class="item-label">${escHtml(p.name)}</span>
+    </div>`;
+  }
+  body.innerHTML = html;
+  bindItems(body);
+}
+
+function renderEventsSidebar(items) {
+  const list    = items || allEvents;
+  const body    = document.getElementById('ing-events-body');
+  const countEl = document.getElementById('events-count');
+  countEl.textContent = list.length;
+  if (!list.length) {
+    body.innerHTML = '<div class="sidebar-msg">No events yet</div>';
+    return;
+  }
+  let html = '';
+  for (const e of list.slice(0, 50)) {
+    const icon   = { BLOG_CRAWL:'🕸', YOUTUBE_CHANNEL:'▶', SINGLE_YOUTUBE:'▶', SINGLE_VIMEO:'🎬', SINGLE_URL:'🌐', SINGLE_FILE:'📄' }[e.kind] || '📦';
+    const label  = e.sourceLabel ? (e.sourceLabel.length > 38 ? e.sourceLabel.slice(0, 38) + '…' : e.sourceLabel) : e.id;
+    const active = selectedType === 'event' && selectedId === e.id ? ' active' : '';
+    html += `<div class="tree-item${active}" data-type="event" data-id="${escAttr(e.id)}" title="${escAttr(e.sourceLabel || e.id)}">
+      <span class="item-icon">${icon}</span><span class="item-label">${escHtml(label)}</span>
+    </div>`;
+  }
+  body.innerHTML = html;
+  bindItems(body);
+}
+
+// ── Dashboard polling (Running Now + Recent Runs) ─────────────────────────
+function startDashboardPolling() {
+  stopDashboardPolling();
+  refreshDashboard();
+  ingestionDashboardPollTimer = setInterval(refreshDashboard, 4000);
+}
+
+function stopDashboardPolling() {
+  if (ingestionDashboardPollTimer) { clearInterval(ingestionDashboardPollTimer); ingestionDashboardPollTimer = null; }
+}
+
+async function refreshDashboard() {
+  const [running, recent] = await Promise.all([
+    fetchJSON(`${API}/api/knowledge/ingestion/events?status=RUNNING`).catch(() => []),
+    fetchJSON(`${API}/api/knowledge/ingestion/events`).catch(() => []),
+  ]);
+  renderRunningNow(running || []);
+  renderRecentRuns(recent || []);
+}
+
+function renderRunningNow(items) {
+  const el = document.getElementById('running-now-list');
+  if (!items.length) {
+    el.innerHTML = '<div class="running-empty">No ingestions in progress</div>';
+    return;
+  }
+  el.innerHTML = items.map(e => {
+    const elapsed = e.startedAt ? formatElapsed(e.startedAt) : '';
+    const label   = e.sourceLabel || e.id;
+    const pName   = e.pipelineId ? (allPipelines.find(p => p.id === e.pipelineId)?.name || 'Pipeline run') : 'One-off';
+    return `<div class="running-strip">
+      <div class="running-dot"></div>
+      <div class="running-info">
+        <div class="running-label">${escHtml(label)}</div>
+        <div class="running-meta">${escHtml(pName)} · ${elapsed}</div>
+      </div>
+    </div>`;
+  }).join('');
+  // Update events sidebar too while things are running
+  allEvents = items.concat(allEvents.filter(e => e.status !== 'RUNNING'));
+  renderEventsSidebar();
+}
+
+function renderRecentRuns(items) {
+  const el = document.getElementById('recent-runs-wrap');
+  if (!items.length) { el.innerHTML = '<p style="font-size:12px;color:#444;font-style:italic">No runs yet</p>'; return; }
+  const rows = items.map(e => {
+    const icon   = { BLOG_CRAWL:'🕸', YOUTUBE_CHANNEL:'▶', SINGLE_YOUTUBE:'▶', SINGLE_VIMEO:'🎬', SINGLE_URL:'🌐', SINGLE_FILE:'📄' }[e.kind] || '📦';
+    const label  = e.sourceLabel ? (e.sourceLabel.length > 40 ? e.sourceLabel.slice(0, 40) + '…' : e.sourceLabel) : e.id;
+    const pName  = e.pipelineId ? (allPipelines.find(p => p.id === e.pipelineId)?.name || '—') : '—';
+    const dur    = e.startedAt && e.finishedAt ? formatDuration(e.startedAt, e.finishedAt) : (e.status === 'RUNNING' ? 'running…' : '—');
+    return `<tr data-event-id="${escAttr(e.id)}">
+      <td>${icon} ${escHtml(label)}</td>
+      <td><span class="status-pill status-${e.status}">${e.status}</span></td>
+      <td style="color:#555">${escHtml(pName)}</td>
+      <td style="color:#555">${e.itemsIngested}↑ ${e.itemsSkipped}⊘ ${e.itemsFailed > 0 ? '<span style="color:#f87171">' + e.itemsFailed + '✗</span>' : ''}</td>
+      <td style="color:#555;white-space:nowrap">${e.startedAt ? fmtDate(e.startedAt) : ''}</td>
+      <td style="color:#555">${dur}</td>
+    </tr>`;
+  }).join('');
+  el.innerHTML = `<table class="runs-table">
+    <thead><tr>
+      <th>Source</th><th>Status</th><th>Pipeline</th><th>Counts</th><th>Started</th><th>Duration</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+  el.querySelectorAll('[data-event-id]').forEach(tr =>
+    tr.addEventListener('click', () => openEventFromDashboard(tr.dataset.eventId)));
+}
+
+function openEventFromDashboard(id) {
+  const e = allEvents.find(x => x.id === id);
+  if (e) showEventDetail(e);
+  else fetchJSON(`${API}/api/knowledge/ingestion/events/${id}`).then(showEventDetail).catch(() => {});
+}
+
+async function loadAndShowEvent(id) {
+  const cached = allEvents.find(x => x.id === id);
+  if (cached) { showEventDetail(cached); return; }
+  try {
+    const e = await fetchJSON(`${API}/api/knowledge/ingestion/events/${id}`);
+    showEventDetail(e);
+  } catch { toast('Failed to load event'); }
+}
+
+// ── Show Pipeline Detail ──────────────────────────────────────────────────
+function showPipelineDetail(id) {
+  const p = allPipelines.find(x => x.id === id);
+  if (!p) return;
+
+  const icon     = p.type === 'YOUTUBE_CHANNEL' ? '▶' : '🕸';
+  const typeLabel = p.type === 'YOUTUBE_CHANNEL' ? 'YouTube Channel' : 'Blog Crawl';
+  const statusLabel = p.active ? 'Active' : 'Paused';
+
+  const actions = [
+    { label: 'Run now',        cls: 'btn-secondary', fn: () => runPipelineNow(p.id) },
+    { label: 'Edit',           cls: 'btn-secondary', fn: () => openEditPipeline(p) },
+    { label: p.active ? 'Pause' : 'Resume', cls: 'btn-secondary', fn: () => togglePipeline(p) },
+    { label: 'Delete',         cls: 'btn-danger',    fn: () => confirmDeletePipeline(p) },
+  ];
+
+  hideIngestionDashboard();
+  setHeader(icon, p.name, `${typeLabel} · ${p.schedule}`, actions);
+
+  const pipelineEvents = allEvents.filter(e => e.pipelineId === p.id);
+  const evRows = pipelineEvents.map(e => {
+    const dur = e.startedAt && e.finishedAt ? formatDuration(e.startedAt, e.finishedAt) : '—';
+    return `<tr data-event-id="${escAttr(e.id)}">
+      <td><span class="status-pill status-${e.status}">${e.status}</span></td>
+      <td>${e.itemsIngested}↑ ${e.itemsSkipped}⊘ ${e.itemsFailed > 0 ? '<span style="color:#f87171">' + e.itemsFailed + '✗</span>' : ''}</td>
+      <td style="color:#555">${e.startedAt ? fmtDate(e.startedAt) : ''}</td>
+      <td style="color:#555">${dur}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('detail-body').innerHTML = `
+    <div class="meta-row">
+      <span class="status-pill status-${p.active ? 'ACTIVE' : 'PAUSED'}">${statusLabel}</span>
+      ${chip('Type', typeLabel)}
+      ${chip('Layer', p.layer)}
+      ${chip('Schedule', p.schedule)}
+      ${p.nextRunAt ? chip('Next run', fmtDate(p.nextRunAt)) : ''}
+      ${p.lastRunAt ? chip('Last run', fmtDate(p.lastRunAt)) : ''}
+    </div>
+    <div class="content-block"><h3>Target URL</h3>
+      <a class="source-url" href="${escAttr(p.targetUrl)}" target="_blank" rel="noopener">${escHtml(p.targetUrl)}</a>
+    </div>
+    ${pipelineEvents.length ? `
+    <div class="content-block">
+      <h3>Run History (${pipelineEvents.length})</h3>
+      <table class="runs-table">
+        <thead><tr><th>Status</th><th>Counts</th><th>Started</th><th>Duration</th></tr></thead>
+        <tbody>${evRows}</tbody>
+      </table>
+    </div>` : '<p style="font-size:12px;color:#555;margin-top:12px">No runs yet for this pipeline.</p>'}
+  `;
+  document.getElementById('detail-body').querySelectorAll('[data-event-id]').forEach(tr =>
+    tr.addEventListener('click', () => loadAndShowEvent(tr.dataset.eventId)));
+  showDetail();
+}
+
+async function runPipelineNow(id) {
+  try {
+    const event = await fetchJSON(`${API}/api/knowledge/ingestion/pipelines/${id}/run`, 'POST');
+    toast('Pipeline started');
+    allEvents.unshift(event);
+    await loadIngestionData();
+    refreshDashboard();
+  } catch { toast('Failed to start pipeline'); }
+}
+
+function togglePipeline(p) {
+  const action = p.active ? 'pause' : 'resume';
+  fetchJSON(`${API}/api/knowledge/ingestion/pipelines/${p.id}/${action}`, 'POST')
+    .then(updated => {
+      const idx = allPipelines.findIndex(x => x.id === updated.id);
+      if (idx >= 0) allPipelines[idx] = updated;
+      renderPipelinesSidebar();
+      showPipelineDetail(updated.id);
+      toast(p.active ? 'Pipeline paused' : 'Pipeline resumed');
+    }).catch(() => toast('Failed to update pipeline'));
+}
+
+function confirmDeletePipeline(p) {
+  document.getElementById('confirm-text').textContent =
+    `Delete pipeline "${p.name}"? This will not remove already-ingested content, only the pipeline config.`;
+  pendingDeleteId = 'pipeline:' + p.id;
+  document.getElementById('confirm-overlay').classList.add('visible');
+}
+
+function openEditPipeline(p) {
+  document.getElementById('pipeline-modal-title').textContent = 'Edit Pipeline';
+  document.getElementById('pipeline-modal-save').textContent  = 'Save Changes';
+  document.getElementById('pipeline-modal-id').value    = p.id;
+  document.getElementById('pm-name').value              = p.name;
+  document.getElementById('pm-type').value              = p.type;
+  document.getElementById('pm-url').value               = p.targetUrl;
+  document.getElementById('pm-layer').value             = p.layer;
+  document.getElementById('pm-schedule').value          = p.schedule;
+  document.getElementById('pm-active').checked          = p.active;
+  document.getElementById('pm-date-from').value         = p.dateFrom || '';
+  document.getElementById('pm-date-to').value           = p.dateTo   || '';
+  document.getElementById('pipeline-modal').classList.add('visible');
+}
+
+// ── Show Event Detail ─────────────────────────────────────────────────────
+function showEventDetail(e) {
+  const icon  = { BLOG_CRAWL:'🕸', YOUTUBE_CHANNEL:'▶', SINGLE_YOUTUBE:'▶', SINGLE_VIMEO:'🎬', SINGLE_URL:'🌐', SINGLE_FILE:'📄' }[e.kind] || '📦';
+  const pName = e.pipelineId ? (allPipelines.find(p => p.id === e.pipelineId)?.name || 'Pipeline') : 'One-off';
+  const dur   = e.startedAt && e.finishedAt ? formatDuration(e.startedAt, e.finishedAt) : '—';
+
+  hideIngestionDashboard();
+  setHeader(icon, e.sourceLabel || e.id, `${pName} · ${e.kind}`, []);
+  document.getElementById('detail-body').innerHTML = `
+    <div class="meta-row">
+      <span class="status-pill status-${e.status}">${e.status}</span>
+      ${chip('Layer', e.layer || '—')}
+      ${chip('Found', e.itemsFound)}
+      ${chip('Ingested', e.itemsIngested)}
+      ${chip('Skipped', e.itemsSkipped)}
+      ${e.itemsFailed ? `<span class="chip" style="color:#f87171"><strong>Failed</strong>${e.itemsFailed}</span>` : ''}
+      ${chip('Duration', dur)}
+      ${e.startedAt ? chip('Started', fmtDate(e.startedAt)) : ''}
+    </div>
+    ${e.logOutput ? `<div class="content-block"><h3>Ingestion Log</h3><div class="log-output">${escHtml(e.logOutput)}</div></div>` : ''}
+  `;
+  showDetail();
+
+  // If still running, poll for updates
+  if (e.status === 'RUNNING') {
+    const pollLog = setInterval(async () => {
+      try {
+        const fresh = await fetchJSON(`${API}/api/knowledge/ingestion/events/${e.id}`);
+        showEventDetail(fresh);
+        if (fresh.status !== 'RUNNING') clearInterval(pollLog);
+      } catch { clearInterval(pollLog); }
+    }, 3000);
+  }
+}
+
+// ── + New Pipeline modal ──────────────────────────────────────────────────
+document.getElementById('btn-new-pipeline').addEventListener('click', () => {
+  document.getElementById('pipeline-modal-title').textContent = 'New Pipeline';
+  document.getElementById('pipeline-modal-save').textContent  = 'Create Pipeline';
+  document.getElementById('pipeline-modal-id').value = '';
+  ['pm-name','pm-url'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('pm-type').value     = 'BLOG_CRAWL';
+  document.getElementById('pm-layer').value    = 'layer1';
+  document.getElementById('pm-schedule').value = 'WEEKLY';
+  document.getElementById('pm-active').checked = true;
+  document.getElementById('pm-date-from').value = '';
+  document.getElementById('pm-date-to').value   = '';
+  document.getElementById('pipeline-modal').classList.add('visible');
+});
+document.getElementById('pipeline-modal-cancel').addEventListener('click', () =>
+  document.getElementById('pipeline-modal').classList.remove('visible'));
+
+document.getElementById('pipeline-modal-save').addEventListener('click', async () => {
+  const name = document.getElementById('pm-name').value.trim();
+  const url  = document.getElementById('pm-url').value.trim();
+  if (!name || !url) { toast('Name and URL are required'); return; }
+
+  const body = {
+    type: document.getElementById('pm-type').value,
+    name,
+    targetUrl: url,
+    layer:     document.getElementById('pm-layer').value,
+    schedule:  document.getElementById('pm-schedule').value,
+    active:    document.getElementById('pm-active').checked,
+    dateFrom:  document.getElementById('pm-date-from').value || null,
+    dateTo:    document.getElementById('pm-date-to').value   || null,
+  };
+
+  const existingId = document.getElementById('pipeline-modal-id').value;
+  try {
+    let saved;
+    if (existingId) {
+      saved = await fetchJSON(`${API}/api/knowledge/ingestion/pipelines/${existingId}`, 'PUT', body);
+      const idx = allPipelines.findIndex(p => p.id === saved.id);
+      if (idx >= 0) allPipelines[idx] = saved;
+    } else {
+      saved = await fetchJSON(`${API}/api/knowledge/ingestion/pipelines`, 'POST', body);
+      allPipelines.unshift(saved);
+    }
+    document.getElementById('pipeline-modal').classList.remove('visible');
+    renderPipelinesSidebar();
+    showPipelineDetail(saved.id);
+    toast(existingId ? 'Pipeline updated' : 'Pipeline created');
+  } catch { toast('Failed to save pipeline'); }
+});
+
+// ── + Ingest Item modal ────────────────────────────────────────────────────
+document.getElementById('btn-ingest-item').addEventListener('click', () => {
+  ['ii-url','ii-context'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('ii-kind').value    = 'url';
+  document.getElementById('ii-layer').value   = 'layer1';
+  document.getElementById('ii-force').checked = false;
+  document.getElementById('ii-file').value    = '';
+  toggleIngestItemFields();
+  document.getElementById('ingest-item-modal').classList.add('visible');
+});
+document.getElementById('ingest-item-cancel').addEventListener('click', () =>
+  document.getElementById('ingest-item-modal').classList.remove('visible'));
+
+function toggleIngestItemFields() {
+  const kind = document.getElementById('ii-kind').value;
+  document.getElementById('ii-url-group').style.display  = kind === 'file' ? 'none' : '';
+  document.getElementById('ii-file-group').style.display = kind === 'file' ? ''     : 'none';
+}
+
+document.getElementById('ingest-item-submit').addEventListener('click', async () => {
+  const kind    = document.getElementById('ii-kind').value;
+  const layer   = document.getElementById('ii-layer').value;
+  const context = document.getElementById('ii-context').value.trim();
+  const force   = document.getElementById('ii-force').checked;
+
+  try {
+    let event;
+    if (kind === 'file') {
+      const fileEl = document.getElementById('ii-file');
+      if (!fileEl.files.length) { toast('Please choose a file'); return; }
+      const fd = new FormData();
+      fd.append('file', fileEl.files[0]);
+      fd.append('layer', layer);
+      if (context) fd.append('contextNote', context);
+      if (force)   fd.append('force', 'true');
+      const r = await fetch(`${API}/api/knowledge/ingestion/events/ingest-item`, {
+        method: 'POST',
+        headers: { 'X-Api-Key': KEY },
+        body: fd,
+      });
+      if (!r.ok) throw new Error(r.status);
+      event = await r.json();
+    } else {
+      const source = document.getElementById('ii-url').value.trim();
+      if (!source) { toast('Please enter a URL'); return; }
+      event = await fetchJSON(`${API}/api/knowledge/ingestion/events/ingest-url`, 'POST', {
+        kind, source, layer, contextNote: context || undefined, force,
+      });
+    }
+    allEvents.unshift(event);
+    renderEventsSidebar();
+    document.getElementById('ingest-item-modal').classList.remove('visible');
+    // Switch to the event detail so the user can watch progress
+    selectedType = 'event'; selectedId = event.id;
+    showEventDetail(event);
+    toast('Ingestion started');
+  } catch { toast('Failed to start ingestion'); }
+});
+
+// ── Extend confirm-ok to handle pipeline deletes ──────────────────────────
+document.getElementById('confirm-ok').addEventListener('click', async () => {
+  if (!pendingDeleteId || !pendingDeleteId.startsWith('pipeline:')) return;
+  document.getElementById('confirm-overlay').classList.remove('visible');
+  const id = pendingDeleteId.slice('pipeline:'.length); pendingDeleteId = null;
+  try {
+    await fetch(`${API}/api/knowledge/ingestion/pipelines/${id}`, { method: 'DELETE', headers: { 'X-Api-Key': KEY } });
+    allPipelines = allPipelines.filter(p => p.id !== id);
+    if (selectedId === id) { selectedType = null; selectedId = null; showIngestionDashboard(); }
+    renderPipelinesSidebar();
+    toast('Pipeline deleted');
+  } catch { toast('Delete failed'); }
+});
+
+// ── Time helpers ─────────────────────────────────────────────────────────
+function formatElapsed(startedAt) {
+  const secs = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
+  if (secs < 60)  return `${secs}s`;
+  if (secs < 3600) return `${Math.floor(secs / 60)}m ${secs % 60}s`;
+  return `${Math.floor(secs / 3600)}h ${Math.floor((secs % 3600) / 60)}m`;
+}
+
+function formatDuration(startedAt, finishedAt) {
+  const secs = Math.floor((new Date(finishedAt) - new Date(startedAt)) / 1000);
+  if (secs < 60)   return `${secs}s`;
+  if (secs < 3600) return `${Math.floor(secs / 60)}m ${secs % 60}s`;
+  return `${Math.floor(secs / 3600)}h ${Math.floor((secs % 3600) / 60)}m`;
 }
 </script>
 <script>

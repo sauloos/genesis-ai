@@ -30,15 +30,16 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/app/pw-browsers
 
 COPY --from=build /workspace/genesis-brands/build/libs/genesis-brands-0.0.1-SNAPSHOT.jar app.jar
 COPY knowledge/layer1/modules knowledge/layer1/modules
+COPY ingestion ingestion
 
-# Install Chromium and all its system dependencies via the Playwright CLI bundled inside
-# the fat JAR. unzip extracts the nested BOOT-INF/lib/ JARs so we can call CLI directly;
-# `--with-deps` handles apt-get install of Chromium's glibc deps in a single step.
-RUN apt-get update && apt-get install -y --no-install-recommends unzip ca-certificates \
+# Install Chromium (for brand-book PDF), Python 3 + pip (for ingestion pipeline), and
+# all Python ingestion dependencies. `--with-deps` handles Chromium's glibc apt deps.
+RUN apt-get update && apt-get install -y --no-install-recommends unzip ca-certificates python3 python3-pip \
   && mkdir -p /tmp/pwinstall \
   && unzip -q app.jar "BOOT-INF/lib/*" -d /tmp/pwinstall \
   && java -cp "/tmp/pwinstall/BOOT-INF/lib/*" com.microsoft.playwright.CLI install --with-deps chromium \
-  && rm -rf /tmp/pwinstall /var/lib/apt/lists/*
+  && rm -rf /tmp/pwinstall /var/lib/apt/lists/* \
+  && pip3 install --no-cache-dir -r ingestion/requirements.txt
 
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
