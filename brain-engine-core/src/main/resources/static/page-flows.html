@@ -502,6 +502,29 @@ function initDrawflow() {
     document.getElementById('end-panel').classList.remove('visible');
   });
 
+  // Drawflow's nodeMoved only fires when e.target.classList[0] === 'drawflow_content_node'.
+  // Anchor nodes have nested HTML so the inner element is the target — nodeMoved may silently
+  // skip them. This mouseup listener is the reliable fallback: after every drag on the canvas,
+  // scan anchor nodes and persist their current DOM positions to localStorage.
+  document.getElementById('drawflow').addEventListener('mouseup', () => {
+    if (!currentFlow || !editor) return;
+    for (const nodeEl of document.querySelectorAll('#drawflow .flow-anchor-node')) {
+      const id = nodeEl.id.replace('node-', '');
+      try {
+        const node = editor.getNodeFromId(id);
+        if (!node?.data) continue;
+        const x = parseFloat(nodeEl.style.left);
+        const y = parseFloat(nodeEl.style.top);
+        if (isNaN(x) || isNaN(y)) continue;
+        if (node.data.isStart) {
+          localStorage.setItem('pf-start-' + currentFlow.id, JSON.stringify({ x, y }));
+        } else if (node.data.isEnd) {
+          localStorage.setItem('pf-end-' + currentFlow.id, JSON.stringify({ x, y }));
+        }
+      } catch {}
+    }
+  });
+
   editor.on('connectionCreated', async (info) => {
     if (restoringCanvas) return;
     await onConnectionChanged(info);
