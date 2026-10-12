@@ -54,6 +54,13 @@ public class PageFlow {
     @Column(name = "end_target_flow_id", length = 36)
     private String endTargetFlowId;
 
+    /** Canvas positions for the Start/End anchor nodes in the page-flow editor.
+     *  Null = user has never moved them; the editor falls back to auto-computed defaults. */
+    @Column(name = "canvas_start_x") private Double canvasStartX;
+    @Column(name = "canvas_start_y") private Double canvasStartY;
+    @Column(name = "canvas_end_x")   private Double canvasEndX;
+    @Column(name = "canvas_end_y")   private Double canvasEndY;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 

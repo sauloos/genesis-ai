@@ -102,6 +102,12 @@ public class PageFlowController {
         return handle(() -> pageFlowService.setEndConfig(id, body.endAction(), body.endPageId(), body.endTargetFlowId()));
     }
 
+    @PutMapping("/{id}/anchor-positions")
+    public ResponseEntity<?> updateAnchorPositions(@PathVariable String id, @RequestBody AnchorPositionsRequest body, HttpServletRequest req) {
+        if (!authorized(req)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        return handle(() -> pageFlowService.updateAnchorPositions(id, body.startX(), body.startY(), body.endX(), body.endY()));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable String id, HttpServletRequest req) {
         if (!authorized(req)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -136,6 +142,7 @@ public class PageFlowController {
     public record SetThemeRequest(String themeKey) {}
 
     public record SetEndRequest(String endAction, String endPageId, String endTargetFlowId) {}
+    public record AnchorPositionsRequest(Double startX, Double startY, Double endX, Double endY) {}
 
     public record PageFlowDetail(PageFlow flow, List<Page> pages, List<PageWidget> widgets, List<PageTransition> transitions) {}
 

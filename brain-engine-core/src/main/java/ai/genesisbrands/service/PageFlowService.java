@@ -156,6 +156,14 @@ public class PageFlowService {
         return pageFlowRepo.save(flow);
     }
 
+    public PageFlow updateAnchorPositions(String id, Double startX, Double startY, Double endX, Double endY) {
+        PageFlow flow = get(id);
+        if (startX != null) { flow.setCanvasStartX(startX); flow.setCanvasStartY(startY); }
+        if (endX   != null) { flow.setCanvasEndX(endX);     flow.setCanvasEndY(endY); }
+        flow.setUpdatedAt(Instant.now());
+        return pageFlowRepo.save(flow);
+    }
+
     /** Populates each page's effectivePreviousPageId/effectiveErrorPageId (explicit value, else the computed default). */
     public List<Page> withEffectiveNav(List<Page> pages) {
         List<PageTransition> flowTransitions = pages.isEmpty()

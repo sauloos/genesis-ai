@@ -472,10 +472,7 @@ function initDrawflow() {
       const x = el ? (parseFloat(el.style.left) || 0) : node.pos_x;
       const y = el ? (parseFloat(el.style.top)  || 0) : node.pos_y;
       if (node.data.isStart || node.data.isEnd) {
-        // Start/End have no DB entity — persist to localStorage keyed by flow
-        if (!currentFlow) return;
-        const key = (node.data.isStart ? 'pf-start-' : 'pf-end-') + currentFlow.id;
-        try { localStorage.setItem(key, JSON.stringify({ x, y })); } catch {}
+        // mouseup listener handles persistence for anchor nodes
         return;
       }
       if (!node.data.pageId) return;
@@ -505,9 +502,10 @@ function initDrawflow() {
   // Drawflow's nodeMoved only fires when e.target.classList[0] === 'drawflow_content_node'.
   // Anchor nodes have nested HTML so the inner element is the target — nodeMoved may silently
   // skip them. This mouseup listener is the reliable fallback: after every drag on the canvas,
-  // scan anchor nodes and persist their current DOM positions to localStorage.
+  // scan anchor nodes and persist changed positions to the server (cross-device).
   document.getElementById('drawflow').addEventListener('mouseup', () => {
     if (!currentFlow || !editor) return;
+    const updates = {};
     for (const nodeEl of document.querySelectorAll('#drawflow .flow-anchor-node')) {
       const id = nodeEl.id.replace('node-', '');
       try {
@@ -516,12 +514,17 @@ function initDrawflow() {
         const x = parseFloat(nodeEl.style.left);
         const y = parseFloat(nodeEl.style.top);
         if (isNaN(x) || isNaN(y)) continue;
-        if (node.data.isStart) {
-          localStorage.setItem('pf-start-' + currentFlow.id, JSON.stringify({ x, y }));
-        } else if (node.data.isEnd) {
-          localStorage.setItem('pf-end-' + currentFlow.id, JSON.stringify({ x, y }));
+        if (node.data.isStart && (x !== currentFlow.canvasStartX || y !== currentFlow.canvasStartY)) {
+          updates.startX = x; updates.startY = y;
+        } else if (node.data.isEnd && (x !== currentFlow.canvasEndX || y !== currentFlow.canvasEndY)) {
+          updates.endX = x; updates.endY = y;
         }
       } catch {}
+    }
+    if (Object.keys(updates).length) {
+      apiFetch(`/api/admin/page-flows/${currentFlow.id}/anchor-positions`, {
+        method: 'PUT', body: JSON.stringify(updates)
+      }).then(updated => { if (updated) Object.assign(currentFlow, updated); }).catch(() => {});
     }
   });
 
@@ -929,8 +932,9 @@ function renderCanvas() {
   // 260px wide, so a negative canvasX here would render these anchors invisibly underneath it.
   // Positions are restored from localStorage when the user has moved them; defaults are used on first load.
   const rows = Math.max(1, Math.ceil(currentPages.length / 5));
-  const savedStart = (() => { try { const r = localStorage.getItem('pf-start-' + currentFlow.id); return r ? JSON.parse(r) : null; } catch { return null; } })();
-  const startNodeId = editor.addNode('start', 0, 1, savedStart ? savedStart.x : 60, savedStart ? savedStart.y : -140, 'flow-anchor-node start-node', { isStart: true }, '<div class="anchor-node anchor-start">Start</div>');
+  const startNodeId = editor.addNode('start', 0, 1,
+    currentFlow.canvasStartX ?? 60, currentFlow.canvasStartY ?? -140,
+    'flow-anchor-node start-node', { isStart: true }, '<div class="anchor-node anchor-start">Start</div>');
   const endHtml = `
     <div class="anchor-node anchor-end" title="End">
       <svg width="34" height="34" viewBox="0 0 34 34">
@@ -939,8 +943,9 @@ function renderCanvas() {
         <line x1="24" y1="10" x2="10" y2="24" stroke="#ef4444" stroke-width="2" stroke-linecap="round"/>
       </svg>
     </div>`;
-  const savedEnd = (() => { try { const r = localStorage.getItem('pf-end-' + currentFlow.id); return r ? JSON.parse(r) : null; } catch { return null; } })();
-  const endNodeId = editor.addNode('end', 1, 0, savedEnd ? savedEnd.x : 60, savedEnd ? savedEnd.y : (60 + rows * 160 + 40), 'flow-anchor-node end-node', { isEnd: true }, endHtml);
+  const endNodeId = editor.addNode('end', 1, 0,
+    currentFlow.canvasEndX ?? 60, currentFlow.canvasEndY ?? (60 + rows * 160 + 40),
+    'flow-anchor-node end-node', { isEnd: true }, endHtml);
 
   // Wires are only drawn for explicit navigation. Error/previous/start all have a
   // default-if-unset fallback computed server-side (withEffectiveNav(), FlowSessionService's
