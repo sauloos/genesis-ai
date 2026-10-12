@@ -464,13 +464,21 @@ function initDrawflow() {
   editor.on('nodeMoved', async (id) => {
     try {
       const node = editor.getNodeFromId(id);
-      if (!node || !node.data || !node.data.pageId) return; // Start/End are fixed anchors, not persisted
+      if (!node || !node.data) return;
       // Prefer reading position directly from the DOM element — Drawflow updates style.left/top
       // continuously during drag and only syncs the internal data at drag-end, so the DOM is
       // always the freshest source at the moment nodeMoved fires.
       const el = document.getElementById('node-' + id);
       const x = el ? (parseFloat(el.style.left) || 0) : node.pos_x;
       const y = el ? (parseFloat(el.style.top)  || 0) : node.pos_y;
+      if (node.data.isStart || node.data.isEnd) {
+        // Start/End have no DB entity — persist to localStorage keyed by flow
+        if (!currentFlow) return;
+        const key = (node.data.isStart ? 'pf-start-' : 'pf-end-') + currentFlow.id;
+        try { localStorage.setItem(key, JSON.stringify({ x, y })); } catch {}
+        return;
+      }
+      if (!node.data.pageId) return;
       await apiFetch(`/api/admin/pages/${node.data.pageId}/position`, {
         method: 'PUT', body: JSON.stringify({ x, y })
       });
@@ -896,8 +904,10 @@ function renderCanvas() {
 
   // Positioned in the same column as the first page row, above/below the grid — the sidebar is
   // 260px wide, so a negative canvasX here would render these anchors invisibly underneath it.
+  // Positions are restored from localStorage when the user has moved them; defaults are used on first load.
   const rows = Math.max(1, Math.ceil(currentPages.length / 5));
-  const startNodeId = editor.addNode('start', 0, 1, 60, -140, 'flow-anchor-node start-node', { isStart: true }, '<div class="anchor-node anchor-start">Start</div>');
+  const savedStart = (() => { try { const r = localStorage.getItem('pf-start-' + currentFlow.id); return r ? JSON.parse(r) : null; } catch { return null; } })();
+  const startNodeId = editor.addNode('start', 0, 1, savedStart ? savedStart.x : 60, savedStart ? savedStart.y : -140, 'flow-anchor-node start-node', { isStart: true }, '<div class="anchor-node anchor-start">Start</div>');
   const endHtml = `
     <div class="anchor-node anchor-end" title="End">
       <svg width="34" height="34" viewBox="0 0 34 34">
@@ -906,7 +916,8 @@ function renderCanvas() {
         <line x1="24" y1="10" x2="10" y2="24" stroke="#ef4444" stroke-width="2" stroke-linecap="round"/>
       </svg>
     </div>`;
-  const endNodeId = editor.addNode('end', 1, 0, 60, 60 + rows * 160 + 40, 'flow-anchor-node end-node', { isEnd: true }, endHtml);
+  const savedEnd = (() => { try { const r = localStorage.getItem('pf-end-' + currentFlow.id); return r ? JSON.parse(r) : null; } catch { return null; } })();
+  const endNodeId = editor.addNode('end', 1, 0, savedEnd ? savedEnd.x : 60, savedEnd ? savedEnd.y : (60 + rows * 160 + 40), 'flow-anchor-node end-node', { isEnd: true }, endHtml);
 
   // Wires are only drawn for explicit navigation. Error/previous/start all have a
   // default-if-unset fallback computed server-side (withEffectiveNav(), FlowSessionService's
