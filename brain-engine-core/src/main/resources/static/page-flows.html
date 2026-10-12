@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Genesis AI — Page Flows</title>
-<script src="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.js"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.css">
+<script src="https://cdn.jsdelivr.net/npm/drawflow@0.0.60/dist/drawflow.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/drawflow@0.0.60/dist/drawflow.min.css">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -462,17 +462,23 @@ function initDrawflow() {
   editor.start();
 
   editor.on('nodeMoved', async (id) => {
-    const node = editor.getNodeFromId(id);
-    if (!node.data || !node.data.pageId) return; // Start/End are fixed anchors, not persisted
     try {
+      const node = editor.getNodeFromId(id);
+      if (!node || !node.data || !node.data.pageId) return; // Start/End are fixed anchors, not persisted
+      // Prefer reading position directly from the DOM element — Drawflow updates style.left/top
+      // continuously during drag and only syncs the internal data at drag-end, so the DOM is
+      // always the freshest source at the moment nodeMoved fires.
+      const el = document.getElementById('node-' + id);
+      const x = el ? (parseFloat(el.style.left) || 0) : node.pos_x;
+      const y = el ? (parseFloat(el.style.top)  || 0) : node.pos_y;
       await apiFetch(`/api/admin/pages/${node.data.pageId}/position`, {
-        method: 'PUT', body: JSON.stringify({ x: node.pos_x, y: node.pos_y })
+        method: 'PUT', body: JSON.stringify({ x, y })
       });
       // Keep the in-memory copy in sync — any later renderCanvas() (e.g. after saving page
       // meta, adding/deleting a page, or wiring a connection) rebuilds every node from
       // currentPages, so a stale canvasX/canvasY here would visually snap this node back.
       const page = currentPages.find(p => p.id === node.data.pageId);
-      if (page) { page.canvasX = node.pos_x; page.canvasY = node.pos_y; }
+      if (page) { page.canvasX = x; page.canvasY = y; }
     } catch (e) { toast('Failed to save position: ' + e.message, false); }
   });
 
@@ -496,6 +502,10 @@ function initDrawflow() {
     if (restoringCanvas) return;
     await onConnectionChanged(info);
   });
+
+  // Persist viewport (pan + zoom) so navigating back to a flow restores the same view.
+  editor.on('translate', () => { if (currentFlow) saveViewport(currentFlow.id); });
+  editor.on('zoom', () => { if (currentFlow) saveViewport(currentFlow.id); });
 }
 
 function outcomeClassFor(o) {
@@ -670,7 +680,31 @@ async function deleteFlow(e, id) {
   await loadFlows();
 }
 
+function saveViewport(flowId) {
+  if (!editor || !flowId) return;
+  try {
+    localStorage.setItem('pf-vp-' + flowId, JSON.stringify({
+      x: editor.canvas_x, y: editor.canvas_y, zoom: editor.zoom
+    }));
+  } catch {}
+}
+
+function restoreViewport(flowId) {
+  try {
+    const raw = localStorage.getItem('pf-vp-' + flowId);
+    if (!raw) return;
+    const { x, y, zoom } = JSON.parse(raw);
+    editor.canvas_x = x;
+    editor.canvas_y = y;
+    editor.zoom = zoom;
+    editor.precanvas.style.transform = `translate(${x}px, ${y}px) scale(${zoom})`;
+  } catch {}
+}
+
 async function openFlow(id) {
+  // Snapshot current viewport before switching so navigating back restores it.
+  if (currentFlow) saveViewport(currentFlow.id);
+
   const isSameFlow = currentFlow && currentFlow.id === id;
   const detail = await apiFetch(`/api/admin/page-flows/${id}`);
   currentFlow = detail.flow;
@@ -690,6 +724,7 @@ async function openFlow(id) {
   selectedPageId = null;
   renderFlowList();
   renderCanvas();
+  restoreViewport(id);
 }
 
 function updateFlowToolbar() {
