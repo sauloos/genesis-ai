@@ -271,9 +271,12 @@ interface it implements — never by core reaching into a tenant model directly:
   never let a convenience shortcut put tenant model types (`Engagement`, `Brand`, etc.) inside
   os/runtime code.
 
-`login` is the reference implementation of the equivalent widget pattern; no agent has yet
-been fully migrated to this pattern end-to-end (Playground's current per-agent UI is generic/
-DirectionBrief-form-based rather than per-agent-view-module-based) — this section is the
+`login` is the reference implementation of the equivalent widget pattern. Since 2026-10-17
+every agent has its own Playground view module. `playground.html` is pure chrome that mounts
+`agent-views/<id>/playground.js`. The 5 SLOT agents share `brands/app`
+`agent-views/_shared/slotPlayground.js` and supply only their output renderers. Agent-view CSS
+uses only the `--av-*` tokens from `_shared/tokens.css`, which each host maps to its theme.
+Admin-editable config over `agent.yml` (plan step 7) is still pending. This section is the
 target state every agent, current or future, must be checked against.
 
 ---

@@ -45,4 +45,14 @@ public class ConsultantCoreAgent implements CoreAgent {
     public boolean supportsToolUse() {
         return true;
     }
+
+    @Override
+    public String icon() {
+        return "💬";
+    }
+
+    @Override
+    public boolean hasPlaygroundView() {
+        return true;
+    }
 }

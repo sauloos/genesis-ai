@@ -118,8 +118,20 @@ os/agents/<id>/
    - **Deferred:** OAuth (API keys only for now) and a key-management UI.
    - Also fixed: library modules weren't compiled with `-parameters`, which broke unnamed
      `@PathVariable`s in module controllers (now set for all modules in the root build).
-6. **Theme + views (#3, #6, #7).** Replace hardcoded hex with theme tokens in brands views and
+6. **Theme + views (#3, #6, #7).** DONE. Replace hardcoded hex with theme tokens in brands views and
    `_shared`, and add the missing playground views.
+   - `--av-*` tokens live in `os/runtime` `agent-views/_shared/tokens.css` (light defaults). Each
+     host maps them to its theme; `playground.html` maps them to dark `--theme-*` values. All
+     agent-view CSS uses only tokens. Brands live views share `_shared/regenerate.css`.
+   - Every agent now has its own `playground.js`.
+     - The 5 SLOT agents mount `brands/app` `_shared/slotPlayground.js`, which handles the
+       questionnaire, brief, options, runs, history, audit and feedback. Each agent supplies only
+       its output renderers and source runs.
+     - Consultant's view embeds `/console.html`.
+   - `playground.html` is now chrome only (2325 → ~480 lines). It lists agents, pages flows, and
+     mounts the selected agent's view via `mountAgentPlaygroundView`. `?agentId=&session=` deep
+     links pass `ctx.sessionId` through.
+   - Left for the widget pass: hex in the `dashboardAgents` panel/cards and in `dashboardCatalog`.
 7. **Admin config (#2, #4, #9).** Admin-editable agent settings layered over `agent.yml` and
    app overrides, plus a view extension mechanism (extend a base view, not a same-path copy).
 

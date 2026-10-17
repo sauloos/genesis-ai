@@ -1,0 +1,3 @@
+@import url('/agent-views/_shared/slotPlayground.css');
+
+.lg-audit-img { max-height: 100px; max-width: 100%; border-radius: 8px; }

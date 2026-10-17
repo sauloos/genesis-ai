@@ -1,23 +1,26 @@
-.gha-view { display: flex; flex-direction: column; height: 60vh; font-size: 13px; }
-.gha-gate { font-size: 13px; color: #888; padding: 24px 0; }
+@import url('/agent-views/_shared/tokens.css');
+
+.gha-view { display: flex; flex-direction: column; height: 60vh; font-size: 13px; color: var(--av-text); }
+.gha-gate { font-size: 13px; color: var(--av-text-muted); padding: 24px 0; }
 
 .gha-messages { flex: 1 1 auto; overflow-y: auto; display: flex; flex-direction: column;
   gap: 10px; padding-bottom: 12px; }
-.gha-empty { font-size: 12px; color: #999; padding: 8px 2px; }
+.gha-empty { font-size: 12px; color: var(--av-text-label); padding: 8px 2px; }
 
 .gha-msg { display: flex; }
 .gha-msg-user { justify-content: flex-end; }
 .gha-msg-assistant { justify-content: flex-start; }
 .gha-msg-bubble { max-width: 80%; padding: 9px 13px; border-radius: 14px; font-size: 13px;
   line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
-.gha-msg-user .gha-msg-bubble { background: #1a1a1a; color: #fff; border-bottom-right-radius: 4px; }
-.gha-msg-assistant .gha-msg-bubble { background: #f2f2f2; color: #222; border-bottom-left-radius: 4px; }
-.gha-msg-error .gha-msg-bubble { background: #fdecea; color: #c0392b; }
+.gha-msg-user .gha-msg-bubble { background: var(--av-accent); color: var(--av-accent-text); border-bottom-right-radius: 4px; }
+.gha-msg-assistant .gha-msg-bubble { background: var(--av-bubble-bg); color: var(--av-bubble-text); border-bottom-left-radius: 4px; }
+.gha-msg-error .gha-msg-bubble { background: var(--av-danger-bg); color: var(--av-danger); }
 
-.gha-composer { flex: 0 0 auto; display: flex; gap: 10px; padding-top: 12px; border-top: 1px solid #eee; }
-.gha-input { flex: 1 1 auto; border: 1px solid #ddd; border-radius: 20px; padding: 10px 16px;
+.gha-composer { flex: 0 0 auto; display: flex; gap: 10px; padding-top: 12px; border-top: 1px solid var(--av-border-subtle); }
+.gha-input { flex: 1 1 auto; border: 1px solid var(--av-border); border-radius: 20px; padding: 10px 16px;
+  background: var(--av-input-bg); color: var(--av-text);
   font-size: 13px; font-family: inherit; }
-.gha-input:disabled { background: #f7f7f7; }
-.gha-send { background: #1a1a1a; color: #fff; border: none; border-radius: 20px; padding: 10px 20px;
+.gha-input:disabled { background: var(--av-input-disabled-bg); }
+.gha-send { background: var(--av-accent); color: var(--av-accent-text); border: none; border-radius: 20px; padding: 10px 20px;
   font-size: 13px; font-weight: 600; cursor: pointer; }
 .gha-send:disabled { opacity: 0.5; cursor: default; }

@@ -1,0 +1,4 @@
+@import url('/agent-views/_shared/tokens.css');
+
+.cc-pg-frame { display: block; width: 100%; height: calc(100vh - 80px); min-height: 480px;
+  border: 1px solid var(--av-border); border-radius: 8px; background: var(--av-surface); }

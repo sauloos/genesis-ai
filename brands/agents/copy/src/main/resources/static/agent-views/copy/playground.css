@@ -1,0 +1,5 @@
+@import url('/agent-views/_shared/slotPlayground.css');
+
+.cp-example { border-left: 2px solid var(--av-border); padding: 6px 0 6px 10px; margin-top: 6px; font-size: 12px; }
+.cp-do { color: var(--av-success); }
+.cp-not { color: var(--av-danger); margin-top: 2px; }

@@ -35,4 +35,14 @@ public class VisualIdentityCoreAgent implements CoreAgent {
     public boolean hasLiveView() {
         return true;
     }
+
+    @Override
+    public String icon() {
+        return "🎨";
+    }
+
+    @Override
+    public boolean hasPlaygroundView() {
+        return true;
+    }
 }

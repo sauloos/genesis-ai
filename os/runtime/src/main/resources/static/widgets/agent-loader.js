@@ -56,8 +56,8 @@ export async function mountAgentLiveView(agentId, container, agent, ctx) {
 /**
  * @param {string} agentId
  * @param {HTMLElement} container
- * @param {{agentId: string}} agent
- * @param {{}} ctx
+ * @param {{agentId: string}} agent   the agent's admin catalog entry (displayName, customOptions, …)
+ * @param {{sessionId?: string}} ctx   sessionId deep-links to a saved Playground run
  */
 export async function mountAgentPlaygroundView(agentId, container, agent, ctx) {
   return mountAgentView('playground', agentId, container, agent, ctx);

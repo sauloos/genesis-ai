@@ -1,0 +1,32 @@
+@import url('/agent-views/_shared/tokens.css');
+
+/* Shared styles for the Genesis Brands SLOT agents' Live Dashboard regenerate views
+   (see regenerate.js). Agent-specific rules stay in each agent's own live.css. */
+.av-view { font-size: 13px; color: var(--av-text); }
+.av-section { margin-bottom: 16px; }
+.av-label { font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+  color: var(--av-text-label); margin-bottom: 6px; }
+.av-value { font-size: 13px; color: var(--av-text); line-height: 1.5; }
+.av-cascade { font-size: 12px; color: var(--av-warning); background: var(--av-warning-bg); border: 1px solid var(--av-warning-border);
+  border-radius: 8px; padding: 10px 12px; margin: 16px 0; }
+.av-feedback { width: 100%; min-height: 70px; border: 1px solid var(--av-border); border-radius: 8px;
+  background: var(--av-input-bg); color: var(--av-text);
+  padding: 10px 12px; font-size: 13px; font-family: inherit; resize: vertical; box-sizing: border-box; }
+.av-footer { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+.av-submit { background: var(--av-accent); color: var(--av-accent-text); border: none; border-radius: 8px; padding: 10px 18px;
+  font-size: 13px; font-weight: 600; cursor: pointer; }
+.av-submit:disabled { opacity: 0.5; cursor: default; }
+.av-status { font-size: 12px; color: var(--av-text-muted); }
+.av-error { font-size: 12px; color: var(--av-danger); margin-top: 8px; }
+.av-list { margin: 0; padding-left: 18px; }
+.av-list li { margin-bottom: 4px; }
+
+.av-approval-banner { font-size: 12px; color: var(--av-success); background: var(--av-success-bg); border: 1px solid var(--av-success-border);
+  border-radius: 8px; padding: 10px 12px; margin-bottom: 16px; font-weight: 600; }
+.av-approval-footer { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+.av-approve { background: var(--av-success); color: var(--av-success-text); border: none; border-radius: 8px; padding: 10px 18px;
+  font-size: 13px; font-weight: 600; cursor: pointer; }
+.av-discard { background: none; color: var(--av-text-muted); border: 1px solid var(--av-border); border-radius: 8px; padding: 10px 18px;
+  font-size: 13px; font-weight: 600; cursor: pointer; }
+.av-approve:disabled, .av-discard:disabled { opacity: 0.5; cursor: default; }
+.av-approval-status { font-size: 12px; color: var(--av-text-muted); }

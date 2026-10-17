@@ -1,0 +1,37 @@
+/*
+ * Agent-view design tokens. Every agent view's CSS (core, tenant, or custom) imports this
+ * file and styles itself only through these --av-* variables — never hardcoded colours —
+ * so the host surface decides the look: the light defaults below match the customer
+ * Live Dashboard dialog, while a dark host (e.g. the admin Playground) or a theme simply
+ * redefines the variables on :root. Declared under :where(:root) (zero specificity) so any
+ * host/theme :root rule wins regardless of load order.
+ */
+:where(:root) {
+  --av-surface: #fff;
+  --av-surface-subtle: #f7f7f7;
+  --av-surface-hover: #f0f0f0;
+  --av-text: #333;
+  --av-text-strong: #1a1a1a;
+  --av-text-muted: #888;
+  --av-text-label: #999;
+  --av-text-faint: #bbb;
+  --av-border: #ddd;
+  --av-border-subtle: #eee;
+  --av-input-bg: #fff;
+  --av-input-disabled-bg: #f7f7f7;
+  --av-accent: #1a1a1a;
+  --av-accent-text: #fff;
+  --av-bubble-bg: #f2f2f2;
+  --av-bubble-text: #222;
+  --av-success: #1a7a4c;
+  --av-success-text: #fff;
+  --av-success-bg: #eafbf1;
+  --av-success-border: #bfeed5;
+  --av-warning: #a66b00;
+  --av-warning-bg: #fff8ec;
+  --av-warning-border: #ffe3b0;
+  --av-danger: #c0392b;
+  --av-danger-bg: #fdecea;
+  --av-backdrop: rgba(0,0,0,0.6);
+  --av-shadow: rgba(0,0,0,0.08);
+}
