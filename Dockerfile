@@ -3,7 +3,7 @@ WORKDIR /workspace
 
 # az acr build keeps no layer cache between builds, so there's no separate dependency
 # layer — copy the build and sources, then build. settings.gradle auto-discovers themes/
-# and os/agents/, so new agent modules need no edit here.
+# os/agents/ and brands/agents/, so new agent modules need no edit here.
 COPY gradle gradle
 COPY gradlew .
 COPY build.gradle .
@@ -12,8 +12,8 @@ COPY themes themes
 
 COPY shared-domain shared-domain
 COPY os os
-COPY genesis-brands genesis-brands
-RUN ./gradlew :genesis-brands:bootJar --no-daemon -q
+COPY brands brands
+RUN ./gradlew :brands:app:bootJar --no-daemon -q
 
 # Playwright Chromium requires glibc — switch from Alpine to Ubuntu jammy for the runtime.
 FROM eclipse-temurin:21-jre-jammy
@@ -22,7 +22,7 @@ WORKDIR /app
 # Tell Playwright where to store browser binaries (picked up by both the installer and the app)
 ENV PLAYWRIGHT_BROWSERS_PATH=/app/pw-browsers
 
-COPY --from=build /workspace/genesis-brands/build/libs/genesis-brands-0.0.1-SNAPSHOT.jar app.jar
+COPY --from=build /workspace/brands/app/build/libs/brands-app-0.0.1-SNAPSHOT.jar app.jar
 COPY knowledge/layer1/modules knowledge/layer1/modules
 COPY ingestion ingestion
 

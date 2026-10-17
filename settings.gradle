@@ -1,6 +1,5 @@
 rootProject.name = 'genesis-platform'
 include 'shared-domain'
-include 'genesis-brands'
 
 // Genesis OS aggregator — agent SDK, runtime, one module per OS agent, and the OS app.
 include 'os:agent-sdk'
@@ -13,6 +12,16 @@ def osAgentsDir = new File(settingsDir, 'os/agents')
 if (osAgentsDir.exists()) {
     osAgentsDir.eachDir { dir ->
         if (new File(dir, 'build.gradle').exists()) include "os:agents:${dir.name}"
+    }
+}
+
+// Genesis Brands aggregator — the tenant app plus one module per Genesis Brands agent.
+include 'brands:app'
+
+def brandsAgentsDir = new File(settingsDir, 'brands/agents')
+if (brandsAgentsDir.exists()) {
+    brandsAgentsDir.eachDir { dir ->
+        if (new File(dir, 'build.gradle').exists()) include "brands:agents:${dir.name}"
     }
 }
 

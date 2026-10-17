@@ -1,0 +1,26 @@
+// Genesis Brands Brand Book Assembly agent — client-facing brand book (templates, photos, PDF render input).
+// Its logic runs on the OS runtime's agent core (RefinementLoop, AgentProperties, RAG), which
+// the adopting app provides; it carries its own prompts, agent.yml defaults and live view.
+configurations {
+    compileOnly { extendsFrom annotationProcessor }
+}
+
+dependencies {
+    implementation project(':os:agent-sdk')
+    implementation project(':brands:agents:copy')
+    implementation project(':brands:agents:visual-identity')
+    implementation project(':brands:agents:logo')
+    implementation project(':brands:agents:playbook')
+    // Renders the brand book HTML to PDF — the brand book's own runtime dependency.
+    implementation 'com.microsoft.playwright:playwright:1.47.0'
+    compileOnly project(':os:runtime')
+    compileOnly project(':shared-domain')
+    compileOnly 'org.springframework.boot:spring-boot-starter-web'
+    compileOnly 'org.springframework.boot:spring-boot-starter-data-jpa'
+    compileOnly 'org.springframework.ai:spring-ai-starter-model-anthropic'
+    compileOnly 'org.springframework.ai:spring-ai-starter-model-openai'
+    compileOnly 'io.projectreactor:reactor-core'
+    compileOnly 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+}

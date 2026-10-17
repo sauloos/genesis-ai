@@ -160,8 +160,8 @@ beans are already auto-collected via Spring component scan, same as `WidgetDescr
 widgets, and already reflected in the codebase today: **Consultant is a Genesis OS (core)
 agent** (its own module, `os/agents/consultant`) because every
 tenant gets a consultant — it's platform-level, sector-agnostic capability. **Copy, Visual
-Identity, Logo, Playbook, and Brand Book are Genesis Brands (tenant) agents** (`genesis-brands/
-.../agent/{copy,visualidentity,logo,playbook,brandbook}/...CoreAgent.java`) because they are
+Identity, Logo, Playbook, and Brand Book are Genesis Brands (tenant) agents** (one module each,
+`brands/agents/{copy,visual-identity,logo,playbook,brand-book}`) because they are
 specific to the brand-engagement product this tenant sells — a different tenant could ship a
 completely different set of SLOT/CREATE agents. This split is invisible to the pluggable
 mechanism itself: `AgentCatalogService` (core) auto-collects every `CoreAgent` bean via Spring
@@ -293,6 +293,11 @@ live view (`consultantChat.js` base); a tenant extends it through the subject/to
 SPIs, `genesis.consultant.*` config and a thin `live.js` that calls `mountConsultantChat()`
 with its own copy. Controllers that must only be registered by a conditional `@Bean` are marked
 `@RegisteredByConfiguration`, which every app excludes from component scan.
+`brands/` = Genesis Brands — `brands/app` (the genesis-brands bootJar: Engagement/Brand,
+orchestration, Consultant extension, `agent-views/_shared/regenerate.js`) and `brands/agents/<id>`
+(auto-included like `os/agents`) for the 5 SLOT agents. Inter-agent deps are explicit Gradle
+deps (playbook → copy, visual-identity, logo; brand-book → those + playbook). Brand-book owns its
+HTML templates, template entity/controller and Playwright.
 
 ---
 

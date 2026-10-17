@@ -1,0 +1,6 @@
+model: claude-sonnet-5
+max-tokens: 3000
+rag:
+  enabled: true
+  top-k: 3
+max-iterations: 3

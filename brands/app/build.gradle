@@ -1,0 +1,63 @@
+apply plugin: 'org.springframework.boot'
+
+group = 'ai.genesisbrands'
+version = '0.0.1-SNAPSHOT'
+
+jar.enabled = false   // suppress the plain JAR — only the bootJar is needed
+
+configurations {
+    compileOnly { extendsFrom annotationProcessor }
+}
+
+dependencies {
+    implementation project(':shared-domain')
+    implementation project(':os:runtime')
+    implementation project(':os:agents:summarizer')
+    implementation project(':os:agents:support-faq')
+    implementation project(':os:agents:compliance-qa')
+    implementation project(':os:agents:writer')
+    implementation project(':os:agents:rfp-response')
+    implementation project(':os:agents:research-synthesis')
+    implementation project(':os:agents:consultant')
+    implementation project(':brands:agents:copy')
+    implementation project(':brands:agents:visual-identity')
+    implementation project(':brands:agents:logo')
+    implementation project(':brands:agents:playbook')
+    implementation project(':brands:agents:brand-book')
+
+    // Spring Boot starters used directly in brands:app code
+    // (os:runtime's implementation deps are not transitively visible)
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+
+    // Spring AI — Anthropic + OpenAI (needed for ChatClient beans in agents/evaluators)
+    implementation 'org.springframework.ai:spring-ai-starter-model-anthropic'
+    implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+
+    // API docs — used by controllers/services now living in this module
+    // (os:runtime's implementation dep is not transitively visible)
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
+
+    // Lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // Test
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+// Tenant default — see the bundleThemes helper in the root build.gradle.
+rootProject.ext.bundleThemes(project, ['genesis-brands'])
+
+tasks.register('playwright-install', JavaExec) {
+    group = 'playwright'
+    description = 'Install Playwright Chromium browser binaries for local development (brand-book module dependency)'
+    classpath = configurations.runtimeClasspath
+    mainClass = 'com.microsoft.playwright.CLI'
+    args = ['install', 'chromium']
+}

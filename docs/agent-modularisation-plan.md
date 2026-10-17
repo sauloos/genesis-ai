@@ -79,10 +79,18 @@ os/agents/<id>/
    core types), registered when the tenant provides a `ClientOwnSubjectResolver`. The core view
    is `consultantChat.js` (`mountConsultantChat(container, copy)`); Genesis Brands' `live.js` is
    now a 10-line extension. The default persona is `agents/consultant/system.md` in the module.
-4. **Brands aggregator.** Move genesis-brands → `brands/app`, extract `brands/domain`, then the
+4. **Brands aggregator.** DONE. Move genesis-brands → `brands/app`, extract `brands/domain`, then the
    5 SLOT agents into `brands/agents/<id>`. Logo's inline prompts move to `system.md` files.
    Revisit whether Genesis Brands should adopt the 6 OS utility agents at all: the
    `NewAgentCatalogDefaultsSeeder` exists only because adoption used to be implicit.
+   *Done as:* `brands/app` + `brands/agents/{copy,visual-identity,logo,playbook,brand-book}`.
+   Each module owns its controller, CoreAgent, refinement loop, evaluator(s), one
+   `agents/<config-id>/{agent.yml,system.md}` per config id (e.g. logo-dalle, logo-svg-evaluator)
+   and its live/playground views. **Deferred:** `brands/domain` — no agent module depends on
+   Engagement/Brand, so extracting it buys nothing yet; and `brands/consultant-ext` — the
+   extension is three SPI beans + a 10-line view that stay in `brands/app`. **Kept:** Genesis
+   Brands still adopts the 6 OS utility agents (behaviour unchanged; dropping them is a one-line
+   Gradle change per agent — product decision for the user).
 5. **Connector gateway**, in `os/runtime` (or `os/connectors`):
    - **Agent connectors:** MCP tools and REST endpoints generated from `AgentCatalogService`
      for each adopted, connector-enabled agent. Customer API keys/OAuth resolve to a
