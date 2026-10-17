@@ -271,6 +271,46 @@ target state every agent, current or future, must be checked against.
 
 ---
 
+## External Connectors (MCP + REST)
+
+**Every capability the platform exposes externally is offered as both MCP and REST, by
+default.** This is a standing architectural principle (agreed 2026-10-17), not a per-agent or
+per-feature decision — it applies to OS core agents, Genesis Brands agents, and any future
+tenant custom agent alike. Three connector families exist, separated by audience:
+
+| Connector | Audience | Exposes |
+|---|---|---|
+| **Agent connectors** (Consultant connector, Logo connector, Copy connector, …) | Customers' own models/apps | Each agent enabled for that customer |
+| **Brain connector** | Customers' own models/apps | Knowledge retrieval over Layer 1 + Layer 2 — no agent reasoning |
+| **Platform connector** | Tenant admins / operators | Admin operations — everything the admin dashboard can do (page flows, widgets, agent config, knowledge/ingestion, products, themes, questionnaires, …) |
+
+Naming is fixed: "Consultant connector" and "Brain connector" — never "ask the brain" /
+"search the brain".
+
+- **Agent connectors are generated, never hand-written.** One core-owned gateway in
+  brain-engine-core derives each agent's MCP tools and REST endpoints from `AgentCatalogService`
+  (the same auto-collected `CoreAgent` beans Playground and `/live/dashboard` use). Adding a
+  pluggable agent automatically adds its connectors, with zero gateway code. Exposure is gated
+  by an admin per-surface flag (alongside `availableForPlayground`/`availableForLiveView`),
+  exactly like the other surfaces.
+- **Connector behaviour follows the deployment, not the connector.** Consultant exists in core
+  and is extended in Genesis Brands via `ConsultantSubjectProvider`/`ConsultantToolProvider`;
+  connecting to genesis-os yields the pure OS Consultant, connecting to genesis-brands yields
+  the extended, customer-aware one. No connector-side branching — it falls out of the SPI split.
+- **Identity and brand context are resolved server-side.** Agent/Brain connectors authenticate
+  the caller (API key / OAuth) to a tenant + client identity; brand context is always loaded
+  from the database per request — never accepted from the caller (same security boundary as
+  the customer-aware Consultant above).
+- **The Platform connector is admin-privileged** — its own admin-scoped credentials and audit
+  trail, never the customer keys used by agent/Brain connectors. Its operations are collected
+  by convention from the existing admin APIs (core mechanics in brain-engine-core; tenant-only
+  admin operations contributed through a core-defined SPI), so a new admin page becomes a new
+  Platform connector capability without editing a central list.
+- **Long-running agents need job semantics.** SLOT agents (multi-minute, approval-gated)
+  are exposed as start / poll status / approve-or-reject, not a single blocking call.
+
+---
+
 ## Key documents
 
 | Document | What it covers |
