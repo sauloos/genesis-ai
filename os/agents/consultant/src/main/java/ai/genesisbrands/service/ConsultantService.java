@@ -1,5 +1,6 @@
 package ai.genesisbrands.service;
 
+import ai.genesisbrands.agent.config.AgentProperties;
 import ai.genesisbrands.model.ConversationMessage;
 import ai.genesisbrands.repository.ConversationMessageRepository;
 import org.springframework.ai.chat.model.ChatModel;
@@ -32,10 +33,10 @@ import java.util.stream.Collectors;
 public class ConsultantService {
 
     private static final int HISTORY_TURNS = 20;
-    private static final int RETRIEVAL_TOP_K = 5;
     private static final String LEGACY_CONVERSATION_ID = "legacy";
 
-    private static final String TOOL_USE_AGENT_ID = "consultant";
+    // Config key and catalog id — model, max tokens and RAG come from genesis.agents.consultant.*
+    private static final String AGENT_ID = "consultant";
 
     private final ChatModel chatModel;
     private final RetrievalService retrieval;
@@ -46,6 +47,7 @@ public class ConsultantService {
     @Nullable
     private final ConsultantToolProvider toolProvider;
     private final AgentCatalogService catalogService;
+    private final AgentProperties agentProperties;
 
     public ConsultantService(
         ChatModel chatModel,
@@ -55,7 +57,8 @@ public class ConsultantService {
         ConversationMessageRepository messageRepo,
         TenantConsultantConfig tenantConfig,
         @Nullable ConsultantToolProvider toolProvider,
-        AgentCatalogService catalogService
+        AgentCatalogService catalogService,
+        AgentProperties agentProperties
     ) {
         this.chatModel = chatModel;
         this.retrieval = retrieval;
@@ -65,6 +68,7 @@ public class ConsultantService {
         this.tenantConfig = tenantConfig;
         this.toolProvider = toolProvider;
         this.catalogService = catalogService;
+        this.agentProperties = agentProperties;
     }
 
     public Flux<String> chat(String subjectId, String userMessage) {
@@ -96,8 +100,7 @@ public class ConsultantService {
         }
 
         List<Message> messages = buildMessages(subject, conversationId, userMessage, attachmentText, urlContents, source);
-        ChatOptions toolOptions = buildToolOptions(subjectId, source);
-        Prompt prompt = toolOptions != null ? new Prompt(messages, toolOptions) : new Prompt(messages);
+        Prompt prompt = new Prompt(messages, buildOptions(subjectId, source));
 
         StringBuilder responseBuffer = new StringBuilder();
 
@@ -123,19 +126,25 @@ public class ConsultantService {
     // consultant" sandbox never gets mutation capability, regardless of the toolsEnabled
     // toggle — and only when a tenant has both supplied a ConsultantToolProvider bean and
     // turned the toggle on via the agents admin page (AgentCatalogConfig.toolsEnabled).
-    @Nullable
-    private ChatOptions buildToolOptions(String subjectId, ConversationMessage.Source source) {
+    private ChatOptions buildOptions(String subjectId, ConversationMessage.Source source) {
+        AgentProperties.AgentConfig config = agentProperties.get(AGENT_ID);
+        ToolCallingChatOptions.Builder options = ToolCallingChatOptions.builder()
+            .model(config.getModel())
+            .maxTokens(config.getMaxTokens());
+        List<ToolCallback> tools = toolsFor(subjectId, source);
+        if (!tools.isEmpty()) options.toolCallbacks(tools);
+        return options.build();
+    }
+
+    private List<ToolCallback> toolsFor(String subjectId, ConversationMessage.Source source) {
         if (toolProvider == null || source != ConversationMessage.Source.CUSTOMER) {
-            return null;
+            return List.of();
         }
-        if (!catalogService.isToolsEnabled(TOOL_USE_AGENT_ID)) {
-            return null;
+        if (!catalogService.isToolsEnabled(AGENT_ID)) {
+            return List.of();
         }
         List<ToolCallback> tools = toolProvider.toolsFor(subjectId);
-        if (tools == null || tools.isEmpty()) {
-            return null;
-        }
-        return ToolCallingChatOptions.builder().toolCallbacks(tools).build();
+        return tools == null ? List.of() : tools;
     }
 
     public List<ConversationMessage> history(String subjectId, ConversationMessage.Source source) {
@@ -270,7 +279,8 @@ public class ConsultantService {
             sb.append(layer1Context).append("\n\n");
         }
 
-        String retrieved = retrieval.retrieve(query, RETRIEVAL_TOP_K);
+        AgentProperties.RagConfig rag = agentProperties.get(AGENT_ID).getRag();
+        String retrieved = rag.isEnabled() ? retrieval.retrieve(query, rag.getTopK()) : "";
         if (!retrieved.isBlank()) {
             sb.append("# Relevant Knowledge\n\n");
             sb.append(retrieved).append("\n\n");

@@ -5,6 +5,8 @@ import ai.genesisbrands.security.AdminSessionService;
 import ai.genesisbrands.service.AgentCatalogService;
 import ai.genesisbrands.service.AgentCatalogService.AgentCatalogEntry;
 import ai.genesisbrands.service.AgentCatalogService.UpdateAgentConfigRequest;
+import ai.genesisbrands.service.AgentSettingsService;
+import ai.genesisbrands.service.AgentSettingsService.Settings;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -29,6 +31,7 @@ public class AgentCatalogController {
     private final AdminAuthHelper adminAuth;
     private final AdminSessionService adminSession;
     private final AgentCatalogService catalogService;
+    private final AgentSettingsService settingsService;
 
     @GetMapping
     public ResponseEntity<List<AgentCatalogEntry>> list(HttpServletRequest req) {
@@ -56,6 +59,46 @@ public class AgentCatalogController {
         if (!authorized(req)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         try {
             catalogService.resetConfig(agentId);
+            return ResponseEntity.noContent().build();
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+    // ── Runtime settings (model, tokens, iterations, RAG, prompt) per config key ──
+
+    @GetMapping("/{agentId}/settings")
+    public ResponseEntity<?> settings(@PathVariable String agentId, HttpServletRequest req) {
+        if (!authorized(req)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        try {
+            return ResponseEntity.ok(settingsService.list(agentId));
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{agentId}/settings/{key}")
+    public ResponseEntity<?> updateSettings(
+            @PathVariable String agentId,
+            @PathVariable String key,
+            @RequestBody Settings body,
+            HttpServletRequest req) {
+        if (!authorized(req)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        try {
+            return ResponseEntity.ok(settingsService.update(agentId, key, body));
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{agentId}/settings/{key}")
+    public ResponseEntity<?> resetSettings(@PathVariable String agentId, @PathVariable String key,
+                                           HttpServletRequest req) {
+        if (!authorized(req)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        try {
+            settingsService.reset(agentId, key);
             return ResponseEntity.noContent().build();
         } catch (NoSuchElementException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));

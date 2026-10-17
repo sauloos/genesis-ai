@@ -13,12 +13,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MimeTypeUtils;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -43,9 +41,6 @@ public class LogoEvaluator {
     private final ObjectMapper objectMapper;
     private final BlobStorageService blobStorageService;
 
-    private final String systemPromptDalle;
-    private final String systemPromptSvg;
-
     public LogoEvaluator(ChatClient.Builder chatClientBuilder,
                           AgentProperties agentProperties,
                           Layer1Service layer1Service,
@@ -56,8 +51,6 @@ public class LogoEvaluator {
         this.layer1Service = layer1Service;
         this.objectMapper = objectMapper;
         this.blobStorageService = blobStorageService;
-        this.systemPromptDalle = loadPrompt(AGENT_ID_DALLE);
-        this.systemPromptSvg = loadPrompt(AGENT_ID_SVG);
     }
 
     public EvaluationResult evaluate(DirectionBrief brief, LogoOutput output) {
@@ -65,8 +58,9 @@ public class LogoEvaluator {
         // SVG_CONCEPT is text-only.
         boolean isImageBased = output.method() == LogoOutput.Method.DALLE
             || output.method() == LogoOutput.Method.IDEOGRAM;
-        AgentProperties.AgentConfig config = agentProperties.get(isImageBased ? AGENT_ID_DALLE : AGENT_ID_SVG);
-        String systemPrompt = isImageBased ? systemPromptDalle : systemPromptSvg;
+        String configKey = isImageBased ? AGENT_ID_DALLE : AGENT_ID_SVG;
+        AgentProperties.AgentConfig config = agentProperties.get(configKey);
+        String systemPrompt = agentProperties.systemPrompt(configKey);
         String userPromptText = assemblePrompt(brief, output);
 
         byte[] imageBytes = isImageBased ? fetchImageBytes(output.imageUrl()) : null;
@@ -166,16 +160,6 @@ public class LogoEvaluator {
             return new EvaluationResult(verdict, summary, revision);
         } catch (Exception e) {
             throw new IllegalStateException("Failed to parse LogoEvaluator output: " + e.getMessage() + "\nRaw: " + raw, e);
-        }
-    }
-
-    private String loadPrompt(String agentId) {
-        AgentProperties.AgentConfig config = agentProperties.get(agentId);
-        try {
-            return new ClassPathResource(config.getSystemPrompt())
-                .getContentAsString(StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new IllegalStateException("Cannot load system prompt: " + config.getSystemPrompt(), e);
         }
     }
 }

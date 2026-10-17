@@ -5,29 +5,43 @@
  * /agent-views/<agentId>/playground.js (+ optional playground.css), both resolved
  * purely by agentId convention — no registry to edit to add a new agent's view, on
  * the core team's part or a tenant's: drop the files at that path and they're usable.
+ *
+ * Extend, don't copy: another module changes an agent's view by registering an
+ * AgentViewExtension bean (listed at /agent-views/extensions.json), never by shipping a
+ * file at the base view's path. Each extension module exports
+ * mount(container, agent, ctx, base) and calls base(container, agent, ctx) to mount the
+ * layer beneath it; extensions chain innermost first.
  */
 const modulePromises = new Map();
 const cssLoaded = new Set();
+let extensionsPromise = null;
 
-function loadAgentViewCss(agentId, view) {
-  const key = `${agentId}/${view}`;
-  if (cssLoaded.has(key)) return;
-  cssLoaded.add(key);
+function loadCss(href) {
+  if (cssLoaded.has(href)) return;
+  cssLoaded.add(href);
   const link = document.createElement('link');
   link.rel = 'stylesheet';
-  link.href = `/agent-views/${agentId}/${view}.css`;
-  link.onerror = () => link.remove(); // <view>.css is optional
+  link.href = href;
+  link.onerror = () => link.remove(); // stylesheets are optional
   document.head.appendChild(link);
 }
 
-function loadAgentViewModule(agentId, view) {
-  const key = `${agentId}/${view}`;
-  let promise = modulePromises.get(key);
+function loadModule(url) {
+  let promise = modulePromises.get(url);
   if (!promise) {
-    promise = import(`/agent-views/${agentId}/${view}.js`);
-    modulePromises.set(key, promise);
+    promise = import(url);
+    modulePromises.set(url, promise);
   }
   return promise;
+}
+
+function loadExtensions() {
+  if (!extensionsPromise) {
+    extensionsPromise = fetch('/agent-views/extensions.json')
+      .then(r => (r.ok ? r.json() : {}))
+      .catch(() => ({}));
+  }
+  return extensionsPromise;
 }
 
 /**
@@ -38,9 +52,19 @@ function loadAgentViewModule(agentId, view) {
  * @param {{simulate?: boolean, onClose?: () => void, onAssetGenerated?: () => void}} ctx
  */
 export async function mountAgentView(view, agentId, container, agent, ctx) {
-  loadAgentViewCss(agentId, view);
-  const mod = await loadAgentViewModule(agentId, view);
-  return mod.mount(container, agent, ctx || {});
+  loadCss(`/agent-views/${agentId}/${view}.css`);
+  const [baseModule, extensions] = await Promise.all([
+    loadModule(`/agent-views/${agentId}/${view}.js`),
+    loadExtensions(),
+  ]);
+  let mount = (c, a, x) => baseModule.mount(c, a, x || {});
+  for (const url of extensions[agentId]?.[view] || []) {
+    loadCss(url.replace(/\.js$/, '.css'));
+    const ext = await loadModule(url);
+    const inner = mount;
+    mount = (c, a, x) => ext.mount(c, a, x || {}, inner);
+  }
+  return mount(container, agent, ctx || {});
 }
 
 /**

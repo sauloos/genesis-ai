@@ -11,11 +11,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -35,7 +32,6 @@ public class CopyEvaluator {
     private final AgentProperties agentProperties;
     private final Layer1Service layer1Service;
     private final ObjectMapper objectMapper;
-    private final String systemPrompt;
 
     public CopyEvaluator(ChatClient.Builder chatClientBuilder,
                           AgentProperties agentProperties,
@@ -45,7 +41,6 @@ public class CopyEvaluator {
         this.agentProperties = agentProperties;
         this.layer1Service = layer1Service;
         this.objectMapper = objectMapper;
-        this.systemPrompt = loadSystemPrompt();
     }
 
     public EvaluationResult evaluate(DirectionBrief brief, CopyOutput output) {
@@ -55,7 +50,7 @@ public class CopyEvaluator {
         IllegalStateException lastFailure = null;
         for (int attempt = 1; attempt <= 2; attempt++) {
             String raw = chatClient.prompt()
-                .system(systemPrompt)
+                .system(agentProperties.systemPrompt(AGENT_ID))
                 .user(userPrompt)
                 .options(AnthropicChatOptions.builder()
                     .model(config.getModel())
@@ -134,16 +129,6 @@ public class CopyEvaluator {
             return new EvaluationResult(verdict, summary, revision);
         } catch (Exception e) {
             throw new IllegalStateException("Failed to parse CopyEvaluator output: " + e.getMessage() + "\nRaw: " + raw, e);
-        }
-    }
-
-    private String loadSystemPrompt() {
-        AgentProperties.AgentConfig config = agentProperties.get(AGENT_ID);
-        try {
-            return new ClassPathResource(config.getSystemPrompt())
-                .getContentAsString(StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new IllegalStateException("Cannot load system prompt: " + config.getSystemPrompt(), e);
         }
     }
 }

@@ -16,7 +16,6 @@ import org.springframework.ai.image.ImagePrompt;
 import org.springframework.ai.image.ImageResponse;
 import org.springframework.ai.openai.OpenAiImageOptions;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -24,7 +23,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -52,10 +50,6 @@ public class LogoAgent {
     @Value("${ideogram.api-key:}")
     private String ideogramApiKey;
 
-    private final String systemPromptDalle;
-    private final String systemPromptSvg;
-    private final String systemPromptIdeogram;
-
     public LogoAgent(ChatClient.Builder chatClientBuilder,
                       ImageModel imageModel,
                       AgentProperties agentProperties,
@@ -68,9 +62,6 @@ public class LogoAgent {
         this.objectMapper = objectMapper;
         this.blobStorageService = blobStorageService;
         this.retrievalService = retrievalService;
-        this.systemPromptDalle = loadPrompt(AGENT_ID_DALLE);
-        this.systemPromptSvg = loadPrompt(AGENT_ID_SVG);
-        this.systemPromptIdeogram = loadPrompt(AGENT_ID_IDEOGRAM);
     }
 
     // ── Public interface (defines the SpecialistAgent contract) ───────────────
@@ -91,11 +82,7 @@ public class LogoAgent {
             case SVG_CONCEPT -> AGENT_ID_SVG;
         };
         AgentProperties.AgentConfig config = agentProperties.get(agentId);
-        String systemPrompt = switch (method) {
-            case DALLE -> systemPromptDalle;
-            case IDEOGRAM -> systemPromptIdeogram;
-            case SVG_CONCEPT -> systemPromptSvg;
-        };
+        String systemPrompt = agentProperties.systemPrompt(agentId);
 
         DirectionBrief.BrandContext b = brief.brand();
         List<String> precedent = config.getRag().isEnabled()
@@ -306,16 +293,6 @@ public class LogoAgent {
         }
 
         return sb.toString();
-    }
-
-    private String loadPrompt(String agentId) {
-        AgentProperties.AgentConfig config = agentProperties.get(agentId);
-        try {
-            return new ClassPathResource(config.getSystemPrompt())
-                .getContentAsString(StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new IllegalStateException("Cannot load system prompt: " + config.getSystemPrompt(), e);
-        }
     }
 
     @SuppressWarnings("unchecked")

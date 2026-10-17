@@ -1,5 +1,6 @@
 package ai.genesisbrands.config;
 
+import ai.genesisbrands.agent.config.AgentProperties;
 import ai.genesisbrands.service.TenantConsultantConfig;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
@@ -10,7 +11,8 @@ public class ConsultantConfigConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(TenantConsultantConfig.class)
-    public TenantConsultantConfig configurableTenantConsultantConfig(ConsultantPersonaProperties properties) {
-        return new ConfigurableTenantConsultantConfig(properties);
+    public TenantConsultantConfig configurableTenantConsultantConfig(ConsultantPersonaProperties properties,
+                                                                     AgentProperties agentProperties) {
+        return new ConfigurableTenantConsultantConfig(properties, agentProperties);
     }
 }

@@ -1,5 +1,6 @@
 package ai.genesisbrands.config;
 
+import ai.genesisbrands.agent.config.AgentProperties;
 import ai.genesisbrands.agent.consultant.ConsultantCoreAgent;
 import ai.genesisbrands.controller.ClientConsultantController;
 import ai.genesisbrands.controller.ConsultantController;
@@ -50,10 +51,11 @@ public class ConsultantServiceConfiguration {
         ConversationMessageRepository messageRepo,
         TenantConsultantConfig tenantConfig,
         ObjectProvider<ConsultantToolProvider> toolProvider,
-        AgentCatalogService catalogService
+        AgentCatalogService catalogService,
+        AgentProperties agentProperties
     ) {
         return new ConsultantService(chatModel, retrieval, layer1, subjectProvider, messageRepo, tenantConfig,
-            toolProvider.getIfAvailable(), catalogService);
+            toolProvider.getIfAvailable(), catalogService, agentProperties);
     }
 
     @Bean

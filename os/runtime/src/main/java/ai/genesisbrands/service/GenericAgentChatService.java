@@ -10,17 +10,12 @@ import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Shared multi-turn chat execution path for the generic chatBased core agents (e.g.
@@ -48,7 +43,6 @@ public class GenericAgentChatService {
     private final AgentProperties agentProperties;
     private final AgentRagContextService ragContext;
     private final ConversationMessageRepository messageRepo;
-    private final Map<String, String> systemPromptCache = new ConcurrentHashMap<>();
 
     public GenericAgentChatService(ChatModel chatModel,
                                     AgentProperties agentProperties,
@@ -129,21 +123,9 @@ public class GenericAgentChatService {
     }
 
     private String buildSystemContent(String agentId, String query, String liveSubjectId) {
-        String systemPrompt = loadSystemPrompt(agentId);
+        String systemPrompt = agentProperties.systemPrompt(agentId);
         String context = ragContext.buildContext(query, liveSubjectId);
         return context.isBlank() ? systemPrompt : systemPrompt + "\n\n" + context;
-    }
-
-    private String loadSystemPrompt(String agentId) {
-        return systemPromptCache.computeIfAbsent(agentId, id -> {
-            AgentProperties.AgentConfig config = agentProperties.get(id);
-            try {
-                return new ClassPathResource(config.getSystemPrompt())
-                    .getContentAsString(StandardCharsets.UTF_8);
-            } catch (IOException e) {
-                throw new IllegalStateException("Cannot load system prompt: " + config.getSystemPrompt(), e);
-            }
-        });
     }
 
     private void save(String subjectId, String role, String content, ConversationMessage.Source source) {

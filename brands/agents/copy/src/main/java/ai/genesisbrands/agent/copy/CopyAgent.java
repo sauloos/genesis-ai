@@ -10,11 +10,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -29,8 +26,6 @@ public class CopyAgent {
     private final ObjectMapper objectMapper;
     private final RetrievalService retrievalService;
 
-    private String systemPrompt;
-
     public CopyAgent(ChatClient.Builder chatClientBuilder,
                      AgentProperties agentProperties,
                      ObjectMapper objectMapper,
@@ -39,7 +34,6 @@ public class CopyAgent {
         this.agentProperties = agentProperties;
         this.objectMapper = objectMapper;
         this.retrievalService = retrievalService;
-        this.systemPrompt = loadSystemPrompt();
     }
 
     // ── Public interface (defines the SpecialistAgent contract) ───────────────
@@ -69,7 +63,7 @@ public class CopyAgent {
         IllegalStateException lastFailure = null;
         for (int attempt = 1; attempt <= 2; attempt++) {
             String raw = chatClient.prompt()
-                .system(systemPrompt)
+                .system(agentProperties.systemPrompt(AGENT_ID))
                 .user(userPrompt)
                 .options(AnthropicChatOptions.builder()
                     .model(config.getModel())
@@ -145,17 +139,7 @@ public class CopyAgent {
         return sb.toString();
     }
 
-    // ── Runtime extraction seam: loadSystemPrompt + parse move to AgentRuntime ─
-
-    private String loadSystemPrompt() {
-        AgentProperties.AgentConfig config = agentProperties.get(AGENT_ID);
-        try {
-            return new ClassPathResource(config.getSystemPrompt())
-                .getContentAsString(StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new IllegalStateException("Cannot load system prompt: " + config.getSystemPrompt(), e);
-        }
-    }
+    // ── Runtime extraction seam: parse moves to AgentRuntime ─
 
     @SuppressWarnings("unchecked")
     private CopyOutput parse(String raw, String engagementId, int iteration) {

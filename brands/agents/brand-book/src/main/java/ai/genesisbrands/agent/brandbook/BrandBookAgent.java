@@ -10,11 +10,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -37,8 +34,6 @@ public class BrandBookAgent {
     private final ObjectMapper objectMapper;
     private final RetrievalService retrievalService;
 
-    private final String systemPrompt;
-
     public BrandBookAgent(ChatClient.Builder chatClientBuilder,
                            AgentProperties agentProperties,
                            ObjectMapper objectMapper,
@@ -47,7 +42,6 @@ public class BrandBookAgent {
         this.agentProperties = agentProperties;
         this.objectMapper = objectMapper;
         this.retrievalService = retrievalService;
-        this.systemPrompt = loadSystemPrompt();
     }
 
     public BrandBookOutput execute(BrandBookInput input) {
@@ -77,7 +71,7 @@ public class BrandBookAgent {
         IllegalStateException lastFailure = null;
         for (int attempt = 1; attempt <= 2; attempt++) {
             String raw = chatClient.prompt()
-                .system(systemPrompt)
+                .system(agentProperties.systemPrompt(AGENT_ID))
                 .user(userPrompt)
                 .options(AnthropicChatOptions.builder()
                     .model(config.getModel())
@@ -154,16 +148,6 @@ public class BrandBookAgent {
             return objectMapper.writeValueAsString(value);
         } catch (Exception e) {
             throw new IllegalStateException("Failed to serialize specialist output for prompt assembly", e);
-        }
-    }
-
-    private String loadSystemPrompt() {
-        AgentProperties.AgentConfig config = agentProperties.get(AGENT_ID);
-        try {
-            return new ClassPathResource(config.getSystemPrompt())
-                .getContentAsString(StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new IllegalStateException("Cannot load system prompt: " + config.getSystemPrompt(), e);
         }
     }
 

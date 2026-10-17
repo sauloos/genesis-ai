@@ -11,11 +11,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -31,8 +28,6 @@ public class VisualIdentityAgent {
     private final RetrievalService retrievalService;
     private final ColorSpecificationService colorSpec;
 
-    private String systemPrompt;
-
     public VisualIdentityAgent(ChatClient.Builder chatClientBuilder,
                                 AgentProperties agentProperties,
                                 ObjectMapper objectMapper,
@@ -43,7 +38,6 @@ public class VisualIdentityAgent {
         this.objectMapper = objectMapper;
         this.retrievalService = retrievalService;
         this.colorSpec = colorSpec;
-        this.systemPrompt = loadSystemPrompt();
     }
 
     // ── Public interface (defines the SpecialistAgent contract) ───────────────
@@ -73,7 +67,7 @@ public class VisualIdentityAgent {
         IllegalStateException lastFailure = null;
         for (int attempt = 1; attempt <= 2; attempt++) {
             String raw = chatClient.prompt()
-                .system(systemPrompt)
+                .system(agentProperties.systemPrompt(AGENT_ID))
                 .user(userPrompt)
                 .options(AnthropicChatOptions.builder()
                     .model(config.getModel())
@@ -150,17 +144,7 @@ public class VisualIdentityAgent {
         return sb.toString();
     }
 
-    // ── Runtime extraction seam: loadSystemPrompt + parse move to AgentRuntime ─
-
-    private String loadSystemPrompt() {
-        AgentProperties.AgentConfig config = agentProperties.get(AGENT_ID);
-        try {
-            return new ClassPathResource(config.getSystemPrompt())
-                .getContentAsString(StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new IllegalStateException("Cannot load system prompt: " + config.getSystemPrompt(), e);
-        }
-    }
+    // ── Runtime extraction seam: parse moves to AgentRuntime ─
 
     @SuppressWarnings("unchecked")
     private VisualIdentityOutput parse(String raw, String engagementId, int iteration) {

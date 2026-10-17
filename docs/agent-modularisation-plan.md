@@ -132,8 +132,29 @@ os/agents/<id>/
      mounts the selected agent's view via `mountAgentPlaygroundView`. `?agentId=&session=` deep
      links pass `ctx.sessionId` through.
    - Left for the widget pass: hex in the `dashboardAgents` panel/cards and in `dashboardCatalog`.
-7. **Admin config (#2, #4, #9).** Admin-editable agent settings layered over `agent.yml` and
+7. **Admin config (#2, #4, #9).** DONE. Admin-editable agent settings layered over `agent.yml` and
    app overrides, plus a view extension mechanism (extend a base view, not a same-path copy).
+   - **Three config layers**, lowest first: `agents/<key>/agent.yml`, the app's `application.yml`,
+     then admin overrides in the `agent_settings_overrides` table (one row per config key; null
+     fields inherit). `AgentProperties.get(key)` and `systemPrompt(key)` return the merged result
+     and are called per request, so changes apply without a restart. `AgentSettingsOverrideStore`
+     caches overrides for 10s; other replicas see a change within that.
+   - Agents no longer load prompts in constructors; every agent, evaluator and the generic
+     chat/single-shot services call `agentProperties.systemPrompt(key)`.
+   - **Config keys are not agent ids.** A key belongs to the agent with the longest matching id
+     (`copy` owns `copy` and `copy-evaluator`; `logo` owns `logo-dalle`, `logo-svg`, …).
+   - Admin API: `GET /api/admin/agents/{id}/settings`, `PUT|DELETE .../settings/{key}`. Editable:
+     model, max tokens, max iterations, knowledge retrieval on/off, top-k and the system prompt.
+     The agents admin page has a Settings panel per card.
+   - Consultant's config moved from `genesis.consultant.system-prompt` to
+     `genesis.agents.consultant.*` with its own `agent.yml`; `ConsultantService` now honours
+     model, max tokens and RAG settings from it.
+   - **View extensions:** an `AgentViewExtension` bean (agent-sdk) names an agent, a view and a
+     module. `GET /agent-views/extensions.json` publishes them; `agent-loader.js` chains each
+     extension's `mount(container, agent, ctx, base)` over the base view. Brands' Consultant live
+     view is now `consultant/ext/brands-live.js` extending the core view.
+     `AgentViewPathsTest` fails the build if any `static/agent-views/**` path exists twice on the
+     classpath.
 
 Every step: build, run tests, smoke-test locally, deploy both apps, check production, commit.
 

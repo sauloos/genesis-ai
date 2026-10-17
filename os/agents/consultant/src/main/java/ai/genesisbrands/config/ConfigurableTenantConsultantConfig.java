@@ -1,17 +1,16 @@
 package ai.genesisbrands.config;
 
+import ai.genesisbrands.agent.config.AgentProperties;
 import ai.genesisbrands.service.TenantConsultantConfig;
-import org.springframework.core.io.ClassPathResource;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
  * Default tenant persona, driven entirely by configuration — onboarding a new tenant
  * means dropping a system-prompt markdown file into its resources and setting a few
- * properties under {@code genesis.consultant.*}, not writing a Java class.
+ * properties under {@code genesis.agents.consultant.*} and {@code genesis.consultant.*},
+ * not writing a Java class. The prompt is read per request, so an admin override applies
+ * without a restart.
  * <p>
  * A tenant with more advanced needs (e.g. an LLM-based scope classifier) can still
  * supply its own {@link TenantConsultantConfig} bean, which takes priority — see
@@ -19,17 +18,20 @@ import java.util.List;
  */
 public class ConfigurableTenantConsultantConfig implements TenantConsultantConfig {
 
-    private final ConsultantPersonaProperties properties;
-    private final String systemPrompt;
+    static final String AGENT_ID = "consultant";
 
-    public ConfigurableTenantConsultantConfig(ConsultantPersonaProperties properties) {
+    private final ConsultantPersonaProperties properties;
+    private final AgentProperties agentProperties;
+
+    public ConfigurableTenantConsultantConfig(ConsultantPersonaProperties properties,
+                                              AgentProperties agentProperties) {
         this.properties = properties;
-        this.systemPrompt = loadSystemPrompt(properties.getSystemPrompt());
+        this.agentProperties = agentProperties;
     }
 
     @Override
     public String systemPrompt() {
-        return systemPrompt;
+        return agentProperties.systemPrompt(AGENT_ID);
     }
 
     @Override
@@ -40,13 +42,5 @@ public class ConfigurableTenantConsultantConfig implements TenantConsultantConfi
     @Override
     public String outOfScopeResponse() {
         return properties.getOutOfScopeResponse();
-    }
-
-    private String loadSystemPrompt(String classpathPath) {
-        try {
-            return new ClassPathResource(classpathPath).getContentAsString(StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new UncheckedIOException("Could not load consultant system prompt from " + classpathPath, e);
-        }
     }
 }

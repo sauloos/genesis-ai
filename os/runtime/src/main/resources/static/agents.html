@@ -185,6 +185,45 @@
   }
   .toggle-item input { accent-color: #6fe0a5; width: 15px; height: 15px; cursor: pointer; }
 
+  .settings-toggle {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--theme-btn-color);
+    background: none;
+    border: 1px solid var(--theme-btn-border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    cursor: pointer;
+  }
+  .settings-toggle:hover { color: var(--theme-btn-color-hover); border-color: var(--theme-btn-border-hover); }
+  .settings-toggle:focus-visible, .settings-group button:focus-visible { outline: 2px solid #6fe0a5; outline-offset: 2px; }
+
+  .settings { display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--theme-card-border); }
+  .settings.open { display: flex; flex-direction: column; gap: 18px; }
+  .settings-note { font-size: 12px; color: var(--theme-text-muted); line-height: 1.5; }
+  .settings-group { display: flex; flex-direction: column; gap: 10px; }
+  .settings-group-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .settings-key { font-size: 13px; font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .settings-file { font-size: 11px; color: var(--theme-text-label); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .settings-field { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--theme-text-muted); }
+  .settings-field input, .settings-field select, .settings-field textarea {
+    font: inherit; font-size: 13px; color: var(--theme-text-primary);
+    background: rgba(0,0,0,0.25); border: 1px solid var(--theme-card-border); border-radius: 6px; padding: 6px 8px;
+  }
+  .settings-field textarea {
+    min-height: 220px; resize: vertical; line-height: 1.5;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+  }
+  .settings-field input::placeholder { color: var(--theme-text-label); }
+  .settings-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .settings-actions button {
+    font-size: 12px; border-radius: 6px; padding: 6px 14px; cursor: pointer;
+    background: none; color: var(--theme-btn-color-hover); border: 1px solid var(--theme-btn-border-hover);
+  }
+  .settings-actions button.primary { background: rgba(111,224,165,0.15); color: #6fe0a5; border-color: rgba(111,224,165,0.35); }
+  .settings-actions .hint { font-size: 11px; color: var(--theme-text-label); }
+
   .empty {
     text-align: center;
     padding: 48px 24px;
@@ -261,7 +300,7 @@
   <div class="hero-logo" role="img" aria-label="Genesis"></div>
   <div class="hero-label">Brain Engine</div>
   <h1>Agents</h1>
-  <p class="hero-sub">Registered specialist agents and their live-view / Playground availability.</p>
+  <p class="hero-sub">Registered agents, where they're available, and their model and prompt settings.</p>
 </div>
 
 <div class="main">
@@ -304,6 +343,7 @@ function renderAgents(agents) {
         <span class="agent-name">${a.displayName}</span>
         <span class="agent-id">${a.agentId}</span>
         <span class="badge ${a.requiresQuestionnaire ? 'badge-on' : ''}">${a.requiresQuestionnaire ? 'Requires questionnaire' : 'No questionnaire'}</span>
+        <button type="button" class="settings-toggle" aria-expanded="false">Settings</button>
       </div>
       <div class="agent-desc">${a.description || ''}</div>
       ${a.customOptions && a.customOptions.length ? `
@@ -337,6 +377,7 @@ function renderAgents(agents) {
           </label>
         ` : ''}
       </div>
+      <div class="settings"></div>
     </div>
   `).join('');
 
@@ -356,7 +397,117 @@ function renderAgents(agents) {
         }
       });
     });
+    const toggle = card.querySelector('.settings-toggle');
+    const panel = card.querySelector('.settings');
+    toggle.addEventListener('click', async () => {
+      const open = panel.classList.toggle('open');
+      toggle.setAttribute('aria-expanded', String(open));
+      if (open && !panel.dataset.loaded) await loadSettings(agentId, panel);
+    });
   });
+}
+
+// ── Runtime settings: model, tokens, iterations, RAG, prompt — per config key ──
+// Each field shows the deploy-time default (agent.yml + application.yml) as its
+// placeholder; a filled field is an admin override, an empty one inherits.
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+async function loadSettings(agentId, panel) {
+  panel.innerHTML = '<div class="settings-note">Loading settings…</div>';
+  try {
+    const groups = await apiFetch(`/api/admin/agents/${agentId}/settings`);
+    panel.dataset.loaded = '1';
+    if (!groups.length) {
+      panel.innerHTML = '<div class="settings-note">This agent has no configurable model settings.</div>';
+      return;
+    }
+    panel.innerHTML = `<div class="settings-note">Leave a field empty to use the default shown in grey. Changes apply to the next run, no restart needed.</div>`
+      + groups.map(settingsGroupHtml).join('');
+    panel.querySelectorAll('.settings-group').forEach(el => {
+      const group = groups.find(g => g.key === el.dataset.key);
+      wireSettingsGroup(agentId, el, group, panel);
+    });
+  } catch (e) {
+    panel.innerHTML = `<div class="settings-note">Couldn't load settings: ${esc(e.message)}</div>`;
+  }
+}
+
+function settingsGroupHtml(g) {
+  const d = g.defaults, o = g.override || {};
+  const id = s => `set-${g.key}-${s}`;
+  const rag = o.ragEnabled == null ? '' : String(o.ragEnabled);
+  return `
+    <div class="settings-group" data-key="${esc(g.key)}">
+      <div class="settings-group-head">
+        <span class="settings-key">${esc(g.key)}</span>
+        <span class="settings-file">${esc(g.promptFile)}</span>
+        ${g.override ? `<span class="badge badge-on">Overridden${g.updatedAt ? ' · ' + new Date(g.updatedAt).toLocaleString() : ''}</span>` : ''}
+      </div>
+      <div class="settings-grid">
+        <label class="settings-field" for="${id('model')}">Model
+          <input id="${id('model')}" data-f="model" value="${esc(o.model)}" placeholder="${esc(d.model)}"></label>
+        <label class="settings-field" for="${id('maxTokens')}">Max tokens
+          <input id="${id('maxTokens')}" data-f="maxTokens" type="number" min="1" value="${esc(o.maxTokens)}" placeholder="${esc(d.maxTokens)}"></label>
+        <label class="settings-field" for="${id('maxIterations')}">Max iterations
+          <input id="${id('maxIterations')}" data-f="maxIterations" type="number" min="1" max="10" value="${esc(o.maxIterations)}" placeholder="${esc(d.maxIterations)}"></label>
+        <label class="settings-field" for="${id('ragEnabled')}">Knowledge retrieval
+          <select id="${id('ragEnabled')}" data-f="ragEnabled">
+            <option value="" ${rag === '' ? 'selected' : ''}>Default (${d.ragEnabled ? 'on' : 'off'})</option>
+            <option value="true" ${rag === 'true' ? 'selected' : ''}>On</option>
+            <option value="false" ${rag === 'false' ? 'selected' : ''}>Off</option>
+          </select></label>
+        <label class="settings-field" for="${id('ragTopK')}">Retrieved passages
+          <input id="${id('ragTopK')}" data-f="ragTopK" type="number" min="0" max="50" value="${esc(o.ragTopK)}" placeholder="${esc(d.ragTopK)}"></label>
+      </div>
+      <label class="settings-field" for="${id('systemPrompt')}">System prompt
+        <textarea id="${id('systemPrompt')}" data-f="systemPrompt" spellcheck="false">${esc(o.systemPrompt ?? d.systemPrompt)}</textarea></label>
+      <div class="settings-actions">
+        <button type="button" class="primary" data-act="save">Save</button>
+        <button type="button" data-act="reset" ${g.override ? '' : 'disabled'}>Reset to defaults</button>
+        <span class="hint">${g.override ? '' : 'Using defaults'}</span>
+      </div>
+    </div>`;
+}
+
+function wireSettingsGroup(agentId, el, group, panel) {
+  const val = f => el.querySelector(`[data-f="${f}"]`).value.trim();
+  const num = f => val(f) === '' ? null : Number(val(f));
+  el.querySelector('[data-act="save"]').addEventListener('click', async () => {
+    const prompt = el.querySelector('[data-f="systemPrompt"]').value;
+    const body = {
+      model: val('model') || null,
+      maxTokens: num('maxTokens'),
+      maxIterations: num('maxIterations'),
+      ragEnabled: val('ragEnabled') === '' ? null : val('ragEnabled') === 'true',
+      ragTopK: num('ragTopK'),
+      // An unchanged prompt is the default, not an override.
+      systemPrompt: prompt.trim() === (group.defaults.systemPrompt || '').trim() ? null : prompt
+    };
+    try {
+      await apiFetch(`/api/admin/agents/${agentId}/settings/${group.key}`, { method: 'PUT', body: JSON.stringify(body) });
+      toast(`Saved ${group.key}.`);
+      await loadSettings(agentId, panel);
+    } catch (e) {
+      toast(errorText(e), false);
+    }
+  });
+  el.querySelector('[data-act="reset"]').addEventListener('click', async () => {
+    if (!confirm(`Reset ${group.key} to its defaults? The admin overrides, including any edited prompt, will be removed.`)) return;
+    try {
+      await apiFetch(`/api/admin/agents/${agentId}/settings/${group.key}`, { method: 'DELETE' });
+      toast(`Reset ${group.key} to defaults.`);
+      await loadSettings(agentId, panel);
+    } catch (e) {
+      toast(errorText(e), false);
+    }
+  });
+}
+
+function errorText(e) {
+  try { return JSON.parse(e.message).message || e.message; } catch { return e.message; }
 }
 
 async function load() {

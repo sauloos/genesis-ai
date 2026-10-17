@@ -3,13 +3,7 @@ package ai.genesisbrands.service;
 import ai.genesisbrands.agent.config.AgentProperties;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
-
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Shared single-shot ("CREATE") execution path for every generic core agent that isn't
@@ -24,7 +18,6 @@ public class GenericSingleShotAgentService {
     private final ChatClient chatClient;
     private final AgentProperties agentProperties;
     private final AgentRagContextService ragContext;
-    private final Map<String, String> systemPromptCache = new ConcurrentHashMap<>();
 
     public GenericSingleShotAgentService(ChatClient.Builder chatClientBuilder,
                                           AgentProperties agentProperties,
@@ -40,7 +33,7 @@ public class GenericSingleShotAgentService {
      */
     public String generate(String agentId, String input, String liveSubjectId) {
         AgentProperties.AgentConfig config = agentProperties.get(agentId);
-        String systemPrompt = loadSystemPrompt(agentId, config);
+        String systemPrompt = agentProperties.systemPrompt(agentId);
 
         String context = agentProperties.get(agentId).getRag().isEnabled()
             ? ragContext.buildContext(input, liveSubjectId)
@@ -59,16 +52,5 @@ public class GenericSingleShotAgentService {
                 .build())
             .call()
             .content();
-    }
-
-    private String loadSystemPrompt(String agentId, AgentProperties.AgentConfig config) {
-        return systemPromptCache.computeIfAbsent(agentId, id -> {
-            try {
-                return new ClassPathResource(config.getSystemPrompt())
-                    .getContentAsString(StandardCharsets.UTF_8);
-            } catch (IOException e) {
-                throw new IllegalStateException("Cannot load system prompt: " + config.getSystemPrompt(), e);
-            }
-        });
     }
 }

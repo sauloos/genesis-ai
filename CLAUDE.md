@@ -150,11 +150,20 @@ beans are already auto-collected via Spring component scan, same as `WidgetDescr
 - **Its full definition** — default config in its own `agents/<id>/agent.yml` (loaded as the
   lowest-priority source under `genesis.agents.<id>.*`; an app's `application.yml` overrides only
   what it changes), system prompt at `agents/<id>/system.md` (by convention), and logic.
+  Admins can override model, max tokens, max iterations, RAG and the system prompt per config
+  key at runtime (`agent_settings_overrides`, agents admin page) — the top layer. Always read
+  config via `AgentProperties.get(key)` / `systemPrompt(key)` per request, never cache a prompt
+  in a field. Config keys are not agent ids: a key belongs to the agent with the longest
+  matching id (`copy` owns `copy-evaluator`).
 - **Its metadata** — `agentId`, `displayName`, `description`, `icon`.
 - **Its own screens** — a Playground view and a Live Dashboard view, each a self-contained
   client-side module resolved by convention from `agentId` (`static/agent-views/<agentId>/
   playground.js` and `.../live.js`), exactly like a widget's `widgetType` resolves to
   `/widgets/<type>/widget.js` via `loader.js`. Resolution is convention-based — no registry.
+  **Extend a view, never copy it to the same path.** A module that customises another module's
+  view registers an `AgentViewExtension` bean (agentId, view, module); `agent-loader.js` chains
+  its `mount(container, agent, ctx, base)` over the base view. `AgentViewPathsTest` fails the
+  build if a `static/agent-views/**` path exists twice on the classpath.
 
 **An agent's module placement follows what it is, not where it's wired in** — same rule as
 widgets, and already reflected in the codebase today: **Consultant is a Genesis OS (core)
@@ -276,7 +285,7 @@ every agent has its own Playground view module. `playground.html` is pure chrome
 `agent-views/<id>/playground.js`. The 5 SLOT agents share `brands/app`
 `agent-views/_shared/slotPlayground.js` and supply only their output renderers. Agent-view CSS
 uses only the `--av-*` tokens from `_shared/tokens.css`, which each host maps to its theme.
-Admin-editable config over `agent.yml` (plan step 7) is still pending. This section is the
+Admin-editable config over `agent.yml` and view extensions (plan step 7) are done. This section is the
 target state every agent, current or future, must be checked against.
 
 ---
@@ -293,8 +302,9 @@ on an agent. `ModuleOrigin.isCore()` = "loaded from an os library module". All O
 (summarizer, support-faq, compliance-qa, writer, rfp-response, research-synthesis, consultant)
 are modules. Consultant's module carries its service, admin + customer controllers and a core
 live view (`consultantChat.js` base); a tenant extends it through the subject/tool/resolver
-SPIs, `genesis.consultant.*` config and a thin `live.js` that calls `mountConsultantChat()`
-with its own copy. Controllers that must only be registered by a conditional `@Bean` are marked
+SPIs, `genesis.consultant.*` persona config, `genesis.agents.consultant.*` model/prompt config,
+and an `AgentViewExtension` (`consultant/ext/brands-live.js`) that passes its own copy to the
+base view. Controllers that must only be registered by a conditional `@Bean` are marked
 `@RegisteredByConfiguration`, which every app excludes from component scan.
 `brands/` = Genesis Brands — `brands/app` (the genesis-brands bootJar: Engagement/Brand,
 orchestration, Consultant extension, `agent-views/_shared/regenerate.js`) and `brands/agents/<id>`
