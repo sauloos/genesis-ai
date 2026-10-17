@@ -5,8 +5,10 @@ import ai.genesisbrands.controller.ClientConsultantController;
 import ai.genesisbrands.controller.ConsultantController;
 import ai.genesisbrands.security.ClientAuthHelper;
 import ai.genesisbrands.service.ClientOwnSubjectResolver;
+import ai.genesisbrands.repository.ClientUserRepository;
 import ai.genesisbrands.repository.ConversationMessageRepository;
 import ai.genesisbrands.service.AgentCatalogService;
+import ai.genesisbrands.service.ConsultantConnectorChatProvider;
 import ai.genesisbrands.service.ConsultantService;
 import ai.genesisbrands.service.ConsultantSubjectProvider;
 import ai.genesisbrands.service.ConsultantToolProvider;
@@ -73,6 +75,16 @@ public class ConsultantServiceConfiguration {
         AgentCatalogService catalogService
     ) {
         return new ClientConsultantController(consultantService, clientAuthHelper, subjectResolver, catalogService);
+    }
+
+    @Bean
+    @ConditionalOnBean({ ConsultantSubjectProvider.class, ClientOwnSubjectResolver.class })
+    public ConsultantConnectorChatProvider consultantConnectorChatProvider(
+        ConsultantService consultantService,
+        ClientOwnSubjectResolver subjectResolver,
+        ClientUserRepository clientUsers
+    ) {
+        return new ConsultantConnectorChatProvider(consultantService, subjectResolver, clientUsers);
     }
 
     @Bean

@@ -42,9 +42,13 @@ public class ApiKeyFilter extends OncePerRequestFilter {
         // the Stripe-Signature header against the mode-specific webhook secret.
         boolean isEngagementPreview = path.startsWith("/api/engagements/") && path.contains("/preview/");
         boolean isPaymentWebhook = path.startsWith("/api/public/payments/webhook/");
+        // /api/connect/** is the external connector surface (MCP + REST) — it authenticates
+        // with per-customer / platform connector keys (ConnectorAuthFilter), never this
+        // shared key, which ships in public JS.
         if (!path.startsWith("/api/") || path.equals("/api/waitlist") || path.startsWith("/api/assets/")
                 || path.startsWith("/api/admin/") || path.equals("/api/themes/active/styles.css")
-                || path.equals("/api/themes/active/logo") || isEngagementPreview || isPaymentWebhook) {
+                || path.equals("/api/themes/active/logo") || isEngagementPreview || isPaymentWebhook
+                || path.startsWith("/api/connect/")) {
             chain.doFilter(req, res);
             return;
         }

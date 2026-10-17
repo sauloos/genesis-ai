@@ -33,7 +33,10 @@ public class AgentCatalogConfigSchemaFixer {
             jdbcTemplate.execute(
                 "ALTER TABLE agent_catalog_configs ADD COLUMN IF NOT EXISTS tools_enabled boolean NOT NULL DEFAULT false"
             );
-            log.info("Verified agent_catalog_configs.tools_enabled column exists");
+            jdbcTemplate.execute(
+                "ALTER TABLE agent_catalog_configs ADD COLUMN IF NOT EXISTS available_for_connectors boolean NOT NULL DEFAULT false"
+            );
+            log.info("Verified agent_catalog_configs.tools_enabled/available_for_connectors columns exist");
         } catch (Exception ex) {
             log.warn("Could not add/verify agent_catalog_configs.tools_enabled column", ex);
         }

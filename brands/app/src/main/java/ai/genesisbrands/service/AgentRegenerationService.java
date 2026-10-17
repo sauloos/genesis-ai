@@ -76,6 +76,11 @@ public class AgentRegenerationService {
     private final BlobStorageService blobStorageService;
     private final ObjectMapper objectMapper;
 
+    /** True for the SLOT agents whose output this service can regenerate behind an approval gate. */
+    public boolean supportsRegeneration(String agentId) {
+        return REGENERATABLE_AGENT_IDS.contains(agentId);
+    }
+
     @Value("${genesis.regenerate.max-per-slot:3}")
     private int maxRegeneratesPerSlot;
 

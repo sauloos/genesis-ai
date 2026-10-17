@@ -33,6 +33,11 @@ public class AgentCatalogConfig {
     @Column(name = "tools_enabled", nullable = false)
     private boolean toolsEnabled = false;
 
+    /** Opt-in exposure through the external Agent connectors (MCP + REST). Off by default —
+     *  unlike live view, a missing row never means "exposed". */
+    @Column(name = "available_for_connectors", nullable = false)
+    private boolean availableForConnectors = false;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 

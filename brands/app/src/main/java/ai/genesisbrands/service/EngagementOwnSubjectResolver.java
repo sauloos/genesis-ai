@@ -26,11 +26,15 @@ public class EngagementOwnSubjectResolver implements ClientOwnSubjectResolver {
 
     @Override
     public Optional<String> resolveOwnSubjectId(ClientUser client) {
-        return engagementRepo.findAllByClientUserIdOrderByCreatedAtDesc(client.getId()).stream()
+        return findOwnEngagement(client.getId()).map(e -> ENGAGEMENT_PREFIX + e.getId());
+    }
+
+    /** The client's latest paid, finished engagement with a chosen direction — their "own" brand. */
+    public Optional<Engagement> findOwnEngagement(String clientUserId) {
+        return engagementRepo.findAllByClientUserIdOrderByCreatedAtDesc(clientUserId).stream()
             .filter(e -> e.getStatus() == Engagement.Status.DONE
                 && e.getPaymentStatus() == Engagement.PaymentStatus.PAID
                 && e.getChosenDirection() != null)
-            .findFirst()
-            .map(e -> ENGAGEMENT_PREFIX + e.getId());
+            .findFirst();
     }
 }

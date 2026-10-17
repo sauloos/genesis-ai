@@ -4,6 +4,7 @@ include 'shared-domain'
 // Genesis OS aggregator — agent SDK, runtime, one module per OS agent, and the OS app.
 include 'os:agent-sdk'
 include 'os:runtime'
+include 'os:connectors'
 include 'os:app'
 
 // Each directory under os/agents/ is its own agent module — dropping in a new folder (with a

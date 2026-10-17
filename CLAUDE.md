@@ -339,6 +339,30 @@ Naming is fixed: "Consultant connector" and "Brain connector" — never "ask the
 - **Long-running agents need job semantics.** SLOT agents (multi-minute, approval-gated)
   are exposed as start / poll status / approve-or-reject, not a single blocking call.
 
+**Built (2026-10-17) in `os/connectors`**, adopted by both apps:
+- **Credentials:** `ConnectorKey` bearer keys, stored hashed.
+  - `gbc_…` is CLIENT, bound to one client user. Clients self-issue them at
+    `/api/client/connector-keys`; admins can also issue them at `/api/admin/connector-keys`.
+  - `gbp_…` is PLATFORM and admin-issued only.
+  - `ConnectorAuthFilter` guards `/api/connect/**` and `/mcp/**`. The public `X-Api-Key` never
+    counts.
+- **Endpoints:**
+  - REST: `/api/connect/agents`, `/api/connect/brain/search` and `/api/connect/platform/operations`.
+  - MCP (stateless JSON-RPC over POST): `/mcp/agents`, `/mcp/agents/{agentId}`, `/mcp/brain` and
+    `/mcp/platform`.
+- **Agent modes:**
+  - JOB through the `ConnectorJobProvider` SPI.
+  - CHAT through the `ConnectorChatProvider` SPI, or through generic chat.
+  - GENERATE for generic single-shot agents.
+  - An agent that needs an engagement and has no provider is not connectable.
+  - The gate is `requireAvailableForConnectors`: the per-agent `availableForConnectors` flag
+    (default off) AND live-view.
+- **Brain layers:** set by `genesis.connectors.brain.layers`, default `layer1`. Layer 2 holds
+  other clients' data, so it stays off until anonymisation exists.
+- **Platform operations:** auto-collected from the handler mappings and filtered by
+  `PlatformOperationFilter` beans (the tenant SPI). They run via an admin loopback call, and
+  every call is audited in `platform_audit_log`.
+
 ---
 
 ## Key documents

@@ -326,6 +326,10 @@ function renderAgents(agents) {
             A/B compare enabled
           </label>
         ` : ''}
+        <label class="toggle-item" title="Expose this agent to customers' own apps and models through the Agent connectors (MCP + REST). Only applies while it is also available in the live dashboard.">
+          <input type="checkbox" data-field="availableForConnectors" ${a.availableForConnectors ? 'checked' : ''}>
+          Available to connectors (MCP + REST)
+        </label>
         ${a.supportsToolUse ? `
           <label class="toggle-item">
             <input type="checkbox" data-field="toolsEnabled" ${a.toolsEnabled ? 'checked' : ''}>

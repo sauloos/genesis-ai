@@ -1,0 +1,20 @@
+// GenesisOS external connectors — one core gateway that offers every adopted capability as
+// both MCP and REST: Agent connectors (generated from the agent catalog), the Brain connector
+// (Layer 1/2 retrieval) and the Platform connector (admin operations). An app adopts it like
+// an agent: by declaring this dependency. Tenants extend it through the SDK SPIs
+// (ConnectorJobProvider, ConnectorChatProvider) and PlatformOperationFilter.
+configurations {
+    compileOnly { extendsFrom annotationProcessor }
+}
+
+dependencies {
+    implementation project(':os:agent-sdk')
+    compileOnly project(':os:runtime')
+    compileOnly 'org.springframework.boot:spring-boot-starter-web'
+    compileOnly 'org.springframework.boot:spring-boot-starter-data-jpa'
+    compileOnly 'org.springframework.ai:spring-ai-model'
+    compileOnly 'io.projectreactor:reactor-core'
+    compileOnly 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+}

@@ -65,6 +65,24 @@ public class AgentCatalogService {
         }
     }
 
+    /**
+     * True only for an agent that is live-available AND that an admin has explicitly opened to
+     * the external Agent connectors. Connectors are a customer-facing surface, so live view
+     * stays the outer boundary; the connector flag is an additional opt-in (default off).
+     */
+    public boolean isAvailableForConnectors(String agentId) {
+        return isAvailableForLiveView(agentId) && configRepository.findById(agentId)
+            .map(AgentCatalogConfig::isAvailableForConnectors)
+            .orElse(false);
+    }
+
+    /** Connector counterpart of {@link #requireAvailableForLiveView} — 404 when not exposed. */
+    public void requireAvailableForConnectors(String agentId) {
+        if (!isAvailableForConnectors(agentId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Agent not available: " + agentId);
+        }
+    }
+
     /** Cheap standalone check for a single agent's toolsEnabled flag — used by ConsultantService
      *  on every chat turn, so it skips building the full catalog via toEntry(). */
     public boolean isToolsEnabled(String agentId) {
@@ -96,6 +114,7 @@ public class AgentCatalogService {
         if (req.availableForPlayground() != null) config.setAvailableForPlayground(req.availableForPlayground());
         if (req.abCompareEnabled() != null) config.setAbCompareEnabled(req.abCompareEnabled());
         if (req.toolsEnabled() != null) config.setToolsEnabled(req.toolsEnabled());
+        if (req.availableForConnectors() != null) config.setAvailableForConnectors(req.availableForConnectors());
         config.setUpdatedAt(Instant.now());
 
         configRepository.save(config);
@@ -135,7 +154,8 @@ public class AgentCatalogService {
             agent.supportsToolUse(),
             config.map(AgentCatalogConfig::isToolsEnabled).orElse(false),
             agent.requiresEngagementContext(),
-            agent.hasPlaygroundView()
+            agent.hasPlaygroundView(),
+            config.map(AgentCatalogConfig::isAvailableForConnectors).orElse(false)
         );
     }
 
@@ -146,11 +166,13 @@ public class AgentCatalogService {
         boolean availableForLiveView, boolean availableForPlayground, boolean abCompareEnabled,
         boolean chatBased, boolean hasLiveView,
         boolean supportsToolUse, boolean toolsEnabled,
-        boolean requiresEngagementContext, boolean hasPlaygroundView
+        boolean requiresEngagementContext, boolean hasPlaygroundView,
+        boolean availableForConnectors
     ) {}
 
     public record UpdateAgentConfigRequest(
-        Boolean availableForLiveView, Boolean availableForPlayground, Boolean abCompareEnabled, Boolean toolsEnabled
+        Boolean availableForLiveView, Boolean availableForPlayground, Boolean abCompareEnabled, Boolean toolsEnabled,
+        Boolean availableForConnectors
     ) {}
 
     public record PublicAgentEntry(

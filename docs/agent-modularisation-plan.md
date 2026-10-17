@@ -91,7 +91,7 @@ os/agents/<id>/
    extension is three SPI beans + a 10-line view that stay in `brands/app`. **Kept:** Genesis
    Brands still adopts the 6 OS utility agents (behaviour unchanged; dropping them is a one-line
    Gradle change per agent — product decision for the user).
-5. **Connector gateway**, in `os/runtime` (or `os/connectors`):
+5. **Connector gateway.** DONE. In `os/runtime` (or `os/connectors`):
    - **Agent connectors:** MCP tools and REST endpoints generated from `AgentCatalogService`
      for each adopted, connector-enabled agent. Customer API keys/OAuth resolve to a
      tenant + client server-side. `requireAvailableForLiveView` plus a new connector flag.
@@ -99,6 +99,24 @@ os/agents/<id>/
    - **Brain connector:** Layer 1 + Layer 2 retrieval only.
    - **Platform connector:** admin operations collected from the admin APIs plus an SPI for
      tenant-only operations, with its own admin credentials and audit trail.
+   *Done as:* a new `os/connectors` module that both apps adopt. Connector keys are hashed
+   bearer keys: `gbc_…` (CLIENT, bound to one client user, which the client can self-issue at
+   `/api/client/connector-keys`) and `gbp_…` (PLATFORM, admin-issued at
+   `/api/admin/connector-keys`). REST is under `/api/connect/{agents,brain,platform}` and MCP
+   (stateless JSON-RPC over POST) under `/mcp/{agents,agents/<id>,brain,platform}`.
+   - **Agent modes:** JOB through the `ConnectorJobProvider` SPI (Genesis Brands:
+     `EngagementConnectorJobProvider` → approval-gated regeneration); CHAT through
+     `ConnectorChatProvider` (Consultant) or generic chat; GENERATE for generic single-shot
+     agents.
+   - **Gating:** the new `availableForConnectors` flag (agents admin, default off) AND live-view.
+   - **Brain:** layers come from `genesis.connectors.brain.layers`, default `layer1` only.
+     Layer 2 is cross-client and stays off until GDPR anonymisation exists.
+   - **Platform:** operations are collected from the handler mappings and narrowed by
+     `PlatformOperationFilter` beans (the tenant SPI). They are invoked via an admin loopback
+     call, and every call is written to `platform_audit_log`.
+   - **Deferred:** OAuth (API keys only for now) and a key-management UI.
+   - Also fixed: library modules weren't compiled with `-parameters`, which broke unnamed
+     `@PathVariable`s in module controllers (now set for all modules in the root build).
 6. **Theme + views (#3, #6, #7).** Replace hardcoded hex with theme tokens in brands views and
    `_shared`, and add the missing playground views.
 7. **Admin config (#2, #4, #9).** Admin-editable agent settings layered over `agent.yml` and

@@ -148,6 +148,47 @@ public class RetrievalService {
         }
     }
 
+    /**
+     * Structured similarity search restricted to the given {@code layer} payload values
+     * (e.g. "layer1", "layer2") — the Brain connector's retrieval primitive. Unlike
+     * {@link #retrieve}, failures propagate: an external caller should see an error, not an
+     * empty result that looks like "the brain knows nothing".
+     */
+    @SuppressWarnings("unchecked")
+    public List<KnowledgeHit> search(String query, int topK, List<String> layers) {
+        if (layers == null || layers.isEmpty()) return List.of();
+        Map<String, Object> body = Map.of(
+            "vector", toList(embeddingModel.embed(query)),
+            "limit", topK,
+            "score_threshold", SIMILARITY_THRESHOLD,
+            "with_payload", true,
+            "filter", Map.of("should", layers.stream()
+                .map(l -> Map.of("key", "layer", "match", Map.of("value", l)))
+                .toList())
+        );
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        if (qdrantApiKey != null && !qdrantApiKey.isBlank()) headers.set("api-key", qdrantApiKey);
+
+        String url = qdrantUrl.replaceAll("/$", "") + "/collections/" + collectionName + "/points/search";
+        Map<String, Object> response = restTemplate.postForObject(url, new HttpEntity<>(body, headers), Map.class);
+        if (response == null || response.get("result") == null) return List.of();
+
+        return ((List<Map<String, Object>>) response.get("result")).stream()
+            .filter(point -> point.get("payload") instanceof Map)
+            .map(point -> {
+                Map<String, Object> p = (Map<String, Object>) point.get("payload");
+                double score = point.get("score") instanceof Number n ? n.doubleValue() : 0;
+                return new KnowledgeHit(str(p, "text"), str(p, "title"), str(p, "source_url"),
+                    str(p, "source_type"), str(p, "layer"), score);
+            })
+            .filter(h -> !h.text().isBlank())
+            .toList();
+    }
+
+    public record KnowledgeHit(String text, String title, String sourceUrl, String sourceType,
+                               String layer, double score) {}
+
     private static String str(Map<String, Object> map, String key) {
         Object v = map.get(key);
         return v != null ? v.toString() : "";

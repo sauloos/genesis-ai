@@ -21,6 +21,13 @@ configure(javaProjects) {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    // The Boot plugin adds -parameters only to modules that apply it; library modules
+    // (runtime, connectors, agents) declare unnamed @PathVariable/@RequestParam args too,
+    // which Spring MVC can only bind when parameter names are compiled in.
+    tasks.withType(JavaCompile).configureEach {
+        options.compilerArgs << '-parameters'
+    }
+
     repositories {
         mavenCentral()
         maven { url 'https://repo.spring.io/milestone' }
