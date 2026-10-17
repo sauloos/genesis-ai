@@ -158,7 +158,7 @@ beans are already auto-collected via Spring component scan, same as `WidgetDescr
 
 **An agent's module placement follows what it is, not where it's wired in** — same rule as
 widgets, and already reflected in the codebase today: **Consultant is a Genesis OS (core)
-agent** (`os/runtime/.../agent/consultant/ConsultantCoreAgent.java`) because every
+agent** (its own module, `os/agents/consultant`) because every
 tenant gets a consultant — it's platform-level, sector-agnostic capability. **Copy, Visual
 Identity, Logo, Playbook, and Brand Book are Genesis Brands (tenant) agents** (`genesis-brands/
 .../agent/{copy,visualidentity,logo,playbook,brandbook}/...CoreAgent.java`) because they are
@@ -286,8 +286,13 @@ brain-engine-core), `os/agents/<id>` (one module per OS agent, auto-included by 
 `os/app` (the genesis-os bootJar). Each agent module is self-contained: `<Id>CoreAgent` +
 `agents/<id>/agent.yml` + `agents/<id>/system.md` + `static/agent-views/<id>/`. **Adoption =
 Gradle dependency**: an app has exactly the agent modules it declares. The runtime never depends
-on an agent. `ModuleOrigin.isCore()` = "loaded from an os library module". Migration in progress:
-Summarizer is the pilot; the other OS agents, Consultant and `brands/` follow.
+on an agent. `ModuleOrigin.isCore()` = "loaded from an os library module". All OS agents
+(summarizer, support-faq, compliance-qa, writer, rfp-response, research-synthesis, consultant)
+are modules. Consultant's module carries its service, admin + customer controllers and a core
+live view (`consultantChat.js` base); a tenant extends it through the subject/tool/resolver
+SPIs, `genesis.consultant.*` config and a thin `live.js` that calls `mountConsultantChat()`
+with its own copy. Controllers that must only be registered by a conditional `@Bean` are marked
+`@RegisteredByConfiguration`, which every app excludes from component scan.
 
 ---
 

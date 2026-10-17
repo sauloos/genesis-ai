@@ -1,7 +1,10 @@
 package ai.genesisbrands.config;
 
 import ai.genesisbrands.agent.consultant.ConsultantCoreAgent;
+import ai.genesisbrands.controller.ClientConsultantController;
 import ai.genesisbrands.controller.ConsultantController;
+import ai.genesisbrands.security.ClientAuthHelper;
+import ai.genesisbrands.service.ClientOwnSubjectResolver;
 import ai.genesisbrands.repository.ConversationMessageRepository;
 import ai.genesisbrands.service.AgentCatalogService;
 import ai.genesisbrands.service.ConsultantService;
@@ -59,6 +62,17 @@ public class ConsultantServiceConfiguration {
         ContextEnrichmentService enrichment
     ) {
         return new ConsultantController(consultantService, subjectProvider, enrichment);
+    }
+
+    @Bean
+    @ConditionalOnBean({ ConsultantSubjectProvider.class, ClientOwnSubjectResolver.class })
+    public ClientConsultantController clientConsultantController(
+        ConsultantService consultantService,
+        ClientAuthHelper clientAuthHelper,
+        ClientOwnSubjectResolver subjectResolver,
+        AgentCatalogService catalogService
+    ) {
+        return new ClientConsultantController(consultantService, clientAuthHelper, subjectResolver, catalogService);
     }
 
     @Bean

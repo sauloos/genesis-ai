@@ -1,5 +1,6 @@
 package ai.genesisbrands.controller;
 
+import ai.genesisbrands.platform.RegisteredByConfiguration;
 import ai.genesisbrands.model.ClientUser;
 import ai.genesisbrands.security.ClientAuthHelper;
 import ai.genesisbrands.service.ClientWorkItem;
@@ -27,6 +28,7 @@ import org.springframework.http.HttpStatus;
  * exclude this class from scanning for the same reason.
  */
 @RestController
+@RegisteredByConfiguration
 @RequestMapping("/api/client/workspace")
 @RequiredArgsConstructor
 @Tag(name = "Client Workspace", description = "Generic client deliverables listing, backing the dashboard widgets")

@@ -10,7 +10,7 @@ import java.util.List;
 public class ConsultantPersonaProperties {
 
     /** Classpath-relative path to the tenant's consultant system-prompt markdown. */
-    private String systemPrompt = "agents/consultant/system-prompt.md";
+    private String systemPrompt = "agents/consultant/system.md";
 
     private List<String> outOfScopeKeywords = List.of();
 

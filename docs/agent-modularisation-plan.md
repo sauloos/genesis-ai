@@ -70,11 +70,15 @@ os/agents/<id>/
    the prompt convention; move Summarizer into `os/agents/summarizer`. Both apps adopt it, so
    behaviour is unchanged: Genesis Brands keeps seeding it OFF. Update the Dockerfiles, the
    `ModuleOrigin` check and CLAUDE.md. Deploy both apps and check them.
-3. **Remaining OS agents + Consultant.** support-faq, compliance-qa, writer, rfp-response,
+3. **Remaining OS agents + Consultant.** DONE. support-faq, compliance-qa, writer, rfp-response,
    research-synthesis, using the Summarizer template. Consultant becomes `os/agents/consultant`
    (service, controller, SPIs, a **core live view**). Genesis Brands' customer Consultant becomes
    a proper extension (SPI impls + a view that extends the core one), and the parallel
    ClientConsultantController is folded into the core controller where possible.
+   *Done as:* the whole of ClientConsultantController moved into the core module (it only used
+   core types), registered when the tenant provides a `ClientOwnSubjectResolver`. The core view
+   is `consultantChat.js` (`mountConsultantChat(container, copy)`); Genesis Brands' `live.js` is
+   now a 10-line extension. The default persona is `agents/consultant/system.md` in the module.
 4. **Brands aggregator.** Move genesis-brands → `brands/app`, extract `brands/domain`, then the
    5 SLOT agents into `brands/agents/<id>`. Logo's inline prompts move to `system.md` files.
    Revisit whether Genesis Brands should adopt the 6 OS utility agents at all: the

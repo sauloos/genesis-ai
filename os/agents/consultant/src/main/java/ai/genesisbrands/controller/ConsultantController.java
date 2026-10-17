@@ -1,5 +1,6 @@
 package ai.genesisbrands.controller;
 
+import ai.genesisbrands.platform.RegisteredByConfiguration;
 import ai.genesisbrands.model.ConversationMessage;
 import ai.genesisbrands.service.ConsultantService;
 import ai.genesisbrands.service.ConsultantSubjectProvider;
@@ -21,8 +22,8 @@ import java.util.List;
  * feature, scoped to whatever {@link ConsultantSubjectProvider} the tenant registers.
  * Instantiated only via the {@code consultantController} @Bean in
  * {@link ai.genesisbrands.config.ConsultantServiceConfiguration}, never by component
- * scan — both {@code GenesisAiApplication} and {@code GenesisOsApplication} explicitly
- * exclude this class from scanning. Two things depend on that split: (1) it must be
+ * scan — it is marked {@link RegisteredByConfiguration}, which every app
+ * excludes from scanning. Two things depend on that split: (1) it must be
  * {@code @RestController} (not a bare {@code @RequestMapping}) for
  * {@code RequestMappingHandlerMapping} to register its methods as handlers — confirmed
  * empirically that a class-level {@code @RequestMapping} alone isn't detected as a
@@ -36,6 +37,7 @@ import java.util.List;
  * was observed to fail this condition nondeterministically when it lived on the class.
  */
 @RestController
+@RegisteredByConfiguration
 @RequestMapping("/api/consultant")
 @RequiredArgsConstructor
 @Tag(name = "Consultant", description = "Conversational interface with Genesis AI")

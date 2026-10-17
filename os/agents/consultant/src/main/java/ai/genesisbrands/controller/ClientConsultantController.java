@@ -1,5 +1,6 @@
 package ai.genesisbrands.controller;
 
+import ai.genesisbrands.platform.RegisteredByConfiguration;
 import ai.genesisbrands.model.ClientUser;
 import ai.genesisbrands.model.ConversationMessage;
 import ai.genesisbrands.security.ClientAuthHelper;
@@ -20,16 +21,16 @@ import reactor.core.publisher.Flux;
 import java.util.List;
 
 /**
- * Customer-facing Consultant chat: the logged-in client's own consultant, grounded in their
- * own chosen-direction output (see {@code BrandConsultantSubjectProvider#findFromEngagement}),
- * never in a brand/subject id the client supplies. Deliberately takes no id in the URL or
- * body — the subject is always derived from the session, mirroring
- * {@link EngagementController}'s {@code resolveClientUserId}/{@code requireOwner} pattern.
+ * Customer-facing Consultant chat: the logged-in client's own consultant, grounded in the
+ * subject the tenant's {@link ClientOwnSubjectResolver} derives from the session — never in
+ * a subject id the client supplies. Deliberately takes no id in the URL or body.
  * A separate controller from {@link ConsultantController} (the admin/Playground "pure
  * consultant" facade) so that facade's client-suppliable {@code {id}} path param is never
- * reachable from this customer surface.
+ * reachable from this customer surface. Registered only when the tenant provides a
+ * {@link ClientOwnSubjectResolver} (see {@code ConsultantServiceConfiguration}).
  */
 @RestController
+@RegisteredByConfiguration
 @RequestMapping("/api/client/consultant")
 @RequiredArgsConstructor
 @Tag(name = "Client Consultant", description = "Customer-aware consultant chat, scoped to the logged-in client's own brand")
@@ -71,16 +72,15 @@ public class ClientConsultantController {
         return consultant.history(subjectId, conversationId, ConversationMessage.Source.CUSTOMER);
     }
 
-    /** Resolves the caller's own paid/finished engagement server-side — never from a
-     *  client-supplied id — and returns the synthetic subject id BrandConsultantSubjectProvider
-     *  resolves it from. Mirrors dashboardAgents/widget.js's resolveTarget() condition. */
+    /** Resolves the caller's own subject server-side via the tenant's resolver — never from a
+     *  client-supplied id. 409 when the tenant has nothing to ground the consultant in yet. */
     private String resolveSubjectId(HttpServletRequest req) {
         catalogService.requireAvailableForLiveView(CONSULTANT_AGENT_ID);
         ClientUser client = clientAuthHelper.resolve(req)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sign in required"));
 
         return subjectResolver.resolveOwnSubjectId(client)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Complete your brand journey first"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "No consultant subject is available for this account yet"));
     }
 
     public record ChatRequest(String conversationId, String message) {}

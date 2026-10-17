@@ -1,0 +1,19 @@
+// GenesisOS Consultant agent — chat service, admin + customer controllers, the subject/tool
+// SPIs' consumers, a default persona prompt and the core live view. Unlike the generic
+// utility agents it carries its own logic, so it compiles against the runtime's services
+// (provided by the adopting app, which always depends on :os:runtime).
+configurations {
+    compileOnly { extendsFrom annotationProcessor }
+}
+
+dependencies {
+    implementation project(':os:agent-sdk')
+    compileOnly project(':os:runtime')
+    compileOnly 'org.springframework.boot:spring-boot-starter-web'
+    compileOnly 'org.springframework.boot:spring-boot-starter-data-jpa'
+    compileOnly 'org.springframework.ai:spring-ai-model'
+    compileOnly 'io.projectreactor:reactor-core'
+    compileOnly 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+}

@@ -18,6 +18,7 @@ dependencies {
     implementation project(':os:agents:writer')
     implementation project(':os:agents:rfp-response')
     implementation project(':os:agents:research-synthesis')
+    implementation project(':os:agents:consultant')
 
     // Spring Boot starters used directly in this module
     // (os:runtime's implementation deps are not transitively visible)
