@@ -5,10 +5,14 @@
 build/
 */build/
 */*/build/
+*/*/*/build/
+*/*/*/*/build/
 .gradle/
 bin/
 */bin/
 */*/bin/
+*/*/*/bin/
+*/*/*/*/bin/
 *.jar
 !gradle/wrapper/gradle-wrapper.jar
 

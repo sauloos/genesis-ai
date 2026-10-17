@@ -3,9 +3,12 @@ package ai.genesisbrands.controller;
 import ai.genesisbrands.agent.brandbook.BrandBookTemplateRenderer;
 import ai.genesisbrands.model.ClientUser;
 import ai.genesisbrands.model.Engagement;
+import ai.genesisbrands.repository.AgentRegenerationJobRepository;
+import ai.genesisbrands.repository.EngagementDirectionVersionRepository;
 import ai.genesisbrands.repository.EngagementRepository;
 import ai.genesisbrands.security.AdminAuthHelper;
 import ai.genesisbrands.security.ClientAuthHelper;
+import ai.genesisbrands.service.AgentRegenerationService;
 import ai.genesisbrands.service.BlobStorageService;
 import ai.genesisbrands.service.EngagementOrchestratorService;
 import ai.genesisbrands.service.EngagementOrchestratorService.DirectionOutput;
@@ -40,6 +43,9 @@ class EngagementControllerTest {
     @Mock private PhotoSourcingService photoSourcingService;
     @Mock private AdminAuthHelper adminAuth;
     @Mock private ClientAuthHelper clientAuthHelper;
+    @Mock private AgentRegenerationJobRepository regenerationJobRepo;
+    @Mock private AgentRegenerationService regenerationService;
+    @Mock private EngagementDirectionVersionRepository versionRepo;
     @Mock private HttpServletRequest req;
 
     private EngagementController controller;
@@ -47,7 +53,7 @@ class EngagementControllerTest {
     @BeforeEach
     void setUp() {
         controller = new EngagementController(engagementRepo, orchestrator, pdfRenderer, blobStorageService,
-            photoSourcingService, new ObjectMapper(), adminAuth, clientAuthHelper);
+            photoSourcingService, new ObjectMapper(), adminAuth, clientAuthHelper, regenerationJobRepo, regenerationService, versionRepo);
     }
 
     private ClientUser clientUser(String id) {

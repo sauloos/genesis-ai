@@ -147,8 +147,9 @@ agent), whether built inside this application or shipped as its own module.
 An agent bundles three things, and is added to the app with zero core wiring — `CoreAgent`
 beans are already auto-collected via Spring component scan, same as `WidgetDescriptor`:
 
-- **Its full definition** — config (model/maxTokens in `application.yml`), system prompt, and
-  logic (the `*Agent.java` / `*RefinementLoop.java` classes).
+- **Its full definition** — default config in its own `agents/<id>/agent.yml` (loaded as the
+  lowest-priority source under `genesis.agents.<id>.*`; an app's `application.yml` overrides only
+  what it changes), system prompt at `agents/<id>/system.md` (by convention), and logic.
 - **Its metadata** — `agentId`, `displayName`, `description`, `icon`.
 - **Its own screens** — a Playground view and a Live Dashboard view, each a self-contained
   client-side module resolved by convention from `agentId` (`static/agent-views/<agentId>/
@@ -157,7 +158,7 @@ beans are already auto-collected via Spring component scan, same as `WidgetDescr
 
 **An agent's module placement follows what it is, not where it's wired in** — same rule as
 widgets, and already reflected in the codebase today: **Consultant is a Genesis OS (core)
-agent** (`brain-engine-core/.../agent/consultant/ConsultantCoreAgent.java`) because every
+agent** (`os/runtime/.../agent/consultant/ConsultantCoreAgent.java`) because every
 tenant gets a consultant — it's platform-level, sector-agnostic capability. **Copy, Visual
 Identity, Logo, Playbook, and Brand Book are Genesis Brands (tenant) agents** (`genesis-brands/
 .../agent/{copy,visualidentity,logo,playbook,brandbook}/...CoreAgent.java`) because they are
@@ -197,7 +198,7 @@ endpoints (`/api/engagements/...`) directly into its client JS — it calls a co
 generic endpoint/SPI that a tenant implements, the same way `ConsultantSubjectProvider` and
 `ConsultantToolProvider` do for Consultant (see below). **Fixed 2026-10-06:**
 `DashboardAgentsWidget`/`DashboardAssetsWidget` (both the `WidgetDescriptor` bean and the
-`widget.js`) now live in `brain-engine-core` and call the generic `GET /api/client/workspace`
+`widget.js`) now live in `os/runtime` and call the generic `GET /api/client/workspace`
 endpoint, backed by the core `ClientWorkspaceProvider` SPI
 (`ClientWorkspaceConfiguration`/`ClientWorkspaceController`, conditionally registered exactly
 like `ConsultantController`). `EngagementWorkspaceProvider` (genesis-brands) is the tenant
@@ -247,15 +248,15 @@ feedback) — never a questionnaire/brief form; the brief was already derived on
 
 **Module placement for Consultant follows a strict fetch/provide split — this is the template
 for every future Consultant capability, not just brand context.** Consultant is a core agent,
-so the *mechanics* always live in brain-engine-core: the act of fetching context, the act of
+so the *mechanics* always live in os/runtime: the act of fetching context, the act of
 deciding when/whether to attach tools to the Prompt, the generic shape of "a subject" and "a
 tool." What a tenant supplies is the *content* behind those mechanics, through a core-defined
 interface it implements — never by core reaching into a tenant model directly:
 - **Fetching context is core; providing it is tenant.** `ConsultantSubjectProvider` (core
-  interface, brain-engine-core) is what `ConsultantService` calls to fetch a subject's context —
+  interface, os/runtime) is what `ConsultantService` calls to fetch a subject's context —
   core owns retrieval, history, and streaming. `BrandConsultantSubjectProvider` (genesis-brands)
   is the implementation that actually knows about `Engagement`/`resultsJson`/`Brand` and
-  produces the context DTO — that domain knowledge never belongs in brain-engine-core.
+  produces the context DTO — that domain knowledge never belongs in os/runtime.
 - **The skill/tool-calling *pattern* is core; the specific skill mappings are tenant (or
   whichever module owns the agent).** `ConsultantToolProvider` (core interface) is what lets
   *any* module — tenant or future core utility agents alike — register Spring AI tools onto a
@@ -266,14 +267,27 @@ interface it implements — never by core reaching into a tenant model directly:
   `ConsultantService` or the core tool-attachment mechanics.
 - Apply this same split to every future Consultant-adjacent capability (e.g. a future
   "Consultant can browse version history" tool): define the generic interface in
-  brain-engine-core first, implement the tenant-specific content in genesis-brands second —
+  os/runtime first, implement the tenant-specific content in genesis-brands second —
   never let a convenience shortcut put tenant model types (`Engagement`, `Brand`, etc.) inside
-  brain-engine-core code.
+  os/runtime code.
 
 `login` is the reference implementation of the equivalent widget pattern; no agent has yet
 been fully migrated to this pattern end-to-end (Playground's current per-agent UI is generic/
 DirectionBrief-form-based rather than per-agent-view-module-based) — this section is the
 target state every agent, current or future, must be checked against.
+
+---
+
+## Module Layout
+
+Gradle aggregators (see `docs/agent-modularisation-plan.md`): `os/` = Genesis OS —
+`os/agent-sdk` (`CoreAgent`, `AgentCustomOption`), `os/runtime` (platform library, formerly
+brain-engine-core), `os/agents/<id>` (one module per OS agent, auto-included by settings.gradle),
+`os/app` (the genesis-os bootJar). Each agent module is self-contained: `<Id>CoreAgent` +
+`agents/<id>/agent.yml` + `agents/<id>/system.md` + `static/agent-views/<id>/`. **Adoption =
+Gradle dependency**: an app has exactly the agent modules it declares. The runtime never depends
+on an agent. `ModuleOrigin.isCore()` = "loaded from an os library module". Migration in progress:
+Summarizer is the pilot; the other OS agents, Consultant and `brands/` follow.
 
 ---
 
@@ -294,7 +308,7 @@ Naming is fixed: "Consultant connector" and "Brain connector" — never "ask the
 "search the brain".
 
 - **Agent connectors are generated, never hand-written.** One core-owned gateway in
-  brain-engine-core derives each agent's MCP tools and REST endpoints from `AgentCatalogService`
+  os/runtime derives each agent's MCP tools and REST endpoints from `AgentCatalogService`
   (the same auto-collected `CoreAgent` beans Playground and `/live/dashboard` use). Adding a
   pluggable agent automatically adds its connectors, with zero gateway code. Exposure is gated
   by an admin per-surface flag (alongside `availableForPlayground`/`availableForLiveView`),
@@ -309,7 +323,7 @@ Naming is fixed: "Consultant connector" and "Brain connector" — never "ask the
   the customer-aware Consultant above).
 - **The Platform connector is admin-privileged** — its own admin-scoped credentials and audit
   trail, never the customer keys used by agent/Brain connectors. Its operations are collected
-  by convention from the existing admin APIs (core mechanics in brain-engine-core; tenant-only
+  by convention from the existing admin APIs (core mechanics in os/runtime; tenant-only
   admin operations contributed through a core-defined SPI), so a new admin page becomes a new
   Platform connector capability without editing a central list.
 - **Long-running agents need job semantics.** SLOT agents (multi-minute, approval-gated)

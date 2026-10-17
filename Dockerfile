@@ -1,23 +1,17 @@
 FROM eclipse-temurin:21-jdk-alpine AS build
 WORKDIR /workspace
 
-# Copy build files first — Docker caches this layer so deps only re-download when build files change
+# az acr build keeps no layer cache between builds, so there's no separate dependency
+# layer — copy the build and sources, then build. settings.gradle auto-discovers themes/
+# and os/agents/, so new agent modules need no edit here.
 COPY gradle gradle
 COPY gradlew .
 COPY build.gradle .
 COPY settings.gradle .
-COPY shared-domain/build.gradle shared-domain/build.gradle
-COPY brain-engine-core/build.gradle brain-engine-core/build.gradle
-COPY genesis-brands/build.gradle genesis-brands/build.gradle
-COPY genesis-os/build.gradle genesis-os/build.gradle
-# settings.gradle auto-discovers Gradle projects under themes/, so the directory must
-# exist before any ./gradlew invocation — even this dependency-resolution-only one.
 COPY themes themes
-RUN ./gradlew dependencies --no-daemon -q
 
-# Copy source and build
 COPY shared-domain shared-domain
-COPY brain-engine-core brain-engine-core
+COPY os os
 COPY genesis-brands genesis-brands
 RUN ./gradlew :genesis-brands:bootJar --no-daemon -q
 

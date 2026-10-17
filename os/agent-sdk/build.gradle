@@ -1,0 +1,2 @@
+// The agent contract every agent module compiles against — plain Java, no Spring.
+apply plugin: 'java-library'

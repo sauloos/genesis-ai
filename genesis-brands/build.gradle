@@ -11,10 +11,11 @@ configurations {
 
 dependencies {
     implementation project(':shared-domain')
-    implementation project(':brain-engine-core')
+    implementation project(':os:runtime')
+    implementation project(':os:agents:summarizer')
 
     // Spring Boot starters used directly in genesis-brands code
-    // (brain-engine-core's implementation deps are not transitively visible)
+    // (os:runtime's implementation deps are not transitively visible)
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 
@@ -23,7 +24,7 @@ dependencies {
     implementation 'org.springframework.ai:spring-ai-starter-model-openai'
 
     // API docs — used by controllers/services now living in this module
-    // (brain-engine-core's implementation dep is not transitively visible)
+    // (os:runtime's implementation dep is not transitively visible)
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
 
     // PDF generation via Playwright (brand book assembly)

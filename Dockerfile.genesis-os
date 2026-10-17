@@ -1,32 +1,26 @@
 FROM eclipse-temurin:21-jdk-alpine AS build
 WORKDIR /workspace
 
-# Copy build files first — Docker caches this layer so deps only re-download when build files change
+# az acr build keeps no layer cache between builds, so there's no separate dependency
+# layer — copy the build and sources, then build. settings.gradle auto-discovers themes/
+# and os/agents/, so new agent modules need no edit here.
 COPY gradle gradle
 COPY gradlew .
 COPY build.gradle .
 COPY settings.gradle .
-COPY shared-domain/build.gradle shared-domain/build.gradle
-COPY brain-engine-core/build.gradle brain-engine-core/build.gradle
-COPY genesis-brands/build.gradle genesis-brands/build.gradle
-COPY genesis-os/build.gradle genesis-os/build.gradle
-# settings.gradle auto-discovers Gradle projects under themes/, so the directory must
-# exist before any ./gradlew invocation — even this dependency-resolution-only one.
 COPY themes themes
-RUN ./gradlew dependencies --no-daemon -q
 
-# Copy source and build — genesis-os depends on brain-engine-core only, not genesis-brands
+# genesis-os (os:app) depends on the os/ modules only, not genesis-brands
 COPY shared-domain shared-domain
-COPY brain-engine-core brain-engine-core
-COPY genesis-os genesis-os
-RUN ./gradlew :genesis-os:bootJar --no-daemon -q
+COPY os os
+RUN ./gradlew :os:app:bootJar --no-daemon -q
 
 # No Playwright/Chromium here — genesis-os has no brand-book PDF assembly, so a plain
 # Alpine JRE (unlike genesis-brands' Ubuntu-jammy runtime) is enough.
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-COPY --from=build /workspace/genesis-os/build/libs/genesis-os-0.0.1-SNAPSHOT.jar app.jar
+COPY --from=build /workspace/os/app/build/libs/os-app-0.0.1-SNAPSHOT.jar app.jar
 COPY ingestion ingestion
 
 # Install Python 3 + pip for the ingestion pipeline (Alpine syntax).

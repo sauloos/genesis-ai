@@ -4,11 +4,17 @@ plugins {
 }
 
 def themeProjects = subprojects.findAll { it.path == ':themes' || it.path.startsWith(':themes:') }
-def javaProjects = subprojects - themeProjects
+// Aggregator directories (:os, :os:agents) have no build.gradle of their own — only real
+// modules get the Java configuration.
+def javaProjects = (subprojects - themeProjects).findAll { it.file('build.gradle').exists() }
 
 configure(javaProjects) {
     apply plugin: 'java'
     apply plugin: 'io.spring.dependency-management'
+
+    // Jar name from the project path (os-runtime, os-agents-summarizer, …) so two modules
+    // with the same directory name (e.g. os/app and brands/app) never collide in a fat jar.
+    base { archivesName = project.path.substring(1).replace(':', '-') }
 
     java {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -23,6 +29,9 @@ configure(javaProjects) {
 
     dependencyManagement {
         imports {
+            // Boot BOM for every module, so plain library modules (agent-sdk, agents) get
+            // managed versions without applying the Boot plugin themselves.
+            mavenBom "org.springframework.boot:spring-boot-dependencies:3.5.14"
             mavenBom "org.springframework.ai:spring-ai-bom:1.1.7"
         }
     }

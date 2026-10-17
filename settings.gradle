@@ -1,8 +1,20 @@
 rootProject.name = 'genesis-platform'
 include 'shared-domain'
-include 'brain-engine-core'
 include 'genesis-brands'
-include 'genesis-os'
+
+// Genesis OS aggregator — agent SDK, runtime, one module per OS agent, and the OS app.
+include 'os:agent-sdk'
+include 'os:runtime'
+include 'os:app'
+
+// Each directory under os/agents/ is its own agent module — dropping in a new folder (with a
+// build.gradle) is enough to build it; an app adopts it by declaring a dependency on it.
+def osAgentsDir = new File(settingsDir, 'os/agents')
+if (osAgentsDir.exists()) {
+    osAgentsDir.eachDir { dir ->
+        if (new File(dir, 'build.gradle').exists()) include "os:agents:${dir.name}"
+    }
+}
 
 // Each directory under themes/ is its own buildable, independently zippable theme —
 // dropping in a new folder is enough to pick it up, no edit needed here.
