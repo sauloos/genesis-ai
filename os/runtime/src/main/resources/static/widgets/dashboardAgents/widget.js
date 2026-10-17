@@ -60,7 +60,7 @@ function openAgentDialog(agentId, displayName, target, ctx) {
 }
 
 export async function mount(container, widget, ctx) {
-  container.className = 'da-panel';
+  container.classList.add('da-panel');
   container.innerHTML = `
     <div class="da-panel-label">Brand Agents</div>
     <div class="da-list"><div class="da-empty">Loading…</div></div>

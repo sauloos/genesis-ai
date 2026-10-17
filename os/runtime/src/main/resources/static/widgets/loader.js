@@ -30,7 +30,17 @@ function loadWidgetModule(widgetType) {
  * @param {string} widgetType
  * @param {HTMLElement} container
  * @param {{id?: string, slotKey?: string, orderInSlot?: number, widgetType?: string, config: object}} widget
- * @param {{simulate?: boolean, onOutcome?: (key?: string) => void}} ctx
+ * @param {{
+ *   simulate?: boolean,
+ *   outcomes?: {key: string, label: string}[],
+ *   requireCompletion?: () => void,
+ *   complete?: () => void,
+ *   onOutcome?: (key?: string) => void,
+ *   advance?: (key: string) => void,
+ *   session?: {token: string, fetch: (path: string, init?: RequestInit) => Promise<Response>},
+ *   saveContext?: (patch: object) => Promise<Response>
+ * }} ctx  host services; flow-runtime.html supplies all of them (see
+ *   docs/widget-modularisation-plan.md "Mount contract"), other hosts any subset.
  */
 export async function mountWidget(widgetType, container, widget, ctx) {
   loadWidgetCss(widgetType);

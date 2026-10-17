@@ -231,7 +231,7 @@ async function render(container) {
 }
 
 export async function mount(container) {
-  container.className = 'dass-panel';
+  container.classList.add('dass-panel');
   container.innerHTML = `
     <div class="dass-panel-label">Your Assets</div>
     <div class="dass-list"><div class="dass-empty">Loading…</div></div>

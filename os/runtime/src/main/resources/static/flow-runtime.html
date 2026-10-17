@@ -339,6 +339,7 @@ let rootPrefix = null;
 let token = null;
 let layouts = [];
 let requiredPending = new Set();
+let renderGeneration = 0;
 let currentPageOutcomes = [];
 let currentPageWidgets = [];
 let questionnaireStates = {};
@@ -532,29 +533,6 @@ const widgetRegistry = {
     bootQuestionnaireWidget(w, div);
     return div;
   },
-  login: (w) => {
-    const div = document.createElement('div');
-    div.className = 'widget-login';
-    requiredPending.add(w.id);
-    import('/widgets/loader.js').then(({ mountWidget }) => mountWidget('login', div, w, {
-      simulate,
-      onOutcome: (key) => {
-        requiredPending.delete(w.id);
-        updateOutcomeButtons();
-        // Standalone /login and /register set this so a successful sign-in/sign-up
-        // honors the ?next= destination ClientAuthFilter attached, instead of trying
-        // to advance within this (single-page) flow. Off by default so login widgets
-        // embedded mid-flow (e.g. Brand Journey's "Sign in to see your brand") keep
-        // advancing to the flow's own next page.
-        if (w.config && w.config.redirectToNextParam) {
-          window.location.href = new URLSearchParams(window.location.search).get('next') || '/';
-          return;
-        }
-        advance(key || 'next');
-      }
-    }));
-    return div;
-  },
   brandResults: (w) => {
     const div = document.createElement('div');
     div.className = 'widget-brand-results';
@@ -566,24 +544,6 @@ const widgetRegistry = {
     const div = document.createElement('div');
     div.className = 'widget-logout';
     bootLogoutWidget(w, div);
-    return div;
-  },
-  dashboardAgents: (w) => {
-    const div = document.createElement('div');
-    div.className = 'widget-dashboard-agents';
-    import('/widgets/loader.js').then(({ mountWidget }) => mountWidget('dashboardAgents', div, w, { simulate }));
-    return div;
-  },
-  dashboardAssets: (w) => {
-    const div = document.createElement('div');
-    div.className = 'widget-dashboard-assets';
-    import('/widgets/loader.js').then(({ mountWidget }) => mountWidget('dashboardAssets', div, w, { simulate }));
-    return div;
-  },
-  dashboardCatalog: (w) => {
-    const div = document.createElement('div');
-    div.className = 'widget-dashboard-catalog';
-    import('/widgets/loader.js').then(({ mountWidget }) => mountWidget('dashboardCatalog', div, w, { simulate }));
     return div;
   },
   productOptions: (w) => {
@@ -1601,6 +1561,7 @@ function renderPage(page, isEnded) {
   document.getElementById('card').classList.toggle('no-border', page.bordered === false);
   document.getElementById('card').classList.toggle('wide', !!layout && layout.wide);
 
+  renderGeneration++;
   requiredPending = new Set();
   currentPageOutcomes = page.outcomes || [];
   currentPageWidgets = page.widgets || [];
@@ -1615,11 +1576,7 @@ function renderPage(page, isEnded) {
   // which layout the page uses — the only way a widget can break out of its column today.
   const headerEl = document.getElementById('page-header');
   headerEl.innerHTML = '';
-  widgets.filter(w => w.slotKey === 'header').forEach(w => {
-    const fn = widgetRegistry[w.widgetType];
-    const el = fn ? fn(w) : null;
-    if (el) headerEl.appendChild(el);
-  });
+  widgets.filter(w => w.slotKey === 'header').forEach(w => headerEl.appendChild(renderWidget(w)));
 
   const grid = document.getElementById('page-grid');
   grid.style.gridTemplateColumns = layout ? layout.gridTemplateColumns : '1fr';
@@ -1627,15 +1584,82 @@ function renderPage(page, isEnded) {
   (layout ? layout.slots : [{ key: 'main', label: 'Main' }]).forEach(slot => {
     const slotEl = document.createElement('div');
     slotEl.className = 'slot';
-    widgets.filter(w => w.slotKey === slot.key).forEach(w => {
-      const fn = widgetRegistry[w.widgetType];
-      const el = fn ? fn(w) : null;
-      if (el) slotEl.appendChild(el);
-    });
+    widgets.filter(w => w.slotKey === slot.key).forEach(w => slotEl.appendChild(renderWidget(w)));
     grid.appendChild(slotEl);
   });
 
   updateOutcomeButtons();
+}
+
+// Every widget type renders through its own module at /widgets/<type>/widget.js —
+// resolved by convention, so a new widget (core or tenant) is a WidgetDescriptor bean
+// plus that module, never an edit here. widgetRegistry only holds the widgets not yet
+// extracted into modules (see docs/widget-modularisation-plan.md) and shrinks to nothing.
+function renderWidget(w) {
+  const inline = widgetRegistry[w.widgetType];
+  if (inline) return inline(w);
+
+  const div = document.createElement('div');
+  div.className = 'widget-' + w.widgetType.replace(/[A-Z]/g, c => '-' + c.toLowerCase());
+  const generation = renderGeneration;
+  const ctx = widgetCtx(w);
+  // Blocks the outcome buttons while the module loads; released once mount resolves
+  // unless the widget asked to keep blocking via ctx.requireCompletion().
+  requiredPending.add(w.id);
+  import('/widgets/loader.js')
+    .then(({ mountWidget }) => mountWidget(w.widgetType, div, w, ctx))
+    .catch(e => console.warn(`Widget "${w.widgetType}" failed to load`, e))
+    .finally(() => {
+      if (generation !== renderGeneration || ctx._blocking) return;
+      requiredPending.delete(w.id);
+      updateOutcomeButtons();
+    });
+  return div;
+}
+
+// The host services a widget module may use. Calls made after the page has changed are
+// ignored, so a slow widget can never block or advance a page it no longer belongs to.
+function widgetCtx(w) {
+  const generation = renderGeneration;
+  const live = () => generation === renderGeneration;
+  const credentials = simulate ? 'include' : 'same-origin';
+  const ctx = {
+    simulate,
+    outcomes: currentPageOutcomes.map(o => ({ key: o.key, label: o.label })),
+    requireCompletion() {
+      ctx._blocking = true;
+      if (!live()) return;
+      requiredPending.add(w.id);
+      updateOutcomeButtons();
+    },
+    complete() {
+      ctx._blocking = false;
+      if (!live()) return;
+      requiredPending.delete(w.id);
+      updateOutcomeButtons();
+    },
+    onOutcome(key) {
+      ctx.complete();
+      if (live()) advance(key || 'next');
+    },
+    advance(key) {
+      if (live()) advance(key || 'next');
+    },
+    session: {
+      get token() { return token; },
+      fetch(path, init = {}) {
+        return fetch(`${API}${fsBase()}/${token}${path}`, {
+          ...init, credentials, headers: { ...HEADERS, ...(init.headers || {}) }
+        });
+      }
+    },
+    saveContext(patch) {
+      return ctx.session.fetch('/context', {
+        method: 'PUT', body: JSON.stringify({ contextPatchJson: JSON.stringify(patch) })
+      });
+    }
+  };
+  return ctx;
 }
 
 async function advance(outcomeKey) {

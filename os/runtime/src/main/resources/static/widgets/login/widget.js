@@ -148,7 +148,14 @@ function renderForm(container, config, onOutcome) {
 
 export async function mount(container, widget, ctx) {
   const config = widget.config || {};
-  const onOutcome = () => (ctx.onOutcome || (() => {}))('next');
+  // Standalone /login and /register set redirectToNextParam so a successful sign-in/sign-up
+  // honors the ?next= destination ClientAuthFilter attached, instead of advancing within
+  // that single-page flow. Off by default so a login widget embedded mid-flow (e.g. Brand
+  // Journey's "Sign in to see your brand") advances to the flow's own next page.
+  const onOutcome = config.redirectToNextParam === true || config.redirectToNextParam === 'true'
+    ? () => { window.location.href = new URLSearchParams(window.location.search).get('next') || '/'; }
+    : () => (ctx.onOutcome || (() => {}))('next');
+  if (ctx.requireCompletion) ctx.requireCompletion();
 
   try {
     const res = await fetch('/api/auth/me', { headers: HEADERS });
