@@ -1,0 +1,6 @@
+// GenesisOS research-synthesis agent — metadata bean + agent.yml defaults + prompt + its own views.
+// Execution is the runtime's generic single-shot path, so it only needs the agent SDK.
+dependencies {
+    implementation project(':os:agent-sdk')
+    compileOnly 'org.springframework:spring-context'   // provided by the adopting app
+}

@@ -13,6 +13,11 @@ dependencies {
     implementation project(':shared-domain')
     implementation project(':os:runtime')
     implementation project(':os:agents:summarizer')
+    implementation project(':os:agents:support-faq')
+    implementation project(':os:agents:compliance-qa')
+    implementation project(':os:agents:writer')
+    implementation project(':os:agents:rfp-response')
+    implementation project(':os:agents:research-synthesis')
 
     // Spring Boot starters used directly in this module
     // (os:runtime's implementation deps are not transitively visible)

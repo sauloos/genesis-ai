@@ -1,0 +1,7 @@
+# support-faq defaults — loaded under genesis.agents.support-faq.* at the lowest priority.
+# An app overrides only what it changes in its own application.yml. Prompt: system.md (convention).
+model: claude-haiku-4-5
+max-tokens: 1500
+rag:
+  enabled: true
+  top-k: 3

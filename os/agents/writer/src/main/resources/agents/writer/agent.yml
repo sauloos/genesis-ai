@@ -1,0 +1,7 @@
+# writer defaults — loaded under genesis.agents.writer.* at the lowest priority.
+# An app overrides only what it changes in its own application.yml. Prompt: system.md (convention).
+model: claude-sonnet-5
+max-tokens: 3000
+rag:
+  enabled: true
+  top-k: 3

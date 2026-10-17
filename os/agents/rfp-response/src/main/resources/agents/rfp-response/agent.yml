@@ -1,0 +1,7 @@
+# rfp-response defaults — loaded under genesis.agents.rfp-response.* at the lowest priority.
+# An app overrides only what it changes in its own application.yml. Prompt: system.md (convention).
+model: claude-opus-5
+max-tokens: 6000
+rag:
+  enabled: true
+  top-k: 5
