@@ -10,8 +10,9 @@ import java.util.Optional;
  * session→subject resolution. No default implementation is registered: a tenant that
  * supplies one lets every generic customer-facing agent controller (e.g.
  * {@code GeneratedDocumentController}, {@code ClientAgentChatController}) enrich its
- * prompts with that client's own brand context; a bare platform deployment (or any tenant
- * that hasn't wired up this linkage yet) simply has no enrichment — callers treat an empty
+ * prompts with that client's own brand context, and turns on the customer Consultant (chat and
+ * connector). genesis-os supplies a minimal one (one empty subject per client); a deployment
+ * without any simply has no enrichment — callers treat an empty
  * result as "proceed without live context", never as an error.
  */
 public interface ClientOwnSubjectResolver {

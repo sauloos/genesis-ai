@@ -29,9 +29,10 @@ public class PlatformConsultantSubjectProvider implements ConsultantSubjectProvi
         return new ConsultantSubject(subject.getId(), subject.getName(), subject.getIndustry(), subject.getAudience(), subject.getBrief());
     }
 
+    /** Admin console threads only — clients' own subjects stay out of the admin sandbox list. */
     @Override
     public List<ConsultantSubjectSummary> list() {
-        return subjectRepo.findAll().stream()
+        return subjectRepo.findAllByClientUserIdIsNull().stream()
             .map(s -> new ConsultantSubjectSummary(s.getId(), s.getName(), s.getUpdatedAt()))
             .toList();
     }

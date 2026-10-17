@@ -34,6 +34,10 @@ public class ConsultationSubject {
     @Column(columnDefinition = "TEXT")
     private String audience;
 
+    /** Set on a client's own subject (see PlatformClientSubjectResolver); null on admin threads. */
+    @Column(name = "client_user_id", length = 36)
+    private String clientUserId;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
