@@ -3,6 +3,7 @@ package ai.genesisbrands.controller;
 import ai.genesisbrands.model.ClientUser;
 import ai.genesisbrands.model.GeneratedDocument;
 import ai.genesisbrands.security.ClientAuthHelper;
+import ai.genesisbrands.service.AgentCatalogService;
 import ai.genesisbrands.service.ClientOwnSubjectResolver;
 import ai.genesisbrands.service.GeneratedDocumentService;
 import ai.genesisbrands.service.GenericSingleShotAgentService;
@@ -36,12 +37,14 @@ public class GeneratedDocumentController {
     private final GenericSingleShotAgentService generationService;
     private final GeneratedDocumentService documentService;
     private final ClientAuthHelper clientAuthHelper;
+    private final AgentCatalogService catalogService;
     private final Optional<ClientOwnSubjectResolver> subjectResolver;
 
     @GetMapping
     @Operation(summary = "List this client's own past generations for one agent")
     public List<GeneratedDocument> list(@RequestParam String agentId, HttpServletRequest req) {
         ClientUser client = requireClient(req);
+        catalogService.requireAvailableForLiveView(agentId);
         return documentService.listFor(agentId, client.getId());
     }
 
@@ -49,6 +52,7 @@ public class GeneratedDocumentController {
     @Operation(summary = "Generate and persist one document, grounded in this client's own brand context where available")
     public GeneratedDocument generate(@RequestBody GenerateRequest req, HttpServletRequest servletReq) {
         ClientUser client = requireClient(servletReq);
+        catalogService.requireAvailableForLiveView(req.agentId());
 
         String liveSubjectId = subjectResolver
             .flatMap(resolver -> resolver.resolveOwnSubjectId(client))

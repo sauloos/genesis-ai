@@ -3,6 +3,7 @@ package ai.genesisbrands.controller;
 import ai.genesisbrands.model.ClientUser;
 import ai.genesisbrands.model.ConversationMessage;
 import ai.genesisbrands.security.ClientAuthHelper;
+import ai.genesisbrands.service.AgentCatalogService;
 import ai.genesisbrands.service.ClientOwnSubjectResolver;
 import ai.genesisbrands.service.GenericAgentChatService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,12 +35,14 @@ public class ClientAgentChatController {
 
     private final GenericAgentChatService chatService;
     private final ClientAuthHelper clientAuthHelper;
+    private final AgentCatalogService catalogService;
     private final Optional<ClientOwnSubjectResolver> subjectResolver;
 
     @PostMapping(value = "/{agentId}/chat", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(summary = "Send a message to your own thread with this agent — streaming SSE response")
     public Flux<String> chat(@PathVariable String agentId, @RequestBody ChatRequest req, HttpServletRequest servletReq) {
         ClientUser client = requireClient(servletReq);
+        catalogService.requireAvailableForLiveView(agentId);
         String liveSubjectId = subjectResolver
             .flatMap(resolver -> resolver.resolveOwnSubjectId(client))
             .orElse(null);
@@ -50,6 +53,7 @@ public class ClientAgentChatController {
     @Operation(summary = "Get your own thread's history with this agent")
     public List<ConversationMessage> history(@PathVariable String agentId, HttpServletRequest req) {
         ClientUser client = requireClient(req);
+        catalogService.requireAvailableForLiveView(agentId);
         return chatService.history(agentId, client.getId(), ConversationMessage.Source.CUSTOMER);
     }
 

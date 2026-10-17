@@ -46,11 +46,14 @@ public class ConsultantRegenerationToolProvider implements ConsultantToolProvide
 
     private final AgentRegenerationService regenerationService;
     private final EngagementRepository engagementRepo;
+    private final AgentCatalogService catalogService;
 
     public ConsultantRegenerationToolProvider(AgentRegenerationService regenerationService,
-                                               EngagementRepository engagementRepo) {
+                                               EngagementRepository engagementRepo,
+                                               AgentCatalogService catalogService) {
         this.regenerationService = regenerationService;
         this.engagementRepo = engagementRepo;
+        this.catalogService = catalogService;
     }
 
     @Override
@@ -60,7 +63,10 @@ public class ConsultantRegenerationToolProvider implements ConsultantToolProvide
         }
         String engagementId = subjectId.substring(ENGAGEMENT_PREFIX.length());
 
+        // Only offer tools for agents the admin has made available for live view — a customer
+        // chat must not reach an agent the customer surfaces don't expose.
         return TOOL_SPECS.stream()
+            .filter(spec -> catalogService.isAvailableForLiveView(spec.agentId()))
             .<ToolCallback>map(spec -> FunctionToolCallback
                 .builder(spec.toolName(), (RegenerateInput input) -> regenerate(engagementId, spec.agentId(), input))
                 .description(spec.description())

@@ -63,6 +63,7 @@ public class AgentRegenerationService {
         Set.of("copy", "visual-identity", "logo", "playbook", "brand-book");
 
     private final AgentRegenerationJobRepository jobRepo;
+    private final AgentCatalogService catalogService;
     private final EngagementDirectionVersionRepository versionRepo;
     private final EngagementRepository engagementRepo;
     private final CopyAgent copyAgent;
@@ -98,6 +99,7 @@ public class AgentRegenerationService {
         if (!REGENERATABLE_AGENT_IDS.contains(agentId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Agent does not support regeneration: " + agentId);
         }
+        catalogService.requireAvailableForLiveView(agentId);
         Engagement engagement = engagementRepo.findById(engagementId)
             .orElseThrow(() -> new NoSuchElementException("Engagement not found: " + engagementId));
         requireOwner(engagement, callerClientUserId);

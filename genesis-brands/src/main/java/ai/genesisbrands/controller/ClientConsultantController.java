@@ -3,6 +3,7 @@ package ai.genesisbrands.controller;
 import ai.genesisbrands.model.ClientUser;
 import ai.genesisbrands.model.ConversationMessage;
 import ai.genesisbrands.security.ClientAuthHelper;
+import ai.genesisbrands.service.AgentCatalogService;
 import ai.genesisbrands.service.ClientOwnSubjectResolver;
 import ai.genesisbrands.service.ConsultantService;
 import ai.genesisbrands.service.ConversationSummary;
@@ -34,9 +35,12 @@ import java.util.List;
 @Tag(name = "Client Consultant", description = "Customer-aware consultant chat, scoped to the logged-in client's own brand")
 public class ClientConsultantController {
 
+    private static final String CONSULTANT_AGENT_ID = "consultant";
+
     private final ConsultantService consultant;
     private final ClientAuthHelper clientAuthHelper;
     private final ClientOwnSubjectResolver subjectResolver;
+    private final AgentCatalogService catalogService;
 
     @PostMapping(
         value = "/chat",
@@ -71,6 +75,7 @@ public class ClientConsultantController {
      *  client-supplied id — and returns the synthetic subject id BrandConsultantSubjectProvider
      *  resolves it from. Mirrors dashboardAgents/widget.js's resolveTarget() condition. */
     private String resolveSubjectId(HttpServletRequest req) {
+        catalogService.requireAvailableForLiveView(CONSULTANT_AGENT_ID);
         ClientUser client = clientAuthHelper.resolve(req)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sign in required"));
 

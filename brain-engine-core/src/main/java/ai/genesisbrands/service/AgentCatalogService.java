@@ -5,8 +5,10 @@ import ai.genesisbrands.platform.AgentCustomOption;
 import ai.genesisbrands.platform.CoreAgent;
 import ai.genesisbrands.repository.AgentCatalogConfigRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.List;
@@ -37,6 +39,30 @@ public class AgentCatalogService {
             .filter(AgentCatalogEntry::availableForLiveView)
             .map(e -> new PublicAgentEntry(e.agentId(), e.displayName(), e.description(), e.icon(), e.chatBased(), e.hasLiveView(), e.requiresEngagementContext()))
             .toList();
+    }
+
+    /** True only for a registered agent an admin has left (or set) available for live view.
+     *  Unknown agent ids are never live — a missing config row means "default on" only for
+     *  agents that actually exist. */
+    public boolean isAvailableForLiveView(String agentId) {
+        if (agentId == null || agents.stream().noneMatch(a -> a.agentId().equals(agentId))) {
+            return false;
+        }
+        return configRepository.findById(agentId)
+            .map(AgentCatalogConfig::isAvailableForLiveView)
+            .orElse(true);
+    }
+
+    /**
+     * Enforcement point for every customer-facing agent execution path (REST today, MCP
+     * connectors later): the availableForLiveView flag is a security boundary, not just a
+     * card-list filter. Throws 404 rather than 403 so a disabled agent is indistinguishable
+     * from a nonexistent one.
+     */
+    public void requireAvailableForLiveView(String agentId) {
+        if (!isAvailableForLiveView(agentId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Agent not available: " + agentId);
+        }
     }
 
     /** Cheap standalone check for a single agent's toolsEnabled flag — used by ConsultantService

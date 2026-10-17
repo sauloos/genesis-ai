@@ -174,6 +174,12 @@ to genesis-brands out of convenience.
 / `availableForLiveView` (configured via the agents admin) gate whether an agent's card appears
 on each surface at all. This is orthogonal to whether the agent *has* a view module for that
 surface (declared via `CoreAgent.hasLiveView()` — no runtime probing).
+`availableForLiveView` is a **security boundary, not just a card filter**: every customer-facing
+execution path (`/api/client/**`, engagement regenerate, Consultant customer tools, and future
+connectors) must call `AgentCatalogService.requireAvailableForLiveView(agentId)` (404 when off).
+All non-customer agent surfaces (`/api/agent-generation`, `/api/agent-chat`, `/api/consultant`,
+`/api/playground`, `/api/agents/**` except `live-view`) require admin credentials via
+`AdminAgentApiFilter` — the shared `X-Api-Key` ships in public JS and never counts as admin.
 
 **The host surface is always pure chrome.** On Playground's right-hand panel, or in a dialog
 popped up on `/live/dashboard`, selecting an agent loads and renders **that agent's own view
