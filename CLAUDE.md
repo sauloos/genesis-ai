@@ -357,8 +357,9 @@ Naming is fixed: "Consultant connector" and "Brain connector" — never "ask the
   - An agent that needs an engagement and has no provider is not connectable.
   - The gate is `requireAvailableForConnectors`: the per-agent `availableForConnectors` flag
     (default off) AND live-view.
-- **Brain layers:** set by `genesis.connectors.brain.layers`, default `layer1`. Layer 2 holds
-  other clients' data, so it stays off until anonymisation exists.
+- **Brain layers:** set by `genesis.connectors.brain.layers`, default `layer1,layer2`.
+  **Pending:** Layer 2 holds other clients' data and is not yet anonymised on ingest. It must
+  be anonymised before external customers use the Brain connector.
 - **Platform operations:** auto-collected from the handler mappings and filtered by
   `PlatformOperationFilter` beans (the tenant SPI). They run via an admin loopback call, and
   every call is audited in `platform_audit_log`.

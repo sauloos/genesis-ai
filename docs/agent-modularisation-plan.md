@@ -109,8 +109,9 @@ os/agents/<id>/
      `ConnectorChatProvider` (Consultant) or generic chat; GENERATE for generic single-shot
      agents.
    - **Gating:** the new `availableForConnectors` flag (agents admin, default off) AND live-view.
-   - **Brain:** layers come from `genesis.connectors.brain.layers`, default `layer1` only.
-     Layer 2 is cross-client and stays off until GDPR anonymisation exists.
+   - **Brain:** layers come from `genesis.connectors.brain.layers`, default `layer1,layer2`.
+     **Pending:** Layer 2 is cross-client and not yet anonymised on ingest. That has to land
+     before external customers use the Brain connector; until then, set the property to `layer1`.
    - **Platform:** operations are collected from the handler mappings and narrowed by
      `PlatformOperationFilter` beans (the tenant SPI). They are invoked via an admin loopback
      call, and every call is written to `platform_audit_log`.

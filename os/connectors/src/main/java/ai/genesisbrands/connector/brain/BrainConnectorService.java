@@ -14,8 +14,9 @@ import java.util.List;
  * The Brain connector: knowledge retrieval over the reasoning substrate, with no agent
  * reasoning on top. Which layers are searchable is deployment config
  * ({@code genesis.connectors.brain.layers}), never caller-selectable. It defaults to Layer 1
- * only — Layer 2 holds other clients' engagement records, so it stays off until anonymise-on-
- * ingest exists and an operator deliberately opts in.
+ * and Layer 2. Layer 2 holds other clients' engagement records and is not yet anonymised on
+ * ingest — that is a pending item (GDPR anonymisation); until it lands, a deployment can drop
+ * Layer 2 by setting the property to {@code layer1}.
  */
 @Service
 @RequiredArgsConstructor
@@ -27,7 +28,7 @@ public class BrainConnectorService {
 
     private final RetrievalService retrieval;
 
-    @Value("${genesis.connectors.brain.layers:layer1}")
+    @Value("${genesis.connectors.brain.layers:layer1,layer2}")
     private List<String> layers;
 
     public List<KnowledgeHit> search(String query, Integer topK) {
