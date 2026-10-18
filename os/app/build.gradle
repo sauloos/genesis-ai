@@ -28,6 +28,7 @@ dependencies {
     implementation project(':os:widgets:logout')
     implementation project(':os:widgets:payment')
     implementation project(':os:widgets:productOptions')
+    implementation project(':os:widgets:questionnaire')
     implementation project(':os:widgets:login')
     implementation project(':os:widgets:dashboardAgents')
     implementation project(':os:widgets:dashboardAssets')

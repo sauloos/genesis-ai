@@ -101,6 +101,11 @@ widget blocks or the flow is advancing.
    *3d DONE.* payment is a module that carries its own `PaymentController` (cart, checkout,
    status and mode endpoints). `PaymentService` and `CartService` stay in the runtime. A
    successful payment still advances the flow itself, now through `ctx.advance('next')`.
+   *3e DONE.* questionnaire is a module. It blocks the page until the visitor submits, records
+   its response id in the session context through `ctx.saveContext`, and finds its own elements
+   through closures instead of document-wide ids. `/api/questionnaires/**` stays in the
+   runtime, because the questionnaire admin pages use it too. The host's `putContext`,
+   `widgetConfigBool` and `questionnaireStates` are gone.
    *Found for step 4:* `FlowEngagementService` and `PageFlowService` hardcode the `question` and
    `questionnaire` types to harvest answers server-side. The content upload endpoints still live
    in `PageWidgetService` (runtime), though they belong to the content widget.
