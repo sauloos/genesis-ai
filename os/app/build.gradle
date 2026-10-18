@@ -20,6 +20,9 @@ dependencies {
     implementation project(':os:agents:research-synthesis')
     implementation project(':os:agents:consultant')
     implementation project(':os:connectors')
+    implementation project(':os:widgets:login')
+    implementation project(':os:widgets:dashboardAgents')
+    implementation project(':os:widgets:dashboardAssets')
 
     // Spring Boot starters used directly in this module
     // (os:runtime's implementation deps are not transitively visible)

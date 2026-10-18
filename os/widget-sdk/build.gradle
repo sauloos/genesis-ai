@@ -1,0 +1,2 @@
+// The widget contract every widget module compiles against — plain Java, no Spring.
+apply plugin: 'java-library'

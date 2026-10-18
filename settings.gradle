@@ -3,6 +3,7 @@ include 'shared-domain'
 
 // Genesis OS aggregator — agent SDK, runtime, one module per OS agent, and the OS app.
 include 'os:agent-sdk'
+include 'os:widget-sdk'
 include 'os:runtime'
 include 'os:connectors'
 include 'os:app'
@@ -16,6 +17,15 @@ if (osAgentsDir.exists()) {
     }
 }
 
+// Each directory under os/widgets/ is its own widget module (WidgetDescriptor bean + its
+// static/widgets/<type>/ client module), adopted the same way as an agent.
+def osWidgetsDir = new File(settingsDir, 'os/widgets')
+if (osWidgetsDir.exists()) {
+    osWidgetsDir.eachDir { dir ->
+        if (new File(dir, 'build.gradle').exists()) include "os:widgets:${dir.name}"
+    }
+}
+
 // Genesis Brands aggregator — the tenant app plus one module per Genesis Brands agent.
 include 'brands:app'
 
@@ -23,6 +33,13 @@ def brandsAgentsDir = new File(settingsDir, 'brands/agents')
 if (brandsAgentsDir.exists()) {
     brandsAgentsDir.eachDir { dir ->
         if (new File(dir, 'build.gradle').exists()) include "brands:agents:${dir.name}"
+    }
+}
+
+def brandsWidgetsDir = new File(settingsDir, 'brands/widgets')
+if (brandsWidgetsDir.exists()) {
+    brandsWidgetsDir.eachDir { dir ->
+        if (new File(dir, 'build.gradle').exists()) include "brands:widgets:${dir.name}"
     }
 }
 

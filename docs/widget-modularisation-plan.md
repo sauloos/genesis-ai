@@ -73,6 +73,13 @@ released unless the widget called `requireCompletion()`.
 2. **Module skeleton.** `os/widgets/<type>` + `brands/widgets/<type>` auto-included; move the 4
    existing module widgets (bean + static files) into them. Duplicate-path test for
    `static/widgets/**` like `AgentViewPathsTest`.
+   *DONE.* The contract (`WidgetDescriptor`, `WidgetConfigOption`, `WidgetOutcome`) moved to a
+   plain-Java `os/widget-sdk` (os/runtime exposes it as `api`). Modules are named by
+   widgetType: `os/widgets/{login,dashboardAgents,dashboardAssets}` and
+   `brands/widgets/dashboardCatalog`; each depends only on the widget SDK plus
+   `spring-context` (compileOnly). Both apps declare the widgets they adopt. `loader.js` and
+   `agent-loader.js` stay in os/runtime. `AgentViewPathsTest` became `ModuleStaticPathsTest`,
+   covering both `static/agent-views/**` and `static/widgets/**`.
 3. **Extract the inline widgets**, simplest first: content, button, pageNav, question, redirect
    → logout → productOptions (+ `ProductSelectionController`) → payment (+ `PaymentController`)
    → questionnaire → brandResults (brands, + `BrandResultsController`). The registry is gone and

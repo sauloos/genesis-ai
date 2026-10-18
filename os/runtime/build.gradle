@@ -11,6 +11,7 @@ configurations {
 
 dependencies {
     api project(':os:agent-sdk')
+    api project(':os:widget-sdk')
     implementation project(':shared-domain')
 
     // Spring Boot

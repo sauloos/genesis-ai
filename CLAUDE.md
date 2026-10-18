@@ -162,7 +162,7 @@ beans are already auto-collected via Spring component scan, same as `WidgetDescr
   `/widgets/<type>/widget.js` via `loader.js`. Resolution is convention-based — no registry.
   **Extend a view, never copy it to the same path.** A module that customises another module's
   view registers an `AgentViewExtension` bean (agentId, view, module); `agent-loader.js` chains
-  its `mount(container, agent, ctx, base)` over the base view. `AgentViewPathsTest` fails the
+  its `mount(container, agent, ctx, base)` over the base view. `ModuleStaticPathsTest` fails the
   build if a `static/agent-views/**` path exists twice on the classpath.
 
 **An agent's module placement follows what it is, not where it's wired in** — same rule as
@@ -311,6 +311,13 @@ orchestration, Consultant extension, `agent-views/_shared/regenerate.js`) and `b
 (auto-included like `os/agents`) for the 5 SLOT agents. Inter-agent deps are explicit Gradle
 deps (playbook → copy, visual-identity, logo; brand-book → those + playbook). Brand-book owns its
 HTML templates, template entity/controller and Playwright.
+
+Widgets follow the same layout (see `docs/widget-modularisation-plan.md`): `os/widget-sdk`
+(`WidgetDescriptor`, `WidgetConfigOption`, `WidgetOutcome`), one module per widget named by its
+widgetType under `os/widgets/<type>` (core) or `brands/widgets/<type>` (tenant), auto-included by
+settings.gradle, each carrying its descriptor bean + `static/widgets/<type>/`. Adoption = Gradle
+dependency. `flow-runtime.html` mounts any widget type through `loader.js`; types still inline
+in its `widgetRegistry` are pending extraction.
 
 ---
 

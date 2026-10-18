@@ -153,7 +153,7 @@ os/agents/<id>/
      module. `GET /agent-views/extensions.json` publishes them; `agent-loader.js` chains each
      extension's `mount(container, agent, ctx, base)` over the base view. Brands' Consultant live
      view is now `consultant/ext/brands-live.js` extending the core view.
-     `AgentViewPathsTest` fails the build if any `static/agent-views/**` path exists twice on the
+     `ModuleStaticPathsTest` fails the build if any `static/agent-views/**` path exists twice on the
      classpath.
 
 Every step: build, run tests, smoke-test locally, deploy both apps, check production, commit.
