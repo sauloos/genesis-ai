@@ -93,6 +93,8 @@ widget blocks or the flow is advancing.
    The server no longer special-cases redirect (`PageRenderView.redirectUrl` is gone). The
    redirect widget forwards at once when it is alone on a page, otherwise after 1.5s. In an admin
    simulation it only shows its target, so the author can keep stepping through the flow.
+   *3b DONE.* logout is a module. Its sign-out unlinks the client through `ctx.session`, and in
+   an admin simulation the button does nothing.
    *Found for step 4:* `FlowEngagementService` and `PageFlowService` hardcode the `question` and
    `questionnaire` types to harvest answers server-side. The content upload endpoints still live
    in `PageWidgetService` (runtime), though they belong to the content widget.
