@@ -1,9 +1,7 @@
 package ai.genesisbrands.controller;
 
-import ai.genesisbrands.model.Engagement;
 import ai.genesisbrands.model.FlowSession;
 import ai.genesisbrands.model.PageFlow;
-import ai.genesisbrands.repository.EngagementRepository;
 import ai.genesisbrands.repository.PageFlowRepository;
 import ai.genesisbrands.service.FlowEngagementService;
 import ai.genesisbrands.service.FlowSessionService;
@@ -21,11 +19,12 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 
 /**
  * Public endpoint the brandResults widget calls to kick off (or resume) the brand
  * direction pipeline for its FlowSession. The pipeline run itself, polling, and preview
- * images are served by FlowEngagementService/EngagementController — this controller
+ * images are served by the app's engagement endpoints — this controller
  * only owns the idempotent "start it once" handshake, keyed by widgetId (in case a page
  * ever hosts more than one brandResults widget) and guarded by a row lock on the
  * session so concurrent requests (double-click, reload racing the first click) can't
@@ -41,7 +40,7 @@ public class BrandResultsController {
     private final FlowSessionService flowSessionService;
     private final PageFlowRepository pageFlowRepo;
     private final FlowEngagementService flowEngagementService;
-    private final EngagementRepository engagementRepo;
+    private final BrandResultsEngagements engagements;
     private final ObjectMapper objectMapper;
 
     @Value("${genesis.flow.mock-brand-results:false}")
@@ -65,48 +64,26 @@ public class BrandResultsController {
         Object existing = parseContext(session.getContextJson()).get(contextKey);
 
         if (existing != null) {
-            Engagement e = engagementRepo.findById(String.valueOf(existing)).orElse(null);
-            boolean stuckEmpty = e != null && e.getStatus() == Engagement.Status.DONE && hasNoDirections(e);
-            boolean retryAllowed = retry && e != null
-                && (e.getStatus() == Engagement.Status.FAILED || stuckEmpty);
-            if (!retryAllowed) {
-                return new StartResponse(String.valueOf(existing), e != null ? e.getStatus().name() : "UNKNOWN");
+            Optional<BrandResultsEngagements.State> state = engagements.find(String.valueOf(existing));
+            if (!(retry && state.map(BrandResultsEngagements.State::retryable).orElse(false))) {
+                return new StartResponse(String.valueOf(existing), state.map(BrandResultsEngagements.State::status).orElse("UNKNOWN"));
             }
         }
 
-        String engagementId;
-        Engagement.Status status;
+        String engagementId = null;
+        String status = "DONE";
         if (mockBrandResults) {
-            Engagement mocked = engagementRepo.findAllByStatusOrderByCreatedAtDesc(Engagement.Status.DONE).stream()
-                .filter(e -> !hasNoDirections(e))
-                .findFirst()
-                .orElse(null);
-            if (mocked != null) {
-                // Clone the mocked engagement's results into a fresh row owned by this
-                // session, rather than reusing the same shared row — so owner-gated
-                // actions (choose-direction, preview) work normally through the existing
-                // ownership check with no change to auth logic. Testing/demo aid only;
-                // each session that hits this path gets its own throwaway copy.
-                Engagement clone = new Engagement();
-                clone.setId(java.util.UUID.randomUUID().toString());
-                clone.setSource(Engagement.Source.CLIENT);
-                clone.setStatus(Engagement.Status.DONE);
-                clone.setEvalMode(mocked.isEvalMode());
-                clone.setBriefsJson(mocked.getBriefsJson());
-                clone.setResultsJson(mocked.getResultsJson());
-                clone.setClientUserId(session.getClientUserId());
-                engagementRepo.save(clone);
-                log.info("genesis.flow.mock-brand-results is on — cloned engagement {} as {} for widget {} instead of running the pipeline", mocked.getId(), clone.getId(), widgetId);
-                engagementId = clone.getId();
-                status = Engagement.Status.DONE;
+            // Testing/demo aid: each session that hits this path gets its own throwaway copy.
+            engagementId = engagements.cloneLatestFinishedFor(session.getClientUserId()).orElse(null);
+            if (engagementId != null) {
+                log.info("genesis.flow.mock-brand-results is on — reused a finished engagement as {} for widget {} instead of running the pipeline", engagementId, widgetId);
             } else {
                 log.warn("genesis.flow.mock-brand-results is on but no DONE engagement exists to reuse — running the real pipeline for widget {}", widgetId);
-                engagementId = triggerRealEngagement(session);
-                status = Engagement.Status.PENDING;
             }
-        } else {
+        }
+        if (engagementId == null) {
             engagementId = triggerRealEngagement(session);
-            status = Engagement.Status.PENDING;
+            status = "PENDING";
         }
 
         try {
@@ -115,19 +92,7 @@ public class BrandResultsController {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to persist engagement id onto session");
         }
 
-        return new StartResponse(engagementId, status.name());
-    }
-
-    /** A DONE engagement whose pipeline run produced zero directions (e.g. brief derivation
-     *  failed silently) is functionally broken — treat it the same as FAILED for retry/mock
-     *  reuse purposes rather than letting the widget get permanently stuck on it. */
-    private boolean hasNoDirections(Engagement e) {
-        if (e.getResultsJson() == null) return true;
-        try {
-            return objectMapper.readTree(e.getResultsJson()).path("directions").isEmpty();
-        } catch (Exception ex) {
-            return true;
-        }
+        return new StartResponse(engagementId, status);
     }
 
     private String triggerRealEngagement(FlowSession session) {

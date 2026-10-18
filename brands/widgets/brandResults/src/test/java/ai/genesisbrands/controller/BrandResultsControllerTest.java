@@ -1,9 +1,7 @@
 package ai.genesisbrands.controller;
 
-import ai.genesisbrands.model.Engagement;
 import ai.genesisbrands.model.FlowSession;
 import ai.genesisbrands.model.PageFlow;
-import ai.genesisbrands.repository.EngagementRepository;
 import ai.genesisbrands.repository.PageFlowRepository;
 import ai.genesisbrands.service.FlowEngagementService;
 import ai.genesisbrands.service.FlowSessionService;
@@ -33,14 +31,14 @@ class BrandResultsControllerTest {
     @Mock private FlowSessionService flowSessionService;
     @Mock private PageFlowRepository pageFlowRepo;
     @Mock private FlowEngagementService flowEngagementService;
-    @Mock private EngagementRepository engagementRepo;
+    @Mock private BrandResultsEngagements engagements;
 
     private BrandResultsController controller;
 
     @BeforeEach
     void setUp() {
         controller = new BrandResultsController(flowSessionService, pageFlowRepo, flowEngagementService,
-            engagementRepo, new ObjectMapper());
+            engagements, new ObjectMapper());
     }
 
     private FlowSession session(String token, String pageFlowId, String clientUserId, String contextJson) {
@@ -59,11 +57,8 @@ class BrandResultsControllerTest {
         return f;
     }
 
-    private Engagement engagement(String id, Engagement.Status status) {
-        Engagement e = new Engagement();
-        e.setId(id);
-        e.setStatus(status);
-        return e;
+    private Optional<BrandResultsEngagements.State> state(String status) {
+        return Optional.of(new BrandResultsEngagements.State(status, true));
     }
 
     @Test
@@ -103,7 +98,7 @@ class BrandResultsControllerTest {
     void start_secondCall_alreadyStarted_returnsSameEngagementId_doesNotTriggerAgain() {
         FlowSession s = session("tok", "f1", "cu-1", "{\"__engagement:w1\":\"eng-1\"}");
         when(flowSessionService.getForUpdate("tok")).thenReturn(s);
-        when(engagementRepo.findById("eng-1")).thenReturn(Optional.of(engagement("eng-1", Engagement.Status.RUNNING)));
+        when(engagements.find("eng-1")).thenReturn(state("RUNNING"));
 
         BrandResultsController.StartResponse resp = controller.start("tok", "w1", false);
 
@@ -116,7 +111,7 @@ class BrandResultsControllerTest {
     void start_retryRequested_butEngagementStillRunning_isIgnored_returnsSameEngagement() {
         FlowSession s = session("tok", "f1", "cu-1", "{\"__engagement:w1\":\"eng-1\"}");
         when(flowSessionService.getForUpdate("tok")).thenReturn(s);
-        when(engagementRepo.findById("eng-1")).thenReturn(Optional.of(engagement("eng-1", Engagement.Status.RUNNING)));
+        when(engagements.find("eng-1")).thenReturn(state("RUNNING"));
 
         BrandResultsController.StartResponse resp = controller.start("tok", "w1", true);
 
@@ -128,7 +123,7 @@ class BrandResultsControllerTest {
     void start_retryRequested_engagementFailed_triggersNewPipelineRun() {
         FlowSession s = session("tok", "f1", "cu-1", "{\"__engagement:w1\":\"eng-1\"}");
         when(flowSessionService.getForUpdate("tok")).thenReturn(s);
-        when(engagementRepo.findById("eng-1")).thenReturn(Optional.of(engagement("eng-1", Engagement.Status.FAILED)));
+        when(engagements.find("eng-1")).thenReturn(state("FAILED"));
         PageFlow f = flow("f1");
         when(pageFlowRepo.findById("f1")).thenReturn(Optional.of(f));
         when(flowEngagementService.triggerEngagement(f, s)).thenReturn("eng-2");
@@ -137,5 +132,17 @@ class BrandResultsControllerTest {
 
         assertThat(resp.engagementId()).isEqualTo("eng-2");
         verify(flowEngagementService).triggerEngagement(f, s);
+    }
+
+    @Test
+    void start_retryRequested_engagementDoneWithoutDirections_triggersNewPipelineRun() {
+        FlowSession s = session("tok", "f1", "cu-1", "{\"__engagement:w1\":\"eng-1\"}");
+        when(flowSessionService.getForUpdate("tok")).thenReturn(s);
+        when(engagements.find("eng-1")).thenReturn(Optional.of(new BrandResultsEngagements.State("DONE", false)));
+        PageFlow f = flow("f1");
+        when(pageFlowRepo.findById("f1")).thenReturn(Optional.of(f));
+        when(flowEngagementService.triggerEngagement(f, s)).thenReturn("eng-2");
+
+        assertThat(controller.start("tok", "w1", true).engagementId()).isEqualTo("eng-2");
     }
 }

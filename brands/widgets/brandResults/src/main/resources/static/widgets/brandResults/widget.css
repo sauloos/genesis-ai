@@ -1,0 +1,33 @@
+.widget-brand-results { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.widget-brand-results .br-heading { font-size: 18px; font-weight: 700; margin-bottom: 18px; color: var(--theme-text-primary); }
+.widget-brand-results .br-spinner {
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 3px solid var(--theme-btn-border); border-top-color: var(--theme-text-primary);
+  animation: br-spin 0.8s linear infinite; margin-bottom: 14px;
+}
+@keyframes br-spin { to { transform: rotate(360deg); } }
+.widget-brand-results .br-status { font-size: 13px; color: var(--theme-text-muted); max-width: 380px; line-height: 1.5; }
+.widget-brand-results .br-error { font-size: 13px; color: #d33; max-width: 380px; line-height: 1.5; margin-bottom: 14px; }
+.widget-brand-results .br-retry-btn {
+  padding: 10px 20px; border-radius: 9px; border: 1px solid var(--theme-btn-border);
+  background: none; color: var(--theme-text-primary); font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+}
+.widget-brand-results .br-cards {
+  width: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 18px; margin-top: 6px;
+}
+.widget-brand-results .br-card {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  border: 1px solid var(--theme-card-border); border-radius: 12px; padding: 14px;
+}
+.widget-brand-results .br-card-img { width: 100%; border-radius: 6px; display: block; object-fit: cover; }
+.widget-brand-results .br-card-label { font-size: 13px; font-weight: 700; letter-spacing: 0.3px; color: var(--theme-text-primary); }
+.widget-brand-results .br-card-tagline { font-size: 12px; color: var(--theme-text-muted); line-height: 1.4; }
+.widget-brand-results .br-choose-btn {
+  width: 100%; margin-top: 4px; padding: 10px; border-radius: 9px; border: none;
+  background: var(--theme-text-primary); color: var(--theme-body-bg);
+  font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+}
+.widget-brand-results .br-choose-btn:disabled { opacity: 0.5; cursor: default; }
+.widget-brand-results .br-note { font-size: 12px; color: var(--theme-text-muted); margin-top: 18px; }

@@ -106,6 +106,13 @@ widget blocks or the flow is advancing.
    through closures instead of document-wide ids. `/api/questionnaires/**` stays in the
    runtime, because the questionnaire admin pages use it too. The host's `putContext`,
    `widgetConfigBool` and `questionnaireStates` are gone.
+   *3f DONE — step 3 complete.* brandResults is a Genesis Brands module
+   (`brands/widgets/brandResults`) that carries its own `BrandResultsController` (the start
+   handshake). It never touches the `Engagement` model: it calls a `BrandResultsEngagements`
+   port, which brands/app implements (`EngagementBrandResults`). This is the pattern for any
+   tenant widget backend that needs app data. In an admin simulation it explains that the
+   pipeline needs a real visitor session and releases the page. The `widgetRegistry` is gone:
+   `renderWidget()` mounts every type through `loader.js`. genesis-os does not adopt the module.
    *Found for step 4:* `FlowEngagementService` and `PageFlowService` hardcode the `question` and
    `questionnaire` types to harvest answers server-side. The content upload endpoints still live
    in `PageWidgetService` (runtime), though they belong to the content widget.
