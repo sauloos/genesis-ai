@@ -98,6 +98,9 @@ widget blocks or the flow is advancing.
    *3c DONE.* productOptions is a module that carries its own `ProductSelectionController`.
    `CartService` stays in the runtime, because payment reads the same cart. The module compiles
    against the runtime as `compileOnly`, like the consultant agent module.
+   *3d DONE.* payment is a module that carries its own `PaymentController` (cart, checkout,
+   status and mode endpoints). `PaymentService` and `CartService` stay in the runtime. A
+   successful payment still advances the flow itself, now through `ctx.advance('next')`.
    *Found for step 4:* `FlowEngagementService` and `PageFlowService` hardcode the `question` and
    `questionnaire` types to harvest answers server-side. The content upload endpoints still live
    in `PageWidgetService` (runtime), though they belong to the content widget.

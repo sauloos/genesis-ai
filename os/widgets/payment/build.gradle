@@ -1,0 +1,15 @@
+// Widget module — its WidgetDescriptor bean, the cart/checkout endpoints and its client module
+// at static/widgets/payment/. Checkout charges the runtime's shared flow session cart through
+// PaymentService, so it compiles against the runtime the adopting app provides.
+configurations {
+    compileOnly { extendsFrom annotationProcessor }
+}
+
+dependencies {
+    implementation project(':os:widget-sdk')
+    compileOnly project(':os:runtime')
+    compileOnly 'org.springframework.boot:spring-boot-starter-web'
+    compileOnly 'org.springframework.boot:spring-boot-starter-data-jpa'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+}
