@@ -1,0 +1,4 @@
+.widget-button.wb-row { display: flex; margin-top: 24px; }
+.widget-button.align-left { justify-content: flex-start; }
+.widget-button.align-center { justify-content: center; }
+.widget-button.align-right { justify-content: flex-end; }

@@ -1,0 +1,8 @@
+.widget-question label.q-prompt { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; color: var(--theme-text-primary); }
+.widget-question .q-help { font-size: 12px; color: var(--theme-text-muted); margin-bottom: 10px; }
+.widget-question input[type="text"], .widget-question textarea {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--theme-btn-border); border-radius: 8px;
+  font-size: 14px; font-family: inherit; resize: vertical; background: transparent; color: var(--theme-text-primary);
+}
+.widget-question .q-choices { display: flex; flex-direction: column; gap: 8px; }
+.widget-question .q-choice { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--theme-text-primary); }

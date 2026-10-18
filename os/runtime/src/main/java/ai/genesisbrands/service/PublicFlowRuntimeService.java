@@ -121,24 +121,7 @@ public class PublicFlowRuntimeService {
         }
         List<PageWidget> widgets = pageWidgetRepo.findByPageIdOrderByOrderInSlotAsc(page.getId());
 
-        PageWidget redirectWidget = widgets.stream()
-            .filter(w -> "redirect".equals(w.getWidgetType()))
-            .findFirst()
-            .orElse(null);
-        String redirectUrl = redirectWidget == null ? null
-            : String.valueOf(parseConfig(redirectWidget.getConfigJson()).getOrDefault("targetUrl", ""));
-
-        boolean soleRedirect = redirectWidget != null && widgets.size() == 1;
-        if (soleRedirect) {
-            return new PageRenderView(page.getId(), page.getName(), page.getLayoutKey(), page.isBordered(), List.of(), List.of(), redirectUrl);
-        }
-
-        // A redirect widget mixed with others has no defined visual (WidgetDescriptor
-        // has no render semantics for it), so it's excluded from the rendered widget
-        // list, but its target is still surfaced as redirectUrl so the client can show
-        // the rest of the page briefly before honoring the redirect.
         List<PageWidgetView> widgetViews = widgets.stream()
-            .filter(w -> !"redirect".equals(w.getWidgetType()))
             .map(w -> new PageWidgetView(w.getId(), w.getSlotKey(), w.getOrderInSlot(), w.getWidgetType(), parseConfig(w.getConfigJson())))
             .toList();
 
@@ -146,7 +129,7 @@ public class PublicFlowRuntimeService {
             .filter(o -> !PageTransitionService.ERROR_OUTCOME.equals(o.key()))
             .toList();
 
-        return new PageRenderView(page.getId(), page.getName(), page.getLayoutKey(), page.isBordered(), widgetViews, outcomes, redirectUrl);
+        return new PageRenderView(page.getId(), page.getName(), page.getLayoutKey(), page.isBordered(), widgetViews, outcomes);
     }
 
     private Map<String, Object> parseConfig(String configJson) {
@@ -164,7 +147,7 @@ public class PublicFlowRuntimeService {
 
     public record PageRenderView(
         String pageId, String name, String layoutKey, boolean bordered,
-        List<PageWidgetView> widgets, List<WidgetOutcome> outcomes, String redirectUrl
+        List<PageWidgetView> widgets, List<WidgetOutcome> outcomes
     ) {}
 
     public record PageWidgetView(String id, String slotKey, int orderInSlot, String widgetType, Map<String, Object> config) {}

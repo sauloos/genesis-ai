@@ -56,20 +56,6 @@
   .slot { display: flex; flex-direction: column; gap: 16px; }
   #card.full-bleed .slot { gap: 0; height: 100%; }
 
-  .widget-content h2 { font-size: 17px; font-weight: 600; margin-bottom: 8px; line-height: 1.35; color: var(--theme-text-primary); }
-  .widget-content p { font-size: 14px; color: var(--theme-text-muted); line-height: 1.6; white-space: pre-wrap; }
-  .widget-content-image { max-width: 100%; display: block; object-fit: contain; }
-  .widget-content-iframe { width: 100%; min-height: 400px; border: 0; display: block; }
-
-  .widget-question label.q-prompt { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; color: var(--theme-text-primary); }
-  .widget-question .q-help { font-size: 12px; color: var(--theme-text-muted); margin-bottom: 10px; }
-  .widget-question input[type="text"], .widget-question textarea {
-    width: 100%; padding: 10px 12px; border: 1px solid var(--theme-btn-border); border-radius: 8px;
-    font-size: 14px; font-family: inherit; resize: vertical; background: transparent; color: var(--theme-text-primary);
-  }
-  .widget-question .q-choices { display: flex; flex-direction: column; gap: 8px; }
-  .widget-question .q-choice { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--theme-text-primary); }
-
   .widget-questionnaire {
     border: 1px solid var(--theme-card-border); border-radius: 12px; padding: 24px;
   }
@@ -117,9 +103,8 @@
   .q-embed-nav-ghost:disabled { opacity: 0.3; cursor: default; }
   .q-embed-done { font-size: 14px; color: var(--theme-text-primary); font-weight: 600; }
 
-  .widget-page-nav { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 32px; flex-wrap: wrap; }
-  .page-nav-left, .page-nav-right { display: flex; gap: 10px; flex-wrap: wrap; }
-  .page-nav-right { margin-left: auto; }
+  /* Host-provided outcome button class (mount contract): navigation widgets use it, and
+     the host disables every .outcome-btn while a widget blocks or the flow advances. */
   .outcome-btn {
     padding: 11px 22px; border-radius: 10px; border: none; font-size: 14px; font-weight: 600;
     cursor: pointer; transition: opacity 0.15s; font-family: inherit;
@@ -129,26 +114,6 @@
   .outcome-btn:disabled { background: var(--theme-btn-border); color: var(--theme-text-muted); cursor: default; opacity: 1; }
   .outcome-btn-back { background: none; border: 1px solid var(--theme-btn-border); color: var(--theme-text-muted); }
   .outcome-btn-back:hover { color: var(--theme-text-primary); border-color: var(--theme-text-primary); opacity: 1; }
-
-  .widget-button-row { display: flex; margin-top: 24px; }
-  .widget-button-row.align-left { justify-content: flex-start; }
-  .widget-button-row.align-center { justify-content: center; }
-  .widget-button-row.align-right { justify-content: flex-end; }
-
-  .widget-header-hero { text-align: center; padding: 8px 4px 28px; }
-  .widget-header-hero-logo {
-    height: 40px; width: auto; aspect-ratio: 805 / 220; display: block; margin: 0 auto 16px;
-    background-color: var(--theme-text-primary, currentColor);
-    -webkit-mask-image: url(/api/themes/active/logo); mask-image: url(/api/themes/active/logo);
-    -webkit-mask-size: contain; mask-size: contain;
-    -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
-    -webkit-mask-position: center; mask-position: center;
-  }
-  .widget-header-hero-label {
-    font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
-    color: var(--theme-text-label); margin-bottom: 8px;
-  }
-  .widget-header-hero h1 { font-size: clamp(20px, 3.5vw, 28px); font-weight: 600; letter-spacing: -0.3px; color: var(--theme-text-primary); }
 
   #state-screen {
     width: 100%; max-width: 640px; margin: 80px auto; text-align: center;
@@ -342,6 +307,7 @@ let requiredPending = new Set();
 let renderGeneration = 0;
 let currentPageOutcomes = [];
 let currentPageWidgets = [];
+let currentPageEnded = false;
 let questionnaireStates = {};
 
 // Simulate mode: an admin previewing a (possibly draft, never-live) PageFlow from
@@ -353,41 +319,9 @@ let simulate = false;
 let pageFlowId = null;
 function fsBase() { return simulate ? '/api/admin/flow-sessions' : '/api/public/flow-sessions'; }
 
-function parseChoices(json) {
-  try {
-    const arr = JSON.parse(json || '[]');
-    return Array.isArray(arr) ? arr : [];
-  } catch (e) {
-    return [];
-  }
-}
-
-function isRequired(config) {
-  return config.required === true || config.required === 'true';
-}
-
 function widgetConfigBool(value, defaultVal) {
   if (value === undefined || value === null || value === '') return defaultVal;
   return value === true || value === 'true';
-}
-
-async function saveAnswer(widgetId, value, required) {
-  const patch = {};
-  patch[widgetId] = value;
-  try {
-    await fetch(`${API}${fsBase()}/${token}/context`, {
-      method: 'PUT', headers: HEADERS, credentials: simulate ? 'include' : 'same-origin',
-      body: JSON.stringify({ contextPatchJson: JSON.stringify(patch) })
-    });
-  } catch (e) { /* best effort — outcome gating below only reflects local state */ }
-
-  const hasValue = Array.isArray(value) ? value.length > 0 : !!(value && String(value).trim());
-  if (hasValue) {
-    requiredPending.delete(widgetId);
-  } else if (required) {
-    requiredPending.add(widgetId);
-  }
-  updateOutcomeButtons();
 }
 
 function updateOutcomeButtons() {
@@ -405,127 +339,7 @@ async function putContext(key, value) {
   } catch (e) { /* best effort — outcome gating below only reflects local state */ }
 }
 
-function applyBoundaries(el, config) {
-  if (config.widthMode === 'percent' && config.width) el.style.width = config.width + '%';
-  else if (config.widthMode === 'fixed' && config.width) el.style.width = config.width + 'px';
-  if (config.heightMode === 'percent' && config.height) el.style.height = config.height + '%';
-  else if (config.heightMode === 'fixed' && config.height) el.style.height = config.height + 'px';
-}
-
 const widgetRegistry = {
-  content: (w) => {
-    const mode = w.config.contentMode || 'text';
-    let el;
-    if (mode === 'html') {
-      el = document.createElement('div');
-      el.className = 'widget-content';
-      el.innerHTML = w.config.html || '';
-    } else if (mode === 'image') {
-      el = document.createElement('img');
-      el.className = 'widget-content-image';
-      el.src = w.config.imageUrl || '';
-      el.alt = w.config.imageAlt || '';
-    } else if (mode === 'header') {
-      el = document.createElement('div');
-      el.className = 'widget-header-hero';
-      const logo = document.createElement('div');
-      logo.className = 'widget-header-hero-logo';
-      logo.setAttribute('role', 'img');
-      logo.setAttribute('aria-label', w.config.heading || 'Genesis Brands');
-      el.appendChild(logo);
-      if (w.config.label) {
-        const label = document.createElement('div');
-        label.className = 'widget-header-hero-label';
-        label.textContent = w.config.label;
-        el.appendChild(label);
-      }
-      const h1 = document.createElement('h1');
-      h1.textContent = w.config.heading || '';
-      el.appendChild(h1);
-    } else if (mode === 'htmlFile') {
-      el = document.createElement('iframe');
-      el.className = 'widget-content-iframe';
-      el.src = w.config.htmlFileUrl || '';
-      // allow-top-navigation lets an embedded full page's own internal links (e.g. a
-      // "Sign in" link meant to leave the landing page) navigate the real top-level tab
-      // instead of getting stuck loading inside the iframe — matches how the same HTML
-      // behaved when served directly, before it was wrapped in a Content widget.
-      el.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation');
-      el.setAttribute('frameborder', '0');
-    } else {
-      el = document.createElement('div');
-      el.className = 'widget-content';
-      const h = document.createElement('h2');
-      h.textContent = w.config.heading || '';
-      const p = document.createElement('p');
-      p.textContent = w.config.body || '';
-      el.appendChild(h);
-      el.appendChild(p);
-    }
-    applyBoundaries(el, w.config);
-    return el;
-  },
-  question: (w) => {
-    const div = document.createElement('div');
-    div.className = 'widget-question';
-    const required = isRequired(w.config);
-
-    const label = document.createElement('label');
-    label.className = 'q-prompt';
-    label.textContent = w.config.prompt || '';
-    label.htmlFor = 'q-' + w.id;
-    div.appendChild(label);
-
-    if (w.config.helpText) {
-      const help = document.createElement('div');
-      help.className = 'q-help';
-      help.textContent = w.config.helpText;
-      div.appendChild(help);
-    }
-
-    const questionType = w.config.questionType || 'short_text';
-    if (required) requiredPending.add(w.id);
-
-    if (questionType === 'long_text') {
-      const ta = document.createElement('textarea');
-      ta.id = 'q-' + w.id;
-      ta.rows = 4;
-      ta.onchange = () => saveAnswer(w.id, ta.value, required);
-      div.appendChild(ta);
-    } else if (questionType === 'single_select' || questionType === 'multi_select') {
-      const wrap = document.createElement('div');
-      wrap.className = 'q-choices';
-      parseChoices(w.config.choicesJson).forEach((choice, i) => {
-        const row = document.createElement('label');
-        row.className = 'q-choice';
-        const input = document.createElement('input');
-        input.type = questionType === 'single_select' ? 'radio' : 'checkbox';
-        input.name = 'q-' + w.id;
-        input.id = 'q-' + w.id + '-' + i;
-        input.value = choice;
-        input.onchange = () => {
-          if (questionType === 'single_select') {
-            saveAnswer(w.id, choice, required);
-          } else {
-            const checked = Array.from(wrap.querySelectorAll('input:checked')).map(el => el.value);
-            saveAnswer(w.id, checked, required);
-          }
-        };
-        row.appendChild(input);
-        row.appendChild(document.createTextNode(choice));
-        wrap.appendChild(row);
-      });
-      div.appendChild(wrap);
-    } else {
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.id = 'q-' + w.id;
-      input.onchange = () => saveAnswer(w.id, input.value, required);
-      div.appendChild(input);
-    }
-
-    return div;
-  },
   questionnaire: (w) => {
     const div = document.createElement('div');
     div.className = 'widget-questionnaire';
@@ -557,51 +371,6 @@ const widgetRegistry = {
     div.id = 'payment-widget-' + w.id;
     div.className = 'widget-payment';
     bootPaymentWidget(w, div);
-    return div;
-  },
-  button: (w) => {
-    const align = ['left', 'center', 'right'].includes(w.config.align) ? w.config.align : 'right';
-    const isBack = w.config.action === 'back';
-
-    const row = document.createElement('div');
-    row.className = 'widget-button-row align-' + align;
-
-    const btn = document.createElement('button');
-    btn.className = 'outcome-btn' + (isBack ? ' outcome-btn-back' : '');
-    btn.textContent = w.config.label || (isBack ? 'Back' : 'Continue');
-    btn.onclick = () => advance(isBack ? 'back' : 'next');
-    row.appendChild(btn);
-
-    return row;
-  },
-  pageNav: (w) => {
-    const div = document.createElement('div');
-    div.className = 'widget-page-nav';
-    const backOutcome = currentPageOutcomes.find(o => o.key === 'back');
-    const otherOutcomes = currentPageOutcomes.filter(o => o.key !== 'back');
-
-    const left = document.createElement('div');
-    left.className = 'page-nav-left';
-    if (backOutcome) {
-      const btn = document.createElement('button');
-      btn.className = 'outcome-btn outcome-btn-back';
-      btn.textContent = backOutcome.label;
-      btn.onclick = () => advance(backOutcome.key);
-      left.appendChild(btn);
-    }
-    div.appendChild(left);
-
-    const right = document.createElement('div');
-    right.className = 'page-nav-right';
-    otherOutcomes.forEach(o => {
-      const btn = document.createElement('button');
-      btn.className = 'outcome-btn';
-      btn.textContent = o.label;
-      btn.onclick = () => advance(o.key);
-      right.appendChild(btn);
-    });
-    div.appendChild(right);
-
     return div;
   }
 };
@@ -1541,17 +1310,6 @@ function render(view) {
 }
 
 function renderPage(page, isEnded) {
-  // A sole-redirect page (no other widgets) forwards immediately with no flash. A
-  // redirect widget mixed with other widgets renders the rest of the page first, then
-  // redirects after a brief, human-perceptible pause.
-  if (page.redirectUrl) {
-    if (!page.widgets || page.widgets.length === 0) {
-      window.location.href = page.redirectUrl;
-      return;
-    }
-    setTimeout(() => { window.location.href = page.redirectUrl; }, 1500);
-  }
-
   const layout = layouts.find(l => l.id === page.layoutKey) || layouts[0];
   const isFullBleed = !!layout && layout.id === 'FULL_BLEED';
 
@@ -1565,11 +1323,10 @@ function renderPage(page, isEnded) {
   requiredPending = new Set();
   currentPageOutcomes = page.outcomes || [];
   currentPageWidgets = page.widgets || [];
-
-  // Navigation is opt-in, not layout-driven: a page only gets Back/Next buttons when
-  // it's been given a pageNav widget. A flow's designated end page is terminal — the
-  // session has already ended server-side — so pageNav is skipped there even if present.
-  const widgets = isEnded ? page.widgets.filter(w => w.widgetType !== 'pageNav') : page.widgets;
+  // A flow's designated end page is terminal — the session has already ended server-side;
+  // widgets see that as ctx.page.ended (pageNav renders nothing there).
+  currentPageEnded = isEnded;
+  const widgets = currentPageWidgets;
 
   // 'header' is a reserved slotKey, not a layout-declared one: any widget assigned to it
   // renders full-width above the grid (spanning every column/slot below), regardless of
@@ -1626,6 +1383,7 @@ function widgetCtx(w) {
   const ctx = {
     simulate,
     outcomes: currentPageOutcomes.map(o => ({ key: o.key, label: o.label })),
+    page: { ended: currentPageEnded, widgetCount: currentPageWidgets.length },
     requireCompletion() {
       ctx._blocking = true;
       if (!live()) return;

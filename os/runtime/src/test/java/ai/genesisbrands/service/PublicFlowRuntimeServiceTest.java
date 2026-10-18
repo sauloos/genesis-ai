@@ -143,28 +143,10 @@ class PublicFlowRuntimeServiceTest {
         assertThat(view.page().widgets()).hasSize(1);
         assertThat(view.page().widgets().get(0).config()).containsEntry("heading", "Hi");
         assertThat(view.page().outcomes()).extracting(WidgetOutcome::key).containsExactly("next");
-        assertThat(view.page().redirectUrl()).isNull();
     }
 
     @Test
-    void renderCurrentPage_soleRedirectWidget_setsRedirectUrl_emptyWidgetList() {
-        PageFlow f = flow("f1", "s");
-        FlowSession s = session("tok", "f1", "p1", false);
-        when(flowSessionService.get("tok")).thenReturn(s);
-        when(pageFlowRepo.findById("f1")).thenReturn(Optional.of(f));
-        Page p = page("p1", "f1");
-        when(pageRepo.findById("p1")).thenReturn(Optional.of(p));
-        when(pageWidgetRepo.findByPageIdOrderByOrderInSlotAsc("p1"))
-            .thenReturn(List.of(widget("p1", "main", 0, "redirect", "{\"targetUrl\":\"/discover\"}")));
-
-        PublicFlowRuntimeService.PublicSessionView view = service.resume("tok", null);
-
-        assertThat(view.page().redirectUrl()).isEqualTo("/discover");
-        assertThat(view.page().widgets()).isEmpty();
-    }
-
-    @Test
-    void renderCurrentPage_mixedRedirectWidget_omitsWidgetFromList_butStillSetsRedirectUrl() {
+    void renderCurrentPage_redirectWidget_rendersLikeAnyOtherWidget() {
         PageFlow f = flow("f1", "s");
         FlowSession s = session("tok", "f1", "p1", false);
         when(flowSessionService.get("tok")).thenReturn(s);
@@ -179,9 +161,9 @@ class PublicFlowRuntimeServiceTest {
 
         PublicFlowRuntimeService.PublicSessionView view = service.resume("tok", null);
 
-        assertThat(view.page().redirectUrl()).isEqualTo("/discover");
         assertThat(view.page().widgets()).extracting(PublicFlowRuntimeService.PageWidgetView::widgetType)
-            .containsExactly("content");
+            .containsExactly("content", "redirect");
+        assertThat(view.page().widgets().get(1).config()).containsEntry("targetUrl", "/discover");
     }
 
     @Test

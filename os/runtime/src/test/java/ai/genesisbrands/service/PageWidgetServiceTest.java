@@ -3,10 +3,11 @@ package ai.genesisbrands.service;
 import ai.genesisbrands.model.Page;
 import ai.genesisbrands.model.PageWidget;
 import ai.genesisbrands.platform.PageLayout;
+import ai.genesisbrands.platform.WidgetConfigOption;
+import ai.genesisbrands.platform.WidgetConfigOption.OptionType;
 import ai.genesisbrands.platform.WidgetDescriptor;
 import ai.genesisbrands.repository.PageRepository;
 import ai.genesisbrands.repository.PageWidgetRepository;
-import ai.genesisbrands.widget.ContentWidget;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,8 +38,20 @@ class PageWidgetServiceTest {
 
     @BeforeEach
     void setUp() {
-        widgetDescriptors = List.of(new ContentWidget());
+        widgetDescriptors = List.of(new StubContentWidget());
         service = new PageWidgetService(pageWidgetRepo, pageRepo, widgetDescriptors, new ObjectMapper(), blobStorageService);
+    }
+
+    /** Widget modules are not on the runtime's classpath; a stand-in "content" descriptor. */
+    private static class StubContentWidget implements WidgetDescriptor {
+        public String widgetType() { return "content"; }
+        public String displayName() { return "Content"; }
+        public String description() { return "Stub"; }
+        public List<WidgetConfigOption> configOptions() {
+            return List.of("contentMode", "htmlFileUrl", "widthMode", "width").stream()
+                .map(k -> new WidgetConfigOption(k, k, OptionType.STRING, List.of(), ""))
+                .toList();
+        }
     }
 
     private Page page(String id, String layoutKey) {
@@ -54,17 +67,6 @@ class PageWidgetServiceTest {
         w.setPageId("p1");
         w.setWidgetType("content");
         return w;
-    }
-
-    @Test
-    void contentWidget_configOptionsIncludeAllMultiModeKeys() {
-        List<String> keys = new ContentWidget().configOptions().stream()
-            .map(o -> o.key())
-            .toList();
-
-        assertThat(keys).containsExactlyInAnyOrder(
-            "contentMode", "heading", "body", "label", "html", "imageUrl", "imageAlt",
-            "htmlFileUrl", "widthMode", "width", "heightMode", "height");
     }
 
     @Test

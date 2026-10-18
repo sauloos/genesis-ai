@@ -54,11 +54,16 @@ widgetType, config }` and `ctx` is supplied by the host:
 | `onOutcome(key?)` | the widget finished; the host advances the flow with `key` (default `next`) |
 | `advance(key)` | move the flow directly (navigation widgets) |
 | `outcomes` | the current page's outcomes `[{key, label}]` |
+| `page` | `{ ended, widgetCount }` — whether this is the flow's end page, and how many widgets it has |
 | `session` | `{ token, fetch(path, init) }` — calls `<flow-session API>/<token><path>` with the right headers/credentials |
 | `saveContext(patch)` | merge a patch into the flow session context |
 
 A widget that is still loading blocks the outcome buttons; once `mount` resolves the block is
 released unless the widget called `requireCompletion()`.
+
+`.outcome-btn` (with `.outcome-btn-back`) is a host-provided class. A widget that renders a
+button which advances the flow uses it, and the host disables every `.outcome-btn` while any
+widget blocks or the flow is advancing.
 
 ## Steps
 
@@ -84,6 +89,13 @@ released unless the widget called `requireCompletion()`.
    → logout → productOptions (+ `ProductSelectionController`) → payment (+ `PaymentController`)
    → questionnaire → brandResults (brands, + `BrandResultsController`). The registry is gone and
    `flow-runtime.html` is chrome.
+   *3a DONE.* content, button, pageNav, question and redirect are modules under `os/widgets/`.
+   The server no longer special-cases redirect (`PageRenderView.redirectUrl` is gone). The
+   redirect widget forwards at once when it is alone on a page, otherwise after 1.5s. In an admin
+   simulation it only shows its target, so the author can keep stepping through the flow.
+   *Found for step 4:* `FlowEngagementService` and `PageFlowService` hardcode the `question` and
+   `questionnaire` types to harvest answers server-side. The content upload endpoints still live
+   in `PageWidgetService` (runtime), though they belong to the content widget.
 4. **Tenant code out of core.** The end-of-flow registration screen is replaced by the login
    widget plus a tenant hook for claiming an engagement; core stops calling `/api/engagements`.
 5. **Flows only.** Retire `your-brand.html` into the `/live/dashboard` flow (old URL redirects),
