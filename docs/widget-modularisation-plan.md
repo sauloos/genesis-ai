@@ -95,6 +95,9 @@ widget blocks or the flow is advancing.
    simulation it only shows its target, so the author can keep stepping through the flow.
    *3b DONE.* logout is a module. Its sign-out unlinks the client through `ctx.session`, and in
    an admin simulation the button does nothing.
+   *3c DONE.* productOptions is a module that carries its own `ProductSelectionController`.
+   `CartService` stays in the runtime, because payment reads the same cart. The module compiles
+   against the runtime as `compileOnly`, like the consultant agent module.
    *Found for step 4:* `FlowEngagementService` and `PageFlowService` hardcode the `question` and
    `questionnaire` types to harvest answers server-side. The content upload endpoints still live
    in `PageWidgetService` (runtime), though they belong to the content widget.
