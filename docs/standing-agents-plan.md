@@ -223,7 +223,7 @@ client of the tenant.
 
 | # | Phase | Delivers |
 |---|---|---|
-| 0 | Usage ledger | Per-run token/image metering against a client; admin view. Prerequisite for budgets and billing. |
+| 0 | Usage ledger — **done 2026-10-19** | Per-run token/image metering against a client; admin view. Prerequisite for budgets and billing. |
 | 1 | Standing runtime | SDK `StandingAgent`, offer/subscription/run/inbox model, scheduler, admin section, `agentSubscriptions` + `agentInbox` widgets, connector exposure. Proven with a trivial core agent (client pulse). |
 | 2 | Content agent, draft-only | Content agent producing drafts into the inbox; client approves and downloads. Real value before any platform review clears. |
 | 3 | Channels | `PublishChannel` SPI, `channelConnections` widget, Meta + LinkedIn modules, token vault, scheduled publish. Submit Meta App Review / LinkedIn product access at the start of this phase. |
@@ -231,6 +231,20 @@ client of the tenant.
 | 5 | Occasions + market watch | Calendar-driven asset proposals; competitor briefs using the ingestion crawler. |
 | 6 | Lead-to-proposal, knowledge gardener | Event triggers (inbox/RFP), ingestion-pipeline extension. |
 | 7 | Metrics loop | Pull post metrics; the content agent weights pillars/kinds by what performs. |
+
+**Phase 0 as built** (os/runtime, package `ai.genesisbrands.usage`): `MeteredChatModel` wraps
+the primary `ChatModel` (both profiles), so every Spring AI chat call, streamed or not, writes a
+`UsageEvent` (model, tokens, images, cost in micro-dollars, client, agent, source, run). Cost
+comes from `UsagePricing`: built-in list prices by longest model-id prefix, overridable under
+`genesis.usage.prices.<prefix>.{input-per-mtok,output-per-mtok,per-image}`. Attribution is a
+thread-bound `UsageScope`: `UsageScopeInterceptor` opens one per `/api/**` and `/mcp/**`
+request (the client from a connector key or the session cookie, resolved only when a model is
+called), `UsageTaskDecorator` carries it into `@Async` work, and a standing run will set it
+with `UsageContext.callWith` (agent id + run id). The agent comes from the config key the
+agent last read through `AgentProperties.get`. Image calls outside Spring AI's chat model
+(Logo: gpt-image-1, Ideogram) record through `UsageService.recordImage`. Admin page:
+`/dashboard/usage` (`UsageNavExtension`). `UsageService.spentThisMonthMicros(clientUserId)`
+is the hook for phase 1 budgets. Embeddings are not metered yet (fractions of a cent).
 
 Email notifications land with phase 1 or 2; entitlements with phase 2 at the latest, before
 any client pays for the subscription.

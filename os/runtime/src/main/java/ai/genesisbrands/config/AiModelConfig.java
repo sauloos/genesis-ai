@@ -1,5 +1,7 @@
 package ai.genesisbrands.config;
 
+import ai.genesisbrands.usage.MeteredChatModel;
+import ai.genesisbrands.usage.UsageService;
 import org.springframework.ai.anthropic.AnthropicChatModel;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.anthropic.api.AnthropicApi;
@@ -71,11 +73,12 @@ public class AiModelConfig {
 
     // --- Default profile (direct API keys) ---
 
+    // The primary model is metered: every chat call is written to the usage ledger.
     @Bean
     @Primary
     @Profile("!azure")
-    public ChatModel primaryChatModel(AnthropicChatModel model) {
-        return model;
+    public ChatModel primaryChatModel(AnthropicChatModel model, UsageService usage) {
+        return new MeteredChatModel(model, usage);
     }
 
     @Bean
@@ -90,8 +93,8 @@ public class AiModelConfig {
     @Bean
     @Primary
     @Profile("azure")
-    public ChatModel azureChatModel(AzureOpenAiChatModel model) {
-        return model;
+    public ChatModel azureChatModel(AzureOpenAiChatModel model, UsageService usage) {
+        return new MeteredChatModel(model, usage);
     }
 
     @Bean

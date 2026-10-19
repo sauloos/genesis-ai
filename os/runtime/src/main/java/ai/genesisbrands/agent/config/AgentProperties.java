@@ -1,6 +1,7 @@
 package ai.genesisbrands.agent.config;
 
 import ai.genesisbrands.model.AgentSettingsOverride;
+import ai.genesisbrands.usage.UsageContext;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -36,6 +37,9 @@ public class AgentProperties {
 
     /** Effective config for a key: deploy-time defaults with any admin override applied. */
     public AgentConfig get(String agentId) {
+        // Agents read their config right before each model call, which names the caller
+        // for the usage ledger.
+        UsageContext.noteAgent(agentId);
         AgentConfig base = defaults(agentId);
         Optional<AgentSettingsOverride> override = override(agentId);
         if (override.isEmpty()) return base;

@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Genesis — Usage</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --theme-bg-image: url('/bg-earth.jpg');
+    --theme-bg-transform: rotate(180deg);
+    --theme-bg-overlay: rgba(0, 0, 10, 0.52);
+    --theme-body-bg: #000010;
+    --theme-text-primary: #f2f2f2;
+    --theme-text-muted: rgba(255, 255, 255, 0.52);
+    --theme-text-label: rgba(255, 255, 255, 0.38);
+    --theme-card-bg: rgba(255, 255, 255, 0.07);
+    --theme-card-bg-hover: rgba(255, 255, 255, 0.12);
+    --theme-card-border: rgba(255, 255, 255, 0.10);
+    --theme-backdrop: blur(12px);
+    --theme-btn-color: rgba(255, 255, 255, 0.4);
+    --theme-btn-border: rgba(255, 255, 255, 0.12);
+    --theme-btn-color-hover: rgba(255, 255, 255, 0.75);
+    --theme-btn-border-hover: rgba(255, 255, 255, 0.3);
+    --theme-env-badge-bg: rgba(0, 0, 0, 0.4);
+    --theme-env-badge-border: rgba(255, 255, 255, 0.08);
+    --usage-bar: #6fe0a5;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    min-height: 100vh;
+    color: var(--theme-text-primary);
+    background: var(--theme-body-bg);
+    position: relative;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: var(--theme-bg-image) var(--theme-bg-position, center center) / var(--theme-bg-size, cover) no-repeat;
+    transform: var(--theme-bg-transform, none);
+    z-index: -2;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: var(--theme-bg-overlay);
+    z-index: -1;
+  }
+
+  header { display: flex; align-items: center; justify-content: space-between; padding: 24px 40px 0; }
+  .back-btn {
+    font-size: 12px; color: var(--theme-btn-color); background: none;
+    border: 1px solid var(--theme-btn-border); border-radius: 6px; padding: 5px 12px;
+    cursor: pointer; text-decoration: none; transition: color 0.15s, border-color 0.15s;
+  }
+  .back-btn:hover { color: var(--theme-btn-color-hover); border-color: var(--theme-btn-border-hover); }
+
+  .hero { text-align: center; padding: 36px 24px 28px; }
+  .hero-logo {
+    height: 52px; width: auto; aspect-ratio: 805 / 220; display: block; margin: 0 auto 20px;
+    background-color: var(--theme-text-primary, currentColor);
+    -webkit-mask-image: url(/api/themes/active/logo); mask-image: url(/api/themes/active/logo);
+    -webkit-mask-size: contain; mask-size: contain;
+    -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+    -webkit-mask-position: center; mask-position: center;
+  }
+  .hero-label { font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--theme-text-label); margin-bottom: 10px; }
+  .hero h1 { font-size: clamp(20px, 3vw, 28px); font-weight: 600; letter-spacing: -0.3px; }
+  .hero-sub { font-size: 14px; color: var(--theme-text-muted); margin-top: 8px; }
+
+  .main { max-width: 1000px; margin: 0 auto; padding: 0 24px 80px; display: flex; flex-direction: column; gap: 16px; }
+
+  .window { display: flex; gap: 6px; justify-content: center; }
+  .window button {
+    font-size: 12px; color: var(--theme-btn-color); background: none;
+    border: 1px solid var(--theme-btn-border); border-radius: 6px; padding: 5px 12px; cursor: pointer;
+  }
+  .window button[aria-pressed="true"] { color: var(--theme-text-primary); border-color: var(--theme-btn-border-hover); background: var(--theme-card-bg); }
+  .window button:focus-visible { outline: 2px solid var(--usage-bar); outline-offset: 2px; }
+
+  .panel {
+    background: var(--theme-card-bg); border: 1px solid var(--theme-card-border); border-radius: 16px;
+    backdrop-filter: var(--theme-backdrop); -webkit-backdrop-filter: var(--theme-backdrop);
+    padding: 20px 22px;
+  }
+  .panel-title { font-size: 10px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--theme-text-label); margin-bottom: 14px; }
+
+  .totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 18px; }
+  .total-value { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.4px; }
+  .total-label { font-size: 12px; color: var(--theme-text-muted); margin-top: 2px; }
+
+  .chart { display: flex; align-items: flex-end; gap: 3px; height: 120px; }
+  .chart-bar { flex: 1; min-width: 2px; background: var(--usage-bar); opacity: 0.75; border-radius: 3px 3px 0 0; }
+  .chart-bar:hover { opacity: 1; }
+  .chart-axis { display: flex; justify-content: space-between; font-size: 11px; color: var(--theme-text-label); margin-top: 6px; font-variant-numeric: tabular-nums; }
+
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; font-weight: 600; color: var(--theme-text-label); padding: 0 8px 8px 0; white-space: nowrap; }
+  td { padding: 7px 8px 7px 0; border-top: 1px solid var(--theme-card-border); color: var(--theme-text-muted); vertical-align: top; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.name { color: var(--theme-text-primary); word-break: break-word; }
+  td.none { color: var(--theme-text-label); font-style: italic; }
+  td.nowrap { white-space: nowrap; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+
+  .empty { text-align: center; padding: 24px; color: var(--theme-text-muted); font-size: 13px; }
+
+  #env-badge {
+    position: fixed; bottom: 20px; left: 24px; display: flex; align-items: center; gap: 7px;
+    background: var(--theme-env-badge-bg); border: 1px solid var(--theme-env-badge-border);
+    border-radius: 20px; padding: 5px 12px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  }
+
+  @media (max-width: 480px) {
+    header { padding: 20px 16px 0; }
+    .hero { padding: 28px 16px 20px; }
+    .main { padding: 0 16px 60px; }
+  }
+</style>
+<link rel="stylesheet" href="/api/themes/active/styles.css">
+</head>
+<body>
+
+<header>
+  <a href="/dashboard" class="back-btn">← Dashboard</a>
+</header>
+
+<div class="hero">
+  <div class="hero-logo" role="img" aria-label="Genesis"></div>
+  <div class="hero-label">Brain Engine</div>
+  <h1>Usage</h1>
+  <p class="hero-sub">Model spend at provider list prices, by client, agent and model.</p>
+</div>
+
+<div class="main">
+  <div class="window" role="group" aria-label="Time window">
+    <button type="button" id="win-7" data-days="7">7 days</button>
+    <button type="button" id="win-30" data-days="30" aria-pressed="true">30 days</button>
+    <button type="button" id="win-90" data-days="90">90 days</button>
+  </div>
+
+  <section class="panel">
+    <div class="totals" id="totals"><div class="empty">Loading usage…</div></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-title">Spend per day (UTC)</div>
+    <div class="chart" id="chart"></div>
+    <div class="chart-axis" id="chartAxis"></div>
+  </section>
+
+  <div class="grid-2">
+    <section class="panel">
+      <div class="panel-title">By client</div>
+      <div class="table-wrap" id="byClient"></div>
+    </section>
+    <section class="panel">
+      <div class="panel-title">By agent</div>
+      <div class="table-wrap" id="byAgent"></div>
+    </section>
+  </div>
+
+  <section class="panel">
+    <div class="panel-title">By model</div>
+    <div class="table-wrap" id="byModel"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-title">Recent calls</div>
+    <div class="table-wrap" id="events"></div>
+  </section>
+</div>
+
+<script>
+let days = 30;
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function dollars(micros) {
+  const d = micros / 1e6;
+  if (d === 0) return '$0';
+  if (d < 0.01) return '<$0.01';
+  return '$' + d.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function tokens(n) {
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'k';
+  return String(n);
+}
+
+async function getJSON(path) {
+  const r = await fetch(path, { credentials: 'include' });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+function bucketTable(buckets, noneLabel) {
+  if (!buckets.length) return '<div class="empty">No usage in this window.</div>';
+  return `<table>
+    <thead><tr><th>Name</th><th class="num">Calls</th><th class="num">Tokens in / out</th><th class="num">Images</th><th class="num">Spend</th></tr></thead>
+    <tbody>${buckets.map(b => `<tr>
+      <td class="${b.label ? 'name' : 'none'}">${esc(b.label || noneLabel)}</td>
+      <td class="num">${b.calls.toLocaleString()}</td>
+      <td class="num">${tokens(b.inputTokens)} / ${tokens(b.outputTokens)}</td>
+      <td class="num">${b.images || '—'}</td>
+      <td class="num">${dollars(b.costMicros)}</td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+function renderChart(byDay) {
+  const chart = document.getElementById('chart');
+  const axis = document.getElementById('chartAxis');
+  const map = new Map(byDay.map(b => [b.key, b]));
+  const today = new Date();
+  const series = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - i));
+    const key = d.toISOString().slice(0, 10);
+    series.push({ key, cost: map.get(key)?.costMicros || 0, calls: map.get(key)?.calls || 0 });
+  }
+  const max = Math.max(...series.map(s => s.cost), 1);
+  chart.innerHTML = series.map(s =>
+    `<div class="chart-bar" style="height:${Math.max(s.cost ? 2 : 0, (s.cost / max) * 100)}%" title="${s.key}: ${dollars(s.cost)} · ${s.calls} calls"></div>`
+  ).join('');
+  axis.innerHTML = `<span>${series[0].key}</span><span>peak ${dollars(max === 1 ? 0 : max)}</span><span>${series[series.length - 1].key}</span>`;
+}
+
+async function load() {
+  try {
+    const [summary, events] = await Promise.all([
+      getJSON(`/api/admin/usage/summary?days=${days}`),
+      getJSON(`/api/admin/usage/events?days=${days}&limit=100`)
+    ]);
+    const t = summary.total;
+    const clients = summary.byClient.filter(b => b.label).length;
+    document.getElementById('totals').innerHTML = [
+      [dollars(t.costMicros), 'Spend'],
+      [t.calls.toLocaleString(), 'Model calls'],
+      [`${tokens(t.inputTokens)} / ${tokens(t.outputTokens)}`, 'Tokens in / out'],
+      [t.images.toLocaleString(), 'Images generated'],
+      [clients.toLocaleString(), 'Clients with usage']
+    ].map(([v, l]) => `<div><div class="total-value">${v}</div><div class="total-label">${l}</div></div>`).join('');
+    renderChart(summary.byDay);
+    document.getElementById('byClient').innerHTML = bucketTable(summary.byClient, 'Admin / unattributed');
+    document.getElementById('byAgent').innerHTML = bucketTable(summary.byAgent, 'Not an agent');
+    document.getElementById('byModel').innerHTML = bucketTable(summary.byModel, 'Unknown model');
+    document.getElementById('events').innerHTML = !events.length ? '<div class="empty">No calls in this window.</div>' : `<table>
+      <thead><tr><th>When</th><th>Agent</th><th>Model</th><th>Client</th><th>Source</th><th class="num">In / out</th><th class="num">Spend</th></tr></thead>
+      <tbody>${events.map(e => `<tr>
+        <td class="num">${new Date(e.occurredAt).toLocaleString()}</td>
+        <td class="nowrap ${e.agentId ? 'name' : 'none'}">${esc(e.agentId || '—')}</td>
+        <td class="mono">${esc(e.model || '—')}</td>
+        <td>${esc(e.client || '—')}</td>
+        <td class="mono">${esc(e.source || '—')}</td>
+        <td class="num">${e.kind === 'IMAGE' ? `${e.images} image${e.images === 1 ? '' : 's'}` : `${tokens(e.inputTokens)} / ${tokens(e.outputTokens)}`}</td>
+        <td class="num">${dollars(e.costMicros)}</td>
+      </tr>`).join('')}</tbody></table>`;
+  } catch (e) {
+    document.getElementById('totals').innerHTML = `<div class="empty">Could not load usage: ${esc(e.message)}</div>`;
+  }
+}
+
+document.querySelectorAll('.window button').forEach(btn => btn.addEventListener('click', () => {
+  days = Number(btn.dataset.days);
+  document.querySelectorAll('.window button').forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
+  load();
+}));
+
+load();
+
+(async () => {
+  try {
+    const r = await fetch("/api/admin/env", { credentials: "include" });
+    if (!r.ok) return;
+    const { env } = await r.json();
+    const col = { PRODUCTION: "#ef4444", QA: "#f59e0b", DEV: "#6b7280" }[env] || "#888";
+    const el = document.createElement("div");
+    el.id = "env-badge";
+    el.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:${col};flex-shrink:0;display:inline-block"></span>`
+      + `<span style="font-size:10px;font-weight:700;letter-spacing:0.5px;color:${col};text-transform:uppercase">${env}</span>`;
+    document.body.appendChild(el);
+  } catch {}
+})();
+</script>
+</body>
+</html>

@@ -7,6 +7,7 @@ import ai.genesisbrands.agent.core.AgentRevision;
 import ai.genesisbrands.agent.core.DirectionBrief;
 import ai.genesisbrands.service.BlobStorageService;
 import ai.genesisbrands.service.RetrievalService;
+import ai.genesisbrands.usage.UsageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
@@ -45,6 +46,7 @@ public class LogoAgent {
     private final ObjectMapper objectMapper;
     private final BlobStorageService blobStorageService;
     private final RetrievalService retrievalService;
+    private final UsageService usageService;
     private final RestTemplate restTemplate = new RestTemplate();
 
     @Value("${ideogram.api-key:}")
@@ -55,13 +57,15 @@ public class LogoAgent {
                       AgentProperties agentProperties,
                       ObjectMapper objectMapper,
                       BlobStorageService blobStorageService,
-                      RetrievalService retrievalService) {
+                      RetrievalService retrievalService,
+                      UsageService usageService) {
         this.chatClient = chatClientBuilder.build();
         this.imageModel = imageModel;
         this.agentProperties = agentProperties;
         this.objectMapper = objectMapper;
         this.blobStorageService = blobStorageService;
         this.retrievalService = retrievalService;
+        this.usageService = usageService;
     }
 
     // ── Public interface (defines the SpecialistAgent contract) ───────────────
@@ -222,6 +226,7 @@ public class LogoAgent {
             String imageUrl = (String) data.get(0).get("url");
             byte[] bytes = restTemplate.getForObject(imageUrl, byte[].class);
             if (bytes == null) throw new IllegalStateException("Failed to download Ideogram image from URL");
+            usageService.recordImage("ideogram-v2", 1);
             return bytes;
         } catch (IllegalStateException e) {
             throw e;
@@ -240,6 +245,7 @@ public class LogoAgent {
             options.setSize("1024x1024");
             ImageResponse response = imageModel.call(new ImagePrompt(imagePrompt, options));
             String b64 = response.getResult().getOutput().getB64Json();
+            usageService.recordImage(IMAGE_MODEL, 1);
             return Base64.getDecoder().decode(b64);
         } catch (Exception e) {
             throw new IllegalStateException("DALL-E image generation failed: " + e.getMessage(), e);

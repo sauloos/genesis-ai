@@ -1,6 +1,7 @@
 package ai.genesisbrands.connector.auth;
 
 import ai.genesisbrands.repository.ClientUserRepository;
+import ai.genesisbrands.usage.UsageScope;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -61,6 +62,7 @@ public class ConnectorAuthFilter extends OncePerRequestFilter {
 
         req.setAttribute(ConnectorPrincipal.REQUEST_ATTRIBUTE,
             new ConnectorPrincipal(k.getId(), k.getLabel(), k.getScope(), k.getClientUserId()));
+        if (k.getClientUserId() != null) req.setAttribute(UsageScope.CLIENT_USER_ATTRIBUTE, k.getClientUserId());
         chain.doFilter(req, res);
     }
 

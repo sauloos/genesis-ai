@@ -125,6 +125,9 @@ public class PageController {
     @GetMapping("/page-flows")
     public String pageFlowsRedirect() { return "redirect:/dashboard/page-flows"; }
 
+    @GetMapping("/dashboard/usage")
+    public String usagePage() { return "forward:/usage.html"; }
+
     @GetMapping("/dashboard/playground")
     public String playgroundPage() { return "forward:/playground.html"; }
     @GetMapping("/playground")
