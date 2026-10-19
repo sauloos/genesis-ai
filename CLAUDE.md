@@ -360,6 +360,16 @@ next to `CoreAgent`. `os/standing` collects every such bean, so there is no wiri
 - **Metering and connectors.** Runs are metered per run id in the usage ledger. The client's own
   subscriptions and inbox are exposed as connectors (REST `/api/connect/standing`, MCP
   `standing_*` tools via `ClientToolContributor`).
+- **Publishing to social accounts is client-initiated, never automatic.**
+  - A platform is a channel module (`os/channels/<id>`, auto-included). It implements
+    `PublishChannel` (os/channel-sdk).
+  - `os/publishing` owns OAuth connect, encrypted tokens (`TokenVault`), scheduled publish jobs
+    with retries, and signed media links. Channels never store anything themselves.
+  - Clients connect accounts in the `channelConnections` widget. From `agentInbox` they publish
+    an APPROVED post now or schedule it (`StandingPublishing`, also as connectors).
+  - Inert until `genesis.publishing.token-key`, `genesis.publishing.public-base-url` and a
+    channel's app credentials (`genesis.channels.<id>.*`) are set.
+  - See `docs/standing-agents-plan.md`, "Phase 3 as built".
 
 ## Module Layout
 

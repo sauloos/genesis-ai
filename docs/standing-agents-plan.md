@@ -230,7 +230,7 @@ cancellations of recurring products are not tracked yet: a client who paid once 
 | 0 | Usage ledger — **done 2026-10-19** | Per-run token/image metering against a client; admin view. Prerequisite for budgets and billing. |
 | 1 | Standing runtime — **done 2026-10-19** | SDK `StandingAgent`, offer/subscription/run/inbox model, scheduler, admin section, `agentSubscriptions` + `agentInbox` widgets, connector exposure. Proven with a trivial core agent (client pulse). |
 | 2 | Content agent, draft-only — **done 2026-10-19** | Content agent producing drafts into the inbox; client approves and downloads. Real value before any platform review clears. |
-| 3 | Channels | `PublishChannel` SPI, `channelConnections` widget, Meta + LinkedIn modules, token vault, scheduled publish. Submit Meta App Review / LinkedIn product access at the start of this phase. |
+| 3 | Channels — **built 2026-10-19, inert until configured** | `PublishChannel` SPI, `channelConnections` widget, Meta + LinkedIn modules, token vault, scheduled publish. Submit Meta App Review / LinkedIn product access at the start of this phase. |
 | 4 | Brand guardian | Site/social/upload audits against the brand book via the existing evaluators; reads recent posts through the connected channels. |
 | 5 | Occasions + market watch | Calendar-driven asset proposals; competitor briefs using the ingestion crawler. |
 | 6 | Lead-to-proposal, knowledge gardener | Event triggers (inbox/RFP), ingestion-pipeline extension. |
@@ -318,6 +318,88 @@ is the hook for phase 1 budgets. Embeddings are not metered yet (fractions of a 
 - **Widgets.** `agentInbox` renders a DRAFT_POST as a post: date / format / topic chips, image
   strip, one tab per channel with a Copy button, and Download post. `agentSubscriptions` has
   the email checkbox.
+
+**Phase 3 as built.** It differs from the SPI sketch above in one way: a channel module is a
+*provider* (one OAuth app) that can yield accounts on several networks. Meta gives Facebook
+Pages and the Instagram accounts linked to them, so one connect flow adds both.
+- **SDK** (`os/channel-sdk`, `platform.channel`):
+  - `PublishChannel`: `providerId`, `displayName`, `networks()` (each with its id, label, max
+    characters, max images and whether it requires an image), `configured()`,
+    `authorizationUrl`, `completeConnect(code, redirectUri)` returning `ChannelGrant`s, and
+    `publish(account, post)`.
+  - `ChannelException` carries `retryable()` and `reauthorize()`.
+  - `ChannelHttp` is a small JSON-over-HTTP helper.
+  - The runtime never depends on a channel module.
+- **Channels** (`os/channels/<id>`, auto-included like agents, adopted by both apps):
+  - `meta`:
+    - Facebook Login for Business with long-lived Page tokens, Graph `v26.0`.
+    - A Facebook post is text, one photo, or several unpublished photos attached to a feed post.
+    - An Instagram post is one image or a carousel published through a media container, and
+      must have an image.
+    - Config: `genesis.channels.meta.{app-id,app-secret,graph-version,scopes}`.
+  - `linkedin`:
+    - OpenID Connect plus `w_member_social` for the member's own profile.
+    - Organisation pages are added when `w_organization_social` is in
+      `genesis.channels.linkedin.scopes`, which needs Community Management approval.
+    - Images go through the Images API, then a Posts API post. The commentary is escaped for
+      LinkedIn's "little text" format, keeping hashtags.
+    - Versioned header `202610`.
+    - Config: `genesis.channels.linkedin.{client-id,client-secret,api-version,scopes}`.
+- **Runtime** (`os/publishing`):
+  - **Accounts.** `ChannelAccount` is unique per client, provider and external id. Its token is
+    encrypted with AES-GCM by `TokenVault`, using the base64 32-byte key in
+    `genesis.publishing.token-key`. Tokens are never sent to the browser.
+  - **Expiry.** An account is marked EXPIRED when its token's expiry passes, or when the
+    platform answers that it needs re-authorising. No refresh flow exists: LinkedIn gives
+    refresh tokens only to partners, and Meta Page tokens do not expire. The client reconnects.
+  - **Jobs.** A `PublishJob` holds the text and images of one post for one account at a time,
+    up to 366 days ahead. Jobs are keyed by a `sourceRef`; for an inbox item that is
+    `standing-inbox:<itemId>`.
+  - **Scheduling.** `PublishScheduler` runs every minute. It claims due jobs with a conditional
+    update, so two replicas cannot both send the same job.
+  - **Retries.** A retryable failure retries after 5, then 20 minutes, with at most 3
+    attempts.
+  - **Interrupted posts.** A job left RUNNING for more than 15 minutes is marked FAILED, not
+    retried, because the post may already be live.
+  - **Images.** They are normalised to JPEG and served at `/api/channels/media/{token}.jpg`
+    through a signed link that expires after 2 hours, for Meta to fetch.
+  - **OAuth state.** It is signed, binds the client, the provider and a same-origin return
+    path, and expires after 15 minutes. The callback also requires the signed-in client to
+    match.
+- **APIs:**
+  - Client, `/api/client/channels`: list providers and accounts, connect, disconnect (which
+    also cancels the account's waiting posts), and list or cancel posts.
+  - Public, `/api/channels`: the OAuth callback and media links. Both are exempt from the API
+    key through `ApiKeyExemption`.
+  - Admin, `/api/admin/channels`: setup status (which keys are missing) and the latest posts.
+- **Standing:**
+  - `StandingPublishing` publishes an APPROVED post. Each channel version of the post goes to
+    accounts on the matching network, now or at a chosen time, with the item's images.
+  - The item stays APPROVED; what went out lives in the jobs.
+  - Client endpoints: GET, POST and DELETE on `/api/client/standing/inbox/{id}/publish`.
+  - Connectors: the same under `/api/connect/standing/...`, plus the MCP tools
+    `standing_publish_options` and `standing_publish_item`.
+  - Publishing is never automatic: the client always chooses to publish.
+- **UI:**
+  - New core widget `channelConnections` ("Social accounts"): connect, reconnect and
+    disconnect.
+  - `agentInbox` shows a Publish section on an approved post. It has account checkboxes per
+    channel version, a time that defaults to the proposed day at 10:00, Publish now and
+    Schedule, and the post's jobs with View post and Cancel. The section hides itself when
+    publishing is off.
+  - `/dashboard/standing` has a "Social publishing" block.
+- **To turn it on:**
+  - Set `GENESIS_PUBLISHING_TOKEN_KEY` (`openssl rand -base64 32`) and
+    `GENESIS_PUBLISHING_PUBLIC_BASE_URL`.
+  - Set one platform's app credentials (`GENESIS_CHANNELS_META_APP_ID` / `_APP_SECRET`,
+    `GENESIS_CHANNELS_LINKEDIN_CLIENT_ID` / `_CLIENT_SECRET`).
+  - Register `<base>/api/channels/callback/{meta|linkedin}` as the redirect URI.
+  - Add `channelConnections` to the client dashboard flow.
+  - Until Meta App Review and Business Verification clear, only the Meta app's own testers
+    can connect.
+- **Not built:** post metrics (phase 7), Instagram's 24-hour publish cap per account, video,
+  stories as a story format (they post as a feed image), and reminders before a LinkedIn
+  token expires.
 
 ## Open questions
 
