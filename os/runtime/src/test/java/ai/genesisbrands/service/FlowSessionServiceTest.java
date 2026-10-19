@@ -235,13 +235,14 @@ class FlowSessionServiceTest {
         when(sessionRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         when(flowEngagementService.triggerEngagement(f, s)).thenReturn("eng-1");
+        when(flowEngagementService.nextUrl("eng-1", s)).thenReturn("/your-results/eng-1");
 
         FlowSessionService.AdvanceResult result = service.advance("tok", "next");
 
         assertThat(result.session().isEnded()).isTrue();
         assertThat(result.session().getCurrentPageId()).isNull();
         assertThat(result.redirectToFlowId()).isNull();
-        assertThat(result.engagementId()).isEqualTo("eng-1");
+        assertThat(result.nextUrl()).isEqualTo("/your-results/eng-1");
         org.mockito.Mockito.verify(flowEngagementService).triggerEngagement(f, s);
     }
 
@@ -258,7 +259,7 @@ class FlowSessionServiceTest {
         FlowSessionService.AdvanceResult result = service.advance("tok", "next");
 
         assertThat(result.session().isEnded()).isTrue();
-        assertThat(result.engagementId()).isNull();
+        assertThat(result.nextUrl()).isNull();
         org.mockito.Mockito.verify(flowEngagementService, org.mockito.Mockito.never()).triggerEngagement(any(), any());
     }
 

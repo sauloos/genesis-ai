@@ -10,9 +10,7 @@ import ai.genesisbrands.repository.PageWidgetRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +31,6 @@ public class PageWidgetService {
     private final PageRepository pageRepo;
     private final List<WidgetDescriptor> widgetDescriptors;
     private final ObjectMapper objectMapper;
-    private final BlobStorageService blobStorageService;
 
     public List<PageWidget> listByPage(String pageId) {
         return pageWidgetRepo.findByPageIdOrderByOrderInSlotAsc(pageId);
@@ -87,21 +84,6 @@ public class PageWidgetService {
     public void delete(String id) {
         get(id); // validate exists
         pageWidgetRepo.deleteById(id);
-    }
-
-    public String uploadContentImage(String id, MultipartFile image) throws IOException {
-        return uploadContentAsset(id, image);
-    }
-
-    public String uploadContentHtmlFile(String id, MultipartFile file) throws IOException {
-        return uploadContentAsset(id, file);
-    }
-
-    private String uploadContentAsset(String id, MultipartFile file) throws IOException {
-        get(id); // validate exists
-        String blobPath = "content-widgets/" + id + "/" + UUID.randomUUID() + "_" + file.getOriginalFilename();
-        blobStorageService.upload(blobPath, file.getBytes());
-        return "/api/assets/" + blobPath;
     }
 
     private void validateSlot(Page page, String slotKey) {

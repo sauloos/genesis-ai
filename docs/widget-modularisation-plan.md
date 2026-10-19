@@ -118,6 +118,23 @@ widget blocks or the flow is advancing.
    in `PageWidgetService` (runtime), though they belong to the content widget.
 4. **Tenant code out of core.** The end-of-flow registration screen is replaced by the login
    widget plus a tenant hook for claiming an engagement; core stops calling `/api/engagements`.
+   *DONE.*
+   - **End of flow.** `FlowEngagementTrigger.nextUrl(engagementId, clientUserId)` (default null)
+     says where the visitor goes after a CREATE_ENGAGEMENT end. The public session view carries
+     `nextUrl` instead of `engagementId`, and the host just follows it. Its register screen is
+     gone. Genesis Brands sends a signed-in visitor to `/your-brand/<id>` and anyone else to
+     `/register?next=/your-brand/<id>`. `/register` is the login widget flow, and
+     `your-brand.html` claims the engagement on open.
+   - **Answers.** Each widget type that captures answers ships a `FlowAnswerSource` bean
+     (`QuestionAnswerSource`, `QuestionnaireAnswerSource`). `FlowEngagementService` and the
+     CREATE_ENGAGEMENT check in `PageFlowService` only ask whether a widget's type has a source.
+   - **Content uploads.** `ContentAssetController` moved into the content module; the uploads
+     left `PageWidgetService`.
+   - **API key.** `ApiKeyFilter` takes `ApiKeyExemption` beans. Genesis Brands contributes the
+     engagement preview route (`EngagementPreviewExemption`). The payment webhook stays in core
+     with its controller.
+   *For step 5:* retiring `your-brand.html` must keep the claim-on-open and move `nextUrl` to
+   the new results page. `ClientAuthFilter` (core) still hardcodes `/your-brand`.
 5. **Flows only.** Retire `your-brand.html` into the `/live/dashboard` flow (old URL redirects),
    delete both `index.html` files and the legacy `/discover` + `/questionnaire-run` pages, add a
    login flow on genesis-os.

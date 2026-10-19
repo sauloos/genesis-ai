@@ -10,6 +10,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 
@@ -54,5 +56,13 @@ public class PageFlowEngagementAdapter implements FlowEngagementTrigger {
             orchestrator.runEngagementWithAnswers(engagementId, questions, answers);
         }
         return engagementId;
+    }
+
+    /** The results page; an anonymous visitor signs up first through the /register flow, and
+     *  the results page claims the engagement for the new account when it opens. */
+    @Override
+    public String nextUrl(String engagementId, String clientUserId) {
+        String results = "/your-brand/" + engagementId;
+        return clientUserId != null ? results : "/register?next=" + URLEncoder.encode(results, StandardCharsets.UTF_8);
     }
 }

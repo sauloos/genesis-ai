@@ -34,7 +34,7 @@ class PageFlowServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new PageFlowService(pageFlowRepo, pageRepo, pageWidgetRepo, pageTransitionService, themeRepository);
+        service = new PageFlowService(pageFlowRepo, pageRepo, pageWidgetRepo, pageTransitionService, themeRepository, List.of());
     }
 
     private PageFlow flow(String id, String slug, String rootPrefix, boolean live) {

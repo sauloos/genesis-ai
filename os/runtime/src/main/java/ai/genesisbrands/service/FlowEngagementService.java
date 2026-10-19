@@ -6,39 +6,49 @@ import ai.genesisbrands.model.PageFlow;
 import ai.genesisbrands.model.PageWidget;
 import ai.genesisbrands.model.QuestionnaireAnswer;
 import ai.genesisbrands.model.QuestionnaireQuestion;
+import ai.genesisbrands.platform.FlowAnswerSource;
 import ai.genesisbrands.platform.FlowEngagementTrigger;
 import ai.genesisbrands.repository.PageRepository;
 import ai.genesisbrands.repository.PageWidgetRepository;
-import ai.genesisbrands.repository.QuestionnaireAnswerRepository;
-import ai.genesisbrands.repository.QuestionnaireQuestionRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
- * Turns a completed PageFlow's captured answers (FlowSession.contextJson, keyed by
- * question widget id) into the same transient QuestionnaireQuestion/QuestionnaireAnswer
- * shape BriefDerivationService already consumes, and hands them to the tenant app via
- * FlowEngagementTrigger. Triggered from FlowSessionService.advance() on a flow whose
- * endAction is CREATE_ENGAGEMENT.
+ * Turns a completed PageFlow's captured answers (FlowSession.contextJson) into the
+ * QuestionnaireQuestion/QuestionnaireAnswer shape BriefDerivationService already consumes,
+ * and hands them to the tenant app via FlowEngagementTrigger. Each widget type that captures
+ * answers reads its own through a FlowAnswerSource bean from its module. Triggered from
+ * FlowSessionService.advance() on a flow whose endAction is CREATE_ENGAGEMENT.
  */
 @Service
-@RequiredArgsConstructor
 public class FlowEngagementService {
 
     private final PageRepository pageRepo;
     private final PageWidgetRepository pageWidgetRepo;
-    private final QuestionnaireQuestionRepository questionnaireQuestionRepo;
-    private final QuestionnaireAnswerRepository questionnaireAnswerRepo;
+    private final Map<String, FlowAnswerSource> answerSources;
     private final Optional<FlowEngagementTrigger> flowEngagementTrigger;
     private final ObjectMapper objectMapper;
 
+    public FlowEngagementService(PageRepository pageRepo, PageWidgetRepository pageWidgetRepo,
+                                 List<FlowAnswerSource> answerSources,
+                                 Optional<FlowEngagementTrigger> flowEngagementTrigger, ObjectMapper objectMapper) {
+        this.pageRepo = pageRepo;
+        this.pageWidgetRepo = pageWidgetRepo;
+        this.answerSources = answerSources.stream()
+            .collect(Collectors.toMap(FlowAnswerSource::widgetType, Function.identity()));
+        this.flowEngagementTrigger = flowEngagementTrigger;
+        this.objectMapper = objectMapper;
+    }
+
+    /** Starts the tenant's engagement and returns its id. */
     public String triggerEngagement(PageFlow flow, FlowSession session) {
         List<PageWidget> widgets = pageWidgetRepo.findByPageIdInOrderByOrderInSlotAsc(
             pageRepo.findByPageFlowId(flow.getId()).stream().map(Page::getId).toList());
@@ -48,50 +58,26 @@ public class FlowEngagementService {
         List<QuestionnaireAnswer> answers = new ArrayList<>();
 
         for (PageWidget widget : widgets) {
-            if ("question".equals(widget.getWidgetType())) {
-                QuestionnaireQuestion question = toQuestion(widget);
-                questions.add(question);
-                if (context.containsKey(question.getId())) {
-                    QuestionnaireAnswer answer = new QuestionnaireAnswer();
-                    answer.setQuestionId(question.getId());
-                    answer.setValueJson(toValueJson(context.get(question.getId())));
-                    answers.add(answer);
-                }
-            } else if ("questionnaire".equals(widget.getWidgetType())) {
-                Object responseId = context.get("__questionnaireResponse:" + widget.getId());
-                if (responseId == null) {
-                    continue; // visitor never reached/completed this branch
-                }
-                Map<String, Object> config = parseContext(widget.getConfigJson());
-                String questionnaireId = String.valueOf(config.getOrDefault("questionnaireId", ""));
-                questions.addAll(questionnaireQuestionRepo.findByQuestionnaireIdOrderByOrderIndexAsc(questionnaireId));
-                answers.addAll(questionnaireAnswerRepo.findByResponseIdOrderByCreatedAtAsc(String.valueOf(responseId)));
+            FlowAnswerSource source = answerSources.get(widget.getWidgetType());
+            if (source == null) {
+                continue;
             }
+            FlowAnswerSource.FlowAnswers collected = source.collect(widget, parseContext(widget.getConfigJson()), context);
+            questions.addAll(collected.questions());
+            answers.addAll(collected.answers());
         }
 
-        return flowEngagementTrigger
-            .orElseThrow(() -> new IllegalStateException(
-                "No FlowEngagementTrigger bean available — this tenant app doesn't support CREATE_ENGAGEMENT flows"))
-            .createAndRun(questions, answers, session.getClientUserId());
+        return trigger().createAndRun(questions, answers, session.getClientUserId());
     }
 
-    private QuestionnaireQuestion toQuestion(PageWidget widget) {
-        Map<String, Object> config = parseContext(widget.getConfigJson());
-        QuestionnaireQuestion question = new QuestionnaireQuestion();
-        question.setId(widget.getId());
-        question.setPrompt(String.valueOf(config.getOrDefault("prompt", "")));
-        question.setRequired(Boolean.parseBoolean(String.valueOf(config.getOrDefault("required", "false"))));
-        question.setType(toQuestionType(String.valueOf(config.getOrDefault("questionType", "short_text"))));
-        return question;
+    /** Where a visitor goes when their flow ends in this engagement (null = stay on the flow). */
+    public String nextUrl(String engagementId, FlowSession session) {
+        return trigger().nextUrl(engagementId, session.getClientUserId());
     }
 
-    private QuestionnaireQuestion.Type toQuestionType(String questionType) {
-        return switch (questionType) {
-            case "long_text" -> QuestionnaireQuestion.Type.LONG_TEXT;
-            case "single_select" -> QuestionnaireQuestion.Type.SINGLE_SELECT;
-            case "multi_select" -> QuestionnaireQuestion.Type.MULTI_SELECT;
-            default -> QuestionnaireQuestion.Type.SHORT_TEXT;
-        };
+    private FlowEngagementTrigger trigger() {
+        return flowEngagementTrigger.orElseThrow(() -> new IllegalStateException(
+            "No FlowEngagementTrigger bean available — this tenant app doesn't support CREATE_ENGAGEMENT flows"));
     }
 
     private Map<String, Object> parseContext(String json) {
@@ -102,14 +88,6 @@ public class FlowEngagementService {
             return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
         } catch (Exception e) {
             return Map.of();
-        }
-    }
-
-    private String toValueJson(Object value) {
-        try {
-            return objectMapper.writeValueAsString(value);
-        } catch (Exception e) {
-            return "null";
         }
     }
 }

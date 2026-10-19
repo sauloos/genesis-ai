@@ -3,6 +3,7 @@ package ai.genesisbrands.service;
 import ai.genesisbrands.model.Page;
 import ai.genesisbrands.model.PageFlow;
 import ai.genesisbrands.model.PageTransition;
+import ai.genesisbrands.platform.FlowAnswerSource;
 import ai.genesisbrands.platform.PageFlowRouting;
 import ai.genesisbrands.repository.PageFlowRepository;
 import ai.genesisbrands.repository.PageRepository;
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +30,7 @@ public class PageFlowService {
     private final PageWidgetRepository pageWidgetRepo;
     private final PageTransitionService pageTransitionService;
     private final ThemeRepository themeRepository;
+    private final List<FlowAnswerSource> answerSources;
 
     public List<PageFlow> list() {
         return pageFlowRepo.findAll();
@@ -139,13 +142,14 @@ public class PageFlowService {
                 pageFlowRepo.findById(endTargetFlowId)
                     .orElseThrow(() -> new IllegalArgumentException("Target PageFlow not found: " + endTargetFlowId));
             } else {
-                boolean hasQuestionWidget = pageRepo.findByPageFlowId(id).stream()
+                Set<String> answerTypes = answerSources.stream().map(FlowAnswerSource::widgetType).collect(Collectors.toSet());
+                boolean hasAnswerWidget = pageRepo.findByPageFlowId(id).stream()
                     .map(Page::getId)
                     .flatMap(pageId -> pageWidgetRepo.findByPageIdOrderByOrderInSlotAsc(pageId).stream())
-                    .anyMatch(w -> "question".equals(w.getWidgetType()) || "questionnaire".equals(w.getWidgetType()));
-                if (!hasQuestionWidget) {
+                    .anyMatch(w -> answerTypes.contains(w.getWidgetType()));
+                if (!hasAnswerWidget) {
                     throw new IllegalArgumentException(
-                        "CREATE_ENGAGEMENT requires at least one question or questionnaire widget somewhere in this PageFlow");
+                        "CREATE_ENGAGEMENT requires at least one widget that captures answers (e.g. question or questionnaire) somewhere in this PageFlow");
                 }
             }
         }

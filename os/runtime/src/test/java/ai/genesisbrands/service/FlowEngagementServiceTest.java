@@ -6,11 +6,10 @@ import ai.genesisbrands.model.PageFlow;
 import ai.genesisbrands.model.PageWidget;
 import ai.genesisbrands.model.QuestionnaireAnswer;
 import ai.genesisbrands.model.QuestionnaireQuestion;
+import ai.genesisbrands.platform.FlowAnswerSource;
 import ai.genesisbrands.platform.FlowEngagementTrigger;
 import ai.genesisbrands.repository.PageRepository;
 import ai.genesisbrands.repository.PageWidgetRepository;
-import ai.genesisbrands.repository.QuestionnaireAnswerRepository;
-import ai.genesisbrands.repository.QuestionnaireQuestionRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,10 +20,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -34,16 +35,30 @@ class FlowEngagementServiceTest {
 
     @Mock private PageRepository pageRepo;
     @Mock private PageWidgetRepository pageWidgetRepo;
-    @Mock private QuestionnaireQuestionRepository questionnaireQuestionRepo;
-    @Mock private QuestionnaireAnswerRepository questionnaireAnswerRepo;
     @Mock private FlowEngagementTrigger flowEngagementTrigger;
 
     private FlowEngagementService service;
 
     @BeforeEach
     void setUp() {
-        service = new FlowEngagementService(pageRepo, pageWidgetRepo, questionnaireQuestionRepo,
-            questionnaireAnswerRepo, Optional.of(flowEngagementTrigger), new ObjectMapper());
+        service = new FlowEngagementService(pageRepo, pageWidgetRepo, List.of(new EchoSource()),
+            Optional.of(flowEngagementTrigger), new ObjectMapper());
+    }
+
+    /** Stand-in for a widget module's source: one question per widget, answered from the
+     *  context key named in its config. */
+    private static class EchoSource implements FlowAnswerSource {
+        public String widgetType() { return "echo"; }
+        public FlowAnswers collect(PageWidget widget, Map<String, Object> config, Map<String, Object> context) {
+            Object key = config.get("key");
+            if (!context.containsKey(key)) return FlowAnswers.NONE;
+            QuestionnaireQuestion q = new QuestionnaireQuestion();
+            q.setId(widget.getId());
+            QuestionnaireAnswer a = new QuestionnaireAnswer();
+            a.setQuestionId(widget.getId());
+            a.setValueJson(String.valueOf(context.get(key)));
+            return new FlowAnswers(List.of(q), List.of(a));
+        }
     }
 
     private PageFlow flow(String id) {
@@ -78,105 +93,45 @@ class FlowEngagementServiceTest {
     }
 
     @Test
-    void triggerEngagement_buildsTransientQuestionsAndAnswers_andCallsTrigger() {
+    void triggerEngagement_collectsFromWidgetsWithASource_inOrder_skippingOthers() {
         PageFlow f = flow("f1");
         when(pageRepo.findByPageFlowId("f1")).thenReturn(List.of(page("p1", "f1")));
         when(pageWidgetRepo.findByPageIdInOrderByOrderInSlotAsc(List.of("p1"))).thenReturn(List.of(
-            widget("w1", "p1", "question", "{\"prompt\":\"Your name?\",\"required\":true,\"questionType\":\"short_text\"}"),
-            widget("w2", "p1", "question", "{\"prompt\":\"Pick colours\",\"required\":false,\"questionType\":\"multi_select\"}"),
-            widget("w3", "p1", "content", "{\"heading\":\"Hi\"}")
+            widget("w1", "p1", "echo", "{\"key\":\"a\"}"),
+            widget("w2", "p1", "content", "{\"heading\":\"Hi\"}"),
+            widget("w3", "p1", "echo", "{\"key\":\"never\"}"),
+            widget("w4", "p1", "echo", "{\"key\":\"b\"}")
         ));
-        FlowSession s = session("f1", "{\"w1\":\"Ada\",\"w2\":[\"Red\",\"Blue\"]}");
+        FlowSession s = session("f1", "{\"a\":\"Ada\",\"b\":\"Blue\"}");
         when(flowEngagementTrigger.createAndRun(anyList(), anyList(), isNull())).thenReturn("eng-1");
 
-        String result = service.triggerEngagement(f, s);
+        service.triggerEngagement(f, s);
 
-        assertThat(result).isEqualTo("eng-1");
         ArgumentCaptor<List<QuestionnaireQuestion>> questionsCaptor = ArgumentCaptor.forClass(List.class);
         ArgumentCaptor<List<QuestionnaireAnswer>> answersCaptor = ArgumentCaptor.forClass(List.class);
         verify(flowEngagementTrigger).createAndRun(questionsCaptor.capture(), answersCaptor.capture(), isNull());
-
-        List<QuestionnaireQuestion> questions = questionsCaptor.getValue();
-        assertThat(questions).hasSize(2);
-        assertThat(questions.get(0).getId()).isEqualTo("w1");
-        assertThat(questions.get(0).getPrompt()).isEqualTo("Your name?");
-        assertThat(questions.get(0).isRequired()).isTrue();
-        assertThat(questions.get(0).getType()).isEqualTo(QuestionnaireQuestion.Type.SHORT_TEXT);
-        assertThat(questions.get(1).getType()).isEqualTo(QuestionnaireQuestion.Type.MULTI_SELECT);
-
-        List<QuestionnaireAnswer> answers = answersCaptor.getValue();
-        assertThat(answers).hasSize(2);
-        assertThat(answers).extracting(QuestionnaireAnswer::getQuestionId).containsExactly("w1", "w2");
-        assertThat(answers.get(0).getValueJson()).isEqualTo("\"Ada\"");
-        assertThat(answers.get(1).getValueJson()).isEqualTo("[\"Red\",\"Blue\"]");
+        assertThat(questionsCaptor.getValue()).extracting(QuestionnaireQuestion::getId).containsExactly("w1", "w4");
+        assertThat(answersCaptor.getValue()).extracting(QuestionnaireAnswer::getValueJson).containsExactly("Ada", "Blue");
     }
 
     @Test
-    void triggerEngagement_missingAnswerForBranchSkippedWidget_omitsIt_doesNotThrow() {
+    void triggerEngagement_returnsTheNewEngagementId() {
         PageFlow f = flow("f1");
         when(pageRepo.findByPageFlowId("f1")).thenReturn(List.of(page("p1", "f1")));
-        when(pageWidgetRepo.findByPageIdInOrderByOrderInSlotAsc(List.of("p1"))).thenReturn(List.of(
-            widget("w1", "p1", "question", "{\"prompt\":\"Reached\",\"questionType\":\"short_text\"}"),
-            widget("w2", "p1", "question", "{\"prompt\":\"Never reached\",\"questionType\":\"short_text\"}")
-        ));
-        FlowSession s = session("f1", "{\"w1\":\"answered\"}");
-        when(flowEngagementTrigger.createAndRun(anyList(), anyList(), isNull())).thenReturn("eng-2");
-
-        service.triggerEngagement(f, s);
-
-        ArgumentCaptor<List<QuestionnaireAnswer>> answersCaptor = ArgumentCaptor.forClass(List.class);
-        verify(flowEngagementTrigger).createAndRun(anyList(), answersCaptor.capture(), isNull());
-        assertThat(answersCaptor.getValue()).extracting(QuestionnaireAnswer::getQuestionId).containsExactly("w1");
-    }
-
-    @Test
-    void triggerEngagement_questionnaireWidget_mergesRealQuestionsAndAnswers_alongsideQuestionWidget() {
-        PageFlow f = flow("f1");
-        when(pageRepo.findByPageFlowId("f1")).thenReturn(List.of(page("p1", "f1")));
-        when(pageWidgetRepo.findByPageIdInOrderByOrderInSlotAsc(List.of("p1"))).thenReturn(List.of(
-            widget("w1", "p1", "question", "{\"prompt\":\"Your name?\",\"required\":true,\"questionType\":\"short_text\"}"),
-            widget("w2", "p1", "questionnaire", "{\"questionnaireId\":\"q1\"}")
-        ));
-        FlowSession s = session("f1", "{\"w1\":\"Ada\",\"__questionnaireResponse:w2\":\"r1\"}");
-
-        QuestionnaireQuestion realQuestion = new QuestionnaireQuestion();
-        realQuestion.setId("rq1");
-        realQuestion.setQuestionnaireId("q1");
-        realQuestion.setPrompt("Favourite colour?");
-        when(questionnaireQuestionRepo.findByQuestionnaireIdOrderByOrderIndexAsc("q1")).thenReturn(List.of(realQuestion));
-
-        QuestionnaireAnswer realAnswer = new QuestionnaireAnswer();
-        realAnswer.setQuestionId("rq1");
-        realAnswer.setValueJson("\"Blue\"");
-        when(questionnaireAnswerRepo.findByResponseIdOrderByCreatedAtAsc("r1")).thenReturn(List.of(realAnswer));
-
-        when(flowEngagementTrigger.createAndRun(anyList(), anyList(), isNull())).thenReturn("eng-3");
-
-        String result = service.triggerEngagement(f, s);
-
-        assertThat(result).isEqualTo("eng-3");
-        ArgumentCaptor<List<QuestionnaireQuestion>> questionsCaptor = ArgumentCaptor.forClass(List.class);
-        ArgumentCaptor<List<QuestionnaireAnswer>> answersCaptor2 = ArgumentCaptor.forClass(List.class);
-        verify(flowEngagementTrigger).createAndRun(questionsCaptor.capture(), answersCaptor2.capture(), isNull());
-
-        assertThat(questionsCaptor.getValue()).extracting(QuestionnaireQuestion::getId).containsExactly("w1", "rq1");
-        assertThat(answersCaptor2.getValue()).extracting(QuestionnaireAnswer::getQuestionId).containsExactly("w1", "rq1");
-    }
-
-    @Test
-    void triggerEngagement_questionnaireWidget_noResponseIdInContext_isSkipped_doesNotThrow() {
-        PageFlow f = flow("f1");
-        when(pageRepo.findByPageFlowId("f1")).thenReturn(List.of(page("p1", "f1")));
-        when(pageWidgetRepo.findByPageIdInOrderByOrderInSlotAsc(List.of("p1"))).thenReturn(List.of(
-            widget("w2", "p1", "questionnaire", "{\"questionnaireId\":\"q1\"}")
-        ));
+        when(pageWidgetRepo.findByPageIdInOrderByOrderInSlotAsc(List.of("p1"))).thenReturn(List.of());
         FlowSession s = session("f1", "{}");
-        when(flowEngagementTrigger.createAndRun(anyList(), anyList(), isNull())).thenReturn("eng-4");
+        s.setClientUserId("u1");
+        when(flowEngagementTrigger.createAndRun(anyList(), anyList(), eq("u1"))).thenReturn("eng-2");
 
-        service.triggerEngagement(f, s);
+        assertThat(service.triggerEngagement(f, s)).isEqualTo("eng-2");
+    }
 
-        ArgumentCaptor<List<QuestionnaireQuestion>> questionsCaptor = ArgumentCaptor.forClass(List.class);
-        verify(flowEngagementTrigger).createAndRun(questionsCaptor.capture(), anyList(), isNull());
-        assertThat(questionsCaptor.getValue()).isEmpty();
+    @Test
+    void nextUrl_asksTheTriggerForTheSessionsClient() {
+        FlowSession s = session("f1", "{}");
+        s.setClientUserId("u1");
+        when(flowEngagementTrigger.nextUrl("eng-2", "u1")).thenReturn("/results/eng-2");
+
+        assertThat(service.nextUrl("eng-2", s)).isEqualTo("/results/eng-2");
     }
 }

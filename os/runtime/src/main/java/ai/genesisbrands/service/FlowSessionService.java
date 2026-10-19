@@ -167,7 +167,7 @@ public class FlowSessionService {
         eventRepo.save(event);
 
         String redirectToFlowId = null;
-        String engagementId = null;
+        String nextUrl = null;
         if ("PAGE".equals(transition.getTargetKind())) {
             Page targetPage = pageRepo.findById(transition.getTargetPageId())
                 .orElseThrow(() -> new NoSuchElementException("Page not found: " + transition.getTargetPageId()));
@@ -188,16 +188,17 @@ public class FlowSessionService {
             } else if ("CREATE_ENGAGEMENT".equals(endAction)) {
                 session.setCurrentPageId(null);
                 // Never trigger a real downstream engagement from an admin Simulate preview —
-                // the simulated session still ends normally, it just can't produce an id.
+                // the simulated session still ends normally, with no next URL.
                 if (!session.isSimulated()) {
-                    engagementId = flowEngagementService.triggerEngagement(flow, session);
+                    String engagementId = flowEngagementService.triggerEngagement(flow, session);
+                    nextUrl = flowEngagementService.nextUrl(engagementId, session);
                 }
             } else {
                 session.setCurrentPageId(null);
             }
         }
         session.setUpdatedAt(Instant.now());
-        return new AdvanceResult(sessionRepo.save(session), redirectToFlowId, engagementId);
+        return new AdvanceResult(sessionRepo.save(session), redirectToFlowId, nextUrl);
     }
 
     public List<FlowSessionEvent> history(String token) {
@@ -205,5 +206,5 @@ public class FlowSessionService {
         return eventRepo.findByFlowSessionTokenOrderByOccurredAtAsc(token);
     }
 
-    public record AdvanceResult(FlowSession session, String redirectToFlowId, String engagementId) {}
+    public record AdvanceResult(FlowSession session, String redirectToFlowId, String nextUrl) {}
 }

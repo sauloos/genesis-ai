@@ -14,7 +14,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mock.web.MockMultipartFile;
 
 import java.util.List;
 import java.util.Optional;
@@ -22,8 +21,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -31,7 +28,6 @@ class PageWidgetServiceTest {
 
     @Mock private PageWidgetRepository pageWidgetRepo;
     @Mock private PageRepository pageRepo;
-    @Mock private BlobStorageService blobStorageService;
 
     private List<WidgetDescriptor> widgetDescriptors;
     private PageWidgetService service;
@@ -39,7 +35,7 @@ class PageWidgetServiceTest {
     @BeforeEach
     void setUp() {
         widgetDescriptors = List.of(new StubContentWidget());
-        service = new PageWidgetService(pageWidgetRepo, pageRepo, widgetDescriptors, new ObjectMapper(), blobStorageService);
+        service = new PageWidgetService(pageWidgetRepo, pageRepo, widgetDescriptors, new ObjectMapper());
     }
 
     /** Widget modules are not on the runtime's classpath; a stand-in "content" descriptor. */
@@ -87,38 +83,5 @@ class PageWidgetServiceTest {
             "{\"contentMode\":\"htmlFile\",\"htmlFileUrl\":\"/api/assets/x.html\",\"widthMode\":\"percent\",\"width\":\"100\"}");
 
         assertThat(created.getWidgetType()).isEqualTo("content");
-    }
-
-    @Test
-    void uploadContentImage_storesUnderContentWidgetsBlobPathAndReturnsAssetUrl() throws Exception {
-        when(pageWidgetRepo.findById("w1")).thenReturn(Optional.of(widget("w1")));
-        MockMultipartFile file = new MockMultipartFile("image", "logo.png", "image/png", "bytes".getBytes());
-
-        String url = service.uploadContentImage("w1", file);
-
-        assertThat(url).startsWith("/api/assets/content-widgets/w1/");
-        assertThat(url).endsWith("_logo.png");
-        verify(blobStorageService).upload(anyString(), any(byte[].class));
-    }
-
-    @Test
-    void uploadContentHtmlFile_storesUnderContentWidgetsBlobPathAndReturnsAssetUrl() throws Exception {
-        when(pageWidgetRepo.findById("w1")).thenReturn(Optional.of(widget("w1")));
-        MockMultipartFile file = new MockMultipartFile("file", "landing.html", "text/html", "<html></html>".getBytes());
-
-        String url = service.uploadContentHtmlFile("w1", file);
-
-        assertThat(url).startsWith("/api/assets/content-widgets/w1/");
-        assertThat(url).endsWith("_landing.html");
-        verify(blobStorageService).upload(anyString(), any(byte[].class));
-    }
-
-    @Test
-    void uploadContentImage_missingWidgetThrows() {
-        when(pageWidgetRepo.findById("missing")).thenReturn(Optional.empty());
-        MockMultipartFile file = new MockMultipartFile("image", "logo.png", "image/png", "bytes".getBytes());
-
-        assertThatThrownBy(() -> service.uploadContentImage("missing", file))
-            .isInstanceOf(java.util.NoSuchElementException.class);
     }
 }

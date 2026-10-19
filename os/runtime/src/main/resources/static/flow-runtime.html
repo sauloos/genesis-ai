@@ -76,27 +76,6 @@
   #state-screen h2 { font-size: 20px; color: var(--theme-text-primary); }
   #state-screen p { font-size: 14px; color: var(--theme-text-muted); max-width: 400px; }
 
-  #register-screen { display: none; width: 100%; max-width: 640px; margin: 60px auto; }
-  #register-screen .reg-card {
-    background: var(--theme-card-bg); border: 1px solid var(--theme-card-border); border-radius: 16px;
-    padding: 40px 44px; box-shadow: 0 2px 20px var(--theme-card-shadow); backdrop-filter: var(--theme-backdrop);
-  }
-  #register-screen h2 { font-size: 20px; font-weight: 700; margin-bottom: 8px; color: var(--theme-text-primary); }
-  #register-screen > .reg-card > p { font-size: 13px; color: var(--theme-text-muted); margin-bottom: 28px; line-height: 1.5; }
-  .reg-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
-  .reg-field label { font-size: 11px; font-weight: 600; color: var(--theme-text-muted); text-transform: uppercase; letter-spacing: 0.3px; }
-  .reg-field input {
-    padding: 11px 13px; border: 1px solid var(--theme-btn-border); border-radius: 9px; font-size: 14px;
-    font-family: inherit; outline: none; background: transparent; color: var(--theme-text-primary);
-  }
-  #reg-err { font-size: 12px; color: #d33; min-height: 16px; margin-bottom: 8px; }
-  #reg-btn {
-    width: 100%; padding: 12px; background: var(--theme-text-primary); color: var(--theme-body-bg);
-    border: none; border-radius: 9px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit;
-  }
-  .reg-login-row { text-align: center; margin-top: 16px; font-size: 12px; color: var(--theme-text-muted); }
-  .reg-login-row a { color: var(--theme-text-primary); text-decoration: none; font-weight: 600; }
-
   .widget-login { display: flex; flex-direction: column; }
 
 
@@ -128,31 +107,6 @@
 <div id="state-screen">
   <h2 id="state-title"></h2>
   <p id="state-message"></p>
-</div>
-
-<!-- Registration step shown after a flow ends via endAction=CREATE_ENGAGEMENT -->
-<div id="register-screen">
-  <div class="reg-card">
-    <h2>One last step</h2>
-    <p>Create an account to see your brand results and download your files when they're ready.</p>
-    <div class="reg-field">
-      <label>Name</label>
-      <input id="reg-name" type="text" placeholder="Your name">
-    </div>
-    <div class="reg-field">
-      <label>Email</label>
-      <input id="reg-email" type="email" placeholder="your@email.com">
-    </div>
-    <div class="reg-field">
-      <label>Password</label>
-      <input id="reg-password" type="password" placeholder="Min 8 characters">
-    </div>
-    <div id="reg-err"></div>
-    <button id="reg-btn" onclick="submitRegistration()">See my brand results →</button>
-    <div class="reg-login-row">
-      Already have an account? <a id="reg-login-link" href="/login">Sign in</a>
-    </div>
-  </div>
 </div>
 
 <script>
@@ -278,8 +232,10 @@ function render(view) {
       renderPage(view.page, true);
       return;
     }
-    if (view.engagementId) {
-      showRegisterScreen(view.engagementId);
+    // The flow's end handed off to the tenant (CREATE_ENGAGEMENT), which says where the
+    // visitor goes next — e.g. its results page, or sign-up first.
+    if (view.nextUrl) {
+      window.location.replace(view.nextUrl);
     } else {
       showState('All done', 'Thanks — you have completed this flow.');
     }
@@ -423,42 +379,6 @@ function showState(title, message) {
   s.style.display = 'flex';
   document.getElementById('state-title').textContent = title;
   document.getElementById('state-message').textContent = message;
-}
-
-function showRegisterScreen(engagementId) {
-  document.getElementById('card').style.display = 'none';
-  document.getElementById('state-screen').style.display = 'none';
-  document.getElementById('reg-login-link').href = '/login?next=' + encodeURIComponent('/your-brand/' + engagementId);
-  document.getElementById('register-screen').style.display = 'block';
-  document.getElementById('register-screen').dataset.engagementId = engagementId;
-}
-
-async function submitRegistration() {
-  const engagementId = document.getElementById('register-screen').dataset.engagementId;
-  const name     = document.getElementById('reg-name').value.trim();
-  const email    = document.getElementById('reg-email').value.trim();
-  const password = document.getElementById('reg-password').value;
-  const errEl    = document.getElementById('reg-err');
-  errEl.textContent = '';
-
-  if (!name || !email || !password) { errEl.textContent = 'Please fill in all fields.'; return; }
-  if (password.length < 8) { errEl.textContent = 'Password must be at least 8 characters.'; return; }
-
-  const btn = document.getElementById('reg-btn');
-  btn.disabled = true; btn.textContent = 'Creating account…';
-
-  const regRes = await fetch(`${API}/api/auth/register`, {
-    method: 'POST', headers: HEADERS, body: JSON.stringify({ name, email, password })
-  }).then(r => r.json());
-
-  if (regRes.error && !regRes.error.includes('already exists')) {
-    errEl.textContent = regRes.error; btn.disabled = false; btn.textContent = 'See my brand results →'; return;
-  }
-
-  btn.textContent = 'Linking your brand…';
-  await fetch(`${API}/api/engagements/${engagementId}/claim`, { method: 'POST', headers: HEADERS });
-
-  window.location.href = '/your-brand/' + engagementId;
 }
 
 boot();

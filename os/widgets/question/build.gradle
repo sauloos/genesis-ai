@@ -1,5 +1,25 @@
-// Widget module — its WidgetDescriptor bean plus its client module at static/widgets/<type>/.
+// Widget module — its WidgetDescriptor bean, its FlowAnswerSource (how a CREATE_ENGAGEMENT flow
+// end reads its answer from the session context) and its client module at
+// static/widgets/question/. Compiles against the runtime the adopting app provides.
+configurations {
+    compileOnly { extendsFrom annotationProcessor }
+}
+
 dependencies {
     implementation project(':os:widget-sdk')
-    compileOnly 'org.springframework:spring-context'   // provided by the adopting app
+    compileOnly project(':os:runtime')
+    compileOnly 'org.springframework.boot:spring-boot-starter-web'
+    compileOnly 'org.springframework.boot:spring-boot-starter-data-jpa'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    testImplementation project(':os:runtime')
+    testImplementation 'org.springframework.boot:spring-boot-starter-web'
+    testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
 }

@@ -234,10 +234,10 @@ class PublicFlowRuntimeServiceTest {
     }
 
     @Test
-    void advance_createEngagementEndAction_returnsEngagementIdInView() {
+    void advance_createEngagementEndAction_returnsNextUrlInView() {
         FlowSession ended = session("tok", "f1", null, true);
         when(flowSessionService.advance("tok", "next"))
-            .thenReturn(new FlowSessionService.AdvanceResult(ended, null, "eng-1"));
+            .thenReturn(new FlowSessionService.AdvanceResult(ended, null, "/your-results/eng-1"));
         PageFlow f = flow("f1", "s");
         when(pageFlowRepo.findById("f1")).thenReturn(Optional.of(f));
 
@@ -245,7 +245,7 @@ class PublicFlowRuntimeServiceTest {
 
         assertThat(view.ended()).isTrue();
         assertThat(view.page()).isNull();
-        assertThat(view.engagementId()).isEqualTo("eng-1");
+        assertThat(view.nextUrl()).isEqualTo("/your-results/eng-1");
     }
 
     @Test

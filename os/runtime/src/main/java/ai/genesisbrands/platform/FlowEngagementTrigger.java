@@ -17,4 +17,11 @@ public interface FlowEngagementTrigger {
      *  clientUserId (nullable) is the ClientUser the originating FlowSession was linked to,
      *  if any, and is stamped onto the Engagement at creation. Returns the new engagement's id. */
     String createAndRun(List<QuestionnaireQuestion> questions, List<QuestionnaireAnswer> answers, String clientUserId);
+
+    /** Where the visitor goes once the flow has started this engagement — e.g. the tenant's
+     *  results page, or a sign-up page that then claims it for the new account. Core only
+     *  navigates there; null shows the plain completion screen. */
+    default String nextUrl(String engagementId, String clientUserId) {
+        return null;
+    }
 }

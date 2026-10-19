@@ -4,11 +4,13 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * Simple API key authentication for demo. All /api/** requests require X-Api-Key header.
@@ -19,6 +21,9 @@ public class ApiKeyFilter extends OncePerRequestFilter {
 
     @Value("${genesis.api-key}")
     private String apiKey;
+
+    @Autowired(required = false)
+    private List<ApiKeyExemption> exemptions = List.of();
 
     @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
@@ -34,21 +39,19 @@ public class ApiKeyFilter extends OncePerRequestFilter {
         // based, and the pages that reference them already sit behind BasicAuthFilter.
         // /api/themes/active/logo is excluded for the same reason as styles.css: it's
         // loaded via a CSS mask-image url(), which can't attach a custom header either.
-        // /api/engagements/**/preview/** is excluded for the same <img src> reason: the
-        // brandResults widget loads direction preview images as plain <img> tags, and the
-        // route already enforces its own session-based ownership check.
+        // Modules exempt their own <img src>-loaded routes through ApiKeyExemption beans
+        // (e.g. Genesis Brands' engagement preview images).
         // /api/public/payments/webhook/** is excluded because Stripe's own servers call it
         // directly and can't attach our custom header — authenticity is instead verified via
         // the Stripe-Signature header against the mode-specific webhook secret.
-        boolean isEngagementPreview = path.startsWith("/api/engagements/") && path.contains("/preview/");
         boolean isPaymentWebhook = path.startsWith("/api/public/payments/webhook/");
         // /api/connect/** is the external connector surface (MCP + REST) — it authenticates
         // with per-customer / platform connector keys (ConnectorAuthFilter), never this
         // shared key, which ships in public JS.
         if (!path.startsWith("/api/") || path.equals("/api/waitlist") || path.startsWith("/api/assets/")
                 || path.startsWith("/api/admin/") || path.equals("/api/themes/active/styles.css")
-                || path.equals("/api/themes/active/logo") || isEngagementPreview || isPaymentWebhook
-                || path.startsWith("/api/connect/")) {
+                || path.equals("/api/themes/active/logo") || isPaymentWebhook
+                || path.startsWith("/api/connect/") || exemptions.stream().anyMatch(e -> e.exempts(path))) {
             chain.doFilter(req, res);
             return;
         }
