@@ -20,7 +20,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Guards /your-brand/** (always) and /live/** (unless the requested route resolves to a
+ * Guards /live/** (unless the requested route resolves to a
  * live PageFlow whose start page has requiresAuth=false, e.g. a public questionnaire
  * entry point) — requires either admin Basic Auth or a valid client session cookie
  * (_gst). Public pages (/login, /register) pass through without auth.
@@ -47,14 +47,12 @@ public class ClientAuthFilter extends OncePerRequestFilter {
 
         String path = req.getRequestURI();
 
-        boolean isYourBrand = path.startsWith("/your-brand");
-        boolean isLive = path.startsWith("/live");
-        if (!isYourBrand && !isLive) {
+        if (!path.startsWith("/live")) {
             chain.doFilter(req, res);
             return;
         }
 
-        if (isLive && "GET".equalsIgnoreCase(req.getMethod()) && !requiresAuthForLiveRoute(path)) {
+        if ("GET".equalsIgnoreCase(req.getMethod()) && !requiresAuthForLiveRoute(path)) {
             chain.doFilter(req, res);
             return;
         }

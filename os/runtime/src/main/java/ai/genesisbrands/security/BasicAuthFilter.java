@@ -27,8 +27,7 @@ public class BasicAuthFilter extends OncePerRequestFilter {
         "/dashboard/themes", "/themes", "/themes.html",
         "/dashboard/agents", "/agents", "/agents.html",
         "/dashboard/page-flows", "/page-flows", "/page-flows.html",
-        "/questionnaire-run", "/questionnaire-run.html",
-        "/discover"
+        "/dashboard/widget-preview", "/widget-preview.html"
     );
 
     private final AdminAuthHelper adminAuth;

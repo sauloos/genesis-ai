@@ -172,7 +172,6 @@
   display: flex; flex-direction: column; gap: 10px; }
 .slp-chip { font-size: 11px; padding: 3px 10px; border-radius: 12px; background: var(--av-surface-subtle);
   border: 1px solid var(--av-border); color: var(--av-text-muted); text-decoration: none; }
-.slp-chip-link:hover { color: var(--av-text-strong); }
 .slp-row + .slp-section-title { margin-top: 16px; }
 
 /* ── Feedback capture ── */

@@ -8,12 +8,18 @@ import java.util.List;
  * {@code dashboardAssets}/{@code dashboardAgents} widgets. Mirrors the
  * ConsultantSubject split: the platform defines this shape, {@link ClientWorkspaceProvider}'s
  * tenant implementation decides what's inside it (today, an Engagement's DirectionOutputs).
+ *
+ * @param inProgress the item is still being produced; the dashboard re-checks until it isn't
+ * @param statusNote a client-facing line about the item's state (e.g. why it has no assets
+ *                   yet), or null
  */
 public record ClientWorkItem(
     String id,
     String title,
     boolean unlocked,
-    List<Variant> variants
+    List<Variant> variants,
+    boolean inProgress,
+    String statusNote
 ) {
     public record Variant(
         String key,

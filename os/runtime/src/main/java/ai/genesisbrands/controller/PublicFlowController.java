@@ -17,7 +17,7 @@ import java.util.NoSuchElementException;
 /**
  * Public, unauthenticated counterpart to FlowSessionController — drives a real
  * visitor's session through a live PageFlow. No X-Api-Key exemption is added here;
- * the client sends the same shared static key questionnaire-run.html already sends.
+ * the client sends the same shared static key every public page sends.
  */
 @RestController
 @RequestMapping("/api/public")

@@ -884,9 +884,7 @@ export async function mountSlotPlayground(container, config, ctx = {}) {
       <div class="slp-hint">${esc(e.clientEmail || '')} · ${new Date(e.createdAt).toLocaleString()}</div>
       <div class="slp-row slp-wrap">
         <span class="slp-chip">Payment: ${esc(e.paymentStatus)}</span>
-        ${e.paymentStatus === 'REQUESTED' ? `<button class="slp-btn slp-btn-success slp-btn-sm" data-action="mark-paid" data-id="${esc(id)}">Mark as paid</button>` : ''}
-        <a class="slp-chip slp-chip-link" href="/your-brand/${esc(id)}" target="_blank" rel="noopener">View client page ↗</a>
-      </div>
+        ${e.paymentStatus === 'REQUESTED' ? `<button class="slp-btn slp-btn-success slp-btn-sm" data-action="mark-paid" data-id="${esc(id)}">Mark as paid</button>` : ''}      </div>
       <div class="slp-section-title">${esc(state.meta.displayName || agentId)} output — all directions</div>
       ${dirsHtml}`;
   }

@@ -33,9 +33,14 @@ public class EngagementWorkspaceProvider implements ClientWorkspaceProvider {
     @Override
     public List<ClientWorkItem> listMine(String clientUserId) {
         return engagementRepo.findAllByClientUserIdOrderByCreatedAtDesc(clientUserId).stream()
-            .filter(e -> e.getStatus() == Engagement.Status.DONE)
-            .map(this::toWorkItem)
-            .filter(w -> !w.variants().isEmpty())
+            .map(e -> switch (e.getStatus()) {
+                case DONE -> toWorkItem(e);
+                case FAILED -> new ClientWorkItem(e.getId(), "Your brand", false, List.of(), false,
+                    "Something went wrong creating your brand. Please contact us and we'll sort it out.");
+                default -> new ClientWorkItem(e.getId(), "Your brand", false, List.of(), true,
+                    "Genesis AI is creating your brand. This usually takes a few minutes.");
+            })
+            .filter(w -> !w.variants().isEmpty() || w.statusNote() != null)
             .toList();
     }
 
@@ -63,7 +68,7 @@ public class EngagementWorkspaceProvider implements ClientWorkspaceProvider {
             .map(dir -> toVariant(e.getId(), e.getChosenDirection(), dir, true))
             .toList();
 
-        return new ClientWorkItem(e.getId(), title, unlocked, variants);
+        return new ClientWorkItem(e.getId(), title, unlocked, variants, false, null);
     }
 
     private ClientWorkItem.Variant toVariant(String engagementId, String chosenDirection,

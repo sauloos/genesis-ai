@@ -138,6 +138,22 @@ widget blocks or the flow is advancing.
 5. **Flows only.** Retire `your-brand.html` into the `/live/dashboard` flow (old URL redirects),
    delete both `index.html` files and the legacy `/discover` + `/questionnaire-run` pages, add a
    login flow on genesis-os.
+   *DONE.*
+   - **Results.** `/your-brand/<id>` is a Genesis Brands controller, not a page. It sends a
+     signed-out visitor to `/login?next=…`. For a signed-in client it claims the engagement if
+     nobody owns it yet (never one owned by someone else), then redirects to `/live/dashboard`.
+     `your-brand.html` is gone, and so is core `ClientAuthFilter`'s `/your-brand` hardcode.
+   - **Dashboard.** `ClientWorkItem` gained `inProgress` and `statusNote`. Genesis Brands lists
+     running engagements ("Genesis AI is creating your brand…") and failed ones as items with a
+     note. `dashboardAssets` shows the note and re-checks every 10s while anything is in progress.
+     What retired with the page: the full copy view and the request-payment modal. The dashboard
+     shows PDF and logo tiles only; payment is the payment widget's job.
+   - **Admin preview.** `/dashboard/widget-preview?type=<type>&config=<json>` (admin-only) mounts
+     any widget's own module through `loader.js` in simulate mode. The questionnaire admin's
+     Preview uses it; its "Open live URL" link is gone, since a questionnaire lives in whichever
+     flow places it. `/discover`, `/questionnaire-run` and both `index.html` files are deleted.
+   - **genesis-os login.** Flows are data, so the `/login` flow is created per environment with
+     `deploy/seed-login-flow.py` (needs admin credentials).
 6. **Theme tokens + extensions.** Token-only widget CSS; a `WidgetExtension` mechanism mirroring
    `AgentViewExtension`.
 7. **Record the principles** in CLAUDE.md.

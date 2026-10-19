@@ -19,7 +19,7 @@ public final class PageFlowRouting {
      *  PageFlows (see PageController), not static routes. */
     public static final Set<String> RESERVED_SEGMENTS = Set.of(
         "api", "dashboard", "console", "training", "playground", "questionnaires", "templates",
-        "knowledge", "themes", "agents", "page-flows", "questionnaire-run", "discover",
+        "knowledge", "themes", "agents", "page-flows", "widget-preview",
         "assets", "flow"
     );
 

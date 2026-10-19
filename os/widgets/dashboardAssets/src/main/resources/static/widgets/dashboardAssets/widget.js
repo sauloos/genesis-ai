@@ -188,7 +188,8 @@ function buildDirectionBlock(workItemId, variant, unlocked) {
 }
 
 function renderWorkItemBlock(item) {
-  if (!item.variants || !item.variants.length) return null;
+  const variants = item.variants || [];
+  if (!variants.length && !item.statusNote) return null;
 
   const block = document.createElement('div');
   block.className = 'dass-engagement-block';
@@ -200,18 +201,22 @@ function renderWorkItemBlock(item) {
 
   const sub = document.createElement('div');
   sub.className = 'dass-engagement-sub';
-  sub.textContent = item.unlocked ? 'Unlocked' : 'Payment required to unlock downloads';
+  sub.textContent = item.statusNote
+    || (item.unlocked ? 'Unlocked' : 'Payment required to unlock downloads');
   block.appendChild(sub);
 
-  item.variants.forEach(variant => {
+  variants.forEach(variant => {
     block.appendChild(buildDirectionBlock(item.id, variant, item.unlocked));
   });
 
   return block;
 }
 
+const IN_PROGRESS_POLL_MS = 10000;
+
 async function render(container) {
   const listEl = container.querySelector('.dass-list');
+  clearTimeout(container._dassPoll);
 
   try {
     const items = await fetch('/api/client/workspace', { headers: HEADERS }).then(r => {
@@ -225,6 +230,10 @@ async function render(container) {
       return;
     }
     blocks.forEach(b => listEl.appendChild(b));
+    // Something is still being produced — check again until it's ready (or the visitor leaves).
+    if (items.some(i => i.inProgress)) {
+      container._dassPoll = setTimeout(() => { if (container.isConnected) render(container); }, IN_PROGRESS_POLL_MS);
+    }
   } catch (err) {
     listEl.innerHTML = '<div class="dass-empty">Could not load your assets right now.</div>';
   }

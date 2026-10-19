@@ -97,6 +97,9 @@ public class PageController {
     @GetMapping("/questionnaires")
     public String questionnairesRedirect() { return "redirect:/dashboard/questionnaires"; }
 
+    @GetMapping("/dashboard/widget-preview")
+    public String widgetPreviewPage() { return "forward:/widget-preview.html"; }
+
     @GetMapping("/dashboard/knowledge")
     public String knowledgePage() { return "forward:/knowledge.html"; }
     @GetMapping("/knowledge")

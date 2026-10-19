@@ -9,7 +9,7 @@ import java.util.List;
 
 /**
  * Given a target URL, immediately redirects — lets a trivial PageFlow (e.g. "/") just
- * forward to another PageFlow's slug (e.g. "/discover") without duplicating pages.
+ * forward to another PageFlow's slug (e.g. "/login") without duplicating pages.
  */
 @Component
 public class RedirectWidget implements WidgetDescriptor {
