@@ -39,6 +39,10 @@
   --theme-link-border-hover: rgba(217, 168, 86, 0.55);
 
   --theme-go-color: rgba(217, 168, 86, 0.55);
+
+  --theme-danger: #ff8a80;
+  --theme-warning: #f0b54a;
+  --theme-success: #6fd49a;
 }
 
 /* Font pairing — only `body` sets font-family elsewhere in these pages, so this cascades

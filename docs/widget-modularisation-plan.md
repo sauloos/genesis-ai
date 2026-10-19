@@ -156,6 +156,25 @@ widget blocks or the flow is advancing.
      `deploy/seed-login-flow.py` (needs admin credentials).
 6. **Theme tokens + extensions.** Token-only widget CSS; a `WidgetExtension` mechanism mirroring
    `AgentViewExtension`.
+   *DONE.*
+   - **Tokens.** Every widget stylesheet uses only `--theme-*` variables. Tints use
+     `color-mix()` over a token. `WidgetCssTokensTest` (brands/app, which adopts every widget)
+     fails on any hex, `rgb()`/`hsl()` or named colour.
+   - **Token defaults.** `/widgets/tokens.css` (os/runtime) is the one file allowed literals.
+     It holds defaults for the status tokens (`--theme-danger`, `-warning`, `-success`) and the
+     artwork surface (`--theme-preview-bg`, `-check`). It declares them under `:where(:root)`,
+     so a theme always wins. `loader.js` links it once, before any widget stylesheet. The
+     dark themes set their own status colours.
+   - **Dashboard widgets.** The dashboard widgets were the main offenders, with white panels
+     on dark themes. They now take their surfaces from the theme's card tokens. The host's
+     `.widget-login` rule moved into the login module.
+   - **Extensions.** A module changes another module's widget by registering a
+     `WidgetExtension` bean (`os/widget-sdk`: `widgetType`, `module`, `order`). It never ships a
+     file at the widget's path. `WidgetExtensionController` lists the beans at
+     `/widgets/extensions.json` as `{type: [moduleUrl…]}`, innermost first. `loader.js` chains
+     `mount(container, widget, ctx, base)` over the base module, like `agent-loader.js`, and
+     loads each extension's same-named `.css`. No extension ships yet; the chain was verified
+     with Playwright-mocked modules.
 7. **Record the principles** in CLAUDE.md.
 
 Every step: build, run tests, smoke-test locally with Playwright, deploy both apps, check

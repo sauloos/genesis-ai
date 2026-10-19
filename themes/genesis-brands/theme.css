@@ -37,4 +37,8 @@
   --theme-link-border-hover: rgba(255, 255, 255, 0.4);
 
   --theme-go-color: rgba(255, 255, 255, 0.28);
+
+  --theme-danger: #ff8a80;
+  --theme-warning: #f0b54a;
+  --theme-success: #6fd49a;
 }

@@ -1,5 +1,5 @@
-.dc-panel { background: #fff; border: 1px solid #eee; border-radius: 14px; padding: 24px 26px; }
+.dc-panel { background: var(--theme-card-bg); border: 1px solid var(--theme-card-border); border-radius: 14px; padding: 24px 26px; }
 .dc-panel-label { font-size: 10px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;
-  color: #999; margin-bottom: 16px; }
+  color: var(--theme-text-label, var(--theme-text-muted)); margin-bottom: 16px; }
 .dc-coming-soon { display: flex; align-items: center; justify-content: center; height: 160px;
-  color: #bbb; font-size: 13px; font-weight: 600; letter-spacing: 0.3px; }
+  color: var(--theme-text-muted); font-size: 13px; font-weight: 600; letter-spacing: 0.3px; }

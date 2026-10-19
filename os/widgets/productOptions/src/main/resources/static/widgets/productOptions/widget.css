@@ -23,4 +23,4 @@
   cursor: pointer; font-family: inherit;
 }
 .widget-product-options .po-card.selected .po-select-btn { background: var(--theme-text-primary); color: var(--theme-body-bg); border-color: var(--theme-text-primary); }
-.widget-product-options .po-error { font-size: 13px; color: #d33; }
+.widget-product-options .po-error { font-size: 13px; color: var(--theme-danger); }

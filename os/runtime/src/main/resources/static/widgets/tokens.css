@@ -1,0 +1,21 @@
+/*
+ * Widget design tokens. Every widget's CSS styles itself only through --theme-* variables —
+ * never colour literals (WidgetCssTokensTest enforces it) — so the active theme decides the look.
+ * Themes (themes/<name>/theme.css) define the surface and text tokens; this file supplies
+ * defaults for the ones a theme may leave out. loader.js loads it once, before any widget.css.
+ * Declared under :where(:root) (zero specificity) so a theme's :root rule always wins.
+ *
+ * Tints of these tokens use color-mix(), e.g.
+ *   background: color-mix(in srgb, var(--theme-warning) 12%, transparent);
+ */
+:where(:root) {
+  /* Status colours: errors, warnings ("Locked", "Archived"), success ("Live") */
+  --theme-danger: #c0392b;
+  --theme-warning: #a66b00;
+  --theme-success: #1a7a4c;
+
+  /* Surface for showing a client's own artwork (logos, previews). Brand marks are designed for
+     a light ground, so themes usually keep this light even when the theme itself is dark. */
+  --theme-preview-bg: #ffffff;
+  --theme-preview-check: #f0f0f0;
+}

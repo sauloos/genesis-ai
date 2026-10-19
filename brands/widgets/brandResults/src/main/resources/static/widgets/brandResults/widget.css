@@ -7,7 +7,7 @@
 }
 @keyframes br-spin { to { transform: rotate(360deg); } }
 .widget-brand-results .br-status { font-size: 13px; color: var(--theme-text-muted); max-width: 380px; line-height: 1.5; }
-.widget-brand-results .br-error { font-size: 13px; color: #d33; max-width: 380px; line-height: 1.5; margin-bottom: 14px; }
+.widget-brand-results .br-error { font-size: 13px; color: var(--theme-danger); max-width: 380px; line-height: 1.5; margin-bottom: 14px; }
 .widget-brand-results .br-retry-btn {
   padding: 10px 20px; border-radius: 9px; border: 1px solid var(--theme-btn-border);
   background: none; color: var(--theme-text-primary); font-size: 13px; font-weight: 600;

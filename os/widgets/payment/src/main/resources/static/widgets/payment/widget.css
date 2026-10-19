@@ -18,7 +18,7 @@
   font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit;
 }
 .widget-payment .pay-btn:disabled { opacity: 0.6; cursor: default; }
-.widget-payment .pay-error { font-size: 13px; color: #d33; margin-top: 10px; }
+.widget-payment .pay-error { font-size: 13px; color: var(--theme-danger); margin-top: 10px; }
 .widget-payment .pay-success { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .widget-payment .pay-success-icon { font-size: 30px; color: var(--theme-text-primary); }
 .widget-payment .pay-success-text { font-size: 14px; font-weight: 700; color: var(--theme-text-primary); }

@@ -1,3 +1,4 @@
+.widget-login { display: flex; flex-direction: column; }
 .wl-tabs { display: flex; gap: 4px; margin-bottom: 18px; border-bottom: 1px solid var(--theme-card-border); }
 .wl-tab {
   flex: 1; padding: 10px; border: none; background: none; cursor: pointer; font-family: inherit;
@@ -11,7 +12,7 @@
   padding: 11px 13px; border: 1px solid var(--theme-btn-border); border-radius: 9px; font-size: 14px;
   font-family: inherit; outline: none; background: transparent; color: var(--theme-text-primary);
 }
-.wl-err { font-size: 12px; color: #d33; min-height: 16px; margin-bottom: 4px; }
+.wl-err { font-size: 12px; color: var(--theme-danger); min-height: 16px; margin-bottom: 4px; }
 .wl-submit-btn {
   width: 100%; padding: 12px; background: var(--theme-text-primary); color: var(--theme-body-bg);
   border: none; border-radius: 9px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit;
