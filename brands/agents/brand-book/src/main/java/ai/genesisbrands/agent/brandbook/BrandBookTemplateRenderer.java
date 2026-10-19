@@ -21,6 +21,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -33,6 +34,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
 /**
@@ -46,8 +54,13 @@ import java.util.regex.Pattern;
  *   Local dev: ./gradlew playwright-install (or run with browser already in PATH)
  *   Docker:    RUN java -cp app.jar com.microsoft.playwright.CLI install chromium
  *
- * Thread-safety: a single Browser instance is shared; each render call opens its
- * own BrowserContext and Page and closes them in a finally block.
+ * Thread-safety: Playwright for Java is not thread-safe. Every object created from a
+ * Playwright instance must be used on the thread that created it. Sharing one Browser
+ * across request threads made concurrent renders (the dashboard loads several direction
+ * previews at once) fail with "Object doesn't exist" / "Cannot find object to call close".
+ * So every render runs on a small pool of render threads, each owning its own Playwright
+ * and Chromium (genesis.brand-book.render-threads, default 2), and opens its own
+ * BrowserContext and Page, closed in a finally block.
  */
 @Service
 public class BrandBookTemplateRenderer {
@@ -59,43 +72,90 @@ public class BrandBookTemplateRenderer {
     private final LogoVariantService logoVariantService;
     private final BrandBookTemplateService brandBookTemplateService;
 
-    private Playwright playwright;
-    private Browser browser;
+    private final int renderThreads;
+
+    /** One per render thread; only ever touched on that thread (except at shutdown). */
+    private static final class RenderWorker {
+        Playwright playwright;
+        Browser browser;
+    }
+
+    private final ThreadLocal<RenderWorker> threadWorker = new ThreadLocal<>();
+    private final List<RenderWorker> workers = new CopyOnWriteArrayList<>();
+    private ExecutorService renderPool;
 
     public BrandBookTemplateRenderer(BlobStorageService blobStorageService,
                                      LogoVariantService logoVariantService,
-                                     BrandBookTemplateService brandBookTemplateService) {
+                                     BrandBookTemplateService brandBookTemplateService,
+                                     @Value("${genesis.brand-book.render-threads:2}") int renderThreads) {
         this.blobStorageService = blobStorageService;
         this.logoVariantService = logoVariantService;
         this.brandBookTemplateService = brandBookTemplateService;
+        this.renderThreads = Math.max(1, renderThreads);
     }
 
     @PostConstruct
     void init() {
-        playwright = Playwright.create();
-        browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));
-        log.info("BrandBookTemplateRenderer: Playwright Chromium browser started");
+        AtomicInteger n = new AtomicInteger();
+        renderPool = Executors.newFixedThreadPool(renderThreads, r -> {
+            Thread t = new Thread(r, "brand-book-render-" + n.incrementAndGet());
+            t.setDaemon(true);
+            return t;
+        });
+        log.info("BrandBookTemplateRenderer: {} render thread(s), Chromium launched on first use", renderThreads);
     }
 
     @PreDestroy
     void destroy() {
-        if (browser != null) try { browser.close(); } catch (Exception ignored) {}
-        if (playwright != null) try { playwright.close(); } catch (Exception ignored) {}
+        renderPool.shutdownNow();
+        for (RenderWorker w : workers) {
+            if (w.browser != null) try { w.browser.close(); } catch (Exception ignored) {}
+            if (w.playwright != null) try { w.playwright.close(); } catch (Exception ignored) {}
+        }
+    }
+
+    /** Runs work on a render thread with that thread's own Browser, and waits for the result. */
+    private <T> T onRenderThread(Function<Browser, T> work) {
+        Future<T> future = renderPool.submit(() -> work.apply(browser()));
+        try {
+            return future.get();
+        } catch (ExecutionException e) {
+            if (e.getCause() instanceof RuntimeException re) throw re;
+            if (e.getCause() instanceof Error err) throw err;
+            throw new IllegalStateException("Brand book render failed", e.getCause());
+        } catch (InterruptedException e) {
+            future.cancel(true);
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while waiting for brand book render", e);
+        }
     }
 
     /**
-     * The Chromium process behind `browser` can crash or have its pipe closed independently
-     * of the JVM (OOM, signal, host hiccup) — Playwright surfaces that as "connection closed"
-     * on the next call, and since `browser` is a long-lived singleton, every render after that
-     * would fail forever without this check relaunching it.
+     * The calling render thread's Browser, launched on first use. The Chromium process can
+     * crash or have its pipe closed independently of the JVM (OOM, signal, host hiccup);
+     * Playwright surfaces that as "connection closed" on the next call, so a disconnected
+     * browser is relaunched, with a fresh Playwright driver (its pipe may be the part that
+     * died), instead of failing every later render.
      */
-    private synchronized Browser getBrowser() {
-        if (browser == null || !browser.isConnected()) {
-            log.warn("BrandBookTemplateRenderer: Playwright browser not connected — relaunching");
-            if (browser != null) try { browser.close(); } catch (Exception ignored) {}
-            browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));
+    private Browser browser() {
+        RenderWorker w = threadWorker.get();
+        if (w == null) {
+            w = new RenderWorker();
+            threadWorker.set(w);
+            workers.add(w);
         }
-        return browser;
+        if (w.browser == null || !w.browser.isConnected()) {
+            if (w.browser != null) {
+                log.warn("BrandBookTemplateRenderer: Playwright browser not connected — relaunching");
+                try { w.browser.close(); } catch (Exception ignored) {}
+                try { w.playwright.close(); } catch (Exception ignored) {}
+                w.playwright = null;
+            }
+            if (w.playwright == null) w.playwright = Playwright.create();
+            w.browser = w.playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));
+            log.info("BrandBookTemplateRenderer: Chromium started on {}", Thread.currentThread().getName());
+        }
+        return w.browser;
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
@@ -177,14 +237,18 @@ public class BrandBookTemplateRenderer {
         return sb.toString();
     }
 
-    private byte[] renderHtml(String html, boolean printReady) {
+    byte[] renderHtml(String html, boolean printReady) {
+        return onRenderThread(browser -> renderHtml(browser, html, printReady));
+    }
+
+    private byte[] renderHtml(Browser browser, String html, boolean printReady) {
         // Write HTML to a temp file and navigate via file:// rather than using setContent().
         // setContent() passes the full HTML string over the Playwright IPC pipe; when the
         // template contains many base64-encoded photos the string can exceed tens of MB and
         // Chromium crashes with "Page crashed". file:// navigation reads from disk directly
         // and bypasses the IPC buffer limit entirely.
         Path tmpFile = null;
-        BrowserContext ctx = getBrowser().newContext();
+        BrowserContext ctx = browser.newContext();
         try {
             tmpFile = Files.createTempFile("brand-book-", ".html");
             Files.writeString(tmpFile, html, StandardCharsets.UTF_8);
@@ -214,9 +278,13 @@ public class BrandBookTemplateRenderer {
      * by the template regardless of viewport, so only the device scale factor actually
      * shrinks the captured pixels. 0.756 maps an A4 page (~794×1123 CSS px) to ~600×849.
      */
-    private byte[] renderPreviewScreenshot(String html) {
+    byte[] renderPreviewScreenshot(String html) {
+        return onRenderThread(browser -> renderPreviewScreenshot(browser, html));
+    }
+
+    private byte[] renderPreviewScreenshot(Browser browser, String html) {
         Path tmpFile = null;
-        BrowserContext ctx = getBrowser().newContext(new Browser.NewContextOptions()
+        BrowserContext ctx = browser.newContext(new Browser.NewContextOptions()
             .setViewportSize(900, 1300)
             .setDeviceScaleFactor(0.756));
         try {
