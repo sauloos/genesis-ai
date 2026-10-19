@@ -65,8 +65,15 @@ function buildTile(asset, unlocked, isCurrent) {
       thumb.innerHTML = asset.inlineSvg;
     } else if (asset.previewUrl) {
       const img = document.createElement('img');
-      img.src = asset.previewUrl;
       img.alt = `${asset.label} preview`;
+      // The stored image can be gone (e.g. written before assets moved to Blob storage):
+      // show the placeholder icon rather than the browser's broken-image glyph.
+      img.onerror = () => {
+        img.remove();
+        thumb.insertAdjacentHTML('afterbegin', LOGO_ICON);
+        thumb.title = 'Preview unavailable';
+      };
+      img.src = asset.previewUrl;
       thumb.innerHTML = '';
       thumb.appendChild(img);
     }
