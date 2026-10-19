@@ -176,6 +176,16 @@ widget blocks or the flow is advancing.
      loads each extension's same-named `.css`. No extension ships yet; the chain was verified
      with Playwright-mocked modules.
 7. **Record the principles** in CLAUDE.md.
+   *DONE — plan complete.* CLAUDE.md's "Client-Facing Widget Architecture" now covers:
+   - flows only;
+   - the widget owning its backend;
+   - the mount contract and `.outcome-btn`;
+   - the pure-chrome host and the admin widget preview;
+   - token-only CSS;
+   - `WidgetExtension`;
+   - the port/SPI rule for core and tenant widget backends.
+
+   "Module Layout" describes the widget modules as they are now.
 
 Every step: build, run tests, smoke-test locally with Playwright, deploy both apps, check
 production, commit.

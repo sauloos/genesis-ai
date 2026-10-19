@@ -108,32 +108,79 @@ Each runs within a Genesis AI evaluation loop.
 
 **Every customer-facing UI element is a widget, and every widget is its own
 independently developed, pluggable component.** This is a standing architectural
-principle, not a per-widget decision — it applies to all current and future widget
-types (questionnaire, login, logout, productOptions, payment, brandResults, content,
-and any tenant-custom widget added later).
+principle, not a per-widget decision. It applies to every current and future widget type,
+including any tenant-custom widget added later. **Every customer-facing page is a PageFlow**
+made of widgets: there are no hand-written customer pages (`your-brand.html`, `index.html`,
+`/discover` and `/questionnaire-run` were retired 2026-10-18). Flows are data, so a flow an app
+needs on day one, such as `/login`, is seeded per environment (`deploy/seed-login-flow.py`).
 
-A widget bundles everything it needs to run — UI, logic, its simulate-mode behavior,
-and its config/outcome model — and is loaded dynamically by the app, never hardcoded
-inline in a page:
+A widget bundles everything it needs to run: UI, logic, its simulate-mode behaviour, its
+config/outcome model and **its own backend**. It is loaded dynamically, never hardcoded in a page:
 
-- **Server-side metadata** — a plain `@Component` bean implementing `WidgetDescriptor`
-  (`platform/WidgetDescriptor.java`): `widgetType()`, `displayName()`, `configOptions()`,
-  `outcomes()`. Auto-collected, no registry wiring, no hardcoded type list anywhere —
-  mirrors `CoreAgent`.
-- **Client-side implementation** — a static module at `static/widgets/<widgetType>/widget.js`
-  (+ optional `widget.css`), resolved purely by the `widgetType` string and loaded via
-  `static/widgets/loader.js`'s dynamic `import()`. Contract:
-  `export function mount(container, widget, ctx)` where `widget = { id, slotKey,
-  orderInSlot, widgetType, config }` and `ctx = { simulate?, onOutcome?(key?) }`.
+- **Server-side metadata.** A plain `@Component` bean implementing `WidgetDescriptor`
+  (`os/widget-sdk`): `widgetType()`, `displayName()`, `configOptions()`, `outcomes()`.
+  It is auto-collected, like `CoreAgent`; there is no registry and no hardcoded type list.
+  A new config key needs both the client-side use and a `configOptions()` entry.
+- **Client-side implementation.** A static module at `static/widgets/<widgetType>/widget.js`
+  (+ optional `widget.css`), resolved purely by the `widgetType` string through
+  `static/widgets/loader.js`'s `mountWidget(type, container, widget, ctx)`.
+- **Its backend.** Controllers that exist for one widget live in that widget's module
+  (`PaymentController` in payment, `ProductSelectionController` in productOptions,
+  `ContentAssetController` in content). Shared services that admin pages also use stay in
+  the runtime (`CartService`, `PaymentService`, `/api/questionnaires/**`).
 
-Adding a new widget — including a tenant's own custom widget — means dropping one
-`@Component` bean plus one static JS module at the conventional path. It never requires
-editing a host page (`flow-runtime.html`, `login.html`, etc.) or any core dispatch table.
-A widget consumed from multiple places (in-flow, a standalone page, an admin preview)
-uses the *same* module every time — never a page-specific reimplementation. `login` is
-the reference implementation of this pattern (`static/widgets/login/`); the remaining
-widget types listed above still live inline in `flow-runtime.html` and are pending the
-same extraction.
+**Mount contract.** `export function mount(container, widget, ctx)`, where `widget = { id,
+slotKey, orderInSlot, widgetType, config }`. `ctx` is supplied by the host, and a host may supply
+any subset:
+
+| ctx member | Meaning |
+|---|---|
+| `simulate` | admin preview session: never take real actions (no payments, sign-outs, pipelines) |
+| `requireCompletion()` / `complete()` | block the page's outcome buttons until the widget is done |
+| `onOutcome(key?)` | the widget finished; the host advances the flow with `key` (default `next`) |
+| `advance(key)` | move the flow directly (navigation widgets) |
+| `outcomes`, `page` | the page's outcomes `[{key, label}]`; `{ ended, widgetCount }` |
+| `session` | `{ token, fetch(path, init) }`, calls the flow-session API with the right headers |
+| `saveContext(patch)` | merge a patch into the flow session context |
+
+A widget adds its classes with `classList.add` and never overwrites the container's
+`className`, because the host sets `widget-<kebab-type>` on it. It finds its own elements
+through closures, never document-wide ids. A button that advances the flow uses the
+host-provided `.outcome-btn` (`.outcome-btn-back`), which the host disables while any widget
+blocks or the flow is advancing.
+
+**The host is pure chrome.** `flow-runtime.html` mounts every type through `loader.js`; it has no
+per-type code. Adding a widget, including a tenant's own, means one descriptor bean plus one
+static module in a widget module. It never requires editing a host page or a core dispatch
+table. A widget used from several places (in a flow, in `/dashboard/widget-preview`) uses the
+*same* module every time, never a page-specific reimplementation. The admin preview,
+`/dashboard/widget-preview?type=<type>&config=<json>`, mounts any widget in simulate mode.
+
+**Theme tokens only.** Widget CSS styles itself only through `--theme-*` variables, so the
+active theme decides the look. Tints use `color-mix()` over a token. `/widgets/tokens.css`
+(os/runtime, loaded once by `loader.js`) is the only file allowed colour literals. It holds
+zero-specificity defaults for the tokens a theme may leave out: `--theme-danger`, `-warning`,
+`-success`, and `--theme-preview-bg`/`-check` for client artwork. `WidgetCssTokensTest` fails on
+any hex, `rgb()`/`hsl()` or named colour in widget CSS.
+
+**Extend, never copy.** A module that changes another module's widget registers a
+`WidgetExtension` bean (`widgetType`, `module`, `order`) and ships the extension module.
+`/widgets/extensions.json` lists them, and `loader.js` chains `mount(container, widget, ctx,
+base)` over the base module, innermost first, loading the extension's same-named `.css`. This
+mirrors `AgentViewExtension`. `ModuleStaticPathsTest` fails the build if a `static/widgets/**`
+path exists twice on the classpath.
+
+**Core widgets never touch tenant models.** When core needs something tenant-specific, it defines
+a port or SPI in os/runtime and the tenant implements it:
+- `FlowEngagementTrigger.nextUrl` says where a visitor goes after a CREATE_ENGAGEMENT end.
+- `FlowAnswerSource` beans (one per answer-capturing widget type) let the runtime harvest answers
+  without hardcoding types.
+- `ApiKeyExemption` beans add public routes to `ApiKeyFilter`.
+- `ClientWorkspaceProvider` backs the dashboard widgets.
+
+A tenant widget whose backend needs app data does the same: it ships a port that the app
+implements. For example, brandResults calls `BrandResultsEngagements`, which brands/app
+implements as `EngagementBrandResults`. The widget never imports `Engagement`.
 
 ---
 
@@ -280,7 +327,7 @@ interface it implements — never by core reaching into a tenant model directly:
   never let a convenience shortcut put tenant model types (`Engagement`, `Brand`, etc.) inside
   os/runtime code.
 
-`login` is the reference implementation of the equivalent widget pattern. Since 2026-10-17
+Since 2026-10-17
 every agent has its own Playground view module. `playground.html` is pure chrome that mounts
 `agent-views/<id>/playground.js`. The 5 SLOT agents share `brands/app`
 `agent-views/_shared/slotPlayground.js` and supply only their output renderers. Agent-view CSS
@@ -315,9 +362,10 @@ HTML templates, template entity/controller and Playwright.
 Widgets follow the same layout (see `docs/widget-modularisation-plan.md`): `os/widget-sdk`
 (`WidgetDescriptor`, `WidgetConfigOption`, `WidgetOutcome`), one module per widget named by its
 widgetType under `os/widgets/<type>` (core) or `brands/widgets/<type>` (tenant), auto-included by
-settings.gradle, each carrying its descriptor bean + `static/widgets/<type>/`. Adoption = Gradle
-dependency. `flow-runtime.html` mounts any widget type through `loader.js`; types still inline
-in its `widgetRegistry` are pending extraction.
+settings.gradle, each carrying its descriptor bean, its own controllers and
+`static/widgets/<type>/`. A widget module depends only on the widget SDK (plus the runtime as
+`compileOnly` when it needs runtime services). Adoption = Gradle dependency: genesis-os does not
+adopt the Genesis Brands widgets (brandResults, dashboardCatalog).
 
 ---
 
