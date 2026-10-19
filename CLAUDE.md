@@ -337,6 +337,25 @@ target state every agent, current or future, must be checked against.
 
 ---
 
+## Standing Agents
+
+**Standing agents** run unattended for a client on a schedule (see
+`docs/standing-agents-plan.md`). An agent opts in by implementing `StandingAgent` (os/agent-sdk)
+next to `CoreAgent`. `os/standing` collects every such bean, so there is no wiring.
+
+- **Admins offer, clients configure.** The admin page `/dashboard/standing` sets whether an agent
+  is offered, its cadences, runs per month, monthly spend cap and default or locked options.
+  "Offered" means the offer is enabled AND `availableForLiveView`, and every agent starts off.
+  Clients subscribe and tune the agent through the `agentSubscriptions` widget.
+- **The inbox is the only output.** A run returns inbox items and must never publish, send or
+  change anything itself. The client approves or rejects each item in `agentInbox`, and that
+  feedback goes to the agent's next run.
+- **Context is server-side.** The run's client context comes from core SPIs
+  (`ClientWorkspaceProvider`, `StandingContextContributor`), never from a request.
+- **Metering and connectors.** Runs are metered per run id in the usage ledger. The client's own
+  subscriptions and inbox are exposed as connectors (REST `/api/connect/standing`, MCP
+  `standing_*` tools via `ClientToolContributor`).
+
 ## Module Layout
 
 Gradle aggregators (see `docs/agent-modularisation-plan.md`): `os/` = Genesis OS —

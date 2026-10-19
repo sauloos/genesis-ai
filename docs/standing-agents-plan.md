@@ -224,7 +224,7 @@ client of the tenant.
 | # | Phase | Delivers |
 |---|---|---|
 | 0 | Usage ledger — **done 2026-10-19** | Per-run token/image metering against a client; admin view. Prerequisite for budgets and billing. |
-| 1 | Standing runtime | SDK `StandingAgent`, offer/subscription/run/inbox model, scheduler, admin section, `agentSubscriptions` + `agentInbox` widgets, connector exposure. Proven with a trivial core agent (client pulse). |
+| 1 | Standing runtime — **done 2026-10-19** | SDK `StandingAgent`, offer/subscription/run/inbox model, scheduler, admin section, `agentSubscriptions` + `agentInbox` widgets, connector exposure. Proven with a trivial core agent (client pulse). |
 | 2 | Content agent, draft-only | Content agent producing drafts into the inbox; client approves and downloads. Real value before any platform review clears. |
 | 3 | Channels | `PublishChannel` SPI, `channelConnections` widget, Meta + LinkedIn modules, token vault, scheduled publish. Submit Meta App Review / LinkedIn product access at the start of this phase. |
 | 4 | Brand guardian | Site/social/upload audits against the brand book via the existing evaluators; reads recent posts through the connected channels. |
@@ -246,7 +246,45 @@ agent last read through `AgentProperties.get`. Image calls outside Spring AI's c
 `/dashboard/usage` (`UsageNavExtension`). `UsageService.spentThisMonthMicros(clientUserId)`
 is the hook for phase 1 budgets. Embeddings are not metered yet (fractions of a cent).
 
-Email notifications land with phase 1 or 2; entitlements with phase 2 at the latest, before
+**Phase 1 as built.**
+- **SDK** (`os/agent-sdk`, `platform.standing`): `StandingAgent` (`subscriptionOptions`,
+  `allowedCadences`, `defaultCadence`, `run`), `StandingRunContext` (options, client context,
+  recent decisions, previous run, `Model.complete`), `StandingRunResult.Item` (REPORT /
+  DRAFT_POST / ASSET / PROPOSAL) and `StandingContextContributor`. `AgentCustomOption` gained
+  `helpText` and the TEXT / NUMBER types.
+- **Runtime** (`os/standing`, adopted by both apps):
+  - Entities `StandingAgentOffer`, `StandingSubscription`, `StandingRun`, `InboxItem`.
+  - `StandingScheduler` polls each minute for due subscriptions. `StandingRunner` runs them on
+    its own 2-thread pool, inside `UsageContext.callWith(agent, run)`.
+  - A run is skipped, never failed, when the client is over `maxRunsPerMonth` or the client's
+    month-to-date spend (all usage, not only this agent) is over `monthlyBudgetMicros`.
+  - A run is unique per (subscription, slot), so a restart cannot double-fire.
+  - Client context comes from core SPIs: `ClientWorkspaceProvider`, inbox history and any
+    `StandingContextContributor`. It is never taken from the request.
+- **Offers:** "Offered" means `StandingAgentOffer.enabled` AND `availableForLiveView`. There is no
+  row by default, so every agent starts not offered. Admins can lock options; a locked value
+  always wins over the client's.
+- **APIs:**
+  - Client, `/api/client/standing`: offers, subscribe (PUT), pause, resume, unsubscribe and
+    run-now.
+    - Run-now returns 409 while a run is in progress, and 429 within 10 minutes of the
+      previous manual run.
+    - Also runs, inbox, approve / reject with feedback, and `inbox/count`.
+  - Admin, `/api/admin/standing`: offers, subscriptions with pause / resume, runs with cost.
+  - Connectors: REST under `/api/connect/standing` and MCP tools `standing_*` on `/mcp/agents`,
+    through the new `ClientToolContributor` SPI in `os/connectors`.
+- **UI:**
+  - `/dashboard/standing` is contributed by the module through `AdminNavExtension`.
+    `BasicAuthFilter` now protects every extension's `/dashboard/*` path and its `.html`.
+  - Widgets `agentSubscriptions` and `agentInbox`, both with simulate data.
+  - `dashboardAgents` now lists only agents with a live view, so a standing-only agent is not
+    shown as a dead card.
+- **First agent:** `os/agents/client-pulse`, a weekly / fortnightly / monthly account report
+  (focus, length, language, notes). It uses the client's feedback on earlier reports.
+  - A run costs about $0.006 on Sonnet 5.
+  - Not built yet: email notifications.
+
+Email notifications land with phase 2; entitlements with phase 2 at the latest, before
 any client pays for the subscription.
 
 ## Open questions
