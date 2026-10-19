@@ -1,0 +1,29 @@
+// GenesisOS publishing runtime — connects a client's social accounts (OAuth), keeps their
+// tokens encrypted, and publishes scheduled posts through whichever PublishChannel beans the app
+// adopts (os/channels/*). Platform-neutral: it never knows which platform or agent it serves.
+// Inert until genesis.publishing.token-key and public-base-url are set.
+apply plugin: 'java-library'
+
+configurations {
+    compileOnly { extendsFrom annotationProcessor }
+}
+
+dependencies {
+    api project(':os:channel-sdk')
+    compileOnly project(':os:runtime')
+    compileOnly 'org.springframework.boot:spring-boot-starter-web'
+    compileOnly 'org.springframework.boot:spring-boot-starter-data-jpa'
+    compileOnly 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    testImplementation project(':os:runtime')
+    testImplementation 'org.springframework.boot:spring-boot-starter-web'
+    testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

@@ -19,6 +19,18 @@ const SAMPLE = [
     attachments: [{ index: 0, name: 'frame-1.png' }, { index: 1, name: 'frame-2.png' }] }
 ];
 
+// Publishing options for an approved post in the admin preview.
+const SAMPLE_PUBLISH = {
+  ready: true, approved: true, images: 2, proposedFor: SAMPLE[2].payload.proposedFor,
+  variants: [
+    { index: 0, channel: 'instagram', label: 'Instagram', accounts: [{ id: 'a1', displayName: '@northwindcoffee', networkLabel: 'Instagram' }] },
+    { index: 1, channel: 'linkedin', label: 'LinkedIn', accounts: [{ id: 'a2', displayName: 'Northwind Coffee', networkLabel: 'LinkedIn' }] }
+  ],
+  jobs: []
+};
+
+const JOB_TEXT = { QUEUED: 'Scheduled', RUNNING: 'Publishing', PUBLISHED: 'Published', FAILED: 'Failed', CANCELLED: 'Cancelled' };
+
 const STATUS_TEXT = { PENDING: 'Waiting for you', APPROVED: 'Approved', REJECTED: 'Rejected' };
 
 function el(tag, cls, text) {
@@ -36,6 +48,16 @@ async function call(path, init = {}) {
     throw new Error(message);
   }
   return res.json();
+}
+
+function when(iso) {
+  return new Date(iso).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+// <input type="datetime-local"> wants local time without a zone.
+function localInputValue(date) {
+  const pad = n => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function ago(iso) {
@@ -131,6 +153,7 @@ export function mount(container, widget, ctx = {}) {
     if (!post && item.attachments && item.attachments.length) detail.appendChild(renderFiles(item));
     if (item.status !== 'PENDING') {
       if (item.feedback) detail.appendChild(el('div', 'ainb-feedback', `Your note: ${item.feedback}`));
+      if (post && item.status === 'APPROVED') detail.appendChild(renderPublish(item));
       return detail;
     }
     const note = el('textarea', 'ainb-note');
@@ -250,6 +273,173 @@ export function mount(container, widget, ctx = {}) {
     wrap.appendChild(tools);
     show();
     return wrap;
+  }
+
+  // Publish an approved post to the client's connected accounts, now or later. The section
+  // removes itself when this app has no publishing (404) or publishing is not set up.
+  function renderPublish(item) {
+    const section = el('section', 'ainb-publish');
+    section.appendChild(el('div', 'ainb-publish-label', 'Publish'));
+    const body = el('div', 'ainb-publish-body');
+    section.appendChild(body);
+    const path = `/inbox/${encodeURIComponent(item.id)}/publish`;
+
+    async function refresh() {
+      let options;
+      if (simulate) {
+        options = SAMPLE_PUBLISH;
+      } else {
+        const res = await fetch(BASE + path, { credentials: 'include', headers: HEADERS });
+        if (res.status === 404) { section.remove(); return; }
+        if (!res.ok) { body.replaceChildren(el('div', 'ainb-error', `Publishing options could not be loaded (${res.status}).`)); return; }
+        options = await res.json();
+      }
+      if (!options.ready) { section.remove(); return; }
+      draw(options);
+    }
+
+    function draw(options) {
+      const nodes = [];
+      const jobs = options.jobs || [];
+      if (jobs.length) nodes.push(renderJobs(jobs));
+
+      const choices = [];
+      const targets = el('div', 'ainb-targets');
+      options.variants.forEach(v => {
+        v.accounts.forEach(a => {
+          const id = `ainb-pub-${item.id}-${v.index}-${a.id}`;
+          const row = el('label', 'ainb-target');
+          row.htmlFor = id;
+          const box = el('input');
+          box.type = 'checkbox';
+          box.id = id;
+          const busy = jobs.some(j => j.accountId === a.id && ['QUEUED', 'RUNNING', 'PUBLISHED'].includes(j.status));
+          box.disabled = busy;
+          box.checked = !busy;
+          row.append(box, el('span', 'ainb-target-name', a.displayName), el('span', 'ainb-target-net', v.label));
+          targets.appendChild(row);
+          choices.push({ box, variant: v.index, accountId: a.id });
+        });
+      });
+      if (!choices.length) {
+        nodes.push(el('div', 'ainb-publish-hint', 'Connect a social account for '
+          + options.variants.map(v => v.label).join(' or ') + ' to publish this post from here.'));
+        body.replaceChildren(...nodes);
+        return;
+      }
+      if (choices.every(c => c.box.disabled)) {
+        body.replaceChildren(...nodes);
+        return;
+      }
+      nodes.push(targets);
+
+      const timeId = `ainb-pub-at-${item.id}`;
+      const timeLabel = el('label', 'ainb-note-label', 'When');
+      timeLabel.htmlFor = timeId;
+      const time = el('input', 'ainb-time');
+      time.type = 'datetime-local';
+      time.id = timeId;
+      if (options.proposedFor) {
+        const proposed = new Date(options.proposedFor + 'T10:00:00');
+        if (proposed.getTime() > Date.now()) time.value = localInputValue(proposed);
+      }
+      time.min = localInputValue(new Date());
+      const timeRow = el('div', 'ainb-time-row');
+      timeRow.append(timeLabel, time);
+      nodes.push(timeRow);
+
+      const error = el('div', 'ainb-error');
+      const actions = el('div', 'ainb-actions');
+      const now = el('button', 'ainb-btn', 'Publish now');
+      const later = el('button', 'ainb-btn ainb-btn-approve', 'Schedule');
+      now.type = later.type = 'button';
+      const sync = () => { later.disabled = !time.value; };
+      time.addEventListener('input', sync);
+      sync();
+      async function go(scheduled) {
+        const chosen = choices.filter(c => c.box.checked && !c.box.disabled);
+        if (!chosen.length) { error.textContent = 'Choose at least one account.'; return; }
+        const at = scheduled ? new Date(time.value).toISOString() : null;
+        error.textContent = '';
+        now.disabled = later.disabled = true;
+        try {
+          if (simulate) {
+            chosen.forEach(c => {
+              const v = SAMPLE_PUBLISH.variants[c.variant];
+              const a = v.accounts.find(x => x.id === c.accountId);
+              SAMPLE_PUBLISH.jobs.push({ id: 'j' + Math.random().toString(36).slice(2), accountId: a.id, accountName: a.displayName,
+                networkLabel: v.label, status: scheduled ? 'QUEUED' : 'PUBLISHED', scheduledAt: at || new Date().toISOString(),
+                url: scheduled ? null : 'https://example.com/post', createdAt: new Date().toISOString() });
+            });
+          } else {
+            const res = await fetch(BASE + path, { method: 'POST', credentials: 'include', headers: HEADERS,
+              body: JSON.stringify({ targets: chosen.map(c => ({ variant: c.variant, accountId: c.accountId })), at }) });
+            if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message || `Something went wrong (${res.status}).`);
+          }
+          await refresh();
+        } catch (err) {
+          error.textContent = err.message;
+          now.disabled = false;
+          sync();
+        }
+      }
+      now.addEventListener('click', () => go(false));
+      later.addEventListener('click', () => go(true));
+      actions.append(now, later);
+      if (options.images) nodes.push(el('div', 'ainb-publish-hint', `With ${options.images} image${options.images === 1 ? '' : 's'}. Posts go out within a minute of their time.`));
+      nodes.push(actions, error);
+      body.replaceChildren(...nodes);
+    }
+
+    function renderJobs(jobs) {
+      const list = el('ul', 'ainb-jobs');
+      jobs.forEach(j => {
+        const li = el('li', 'ainb-job');
+        const what = el('div', 'ainb-job-what');
+        what.append(el('span', 'ainb-target-name', j.accountName || j.networkLabel), el('span', 'ainb-target-net', j.networkLabel));
+        const state = el('div', `ainb-job-state ainb-job-${j.status.toLowerCase()}`);
+        let text = JOB_TEXT[j.status] || j.status;
+        if (j.status === 'QUEUED') text += ' for ' + when(j.scheduledAt);
+        if (j.status === 'PUBLISHED' && j.finishedAt) text += ' ' + when(j.finishedAt);
+        state.textContent = text;
+        if (j.status === 'FAILED' && j.error) state.appendChild(el('div', 'ainb-job-error', j.error));
+        li.append(what, state);
+        const tools = el('div', 'ainb-job-tools');
+        if (j.url) {
+          const link = el('a', 'ainb-btn ainb-btn-small', 'View post');
+          link.href = j.url;
+          link.target = '_blank';
+          link.rel = 'noopener';
+          tools.appendChild(link);
+        }
+        if (j.status === 'QUEUED') {
+          const cancel = el('button', 'ainb-btn ainb-btn-small', 'Cancel');
+          cancel.type = 'button';
+          cancel.addEventListener('click', async () => {
+            cancel.disabled = true;
+            try {
+              if (simulate) {
+                SAMPLE_PUBLISH.jobs.find(x => x.id === j.id).status = 'CANCELLED';
+              } else {
+                const res = await fetch(`${BASE}${path}/${encodeURIComponent(j.id)}`, { method: 'DELETE', credentials: 'include', headers: HEADERS });
+                if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message || `Something went wrong (${res.status}).`);
+              }
+              await refresh();
+            } catch (err) {
+              cancel.disabled = false;
+              state.appendChild(el('div', 'ainb-job-error', err.message));
+            }
+          });
+          tools.appendChild(cancel);
+        }
+        if (tools.childNodes.length) li.appendChild(tools);
+        list.appendChild(li);
+      });
+      return list;
+    }
+
+    refresh().catch(err => body.replaceChildren(el('div', 'ainb-error', err.message)));
+    return section;
   }
 
   function renderFiles(item) {

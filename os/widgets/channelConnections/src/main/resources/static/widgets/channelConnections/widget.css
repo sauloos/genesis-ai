@@ -1,0 +1,27 @@
+.chcon-panel { background: var(--theme-card-bg); border: 1px solid var(--theme-card-border); border-radius: 14px; padding: 24px 26px; }
+.chcon-label { font-size: 10px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;
+  color: var(--theme-text-label, var(--theme-text-muted)); margin-bottom: 12px; }
+.chcon-intro { font-size: 13px; color: var(--theme-text-muted); line-height: 1.45; margin: 0 0 14px; max-width: 60ch; }
+.chcon-empty { font-size: 13px; color: var(--theme-text-muted); padding: 6px 0; }
+.chcon-notice { font-size: 12px; color: var(--theme-success); margin-bottom: 12px; }
+.chcon-notice:empty { display: none; }
+.chcon-notice-error { color: var(--theme-danger); }
+
+.chcon-list { display: flex; flex-direction: column; }
+.chcon-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 12px 0; border-top: 1px solid var(--theme-card-border); }
+.chcon-row:last-child { border-bottom: 1px solid var(--theme-card-border); }
+.chcon-info { min-width: 0; flex: 1 1 200px; }
+.chcon-name { font-size: 14px; font-weight: 600; color: var(--theme-text-primary); overflow-wrap: anywhere; }
+.chcon-meta { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--theme-text-muted); margin-top: 3px; }
+.chcon-state-on { color: var(--theme-success); }
+.chcon-state-off { color: var(--theme-warning); }
+.chcon-error { font-size: 12px; color: var(--theme-text-muted); margin-top: 4px; }
+
+.chcon-connect { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+.chcon-btn { font: inherit; font-size: 12px; color: var(--theme-text-primary); background: none; cursor: pointer;
+  border: 1px solid var(--theme-btn-border); border-radius: 8px; padding: 6px 12px; }
+.chcon-btn:hover:not(:disabled) { border-color: var(--theme-text-primary); }
+.chcon-btn:disabled { opacity: 0.5; cursor: default; }
+.chcon-btn:focus-visible { outline: 2px solid var(--theme-text-primary); outline-offset: 2px; }
+.chcon-btn-quiet { color: var(--theme-text-muted); }

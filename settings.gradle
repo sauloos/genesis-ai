@@ -7,6 +7,8 @@ include 'os:widget-sdk'
 include 'os:runtime'
 include 'os:connectors'
 include 'os:standing'
+include 'os:channel-sdk'
+include 'os:publishing'
 include 'os:app'
 
 // Each directory under os/agents/ is its own agent module — dropping in a new folder (with a
@@ -24,6 +26,15 @@ def osWidgetsDir = new File(settingsDir, 'os/widgets')
 if (osWidgetsDir.exists()) {
     osWidgetsDir.eachDir { dir ->
         if (new File(dir, 'build.gradle').exists()) include "os:widgets:${dir.name}"
+    }
+}
+
+// Each directory under os/channels/ is a PublishChannel module (one social platform); an app
+// adopts a platform by declaring a dependency on it, exactly like an agent.
+def osChannelsDir = new File(settingsDir, 'os/channels')
+if (osChannelsDir.exists()) {
+    osChannelsDir.eachDir { dir ->
+        if (new File(dir, 'build.gradle').exists()) include "os:channels:${dir.name}"
     }
 }
 

@@ -11,6 +11,7 @@ dependencies {
     compileOnly project(':os:runtime')
     // Optional: MCP + REST exposure through the connectors gateway, when the app adopts it.
     compileOnly project(':os:connectors')
+    compileOnly project(':os:publishing')
     // Outbound mail for inbox notifications; inert until the app sets spring.mail.host.
     implementation 'org.springframework.boot:spring-boot-starter-mail'
     compileOnly 'org.springframework.boot:spring-boot-starter-web'
@@ -19,6 +20,9 @@ dependencies {
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
+    testImplementation project(':os:runtime')
+    testImplementation 'org.springframework.boot:spring-boot-starter-web'
+    testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }

@@ -311,7 +311,7 @@ public class StandingService {
     }
 
     @SuppressWarnings("unchecked")
-    private List<Map<String, Object>> variants(InboxItem item) {
+    List<Map<String, Object>> variants(InboxItem item) {
         if (item.getPayloadJson() == null) return List.of();
         try {
             Object v = objectMapper.readValue(item.getPayloadJson(), new TypeReference<Map<String, Object>>() {}).get("variants");
@@ -449,7 +449,7 @@ public class StandingService {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "You are not subscribed to this agent."));
     }
 
-    private InboxItem ownItem(String clientUserId, String itemId) {
+    InboxItem ownItem(String clientUserId, String itemId) {
         return inbox.findByIdAndClientUserId(itemId, clientUserId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No such inbox item"));
     }

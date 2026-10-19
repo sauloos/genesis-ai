@@ -131,6 +131,9 @@
   .pill.RUNNING { color: var(--theme-text-primary); }
   .pill.SKIPPED, .pill.paused { color: var(--standing-warn); }
   .pill.FAILED { color: var(--standing-bad); }
+  .pill.PUBLISHED { color: var(--standing-accent); }
+  .pill.QUEUED { color: var(--standing-warn); }
+  .pill.CANCELLED { color: var(--theme-text-muted); }
 
   .empty { text-align: center; padding: 24px; color: var(--theme-text-muted); font-size: 13px; }
 
@@ -171,6 +174,12 @@
 
   <div class="section-title">Runs, last 30 days</div>
   <section class="panel"><div class="table-wrap" id="runs"></div></section>
+
+  <div id="channels-block" hidden>
+    <div class="section-title">Social publishing</div>
+    <p class="help" id="channels-status" style="margin:0 0 12px"></p>
+    <section class="panel"><div class="table-wrap" id="channels-posts"></div></section>
+  </div>
 </div>
 
 <script>
@@ -361,8 +370,35 @@ async function loadTables() {
   }
 }
 
+// Shown only when the app adopts os/publishing (otherwise the endpoint is a 404).
+async function loadChannels() {
+  let st;
+  try { st = await api('/api/admin/channels?limit=50'); } catch { return; }
+  document.getElementById('channels-block').hidden = false;
+  const configured = st.providers.filter(p => p.configured).map(p => esc(p.displayName));
+  const missing = [];
+  if (!st.tokenKeySet) missing.push('<code>genesis.publishing.token-key</code>');
+  if (!st.publicBaseUrl) missing.push('<code>genesis.publishing.public-base-url</code>');
+  document.getElementById('channels-status').innerHTML = (st.ready
+      ? `Publishing is on. Clients can connect: ${configured.length ? configured.join(', ') : 'no platform yet (set its app id and secret)'}.`
+      : `Publishing is off. Set ${missing.join(' and ')} to turn it on.`)
+    + ` ${st.accountsConnected} account(s) connected, ${st.accountsExpired} need reconnecting; ${st.queued} post(s) waiting, ${st.failed} failed.`;
+  const posts = st.recent;
+  document.getElementById('channels-posts').innerHTML = !posts.length ? '<div class="empty">Nothing published yet.</div>' : `<table>
+    <thead><tr><th>Scheduled</th><th>Account</th><th>Network</th><th>Status</th><th class="num">Tries</th><th>Note</th></tr></thead>
+    <tbody>${posts.map(({ job: j }) => `<tr>
+      <td class="date">${when(j.scheduledAt)}</td>
+      <td class="name">${esc(j.accountName)}</td>
+      <td class="nowrap">${esc(j.networkLabel || j.network)}</td>
+      <td><span class="pill ${esc(j.status)}">${esc(j.status.toLowerCase())}</span></td>
+      <td class="num">${j.attempts}</td>
+      <td>${j.url ? `<a href="${esc(j.url)}" target="_blank" rel="noopener">View post</a>` : esc(j.error || '')}</td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
 loadOffers();
 loadTables();
+loadChannels();
 
 (async () => {
   try {

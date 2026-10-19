@@ -1,0 +1,18 @@
+// LinkedIn channel — publishes to a member's profile and, once LinkedIn approves the app for the
+// Community Management API, to organisation pages the member administers. One PublishChannel
+// bean; the publishing runtime (os/publishing) does the rest. Inert until
+// genesis.channels.linkedin.client-id and client-secret are set.
+dependencies {
+    implementation project(':os:channel-sdk')
+    compileOnly 'org.springframework:spring-context'          // provided by the adopting app
+    compileOnly 'com.fasterxml.jackson.core:jackson-databind'  // provided by the adopting app
+
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind'
+    testImplementation 'org.springframework:spring-context'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

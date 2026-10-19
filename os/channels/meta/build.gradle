@@ -1,0 +1,17 @@
+// Meta channel — publishes to Facebook Pages and Instagram professional accounts through the
+// Graph API. One PublishChannel bean; the publishing runtime (os/publishing) does the rest.
+// Inert until genesis.channels.meta.app-id and app-secret are set.
+dependencies {
+    implementation project(':os:channel-sdk')
+    compileOnly 'org.springframework:spring-context'          // provided by the adopting app
+    compileOnly 'com.fasterxml.jackson.core:jackson-databind'  // provided by the adopting app
+
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind'
+    testImplementation 'org.springframework:spring-context'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

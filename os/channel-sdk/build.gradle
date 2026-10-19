@@ -1,0 +1,2 @@
+// The publishing-channel contract every channel module compiles against — plain Java, no Spring.
+apply plugin: 'java-library'

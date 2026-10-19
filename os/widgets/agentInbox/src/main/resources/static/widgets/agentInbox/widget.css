@@ -60,3 +60,28 @@
 .ainb-post-tools:empty { display: none; }
 .ainb-btn-small { font-size: 11px; padding: 4px 10px; text-decoration: none; display: inline-block; }
 .ainb-post + .ainb-note-label, .ainb-post-tools + .ainb-note-label { margin-top: 14px; }
+
+.ainb-publish { border-top: 1px solid var(--theme-card-border); margin-top: 16px; padding-top: 14px; }
+.ainb-publish-label { font-size: 10px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;
+  color: var(--theme-text-label, var(--theme-text-muted)); margin-bottom: 10px; }
+.ainb-publish-hint { font-size: 12px; color: var(--theme-text-muted); margin-top: 8px; line-height: 1.45; }
+.ainb-targets { display: flex; flex-direction: column; gap: 6px; }
+.ainb-target { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--theme-text-primary); cursor: pointer; flex-wrap: wrap; }
+.ainb-target input:disabled + .ainb-target-name { color: var(--theme-text-muted); }
+.ainb-target-name { font-weight: 600; overflow-wrap: anywhere; }
+.ainb-target-net { font-size: 12px; color: var(--theme-text-muted); }
+.ainb-time-row .ainb-note-label { margin-top: 12px; }
+.ainb-time { font: inherit; font-size: 13px; color: var(--theme-text-primary); background: var(--theme-card-bg);
+  border: 1px solid var(--theme-btn-border); border-radius: 8px; padding: 6px 9px; max-width: 100%; color-scheme: light dark; }
+.ainb-time:focus-visible { outline: 2px solid var(--theme-text-primary); outline-offset: 2px; }
+
+.ainb-jobs { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; }
+.ainb-job { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; padding: 8px 0;
+  border-bottom: 1px solid var(--theme-card-border); }
+.ainb-job-what { display: flex; gap: 8px; align-items: baseline; flex: 1 1 180px; min-width: 0; flex-wrap: wrap; }
+.ainb-job-state { font-size: 12px; color: var(--theme-text-muted); flex: 1 1 160px; }
+.ainb-job-queued, .ainb-job-running { color: var(--theme-warning); }
+.ainb-job-published { color: var(--theme-success); }
+.ainb-job-failed { color: var(--theme-danger); }
+.ainb-job-error { color: var(--theme-text-muted); margin-top: 3px; }
+.ainb-job-tools { display: flex; gap: 6px; }

@@ -12,8 +12,8 @@ import java.time.Instant;
 
 /**
  * Something a standing agent produced for a client, waiting for (or past) their decision.
- * Publishing states (scheduled, published, failed) arrive with the channel phase; until then
- * an approved item is simply the client's to use.
+ * An approved post stays APPROVED once published: what was scheduled or published to the
+ * client's social accounts lives in the publishing runtime's jobs (see {@link StandingPublishing}).
  */
 @Entity
 @Table(name = "standing_inbox_items",
