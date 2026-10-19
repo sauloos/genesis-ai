@@ -11,6 +11,8 @@ dependencies {
     compileOnly project(':os:runtime')
     // Optional: MCP + REST exposure through the connectors gateway, when the app adopts it.
     compileOnly project(':os:connectors')
+    // Outbound mail for inbox notifications; inert until the app sets spring.mail.host.
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
     compileOnly 'org.springframework.boot:spring-boot-starter-web'
     compileOnly 'org.springframework.boot:spring-boot-starter-data-jpa'
     compileOnly 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'

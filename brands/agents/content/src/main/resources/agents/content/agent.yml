@@ -1,0 +1,6 @@
+# Content agent defaults — loaded under genesis.agents.content.* at the lowest priority.
+# An app overrides only what it changes in its own application.yml. Prompt: system.md (convention).
+model: claude-sonnet-5
+max-tokens: 8000
+rag:
+  enabled: false

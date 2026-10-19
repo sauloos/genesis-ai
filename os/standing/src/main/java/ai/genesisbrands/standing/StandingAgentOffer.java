@@ -48,6 +48,11 @@ public class StandingAgentOffer {
     @Column(name = "monthly_budget_micros")
     private Long monthlyBudgetMicros;
 
+    /** Comma-separated product ids; when set, only a client who has paid for one of them is
+     *  offered the agent (see {@link StandingEntitlements}). Null means every client. */
+    @Column(name = "required_products", length = 1000)
+    private String requiredProducts;
+
     @Column(name = "updated_at")
     private Instant updatedAt;
 }

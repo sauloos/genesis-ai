@@ -33,7 +33,7 @@ class ClientPulseAgentTest {
         String[] seen = new String[1];
         var ctx = new StandingRunContext("run", "sub", "client", "Acme", Map.of("language", "Portuguese"), "Brand: Acme",
             List.of(new StandingRunContext.Decision("Last week", "REJECTED", "Too long", Instant.now())),
-            null, Instant.parse("2026-10-19T09:00:00Z"), prompt -> { seen[0] = prompt; return "body only"; });
+            null, Instant.parse("2026-10-19T09:00:00Z"), null, java.time.ZoneOffset.UTC, prompt -> { seen[0] = prompt; return "body only"; });
         StandingRunResult result = new ClientPulseAgent().run(ctx);
         var item = result.items().get(0);
         assertEquals("REPORT", item.kind());

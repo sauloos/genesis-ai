@@ -35,14 +35,16 @@ public class StandingCatalog {
     private final List<CoreAgent> coreAgents;
     private final StandingOfferRepository offers;
     private final AgentCatalogService agentCatalog;
+    private final StandingEntitlements entitlements;
     private final ObjectMapper objectMapper;
 
     public StandingCatalog(List<StandingAgent> agents, List<CoreAgent> coreAgents, StandingOfferRepository offers,
-                           AgentCatalogService agentCatalog, ObjectMapper objectMapper) {
+                           AgentCatalogService agentCatalog, StandingEntitlements entitlements, ObjectMapper objectMapper) {
         this.agents = agents;
         this.coreAgents = coreAgents;
         this.offers = offers;
         this.agentCatalog = agentCatalog;
+        this.entitlements = entitlements;
         this.objectMapper = objectMapper;
     }
 
@@ -79,9 +81,14 @@ public class StandingCatalog {
         return find(agentId).isPresent() && offer(agentId).isEnabled() && agentCatalog.isAvailableForLiveView(agentId);
     }
 
+    /** Offered, and this client has bought what the offer requires. */
+    public boolean isOfferedTo(String agentId, String clientUserId) {
+        return isOffered(agentId) && entitlements.entitled(clientUserId, offer(agentId));
+    }
+
     /** 404 for an agent the client may not use, indistinguishable from one that does not exist. */
-    public StandingAgent requireOffered(String agentId) {
-        if (!isOffered(agentId)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Agent not available: " + agentId);
+    public StandingAgent requireOfferedTo(String agentId, String clientUserId) {
+        if (!isOfferedTo(agentId, clientUserId)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Agent not available: " + agentId);
         return require(agentId);
     }
 

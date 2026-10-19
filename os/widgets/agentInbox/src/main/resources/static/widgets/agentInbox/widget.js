@@ -9,7 +9,14 @@ const SAMPLE = [
     body: 'What moved\n- A new logo draft for the Evolved direction is ready.\n\nWaiting on you\n- Approve or reject the logo draft.\n\nNext step\n- Pick the direction to take into the brand book.' },
   { id: 's2', agentName: 'Client Pulse', kind: 'REPORT', status: 'APPROVED', createdAt: new Date(Date.now() - 8 * 864e5).toISOString(),
     decidedAt: new Date(Date.now() - 7 * 864e5).toISOString(), feedback: 'Shorter next time, please.',
-    title: 'Your week: brand book delivered', summary: 'The brand book for your chosen direction is ready to download.', body: 'The brand book is ready.' }
+    title: 'Your week: brand book delivered', summary: 'The brand book for your chosen direction is ready to download.', body: 'The brand book is ready.' },
+  { id: 's3', agentName: 'Content', kind: 'DRAFT_POST', status: 'PENDING', createdAt: new Date(Date.now() - 2 * 36e5).toISOString(),
+    title: 'Why we roast light', summary: 'Explains the house style ahead of the new single-origin launch.',
+    payload: { format: 'Carousel', pillar: 'Education', proposedFor: new Date(Date.now() + 2 * 864e5).toISOString().slice(0, 10),
+      variants: [
+        { channel: 'instagram', label: 'Instagram', text: 'Light roasts taste of the farm, not the fire.\n\nWe stop early so you can taste the fruit and the place it grew.', hashtags: ['#specialtycoffee', '#lightroast', '#coffeeorigin'] },
+        { channel: 'linkedin', label: 'LinkedIn', text: 'Most roasters chase consistency by roasting dark. We chose the harder path.\n\nRoasting light keeps what the farmer worked for.', hashtags: ['#coffee'] }] },
+    attachments: [{ index: 0, name: 'frame-1.png' }, { index: 1, name: 'frame-2.png' }] }
 ];
 
 const STATUS_TEXT = { PENDING: 'Waiting for you', APPROVED: 'Approved', REJECTED: 'Rejected' };
@@ -118,7 +125,10 @@ export function mount(container, widget, ctx = {}) {
 
   function renderDetail(item) {
     const detail = el('div', 'ainb-detail');
-    if (item.body) detail.appendChild(el('div', 'ainb-body', item.body));
+    const post = item.kind === 'DRAFT_POST' && item.payload && Array.isArray(item.payload.variants) && item.payload.variants.length;
+    if (post) detail.appendChild(renderPost(item));
+    else if (item.body) detail.appendChild(el('div', 'ainb-body', item.body));
+    if (!post && item.attachments && item.attachments.length) detail.appendChild(renderFiles(item));
     if (item.status !== 'PENDING') {
       if (item.feedback) detail.appendChild(el('div', 'ainb-feedback', `Your note: ${item.feedback}`));
       return detail;
@@ -155,6 +165,103 @@ export function mount(container, widget, ctx = {}) {
     }
     detail.append(label, note, actions, error);
     return detail;
+  }
+
+  // A drafted social post: when and what, its images, then one tab per channel with copyable text.
+  function renderPost(item) {
+    const p = item.payload;
+    const wrap = el('div', 'ainb-post');
+    const facts = el('div', 'ainb-post-facts');
+    if (p.proposedFor) {
+      const day = new Date(p.proposedFor + 'T12:00:00');
+      facts.appendChild(el('span', 'ainb-chip', 'For ' + day.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })));
+    }
+    if (p.format) facts.appendChild(el('span', 'ainb-chip', p.format));
+    if (p.pillar) facts.appendChild(el('span', 'ainb-chip', p.pillar));
+    wrap.appendChild(facts);
+
+    const frames = (item.attachments || []).filter(a => !a.contentType || a.contentType.startsWith('image/'));
+    if (frames.length) {
+      const strip = el('div', 'ainb-frames');
+      frames.forEach((a, n) => {
+        if (simulate || !a.url) {
+          const ph = el('div', 'ainb-frame ainb-frame-placeholder', `Image ${n + 1}`);
+          strip.appendChild(ph);
+          return;
+        }
+        const link = el('a', 'ainb-frame');
+        link.href = a.url;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        const img = el('img');
+        img.src = a.url;
+        img.alt = `${item.title}, image ${n + 1} of ${frames.length}`;
+        img.loading = 'lazy';
+        link.appendChild(img);
+        strip.appendChild(link);
+      });
+      wrap.appendChild(strip);
+    }
+
+    const variants = p.variants;
+    let current = 0;
+    const channelTabs = el('div', 'ainb-channels');
+    channelTabs.setAttribute('role', 'group');
+    channelTabs.setAttribute('aria-label', 'Channel');
+    const text = el('div', 'ainb-body ainb-post-text');
+    const tags = el('div', 'ainb-hashtags');
+    const copy = el('button', 'ainb-btn ainb-btn-small', 'Copy text');
+    copy.type = 'button';
+    const tabsByIndex = variants.map((v, n) => {
+      const b = el('button', 'ainb-tab', v.label || v.channel);
+      b.type = 'button';
+      b.addEventListener('click', () => { current = n; show(); });
+      channelTabs.appendChild(b);
+      return b;
+    });
+    function full(v) {
+      return v.text + (v.hashtags && v.hashtags.length ? '\n\n' + v.hashtags.join(' ') : '');
+    }
+    function show() {
+      const v = variants[current];
+      tabsByIndex.forEach((b, n) => b.setAttribute('aria-pressed', String(n === current)));
+      text.textContent = v.text;
+      tags.textContent = (v.hashtags || []).join(' ');
+      copy.textContent = 'Copy text';
+    }
+    copy.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(full(variants[current]));
+        copy.textContent = 'Copied';
+      } catch (_) {
+        copy.textContent = 'Select the text to copy';
+      }
+    });
+    if (variants.length > 1) wrap.appendChild(channelTabs);
+    wrap.append(text, tags);
+    const tools = el('div', 'ainb-post-tools');
+    tools.appendChild(copy);
+    if (!simulate) {
+      const zip = el('a', 'ainb-btn ainb-btn-small', 'Download post');
+      zip.href = `${BASE}/inbox/${encodeURIComponent(item.id)}/download`;
+      zip.setAttribute('download', '');
+      tools.appendChild(zip);
+    }
+    wrap.appendChild(tools);
+    show();
+    return wrap;
+  }
+
+  function renderFiles(item) {
+    const files = el('div', 'ainb-post-tools');
+    for (const a of item.attachments) {
+      if (simulate || !a.url) continue;
+      const link = el('a', 'ainb-btn ainb-btn-small', a.name);
+      link.href = a.url + '?download=true';
+      link.setAttribute('download', '');
+      files.appendChild(link);
+    }
+    return files;
   }
 
   load();

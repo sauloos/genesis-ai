@@ -163,6 +163,7 @@
 
 <div class="main">
   <div class="section-title">Offers</div>
+  <p class="help" id="mail-status" style="margin:0 0 12px"></p>
   <div id="offers"><div class="panel empty">Loading offers…</div></div>
 
   <div class="section-title">Subscriptions</div>
@@ -216,9 +217,15 @@ function optionInput(o, offer, id) {
   }
 }
 
+let products = [];
+
 function renderOffer(offer) {
   const id = 'offer-' + offer.agentId.replace(/[^a-z0-9-]/gi, '');
   const locked = new Set(offer.lockedOptions);
+  const required = new Set(offer.requiredProducts || []);
+  // A required product that was deleted since still shows, so saving does not drop it silently.
+  const productChoices = [...products, ...[...required].filter(pid => !products.some(p => p.id === pid))
+    .map(pid => ({ id: pid, name: `Unknown product ${pid.slice(0, 8)}`, active: false }))];
   const allowed = new Set(offer.allowedCadences);
   const el = document.createElement('section');
   el.className = 'panel';
@@ -246,6 +253,13 @@ function renderOffer(offer) {
         <label class="cap" for="${id}-budget">Client's monthly model spend cap (USD)</label>
         <input type="number" min="0" step="0.01" id="${id}-budget" placeholder="No cap" value="${offer.monthlyBudgetMicros == null ? '' : (offer.monthlyBudgetMicros / 1e6)}">
         <div class="help">Counts all of the client's usage this month, not only this agent.</div>
+      </div>
+      <div class="field">
+        <label class="cap">Only for clients who bought</label>
+        ${productChoices.length ? `<div class="checks" id="${id}-products">${productChoices.map(p =>
+          `<label><input type="checkbox" value="${esc(p.id)}" ${required.has(p.id) ? 'checked' : ''}> ${esc(p.name)}${p.active ? '' : ' (inactive)'}</label>`).join('')}</div>`
+          : '<div class="help">No products in the catalog yet.</div>'}
+        <div class="help">None ticked: every client can subscribe. Otherwise a client needs a paid order containing one of them.</div>
       </div>
     </div>
     ${offer.options.length ? `<div class="panel-title" style="margin-top:20px">Default options</div>
@@ -275,7 +289,8 @@ function renderOffer(offer) {
       lockedOptions: [...el.querySelectorAll('[data-lock]:checked')].map(i => i.dataset.lock),
       allowedCadences: [...el.querySelectorAll(`#${id}-cadences input:checked`)].map(i => i.value),
       maxRunsPerMonth: maxRuns === '' ? null : Number(maxRuns),
-      monthlyBudgetMicros: budget === '' ? null : Math.round(Number(budget) * 1e6)
+      monthlyBudgetMicros: budget === '' ? null : Math.round(Number(budget) * 1e6),
+      requiredProducts: [...el.querySelectorAll(`#${id}-products input:checked`)].map(i => i.value)
     };
     status.textContent = 'Saving…';
     try {
@@ -292,7 +307,13 @@ function renderOffer(offer) {
 async function loadOffers() {
   const host = document.getElementById('offers');
   try {
-    const offers = await api('/api/admin/standing/offers');
+    const [offers, catalog, notify] = await Promise.all([api('/api/admin/standing/offers'),
+      api('/api/admin/standing/products').catch(() => []), api('/api/admin/standing/notifications').catch(() => null)]);
+    products = catalog;
+    const mail = document.getElementById('mail-status');
+    if (notify) mail.innerHTML = notify.emailEnabled
+      ? 'Email notifications are on: clients who opt in get an email when results reach their inbox.'
+      : 'Email notifications are off. Set <code>spring.mail.host</code> and <code>genesis.standing.notify.from</code> to turn them on; clients still see results in their inbox.';
     host.innerHTML = offers.length ? '' : '<div class="panel empty">No standing agents are installed in this app.</div>';
     host.style.display = 'flex'; host.style.flexDirection = 'column'; host.style.gap = '16px';
     offers.forEach(o => host.appendChild(renderOffer(o)));

@@ -1,8 +1,10 @@
 package ai.genesisbrands.standing;
 
+import ai.genesisbrands.repository.ProductRepository;
 import ai.genesisbrands.security.AdminAuthHelper;
 import ai.genesisbrands.security.AdminSessionService;
 import ai.genesisbrands.service.AgentCatalogService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +38,10 @@ public class StandingAdminController {
     private final AgentCatalogService agentCatalog;
     private final AdminAuthHelper adminAuth;
     private final AdminSessionService adminSession;
+    private final ProductRepository products;
+    private final StandingNotifier notifier;
+
+    public record ProductChoice(String id, String name, String type, boolean active) {}
 
     @GetMapping("/offers")
     public List<StandingService.AdminOffer> offers(HttpServletRequest req) {
@@ -49,6 +55,21 @@ public class StandingAdminController {
         requireAdmin(req);
         standing.updateOffer(agentId, body);
         return Map.of("status", "saved");
+    }
+
+    @GetMapping("/products")
+    @Operation(summary = "Products an offer can require, from the product catalog")
+    public List<ProductChoice> products(HttpServletRequest req) {
+        requireAdmin(req);
+        return products.findAllByOrderBySortOrderAsc().stream()
+            .map(p -> new ProductChoice(p.getId(), p.getName(), p.getType().name(), p.isActive())).toList();
+    }
+
+    @GetMapping("/notifications")
+    @Operation(summary = "Whether inbox emails are configured (spring.mail.host and genesis.standing.notify.from)")
+    public Map<String, Boolean> notifications(HttpServletRequest req) {
+        requireAdmin(req);
+        return Map.of("emailEnabled", notifier.enabled());
     }
 
     @GetMapping("/subscriptions")

@@ -54,6 +54,8 @@ public class UsagePricing {
         DEFAULTS.put("claude-haiku", new Price("1", "5", "0"));
         // gpt-image-1, 1024x1024 at high quality, the setting the Logo agent uses.
         DEFAULTS.put("gpt-image-1", new Price("0", "0", "0.167"));
+        // gpt-image-1, 1024x1024 at medium quality, the setting the Content agent uses.
+        DEFAULTS.put("gpt-image-1-medium", new Price("0", "0", "0.042"));
         DEFAULTS.put("ideogram-v2", new Price("0", "0", "0.08"));
         DEFAULTS.put("text-embedding-3-small", new Price("0.02", "0", "0"));
         DEFAULTS.put("text-embedding-3-large", new Price("0.13", "0", "0"));

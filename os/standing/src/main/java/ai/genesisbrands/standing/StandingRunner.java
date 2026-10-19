@@ -19,6 +19,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
@@ -47,13 +48,16 @@ public class StandingRunner {
     private final StandingContextService context;
     private final UsageService usage;
     private final GenericSingleShotAgentService models;
+    private final StandingAttachments attachments;
+    private final StandingNotifier notifier;
     private final ObjectMapper objectMapper;
     private final TransactionTemplate readOnly;
     private final ExecutorService pool;
 
     public StandingRunner(StandingSubscriptionRepository subscriptions, StandingRunRepository runs, InboxItemRepository inbox,
                           StandingCatalog catalog, StandingContextService context, UsageService usage,
-                          GenericSingleShotAgentService models, ObjectMapper objectMapper,
+                          GenericSingleShotAgentService models, StandingAttachments attachments,
+                          StandingNotifier notifier, ObjectMapper objectMapper,
                           PlatformTransactionManager transactions) {
         this.subscriptions = subscriptions;
         this.runs = runs;
@@ -62,6 +66,8 @@ public class StandingRunner {
         this.context = context;
         this.usage = usage;
         this.models = models;
+        this.attachments = attachments;
+        this.notifier = notifier;
         this.objectMapper = objectMapper;
         this.readOnly = new TransactionTemplate(transactions);
         this.readOnly.setReadOnly(true);
@@ -113,6 +119,7 @@ public class StandingRunner {
     /** Why this subscription may not run now, or null when it may. */
     public String refusal(StandingSubscription sub) {
         if (!catalog.isOffered(sub.getAgentId())) return "This agent is no longer offered.";
+        if (!catalog.isOfferedTo(sub.getAgentId(), sub.getClientUserId())) return "This agent is not part of your current plan.";
         StandingAgentOffer offer = catalog.offer(sub.getAgentId());
         Instant monthStart = monthStart();
         if (offer.getMaxRunsPerMonth() != null) {
@@ -151,7 +158,7 @@ public class StandingRunner {
             StandingRunResult result = UsageContext.callWith(scope, () -> {
                 String clientContext = readOnly.execute(tx -> context.build(client, agent.agentId()));
                 return agent.run(new StandingRunContext(runId, sub.getId(), client.getId(), clientName, options,
-                    clientContext, decisions, previous, Instant.now(),
+                    clientContext, decisions, previous, Instant.now(), sub.getNextRunAt(), zone(sub),
                     prompt -> models.generate(agent.agentId(), prompt, null)));
             });
 
@@ -160,6 +167,7 @@ public class StandingRunner {
             run.setItemsCreated(items.size());
             run.setNote(truncate(result == null ? null : result.note(), 500));
             run.setStatus(StandingRun.SUCCEEDED);
+            notifier.itemsArrived(client, sub, items.size());
         } catch (Exception e) {
             log.warn("Standing run {} ({}) failed: {}", runId, run.getAgentId(), e.toString());
             run.setStatus(StandingRun.FAILED);
@@ -187,7 +195,16 @@ public class StandingRunner {
         i.setSummary(truncate(item.summary(), 1000));
         i.setBody(item.body());
         i.setPayloadJson(item.payload() == null || item.payload().isEmpty() ? null : objectMapper.writeValueAsString(item.payload()));
+        i.setAttachmentsJson(attachments.toJson(attachments.store(run.getClientUserId(), i.getId(), item.attachments())));
         return i;
+    }
+
+    private static ZoneId zone(StandingSubscription sub) {
+        try {
+            return ZoneId.of(sub.getTimezone());
+        } catch (RuntimeException e) {
+            return ZoneOffset.UTC;
+        }
     }
 
     static Instant monthStart() {

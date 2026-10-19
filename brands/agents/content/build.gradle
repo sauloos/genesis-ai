@@ -1,0 +1,18 @@
+// Genesis Brands Content agent — a standing agent that drafts social posts (per-channel copy
+// plus images) in the client's brand, into their inbox for approval. Runs through the standing
+// runtime (os/standing); images come from the app's OpenAI image model, metered to the run.
+dependencies {
+    implementation project(':os:agent-sdk')
+    compileOnly project(':os:runtime')
+    compileOnly 'org.springframework:spring-context'
+    compileOnly 'com.fasterxml.jackson.core:jackson-databind'
+    compileOnly 'org.springframework.ai:spring-ai-starter-model-openai'
+
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

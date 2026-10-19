@@ -59,6 +59,10 @@ public class InboxItem {
     @Column(name = "payload_json", columnDefinition = "TEXT")
     private String payloadJson;
 
+    /** JSON array of {@link StandingAttachments.Stored}: the item's files, kept in blob storage. */
+    @Column(name = "attachments_json", columnDefinition = "TEXT")
+    private String attachmentsJson;
+
     @Column(nullable = false, length = 20)
     private String status = PENDING;
 

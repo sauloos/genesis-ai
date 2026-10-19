@@ -71,6 +71,11 @@ public class StandingSubscription {
     @Column(name = "paused_reason", length = 20)
     private String pausedReason;
 
+    /** Email the client when a run leaves something in the inbox; null (rows from before the
+     *  setting existed) means yes. */
+    @Column(name = "notify_by_email")
+    private Boolean notifyByEmail;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 

@@ -167,6 +167,9 @@ export function mount(container, widget, ctx = {}) {
       const current = values[option.key] ?? option.defaultValue ?? '';
       fields.appendChild(optionField(option, current, v => { values[option.key] = v; }));
     }
+    let notifyByEmail = sub ? sub.notifyByEmail !== false : true;
+    fields.appendChild(optionField({ type: 'BOOLEAN', label: 'Email me when results arrive' }, String(notifyByEmail),
+      v => { notifyByEmail = v === 'true'; }));
     form.appendChild(fields);
 
     const status = el('div', 'asub-status');
@@ -207,7 +210,8 @@ export function mount(container, widget, ctx = {}) {
         dayOfMonth: Number(monthDay.value) || 1,
         timeOfDay: time.value || '09:00',
         timezone: sub ? sub.timezone : browserZone(),
-        options: values
+        options: values,
+        notifyByEmail
       };
       act(save, async () => {
         if (!simulate) await call(`/subscriptions/${encodeURIComponent(offer.agentId)}`, { method: 'PUT', body: JSON.stringify(body) });

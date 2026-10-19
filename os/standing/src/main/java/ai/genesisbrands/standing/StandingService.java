@@ -12,6 +12,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.Instant;
@@ -26,6 +29,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
+import java.util.zip.ZipOutputStream;
 
 /**
  * Client and admin operations over subscriptions, runs and the inbox. Every client operation
@@ -45,11 +51,12 @@ public class StandingService {
     private final StandingOfferRepository offers;
     private final StandingRunner runner;
     private final ClientUserRepository clientUsers;
+    private final StandingAttachments attachments;
     private final ObjectMapper objectMapper;
 
     public StandingService(StandingCatalog catalog, StandingSubscriptionRepository subscriptions, StandingRunRepository runs,
                            InboxItemRepository inbox, StandingOfferRepository offers, StandingRunner runner,
-                           ClientUserRepository clientUsers, ObjectMapper objectMapper) {
+                           ClientUserRepository clientUsers, StandingAttachments attachments, ObjectMapper objectMapper) {
         this.catalog = catalog;
         this.subscriptions = subscriptions;
         this.runs = runs;
@@ -57,6 +64,7 @@ public class StandingService {
         this.offers = offers;
         this.runner = runner;
         this.clientUsers = clientUsers;
+        this.attachments = attachments;
         this.objectMapper = objectMapper;
     }
 
@@ -71,23 +79,28 @@ public class StandingService {
 
     public record SubscriptionView(String id, String agentId, boolean active, String pausedReason, Cadence cadence,
                                    int dayOfWeek, int dayOfMonth, String timeOfDay, String timezone,
-                                   Map<String, String> options, Instant nextRunAt, Instant lastRunAt, long runsThisMonth) {}
+                                   Map<String, String> options, Instant nextRunAt, Instant lastRunAt, long runsThisMonth,
+                                   boolean notifyByEmail) {}
 
     public record RunView(String id, String agentId, String agentName, String trigger, String status, Instant slot,
                           Instant startedAt, Instant finishedAt, int itemsCreated, long costMicros, String note, String error) {}
 
     public record InboxView(String id, String agentId, String agentName, String kind, String title, String summary,
-                            String body, Object payload, String status, String feedback, Instant createdAt, Instant decidedAt) {}
+                            String body, Object payload, String status, String feedback, Instant createdAt, Instant decidedAt,
+                            List<AttachmentView> attachments) {}
+
+    /** A file of an inbox item; {@code url} serves it to the item's own client (add {@code ?download=true} to save it). */
+    public record AttachmentView(int index, String name, String contentType, long size, String url) {}
 
     public record SubscriptionRequest(Cadence cadence, Integer dayOfWeek, Integer dayOfMonth, String timeOfDay,
-                                      String timezone, Map<String, String> options, Boolean active) {}
+                                      String timezone, Map<String, String> options, Boolean active, Boolean notifyByEmail) {}
 
     // ---- client: offers and subscriptions ---------------------------------------------
 
     public List<ClientOffer> offersFor(String clientUserId) {
         List<ClientOffer> out = new ArrayList<>();
         for (StandingAgent agent : catalog.all()) {
-            if (!catalog.isOffered(agent.agentId())) continue;
+            if (!catalog.isOfferedTo(agent.agentId(), clientUserId)) continue;
             StandingAgentOffer offer = catalog.offer(agent.agentId());
             Set<String> locked = catalog.locked(offer);
             CoreAgent meta = catalog.describe(agent.agentId()).orElse(null);
@@ -108,7 +121,7 @@ public class StandingService {
 
     /** Creates or replaces the client's subscription to an offered agent. */
     public SubscriptionView subscribe(String clientUserId, String agentId, SubscriptionRequest req) {
-        StandingAgent agent = catalog.requireOffered(agentId);
+        StandingAgent agent = catalog.requireOfferedTo(agentId, clientUserId);
         StandingAgentOffer offer = catalog.offer(agentId);
         Cadence cadence = req.cadence() == null ? catalog.defaultCadence(agent, offer) : req.cadence();
         if (!catalog.cadences(agent, offer).contains(cadence)) throw badRequest("That frequency is not available for this agent.");
@@ -161,6 +174,7 @@ public class StandingService {
         sub.setTimeOfDay(LocalTime.parse(timeOfDay).truncatedTo(ChronoUnit.MINUTES).toString());
         sub.setTimezone(timezone);
         sub.setOptionsJson(catalog.writeMap(options));
+        if (req.notifyByEmail() != null) sub.setNotifyByEmail(req.notifyByEmail());
         if (req.active() != null) {
             sub.setActive(req.active());
             sub.setPausedReason(req.active() ? null : StandingSubscription.PAUSED_BY_CLIENT);
@@ -183,7 +197,7 @@ public class StandingService {
     }
 
     public SubscriptionView resume(String clientUserId, String agentId) {
-        catalog.requireOffered(agentId);
+        catalog.requireOfferedTo(agentId, clientUserId);
         StandingSubscription sub = ownSubscription(clientUserId, agentId);
         if (StandingSubscription.PAUSED_BY_ADMIN.equals(sub.getPausedReason())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "This subscription was paused by the administrator.");
@@ -204,7 +218,7 @@ public class StandingService {
 
     /** Runs the agent now, outside the schedule. Counts toward the monthly cap like any run. */
     public RunView runNow(String clientUserId, String agentId) {
-        catalog.requireOffered(agentId);
+        catalog.requireOfferedTo(agentId, clientUserId);
         StandingSubscription sub = ownSubscription(clientUserId, agentId);
         if (runs.existsBySubscriptionIdAndStatus(sub.getId(), StandingRun.RUNNING)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "A run is already in progress.");
@@ -252,6 +266,79 @@ public class StandingService {
         return view(inbox.save(item));
     }
 
+    /** One file of the client's own inbox item. */
+    public record AttachmentContent(StandingAttachments.Stored file, byte[] data) {}
+
+    public AttachmentContent attachment(String clientUserId, String itemId, int index) {
+        List<StandingAttachments.Stored> files = attachments.list(ownItem(clientUserId, itemId));
+        if (index < 0 || index >= files.size()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No such file");
+        StandingAttachments.Stored file = files.get(index);
+        try {
+            return new AttachmentContent(file, attachments.read(file));
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "That file is no longer available.");
+        }
+    }
+
+    /** The client's own inbox item as a zip: its text (and each channel's version) plus its files. */
+    public byte[] export(String clientUserId, String itemId) {
+        InboxItem item = ownItem(clientUserId, itemId);
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (ZipOutputStream zip = new ZipOutputStream(bytes)) {
+            StringBuilder text = new StringBuilder("# ").append(item.getTitle()).append("\n\n");
+            if (item.getSummary() != null) text.append(item.getSummary()).append("\n\n");
+            if (item.getBody() != null) text.append(item.getBody()).append("\n");
+            entry(zip, "post.md", text.toString().getBytes(StandardCharsets.UTF_8));
+            for (Map<String, Object> v : variants(item)) {
+                String channel = StandingAttachments.safeName(String.valueOf(v.getOrDefault("channel", "channel")), 0, "text/plain");
+                StringBuilder t = new StringBuilder(String.valueOf(v.getOrDefault("text", "")).strip());
+                if (v.get("hashtags") instanceof List<?> tags && !tags.isEmpty()) {
+                    t.append("\n\n").append(String.join(" ", tags.stream().map(String::valueOf).toList()));
+                }
+                entry(zip, channel + ".txt", t.append("\n").toString().getBytes(StandardCharsets.UTF_8));
+            }
+            for (StandingAttachments.Stored file : attachments.list(item)) {
+                try {
+                    entry(zip, file.name(), attachments.read(file));
+                } catch (IOException e) {
+                    // A file lost from storage leaves the rest of the export intact.
+                }
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+        return bytes.toByteArray();
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> variants(InboxItem item) {
+        if (item.getPayloadJson() == null) return List.of();
+        try {
+            Object v = objectMapper.readValue(item.getPayloadJson(), new TypeReference<Map<String, Object>>() {}).get("variants");
+            return v instanceof List<?> list
+                ? list.stream().filter(Map.class::isInstance).map(m -> (Map<String, Object>) m).toList()
+                : List.of();
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    /** Adds a file, renaming it when an earlier entry took the name (two variants for one channel). */
+    private static void entry(ZipOutputStream zip, String name, byte[] data) throws IOException {
+        String unique = name;
+        for (int n = 2; ; n++) {
+            try {
+                zip.putNextEntry(new ZipEntry(unique));
+                break;
+            } catch (ZipException duplicate) {
+                int dot = name.lastIndexOf('.');
+                unique = dot > 0 ? name.substring(0, dot) + "-" + n + name.substring(dot) : name + "-" + n;
+            }
+        }
+        zip.write(data);
+        zip.closeEntry();
+    }
+
     public long pendingCount(String clientUserId) {
         return inbox.countByClientUserIdAndStatus(clientUserId, InboxItem.PENDING);
     }
@@ -261,10 +348,12 @@ public class StandingService {
     public record AdminOffer(String agentId, String displayName, String description, boolean availableForLiveView,
                              boolean enabled, List<AgentCustomOption> options, Map<String, String> defaultOptions,
                              List<String> lockedOptions, List<Cadence> agentCadences, List<Cadence> allowedCadences,
-                             Integer maxRunsPerMonth, Long monthlyBudgetMicros, long subscribers, Instant updatedAt) {}
+                             Integer maxRunsPerMonth, Long monthlyBudgetMicros, List<String> requiredProducts,
+                             long subscribers, Instant updatedAt) {}
 
     public record OfferUpdate(boolean enabled, Map<String, String> defaultOptions, List<String> lockedOptions,
-                              List<Cadence> allowedCadences, Integer maxRunsPerMonth, Long monthlyBudgetMicros) {}
+                              List<Cadence> allowedCadences, Integer maxRunsPerMonth, Long monthlyBudgetMicros,
+                              List<String> requiredProducts) {}
 
     public record AdminSubscription(String id, String clientUserId, String clientLabel, String agentId, boolean active,
                                     String pausedReason, String cadence, Instant nextRunAt, Instant lastRunAt) {}
@@ -283,6 +372,7 @@ public class StandingService {
                 offer.isEnabled(), agent.subscriptionOptions(), catalog.adminDefaults(offer),
                 List.copyOf(catalog.locked(offer)), List.copyOf(agent.allowedCadences()),
                 List.copyOf(catalog.cadences(agent, offer)), offer.getMaxRunsPerMonth(), offer.getMonthlyBudgetMicros(),
+                List.copyOf(StandingCatalog.splitCsv(offer.getRequiredProducts())),
                 all.stream().filter(s -> s.getAgentId().equals(agent.agentId())).count(), offer.getUpdatedAt());
         }).toList();
     }
@@ -318,6 +408,10 @@ public class StandingService {
         offer.setAllowedCadences(cadences.isEmpty() ? null : String.join(",", cadences.stream().map(Enum::name).toList()));
         offer.setMaxRunsPerMonth(req.maxRunsPerMonth());
         offer.setMonthlyBudgetMicros(req.monthlyBudgetMicros());
+        List<String> products = req.requiredProducts() == null ? List.of()
+            : req.requiredProducts().stream().filter(Objects::nonNull).map(String::trim).filter(s -> !s.isEmpty()).distinct().toList();
+        if (products.stream().anyMatch(s -> s.contains(","))) throw badRequest("Unknown product id.");
+        offer.setRequiredProducts(products.isEmpty() ? null : String.join(",", products));
         offer.setUpdatedAt(Instant.now());
         offers.save(offer);
     }
@@ -377,7 +471,8 @@ public class StandingService {
             s.getId(), List.of(StandingRun.RUNNING, StandingRun.SUCCEEDED), StandingRunner.monthStart());
         return new SubscriptionView(s.getId(), s.getAgentId(), s.isActive(), s.getPausedReason(), Cadence.valueOf(s.getCadence()),
             s.getDayOfWeek() == null ? 1 : s.getDayOfWeek(), s.getDayOfMonth() == null ? 1 : s.getDayOfMonth(),
-            s.getTimeOfDay(), s.getTimezone(), effective, s.getNextRunAt(), s.getLastRunAt(), used);
+            s.getTimeOfDay(), s.getTimezone(), effective, s.getNextRunAt(), s.getLastRunAt(), used,
+            !Boolean.FALSE.equals(s.getNotifyByEmail()));
     }
 
     private RunView view(StandingRun r) {
@@ -401,8 +496,15 @@ public class StandingService {
                 // A malformed payload still shows the item's body.
             }
         }
+        List<StandingAttachments.Stored> files = attachments.list(i);
+        List<AttachmentView> views = new ArrayList<>();
+        for (int n = 0; n < files.size(); n++) {
+            StandingAttachments.Stored f = files.get(n);
+            views.add(new AttachmentView(n, f.name(), f.contentType(), f.size(),
+                "/api/client/standing/inbox/" + i.getId() + "/attachments/" + n));
+        }
         return new InboxView(i.getId(), i.getAgentId(), catalog.displayName(i.getAgentId()), i.getKind(), i.getTitle(),
-            i.getSummary(), i.getBody(), payload, i.getStatus(), i.getFeedback(), i.getCreatedAt(), i.getDecidedAt());
+            i.getSummary(), i.getBody(), payload, i.getStatus(), i.getFeedback(), i.getCreatedAt(), i.getDecidedAt(), views);
     }
 
     private Map<String, String> clientLabels(List<String> ids) {

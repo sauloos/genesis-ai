@@ -6,7 +6,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -110,6 +113,33 @@ public class StandingClientController {
     public StandingService.InboxView reject(@PathVariable String itemId, @RequestBody(required = false) Decision body,
                                             HttpServletRequest req) {
         return standing.decide(clientId(req), itemId, false, body == null ? null : body.feedback());
+    }
+
+    @GetMapping("/inbox/{itemId}/attachments/{index}")
+    @Operation(summary = "One file of an inbox item, such as a post image; ?download=true saves it")
+    public ResponseEntity<byte[]> attachment(@PathVariable String itemId, @PathVariable int index,
+                                             @RequestParam(defaultValue = "false") boolean download,
+                                             HttpServletRequest req) {
+        StandingService.AttachmentContent file = standing.attachment(clientId(req), itemId, index);
+        return ResponseEntity.ok()
+            .contentType(MediaType.parseMediaType(file.file().contentType()))
+            .header(HttpHeaders.CONTENT_DISPOSITION, (download ? ContentDisposition.attachment() : ContentDisposition.inline())
+                .filename(file.file().name()).build().toString())
+            .header(HttpHeaders.CACHE_CONTROL, "private, max-age=3600")
+            .header("X-Content-Type-Options", "nosniff")
+            .body(file.data());
+    }
+
+    @GetMapping("/inbox/{itemId}/download")
+    @Operation(summary = "An inbox item as a zip: its text, each channel's version and its files")
+    public ResponseEntity<byte[]> download(@PathVariable String itemId, HttpServletRequest req) {
+        byte[] zip = standing.export(clientId(req), itemId);
+        return ResponseEntity.ok()
+            .contentType(MediaType.parseMediaType("application/zip"))
+            .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                .filename("inbox-" + itemId.substring(0, Math.min(8, itemId.length())) + ".zip").build().toString())
+            .header(HttpHeaders.CACHE_CONTROL, "no-store")
+            .body(zip);
     }
 
     private String clientId(HttpServletRequest req) {

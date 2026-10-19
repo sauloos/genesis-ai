@@ -1,6 +1,7 @@
 package ai.genesisbrands.platform.standing;
 
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
@@ -14,6 +15,9 @@ import java.util.Map;
  *                      assembled from every {@link StandingContextContributor}; may be empty
  * @param recentDecisions the client's latest approvals and rejections of this agent's items,
  *                      newest first, so the agent learns what this client accepts
+ * @param nextRunAt     when the subscription runs next (null when it has no schedule), so an
+ *                      agent can spread what it plans across the period it covers
+ * @param zone          the client's time zone for this subscription
  * @param model         the agent's own model (its {@code agent.yml} config), metered against
  *                      this run
  */
@@ -27,6 +31,8 @@ public record StandingRunContext(
     List<Decision> recentDecisions,
     Instant previousRunAt,
     Instant now,
+    Instant nextRunAt,
+    ZoneId zone,
     Model model
 ) {
 
