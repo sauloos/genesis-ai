@@ -40,6 +40,14 @@ spring:
         options:
           model: text-embedding-3-small
 
+# Same env names as genesis-brands. Without this mapping AZURE_STORAGE_ACCOUNT/KEY never bind,
+# and BlobStorageService falls back to local disk, which a redeploy wipes.
+azure:
+  storage:
+    account-name: ${AZURE_STORAGE_ACCOUNT:}
+    account-key: ${AZURE_STORAGE_KEY:}
+    container: ${AZURE_STORAGE_CONTAINER:knowledge}
+
 server:
   port: 8080
 
