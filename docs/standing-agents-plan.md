@@ -214,8 +214,12 @@ Each run:
 
 Which standing agents a client gets should follow what they bought. Products in the
 Product/ProductOptions catalog grant agents with limits (e.g. "Social subscription: content
-agent, 12 posts/month, 2 channels"). Until that lands, `StandingAgentOffer` applies to every
-client of the tenant.
+agent, 12 posts/month, 2 channels").
+
+Built in phase 2: an offer may list required products (`StandingAgentOffer.requiredProducts`).
+A client is entitled when they have a SUCCEEDED payment whose cart held one of them; an offer
+with none is open to every client. Per-product limits (posts/month, channels) and renewals or
+cancellations of recurring products are not tracked yet: a client who paid once stays entitled.
 
 ---
 
@@ -225,7 +229,7 @@ client of the tenant.
 |---|---|---|
 | 0 | Usage ledger — **done 2026-10-19** | Per-run token/image metering against a client; admin view. Prerequisite for budgets and billing. |
 | 1 | Standing runtime — **done 2026-10-19** | SDK `StandingAgent`, offer/subscription/run/inbox model, scheduler, admin section, `agentSubscriptions` + `agentInbox` widgets, connector exposure. Proven with a trivial core agent (client pulse). |
-| 2 | Content agent, draft-only | Content agent producing drafts into the inbox; client approves and downloads. Real value before any platform review clears. |
+| 2 | Content agent, draft-only — **done 2026-10-19** | Content agent producing drafts into the inbox; client approves and downloads. Real value before any platform review clears. |
 | 3 | Channels | `PublishChannel` SPI, `channelConnections` widget, Meta + LinkedIn modules, token vault, scheduled publish. Submit Meta App Review / LinkedIn product access at the start of this phase. |
 | 4 | Brand guardian | Site/social/upload audits against the brand book via the existing evaluators; reads recent posts through the connected channels. |
 | 5 | Occasions + market watch | Calendar-driven asset proposals; competitor briefs using the ingestion crawler. |
@@ -284,12 +288,40 @@ is the hook for phase 1 budgets. Embeddings are not metered yet (fractions of a 
   - A run costs about $0.006 on Sonnet 5.
   - Not built yet: email notifications.
 
-Email notifications land with phase 2; entitlements with phase 2 at the latest, before
-any client pays for the subscription.
+**Phase 2 as built.**
+- **Content agent** (`brands/agents/content`, tenant: it is grounded in the brand book; adopted
+  by genesis-brands only). Options: channels (Instagram, Facebook, LinkedIn), posts per run
+  (1–7), formats (single image, carousel, story, text only), topics plus free-text notes,
+  writing style, image style (brand photography, illustration, typographic, palette only, no
+  images), language, avoid. Weekly, fortnightly or monthly.
+  - One Sonnet 5 call plans and writes the batch as JSON; each post carries a `day` within the
+    period (now to the next run, in the client's zone) that becomes `proposedFor`.
+  - Images: `gpt-image-1` at medium quality (1024×1024, 1024×1536 for stories; carousels up to
+    3 frames), metered as `gpt-image-1-medium` ($0.042). A failed image drops that frame, not
+    the post. A two-post run with three images cost about $0.15.
+  - Not done (deliberately): reusing the copy / visual evaluators, editing a draft in place and
+    regenerate-with-feedback. A rejection note feeds the next run instead.
+- **SDK.** `StandingRunResult.Item` gained `attachments` (`Attachment(name, contentType, data)`)
+  and a fixed DRAFT_POST payload shape (variants per channel, format, pillar, proposedFor).
+  `StandingRunContext` gained `nextRunAt` and `zone`.
+- **Runtime.** `StandingAttachments` stores run files in blob storage under
+  `standing/<client>/<item>/` (10 per item, 15 MB each, images / PDF / text only). The client
+  gets `GET /api/client/standing/inbox/{id}/attachments/{n}` and `.../{id}/download` (a zip of
+  `post.md`, one `<channel>.txt` per variant, and the files). Both need the client session;
+  `StandingFileRoutes` exempts them from the `X-Api-Key` header so `<img>` and links work.
+- **Email.** `StandingNotifier` sends a plain-text email when a run leaves items, through Spring
+  Mail (any SMTP, e.g. Azure Communication Services). Off until `spring.mail.host` and
+  `genesis.standing.notify.from` are set; `genesis.standing.notify.inbox-url` adds a link.
+  Clients opt out per subscription ("Email me when results arrive").
+- **Entitlements.** See above; `/dashboard/standing` has an "Only for clients who bought"
+  product picker and shows whether email is configured.
+- **Widgets.** `agentInbox` renders a DRAFT_POST as a post: date / format / topic chips, image
+  strip, one tab per channel with a Copy button, and Download post. `agentSubscriptions` has
+  the email checkbox.
 
 ## Open questions
 
 - Pricing of the subscription tiers (posts/month, channels, agents included).
 - Whether a client's team (more than one user) approves, which needs roles on client accounts.
-- Which email provider sends notifications.
+- Which SMTP provider sends notifications on prod (Azure Communication Services is the obvious one).
 - Whether auto-publish is ever offered, and on which tier.

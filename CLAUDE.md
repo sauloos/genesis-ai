@@ -352,6 +352,11 @@ next to `CoreAgent`. `os/standing` collects every such bean, so there is no wiri
   feedback goes to the agent's next run.
 - **Context is server-side.** The run's client context comes from core SPIs
   (`ClientWorkspaceProvider`, `StandingContextContributor`), never from a request.
+- **Files go through the runtime.** An agent returns images and documents as
+  `StandingRunResult.Attachment` bytes; `os/standing` stores them and serves them to the
+  item's own client. Agents never touch storage.
+- **Entitlements and email.** An offer may require products the client has paid for. Email on
+  new items is Spring Mail, inert until `spring.mail.host` + `genesis.standing.notify.from`.
 - **Metering and connectors.** Runs are metered per run id in the usage ledger. The client's own
   subscriptions and inbox are exposed as connectors (REST `/api/connect/standing`, MCP
   `standing_*` tools via `ClientToolContributor`).
