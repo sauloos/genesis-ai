@@ -1,0 +1,26 @@
+// GenesisOS standing agents — agents that keep working for a client on a schedule, with
+// every output waiting in the client's inbox for approval. Collects every StandingAgent
+// bean (os/agent-sdk), so an agent module becomes subscribable by implementing it. An app
+// adopts the runtime by declaring this dependency; see docs/standing-agents-plan.md.
+configurations {
+    compileOnly { extendsFrom annotationProcessor }
+}
+
+dependencies {
+    implementation project(':os:agent-sdk')
+    compileOnly project(':os:runtime')
+    // Optional: MCP + REST exposure through the connectors gateway, when the app adopts it.
+    compileOnly project(':os:connectors')
+    compileOnly 'org.springframework.boot:spring-boot-starter-web'
+    compileOnly 'org.springframework.boot:spring-boot-starter-data-jpa'
+    compileOnly 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

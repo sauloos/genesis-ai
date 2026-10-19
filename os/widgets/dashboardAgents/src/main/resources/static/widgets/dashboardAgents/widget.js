@@ -73,7 +73,9 @@ export async function mount(container, widget, ctx) {
       resolveTarget(),
     ]);
     if (!agentsRes.ok) throw new Error(String(agentsRes.status));
-    const agents = await agentsRes.json();
+    // An agent with no live view (e.g. a standing-only agent, surfaced by agentSubscriptions)
+    // has nothing to open here.
+    const agents = (await agentsRes.json()).filter(a => a.hasLiveView);
     if (agents.length === 0) {
       listEl.innerHTML = '<div class="da-empty">No agents available yet.</div>';
       return;

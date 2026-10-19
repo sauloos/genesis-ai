@@ -1,0 +1,43 @@
+.ainb-panel { background: var(--theme-card-bg); border: 1px solid var(--theme-card-border); border-radius: 14px; padding: 24px 26px; }
+.ainb-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+.ainb-label { font-size: 10px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;
+  color: var(--theme-text-label, var(--theme-text-muted)); }
+.ainb-tabs { display: flex; gap: 4px; }
+.ainb-tab { font: inherit; font-size: 11px; color: var(--theme-text-muted); background: none; cursor: pointer;
+  border: 1px solid var(--theme-btn-border); border-radius: 999px; padding: 3px 10px; }
+.ainb-tab[aria-pressed="true"] { color: var(--theme-text-primary); border-color: var(--theme-text-primary); }
+
+.ainb-list { display: flex; flex-direction: column; max-height: 520px; overflow-y: auto; }
+.ainb-empty { font-size: 13px; color: var(--theme-text-muted); padding: 8px 0; }
+
+.ainb-item { border-top: 1px solid var(--theme-card-border); }
+.ainb-item:first-child { border-top: none; }
+.ainb-item-head { display: block; width: 100%; text-align: left; font: inherit; color: inherit; background: none; border: none;
+  cursor: pointer; padding: 12px 2px; }
+.ainb-item-head:focus-visible, .ainb-tab:focus-visible, .ainb-btn:focus-visible { outline: 2px solid var(--theme-text-primary); outline-offset: 2px; }
+.ainb-meta { font-size: 11px; color: var(--theme-text-muted); }
+.ainb-agent { font-weight: 600; }
+.ainb-title-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-top: 3px; }
+.ainb-title { font-size: 14px; font-weight: 600; color: var(--theme-text-primary); min-width: 0; }
+.ainb-item-pending .ainb-title::before { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--theme-warning); margin-right: 7px; vertical-align: 2px; }
+.ainb-summary { font-size: 12px; color: var(--theme-text-muted); margin-top: 3px; line-height: 1.45; }
+.ainb-status { font-size: 10px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; white-space: nowrap; }
+.ainb-status-pending { color: var(--theme-warning); }
+.ainb-status-approved { color: var(--theme-success); }
+.ainb-status-rejected { color: var(--theme-text-muted); }
+
+.ainb-detail { padding: 0 2px 16px; }
+.ainb-body { font-size: 13px; line-height: 1.55; color: var(--theme-text-primary); white-space: pre-wrap; overflow-wrap: anywhere;
+  background: color-mix(in srgb, var(--theme-text-primary) 4%, transparent); border-radius: 10px; padding: 12px 14px; }
+.ainb-feedback { font-size: 12px; color: var(--theme-text-muted); margin-top: 10px; font-style: italic; }
+.ainb-note-label { display: block; font-size: 11px; color: var(--theme-text-muted); margin: 12px 0 5px; }
+.ainb-note { width: 100%; font: inherit; font-size: 13px; color: var(--theme-text-primary); background: var(--theme-card-bg);
+  border: 1px solid var(--theme-btn-border); border-radius: 8px; padding: 7px 9px; resize: vertical; }
+.ainb-actions { display: flex; gap: 8px; margin-top: 10px; }
+.ainb-btn { font: inherit; font-size: 12px; cursor: pointer; border-radius: 8px; padding: 6px 14px; border: 1px solid var(--theme-btn-border);
+  background: none; color: var(--theme-text-primary); }
+.ainb-btn-approve { background: var(--theme-text-primary); color: var(--theme-body-bg); border-color: var(--theme-text-primary); font-weight: 600; }
+.ainb-btn:disabled { opacity: 0.5; cursor: default; }
+.ainb-error { font-size: 12px; color: var(--theme-danger); margin-top: 8px; }
+.ainb-error:empty { display: none; }

@@ -1,0 +1,12 @@
+// GenesisOS Client Pulse — a standing agent: a periodic read on the client's account, delivered
+// to their inbox. Metadata bean + StandingAgent + agent.yml defaults + prompt. Runs through the
+// standing runtime (os/standing), so it only needs the agent SDK.
+dependencies {
+    implementation project(':os:agent-sdk')
+    compileOnly 'org.springframework:spring-context'   // provided by the adopting app
+}
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+tasks.named('test') { useJUnitPlatform() }

@@ -15,4 +15,7 @@ public interface UsageEventRepository extends JpaRepository<UsageEvent, String> 
 
     @Query("select coalesce(sum(e.costMicros), 0) from UsageEvent e where e.clientUserId = ?1 and e.occurredAt >= ?2")
     long sumCostMicrosForClientSince(String clientUserId, Instant since);
+
+    @Query("select coalesce(sum(e.costMicros), 0) from UsageEvent e where e.runId = ?1")
+    long sumCostMicrosForRun(String runId);
 }

@@ -69,6 +69,11 @@ public class UsageService {
         return events.sumCostMicrosForClientSince(clientUserId, start);
     }
 
+    /** Everything metered under one run id (a standing-agent run). */
+    public long costOfRunMicros(String runId) {
+        return events.sumCostMicrosForRun(runId);
+    }
+
     private static String truncate(String s, int max) {
         return s == null || s.length() <= max ? s : s.substring(0, max);
     }

@@ -31,6 +31,7 @@ public class McpToolsets {
     private final BrainConnectorService brain;
     private final PlatformConnectorService platform;
     private final ObjectMapper objectMapper;
+    private final List<ClientToolContributor> contributors;
 
     /**
      * Agent connector tools. {@code onlyAgentId} non-null scopes the server to one agent (the
@@ -79,6 +80,7 @@ public class McpToolsets {
             tools.add(new McpTool("reject_job", "Discard a finished job's draft and keep the current version.",
                 jobSchema, args -> agents.rejectJob(text(args, "jobId"), client)));
         }
+        if (onlyAgentId == null) contributors.forEach(c -> tools.addAll(c.tools(client)));
         return tools;
     }
 
@@ -118,7 +120,7 @@ public class McpToolsets {
     private static final com.fasterxml.jackson.core.type.TypeReference<Map<String, String>> STRING_MAP = new com.fasterxml.jackson.core.type.TypeReference<>() {};
     private static final com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>> OBJECT_MAP = new com.fasterxml.jackson.core.type.TypeReference<>() {};
 
-    private static String text(JsonNode args, String field) {
+    public static String text(JsonNode args, String field) {
         String value = optionalText(args, field);
         if (value == null || value.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "'" + field + "' is required");
@@ -126,7 +128,7 @@ public class McpToolsets {
         return value;
     }
 
-    private static String optionalText(JsonNode args, String field) {
+    public static String optionalText(JsonNode args, String field) {
         JsonNode node = args.get(field);
         return node == null || node.isNull() ? null : node.asText();
     }

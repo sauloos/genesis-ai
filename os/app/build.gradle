@@ -19,7 +19,9 @@ dependencies {
     implementation project(':os:agents:rfp-response')
     implementation project(':os:agents:research-synthesis')
     implementation project(':os:agents:consultant')
+    implementation project(':os:agents:client-pulse')
     implementation project(':os:connectors')
+    implementation project(':os:standing')
     implementation project(':os:widgets:content')
     implementation project(':os:widgets:button')
     implementation project(':os:widgets:pageNav')
@@ -32,6 +34,8 @@ dependencies {
     implementation project(':os:widgets:login')
     implementation project(':os:widgets:dashboardAgents')
     implementation project(':os:widgets:dashboardAssets')
+    implementation project(':os:widgets:agentSubscriptions')
+    implementation project(':os:widgets:agentInbox')
 
     // Spring Boot starters used directly in this module
     // (os:runtime's implementation deps are not transitively visible)

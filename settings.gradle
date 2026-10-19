@@ -6,6 +6,7 @@ include 'os:agent-sdk'
 include 'os:widget-sdk'
 include 'os:runtime'
 include 'os:connectors'
+include 'os:standing'
 include 'os:app'
 
 // Each directory under os/agents/ is its own agent module — dropping in a new folder (with a
