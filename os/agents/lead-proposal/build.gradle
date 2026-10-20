@@ -4,9 +4,11 @@
 dependencies {
     implementation project(':os:agent-sdk')
     compileOnly 'org.springframework:spring-context'   // provided by the adopting app
+    compileOnly 'org.springframework:spring-beans'
     compileOnly 'com.fasterxml.jackson.core:jackson-databind'
 
     testImplementation 'com.fasterxml.jackson.core:jackson-databind'
+    testImplementation 'org.springframework:spring-beans'
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }

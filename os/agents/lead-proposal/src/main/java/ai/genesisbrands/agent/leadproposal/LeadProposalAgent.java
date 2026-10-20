@@ -4,6 +4,7 @@ import ai.genesisbrands.platform.AgentCustomOption;
 import ai.genesisbrands.platform.AgentCustomOption.OptionType;
 import ai.genesisbrands.platform.CoreAgent;
 import ai.genesisbrands.platform.standing.Cadence;
+import ai.genesisbrands.platform.standing.KnowledgeSearch;
 import ai.genesisbrands.platform.standing.StandingAgent;
 import ai.genesisbrands.platform.standing.StandingRunContext;
 import ai.genesisbrands.platform.standing.StandingRunResult;
@@ -13,6 +14,8 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
@@ -27,6 +30,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 
 /**
  * GenesisOS standing agent that runs on events, not a schedule: each lead or RFP the client
@@ -35,8 +39,9 @@ import java.util.Set;
  * keeps which leads it has seen, so a lead sent twice costs no model call, and its last few
  * proposals, so scope and pricing stay consistent.
  * <p>
- * Precedent comes from this client's own past proposals only. Layer 2 holds other clients'
- * engagements and is not anonymised, so it is never used here.
+ * Precedent comes from two places: this client's own past proposals (memory), and the closest
+ * completed engagements in Layer 2 (project memory), found by meaning through the runtime's
+ * {@link KnowledgeSearch}, for typical scope, deliverables and investment.
  */
 @Component
 public class LeadProposalAgent implements CoreAgent, StandingAgent {
@@ -47,10 +52,23 @@ public class LeadProposalAgent implements CoreAgent, StandingAgent {
     static final int KEEP_RECENT = 6;
     /** How much of the lead's message reaches the model. */
     static final int MAX_LEAD_CHARS = 12_000;
+    static final int PRECEDENT_HITS = 4;
+    static final int MAX_PRECEDENT_CHARS = 900;
     private static final ObjectMapper JSON = JsonMapper.builder()
         .enable(JsonReadFeature.ALLOW_TRAILING_COMMA, JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS)
         .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
         .build();
+
+    private final Supplier<KnowledgeSearch> knowledge;
+
+    @Autowired
+    public LeadProposalAgent(ObjectProvider<KnowledgeSearch> knowledge) {
+        this(knowledge::getIfAvailable);
+    }
+
+    LeadProposalAgent(Supplier<KnowledgeSearch> knowledge) {
+        this.knowledge = knowledge;
+    }
 
     @Override
     public String agentId() {
@@ -151,7 +169,8 @@ public class LeadProposalAgent implements CoreAgent, StandingAgent {
                 "Look for the earlier drafts for " + lead.who() + " in your inbox.")), "duplicate lead, no model call", null);
         }
 
-        Draft draft = Draft.parse(ctx.model().complete(prompt(ctx, lead, memory)), replyOnly(ctx));
+        List<KnowledgeSearch.Passage> precedent = precedent(lead);
+        Draft draft = Draft.parse(ctx.model().complete(prompt(ctx, lead, memory, precedent)), replyOnly(ctx));
         if (draft == null) throw new IllegalStateException("The model returned no usable qualification");
 
         Map<String, Object> payload = new LinkedHashMap<>();
@@ -165,10 +184,21 @@ public class LeadProposalAgent implements CoreAgent, StandingAgent {
             draft.proposal() == null ? "" : draft.proposal().investment(), ctx.now() == null ? "" : ctx.now().toString().substring(0, 10)));
         return new StandingRunResult(List.of(new StandingRunResult.Item(StandingRunResult.Item.PROPOSAL, title, draft.summary(),
                 draft.body(), payload, List.of())),
-            draft.fit() + " fit, score " + draft.score(), memory.toJson());
+            draft.fit() + " fit, score " + draft.score() + ", " + precedent.size() + " past engagements", memory.toJson());
     }
 
-    static String prompt(StandingRunContext ctx, Lead lead, Memory memory) {
+    /** The completed engagements closest to this lead. A search that fails only means none. */
+    List<KnowledgeSearch.Passage> precedent(Lead lead) {
+        KnowledgeSearch search = knowledge.get();
+        if (search == null) return List.of();
+        try {
+            return search.search(clip(lead.query(), 2000), PRECEDENT_HITS, List.of(KnowledgeSearch.LAYER2));
+        } catch (RuntimeException e) {
+            return List.of();
+        }
+    }
+
+    static String prompt(StandingRunContext ctx, Lead lead, Memory memory, List<KnowledgeSearch.Passage> precedent) {
         StringBuilder p = new StringBuilder();
         p.append("Client: ").append(ctx.clientName()).append("\n");
         p.append("Draft: ").append(replyOnly(ctx) ? "a reply only (proposal must be null)" : "a reply, and a proposal for a strong or possible fit").append("\n");
@@ -186,6 +216,14 @@ public class LeadProposalAgent implements CoreAgent, StandingAgent {
                 if (!r.title().isEmpty()) p.append(": \"").append(r.title()).append("\"");
                 if (!r.investment().isEmpty()) p.append(", investment ").append(r.investment());
                 p.append("\n");
+            }
+        }
+        if (!precedent.isEmpty()) {
+            p.append("\nSimilar engagements from the agency's project memory (use them for typical scope, deliverables, ")
+                .append("timeline and investment; never name those clients or quote their details to the lead):\n");
+            for (KnowledgeSearch.Passage h : precedent) {
+                p.append("<engagement title=\"").append(clip(or(h.title(), "Past engagement"), 120).replace("\"", "'")).append("\">\n")
+                    .append(clip(or(h.text(), ""), MAX_PRECEDENT_CHARS)).append("\n</engagement>\n");
             }
         }
         boolean header = false;
@@ -246,6 +284,11 @@ public class LeadProposalAgent implements CoreAgent, StandingAgent {
         String who() {
             for (String k : List.of("company", "name", "contact")) if (!get(k).isEmpty()) return clip(get(k), 60);
             return "a new lead";
+        }
+
+        /** What to look for in past engagements: what they asked for, and who they are. */
+        String query() {
+            return (get("company") + "\n" + get("message") + "\n" + get("budget")).strip();
         }
 
         /** The same person asking the same thing is the same lead, however it was pasted. */

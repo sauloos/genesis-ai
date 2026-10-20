@@ -506,9 +506,11 @@ Pages and the Instagram accounts linked to them, so one connect flow adds both.
     why, watch out for, questions to ask), `payload.reply` (subject, body), and for a fit that is
     not poor `payload.proposal` (title, sections, investment, next steps). `agentInbox` renders it
     with copy buttons for the reply and the proposal. Nothing is ever sent to the lead.
-  - Precedent is the client's **own** last 6 proposals, kept in agent memory, plus their
-    approve/reject feedback. It does **not** use Layer 2, because Layer 2 holds other clients'
-    engagements and is not anonymised yet (see the GDPR item).
+  - Precedent: the client's own last 6 proposals (agent memory), their approve/reject feedback,
+    and the 4 closest completed engagements in **Layer 2**, found through the new SDK port
+    `KnowledgeSearch` (implemented in os/runtime by `RetrievalKnowledgeSearch` over
+    `RetrievalService`). The prompt tells the model never to name those clients or repeat their
+    details. A failed search only means no Layer 2 precedent. The run note says how many were used.
   - The same lead sent twice (same contact and message, ignoring case and spacing) costs no
     model call. The prompt treats the lead text as untrusted data.
   - Cost: one Sonnet 5 call per lead, about $0.03–0.06.
@@ -536,8 +538,7 @@ Pages and the Instagram accounts linked to them, so one connect flow adds both.
     /api/admin/knowledge/gardener/settings` with `{"enabled": true}`. It starts off (no settings
     row means off).
 - **Not built:** a public webhook or email address that receives leads directly (today the
-  client pastes them or a connector sends them), Layer 2 precedent for proposals (waits for
-  anonymisation), the gardener applying YAML edits itself, gardening Layer 2, and the `UPLOAD`
+  client pastes them or a connector sends them), the gardener applying YAML edits itself, gardening Layer 2, and the `UPLOAD`
   trigger.
 
 ## Open questions

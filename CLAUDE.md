@@ -371,7 +371,9 @@ next to `CoreAgent`. `os/standing` collects every such bean, so there is no wiri
   sends one through `agentSubscriptions` (`POST .../subscriptions/{agentId}/events`) or the
   connectors (`standing_send_event`), and the run reads `StandingRunContext.event()`. Lead to
   proposal (`os/agents/lead-proposal`) is event-only. Its precedent is the client's own past
-  proposals in agent memory, never Layer 2, until Layer 2 is anonymised.
+  proposals (agent memory) plus the closest Layer 2 engagements.
+- **Knowledge search.** An agent that needs Layer 1 or Layer 2 asks optionally for the SDK port
+  `KnowledgeSearch`; os/runtime implements it (`RetrievalKnowledgeSearch`).
 - **Ingestion listeners.** `IngestionEventListener` (os/runtime) beans are called after each
   ingestion event finishes. The Knowledge gardener (`os/agents/knowledge-gardener`, admin page
   `/dashboard/gardener`, off by default) uses it to flag contradictions and gaps between new
