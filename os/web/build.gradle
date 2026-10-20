@@ -1,0 +1,14 @@
+// Reading public web pages for agents, SSRF-guarded: the address comes from a client, so every
+// request and redirect hop is checked to be a public website. Plain Java, no Spring.
+apply plugin: 'java-library'
+
+dependencies {
+    implementation 'org.jsoup:jsoup:1.18.3'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

@@ -6,9 +6,19 @@ import java.util.Map;
 /**
  * What a standing run produced: items for the client's inbox, never a side effect.
  *
- * @param note a one-line summary for the run log (admin and client run history)
+ * @param note   a one-line summary for the run log (admin and client run history)
+ * @param memory what the agent wants back as {@link StandingRunContext#memory()} next run, for
+ *               this subscription only (e.g. what a page looked like, what was already
+ *               proposed). Any text, at most {@link #MAX_MEMORY} characters; null keeps the
+ *               previous memory. It is never shown to the client.
  */
-public record StandingRunResult(List<Item> items, String note) {
+public record StandingRunResult(List<Item> items, String note, String memory) {
+
+    public static final int MAX_MEMORY = 200_000;
+
+    public StandingRunResult(List<Item> items, String note) {
+        this(items, note, null);
+    }
 
     public static StandingRunResult of(Item... items) {
         return new StandingRunResult(List.of(items), null);

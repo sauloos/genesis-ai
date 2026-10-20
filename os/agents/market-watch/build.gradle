@@ -1,0 +1,14 @@
+// GenesisOS Market watch — a standing agent that reads the competitor pages a client names, keeps
+// a snapshot of each in its memory and briefs the client on what changed. Reads pages through the
+// shared os/web reader; runs through the standing runtime (os/standing).
+dependencies {
+    implementation project(':os:agent-sdk')
+    implementation project(':os:web')
+    compileOnly 'org.springframework:spring-context'   // provided by the adopting app
+    compileOnly 'com.fasterxml.jackson.core:jackson-databind'
+
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+tasks.named('test') { useJUnitPlatform() }

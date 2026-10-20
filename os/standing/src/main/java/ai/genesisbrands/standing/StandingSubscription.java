@@ -7,12 +7,18 @@ import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.Data;
+import org.hibernate.annotations.DynamicUpdate;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 
-/** A client's configuration of one standing agent: when it runs and with which options. */
+/**
+ * A client's configuration of one standing agent: when it runs and with which options.
+ * Updates write only the changed columns, so saving settings never overwrites the agent memory
+ * a run stored meanwhile.
+ */
 @Entity
+@DynamicUpdate
 @Table(name = "standing_subscriptions",
     uniqueConstraints = @UniqueConstraint(name = "uk_standing_sub_client_agent", columnNames = {"client_user_id", "agent_id"}),
     indexes = @Index(name = "idx_standing_sub_due", columnList = "active, next_run_at"))
@@ -75,6 +81,11 @@ public class StandingSubscription {
      *  setting existed) means yes. */
     @Column(name = "notify_by_email")
     private Boolean notifyByEmail;
+
+    /** What the agent kept after its last successful run ({@code StandingRunResult.memory}),
+     *  handed back on the next one. Internal to the agent: never shown to the client. */
+    @Column(name = "agent_memory", columnDefinition = "TEXT")
+    private String agentMemory;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();

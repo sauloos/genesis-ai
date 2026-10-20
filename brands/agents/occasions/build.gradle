@@ -1,0 +1,20 @@
+// Genesis Brands Occasions agent — a standing agent that looks a few weeks ahead for holidays,
+// retail moments and the client's own dates, and drafts the post, banner and flyer for each in
+// time. Draws its images through the Content agent's ContentImages.
+dependencies {
+    implementation project(':os:agent-sdk')
+    implementation project(':brands:agents:content')
+    compileOnly project(':os:runtime')
+    compileOnly 'org.springframework:spring-context'
+    compileOnly 'org.springframework:spring-beans'
+    compileOnly 'com.fasterxml.jackson.core:jackson-databind'
+    compileOnly 'org.springframework.ai:spring-ai-starter-model-openai'
+
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

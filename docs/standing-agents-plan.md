@@ -232,7 +232,7 @@ cancellations of recurring products are not tracked yet: a client who paid once 
 | 2 | Content agent, draft-only — **done 2026-10-19** | Content agent producing drafts into the inbox; client approves and downloads. Real value before any platform review clears. |
 | 3 | Channels — **built 2026-10-19, inert until configured** | `PublishChannel` SPI, `channelConnections` widget, Meta + LinkedIn modules, token vault, scheduled publish. Submit Meta App Review / LinkedIn product access at the start of this phase. |
 | 4 | Brand guardian — **done 2026-10-19** | Site/social audits against the brand book; reads recent posts through the connected channels. Uploads not wired yet. |
-| 5 | Occasions + market watch | Calendar-driven asset proposals; competitor briefs using the ingestion crawler. |
+| 5 | Occasions + market watch — **done 2026-10-20** | Calendar-driven post, banner and flyer proposals; competitor briefs from pages read with the shared website reader (not the ingestion crawler). |
 | 6 | Lead-to-proposal, knowledge gardener | Event triggers (inbox/RFP), ingestion-pipeline extension. |
 | 7 | Metrics loop | Pull post metrics; the content agent weights pillars/kinds by what performs. |
 
@@ -433,6 +433,58 @@ Pages and the Instagram accounts linked to them, so one connect flow adds both.
   what works, quick fixes and the list of what was checked. The plain body stays the fallback.
 - **Not built:** the UPLOAD trigger (judging a file the client sends), looking at images
   (only captions, colours and fonts are judged), and reading LinkedIn posts.
+
+**Phase 5 as built.**
+- **Agent memory (SDK).** A run may return `StandingRunResult.memory` (a string, at most
+  200,000 characters). `os/standing` stores it on the subscription (`agent_memory`, saved with a
+  targeted update so a client editing settings mid-run is not overwritten) and hands it to the
+  next run as `StandingRunContext.memory()`. It is only saved after a successful run, and it is
+  never shown to the client. Occasions and Market watch use it; the older agents return none.
+- **Shared website reader.** `WebsiteReader` moved from the Brand guardian into a new core
+  library module, `os/web` (package `ai.genesisbrands.platform.web`), with the same public-site
+  rules. Brand guardian and Market watch both use it.
+- **Occasions** (`brands/agents/occasions`, tenant: it draws with the Content agent's images
+  and works from the brand book; adopted by genesis-brands only). Weekly, fortnightly or
+  monthly (default fortnightly).
+  - Options: region (US, UK, Ireland, Canada, Australia, Brazil, Portugal, Spain, France,
+    Germany, Global), weeks ahead (2–12), kinds of occasion, the client's own dates (`YYYY-MM-DD name`
+    once, `MM-DD name` every year), occasions per run (1–4), days of lead time (0–21), what to
+    make (social post, story, web banner, print flyer), channels, image style, language,
+    avoid.
+  - Dates that move (Easter, Thanksgiving, Black Friday, Mother's Day per region, bank
+    holidays, Carnaval, Advent and so on) are computed in `KnownDates` and given to the model;
+    it may only choose other occasions when it is sure of the date, and anything outside the
+    window is dropped.
+  - Per occasion: a DRAFT_POST (pillar "Occasion", proposed for the date minus the lead time,
+    `payload.occasion` = name, date, why) with a square image, or a portrait one for a
+    story-only client; and an ASSET item holding the story, the 1536×1024 banner and the
+    1024×1536 flyer, with the headline drawn into them. They are a separate item because
+    publishing a post sends all its images.
+  - Memory remembers what was proposed, so an occasion is never proposed twice; entries are
+    forgotten 60 days after their date.
+  - Cost: one Sonnet 5 call (about $0.03–0.05) plus about $0.04 per gpt-image-1 medium image,
+    so roughly $0.20–0.35 per occasion with all four assets.
+- **Market watch** (`os/agents/market-watch`, core: any tenant's client has competitors;
+  adopted by both apps). Weekly, fortnightly or monthly (default weekly).
+  - Options: up to 6 pages, one per line with an optional name before the address; what to
+    watch for (offers and pricing, products and services, messaging, content and news); a
+    question; language.
+  - Each run reads every page and keeps a snapshot (title, description, headings, text, hash)
+    in memory. The first read is a baseline; later reads send the model only the added and
+    removed sentences and headings of pages that changed. An unreadable page keeps its old
+    snapshot.
+  - No model call when no pages are set or nothing changed; the inbox gets a short report.
+    The prompt treats page text as untrusted data.
+  - The REPORT carries `payload.brief` (headline, competitors with status, changes and what
+    each means, implications, up to three suggested moves, what to watch next, and the pages read).
+  - Cost: one Sonnet 5 call, about $0.03 for three pages, only when something changed.
+- **Inbox.** `agentInbox` shows the occasion as a chip on a post, previews an ASSET pack
+  (each file at its own aspect ratio with a download), and renders a market brief.
+- **To turn it on:** on `/dashboard/agents` set the agent available for Live view, then offer
+  it on `/dashboard/standing`. Both start off.
+- **Not built:** reading pages that need a browser (sites that block plain fetches answer
+  403 and are listed as unreadable), watching competitors' social accounts, sitemaps or
+  whole-site crawls, and occasions from a public holiday API.
 
 ## Open questions
 

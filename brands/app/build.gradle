@@ -20,6 +20,7 @@ dependencies {
     implementation project(':os:agents:research-synthesis')
     implementation project(':os:agents:consultant')
     implementation project(':os:agents:client-pulse')
+    implementation project(':os:agents:market-watch')
     implementation project(':os:connectors')
     implementation project(':os:standing')
     implementation project(':os:publishing')
@@ -49,6 +50,7 @@ dependencies {
     implementation project(':brands:agents:brand-book')
     implementation project(':brands:agents:content')
     implementation project(':brands:agents:brand-guardian')
+    implementation project(':brands:agents:occasions')
 
     // Spring Boot starters used directly in brands:app code
     // (os:runtime's implementation deps are not transitively visible)

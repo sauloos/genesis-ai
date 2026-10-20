@@ -29,4 +29,9 @@ public interface StandingSubscriptionRepository extends JpaRepository<StandingSu
     @Transactional
     @Query("update StandingSubscription s set s.nextRunAt = ?3, s.lastRunAt = ?4 where s.id = ?1 and s.nextRunAt = ?2 and s.active = true")
     int claim(String id, Instant expectedNextRunAt, Instant newNextRunAt, Instant now);
+
+    @Modifying
+    @Transactional
+    @Query("update StandingSubscription s set s.agentMemory = ?2 where s.id = ?1")
+    int saveMemory(String id, String memory);
 }

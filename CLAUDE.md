@@ -355,6 +355,13 @@ next to `CoreAgent`. `os/standing` collects every such bean, so there is no wiri
 - **Files go through the runtime.** An agent returns images and documents as
   `StandingRunResult.Attachment` bytes; `os/standing` stores them and serves them to the
   item's own client. Agents never touch storage.
+- **Agent memory.** A run may return `StandingRunResult.memory`, a string of at most 200k
+  characters. `os/standing` keeps it on the subscription and hands it to the next run as
+  `StandingRunContext.memory()`. It is saved only after a successful run and is never shown to
+  the client. Use it for what an agent must not repeat or must compare against (proposed
+  occasions, page snapshots), never for client data that has a real home.
+- **Reading websites.** Agents read public pages through the core `WebsiteReader` (`os/web`),
+  which refuses private addresses and caps size. Never fetch URLs with a bare HTTP client.
 - **Entitlements and email.** An offer may require products the client has paid for. Email on
   new items is Spring Mail, inert until `spring.mail.host` + `genesis.standing.notify.from`.
 - **Metering and connectors.** Runs are metered per run id in the usage ledger. The client's own

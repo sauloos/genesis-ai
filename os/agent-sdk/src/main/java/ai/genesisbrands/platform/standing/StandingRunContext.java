@@ -20,6 +20,8 @@ import java.util.Map;
  * @param zone          the client's time zone for this subscription
  * @param model         the agent's own model (its {@code agent.yml} config), metered against
  *                      this run
+ * @param memory        what this agent kept for this subscription after its last successful
+ *                      run ({@link StandingRunResult#memory()}), or null on the first run
  */
 public record StandingRunContext(
     String runId,
@@ -33,8 +35,17 @@ public record StandingRunContext(
     Instant now,
     Instant nextRunAt,
     ZoneId zone,
-    Model model
+    Model model,
+    String memory
 ) {
+
+    /** A context without memory, for agents (and tests) that keep none. */
+    public StandingRunContext(String runId, String subscriptionId, String clientUserId, String clientName,
+                              Map<String, String> options, String clientContext, List<Decision> recentDecisions,
+                              Instant previousRunAt, Instant now, Instant nextRunAt, ZoneId zone, Model model) {
+        this(runId, subscriptionId, clientUserId, clientName, options, clientContext, recentDecisions,
+            previousRunAt, now, nextRunAt, zone, model, null);
+    }
 
     public String option(String key) {
         return options == null ? null : options.get(key);

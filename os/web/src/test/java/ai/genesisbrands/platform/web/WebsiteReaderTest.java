@@ -1,4 +1,4 @@
-package ai.genesisbrands.agent.brandguardian;
+package ai.genesisbrands.platform.web;
 
 import org.junit.jupiter.api.Test;
 

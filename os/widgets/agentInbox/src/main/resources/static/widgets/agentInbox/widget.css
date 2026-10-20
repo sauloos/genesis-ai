@@ -129,3 +129,23 @@
 .ainb-source { display: flex; flex-wrap: wrap; gap: 4px 10px; color: var(--theme-text-muted); overflow-wrap: anywhere; }
 .ainb-source-detail { color: var(--theme-text-primary); }
 .ainb-source-failed .ainb-source-result { color: var(--theme-danger); }
+
+/* Occasions: the occasion chip, and a pack of ready-made files with a preview each. */
+.ainb-chip-occasion { font-weight: 600; background: color-mix(in srgb, var(--theme-success) 16%, transparent); }
+.ainb-assets { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; align-items: start; }
+.ainb-asset { margin: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ainb-asset .ainb-frame { width: 100%; max-height: 260px; }
+.ainb-asset .ainb-frame img { object-fit: contain; }
+.ainb-asset-caption { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 12px; }
+.ainb-asset-label { font-weight: 600; color: var(--theme-text-primary); }
+.ainb-asset-size { color: var(--theme-text-muted); font-variant-numeric: tabular-nums; }
+.ainb-asset-caption .ainb-btn { margin-left: auto; }
+
+/* Market watch: one block per competitor, tagged by what happened since the last read. */
+.ainb-rivals { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.ainb-rival { border-radius: 10px; padding: 10px 12px; background: color-mix(in srgb, var(--theme-text-primary) 4%, transparent);
+  font-size: 13px; line-height: 1.5; color: var(--theme-text-primary); overflow-wrap: anywhere; display: flex; flex-direction: column; gap: 4px; }
+.ainb-rival .ainb-finding-where { margin: 0; }
+.ainb-rival-changed { color: var(--theme-warning); background: color-mix(in srgb, var(--theme-warning) 14%, transparent); }
+.ainb-rival-new { color: var(--theme-success); background: color-mix(in srgb, var(--theme-success) 14%, transparent); }
+.ainb-rival-quiet { color: var(--theme-text-muted); background: color-mix(in srgb, var(--theme-text-primary) 7%, transparent); }

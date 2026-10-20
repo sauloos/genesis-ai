@@ -39,7 +39,37 @@ const SAMPLE = [
       sources: [
         { label: 'Website', detail: 'https://northwind.example/', ok: true, result: 'Northwind Coffee Roasters' },
         { label: 'Social', detail: 'Instagram · @northwindcoffee', ok: true, result: '10 posts' },
-        { label: 'Website', detail: 'https://northwind.example/shop', ok: false, result: 'could not be read: the site answered with status 404.' }] } } }
+        { label: 'Website', detail: 'https://northwind.example/shop', ok: false, result: 'could not be read: the site answered with status 404.' }] } } },
+  { id: 's5', agentName: 'Occasions', kind: 'DRAFT_POST', status: 'PENDING', createdAt: new Date(Date.now() - 3 * 36e5).toISOString(),
+    title: 'Black Friday: Gifts that taste of the farm', summary: 'Gift-buying starts here, and a bag of fresh beans is an easy gift.',
+    payload: { format: 'Single image', pillar: 'Occasion', proposedFor: '2026-11-22',
+      occasion: { name: 'Black Friday', date: '2026-11-27', why: 'Gift-buying starts here.' },
+      variants: [{ channel: 'instagram', label: 'Instagram', text: 'The best gifts smell like a Saturday morning.\n\nOur light roasts come gift-wrapped all weekend. [your offer]', hashtags: ['#coffeegifts', '#blackfriday'] }] },
+    attachments: [{ index: 0, name: 'post.png', contentType: 'image/png' }] },
+  { id: 's6', agentName: 'Occasions', kind: 'ASSET', status: 'PENDING', createdAt: new Date(Date.now() - 3 * 36e5).toISOString(),
+    title: 'Web banner, print flyer for Black Friday', summary: 'For Fri 27 Nov. Download it for your website, shop window or print.',
+    body: 'Headline: Gifts that taste of the farm',
+    payload: { occasion: { name: 'Black Friday', date: '2026-11-27', why: 'Gift-buying starts here.' }, headline: 'Gifts that taste of the farm',
+      copy: 'Find your gift in store this weekend.',
+      assets: [{ name: 'banner.png', label: 'Web banner', size: '1536×1024' }, { name: 'flyer.png', label: 'Print flyer', size: '1024×1536' }] },
+    attachments: [{ index: 0, name: 'banner.png', contentType: 'image/png' }, { index: 1, name: 'flyer.png', contentType: 'image/png' }] },
+  { id: 's7', agentName: 'Market watch', kind: 'REPORT', status: 'PENDING', createdAt: new Date(Date.now() - 6 * 36e5).toISOString(),
+    title: 'Market watch: Rival Roasters cut their subscription to $18',
+    summary: 'One competitor dropped its monthly price below yours; the others were quiet.',
+    body: 'One competitor dropped its monthly price below yours.',
+    payload: { brief: { headline: 'Rival Roasters cut their subscription to $18',
+      competitors: [
+        { name: 'Rival Roasters', url: 'https://rival.example/pricing', status: 'changed',
+          changes: ['Monthly subscription now $18, was $22.', 'New line: "Free grinder with a 6-month plan".'],
+          meaning: 'Undercuts your $20 plan by $2 for price-led shoppers.' },
+        { name: 'Bean & Co', url: 'https://beanco.example/', status: 'quiet', changes: [] }],
+      implications: ['Shoppers comparing on price now see you as the dearer option.'],
+      moves: [{ action: 'Lead with roast-to-order freshness on your subscription page', why: 'It is the one thing their plan cannot match.' }],
+      watchNext: ['Whether the $18 price is a launch offer or permanent.'],
+      sources: [
+        { label: 'Rival Roasters', detail: 'https://rival.example/pricing', ok: true, result: 'changed' },
+        { label: 'Bean & Co', detail: 'https://beanco.example/', ok: true, result: 'unchanged' },
+        { label: 'Oak Coffee', detail: 'https://oak.example/', ok: false, result: 'could not be read: the site answered with status 403.' }] } } }
 ];
 
 // Publishing options for an approved post in the admin preview.
@@ -172,10 +202,14 @@ export function mount(container, widget, ctx = {}) {
     const detail = el('div', 'ainb-detail');
     const post = item.kind === 'DRAFT_POST' && item.payload && Array.isArray(item.payload.variants) && item.payload.variants.length;
     const card = !post && item.kind === 'REPORT' && item.payload && item.payload.scorecard;
+    const brief = !post && item.kind === 'REPORT' && item.payload && item.payload.brief;
+    const pack = item.kind === 'ASSET' && item.payload && Array.isArray(item.payload.assets) && item.payload.assets.length;
     if (post) detail.appendChild(renderPost(item));
     else if (card) detail.appendChild(renderScorecard(card, item.body));
+    else if (brief) detail.appendChild(renderBrief(brief, item.body));
+    else if (pack) detail.appendChild(renderAssets(item));
     else if (item.body) detail.appendChild(el('div', 'ainb-body', item.body));
-    if (!post && item.attachments && item.attachments.length) detail.appendChild(renderFiles(item));
+    if (!post && !pack && item.attachments && item.attachments.length) detail.appendChild(renderFiles(item));
     if (item.status !== 'PENDING') {
       if (item.feedback) detail.appendChild(el('div', 'ainb-feedback', `Your note: ${item.feedback}`));
       if (post && item.status === 'APPROVED') detail.appendChild(renderPublish(item));
@@ -302,6 +336,7 @@ export function mount(container, widget, ctx = {}) {
     const p = item.payload;
     const wrap = el('div', 'ainb-post');
     const facts = el('div', 'ainb-post-facts');
+    if (p.occasion && p.occasion.name) facts.appendChild(occasionChip(p.occasion));
     if (p.proposedFor) {
       const day = new Date(p.proposedFor + 'T12:00:00');
       facts.appendChild(el('span', 'ainb-chip', 'For ' + day.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })));
@@ -313,23 +348,7 @@ export function mount(container, widget, ctx = {}) {
     const frames = (item.attachments || []).filter(a => !a.contentType || a.contentType.startsWith('image/'));
     if (frames.length) {
       const strip = el('div', 'ainb-frames');
-      frames.forEach((a, n) => {
-        if (simulate || !a.url) {
-          const ph = el('div', 'ainb-frame ainb-frame-placeholder', `Image ${n + 1}`);
-          strip.appendChild(ph);
-          return;
-        }
-        const link = el('a', 'ainb-frame');
-        link.href = a.url;
-        link.target = '_blank';
-        link.rel = 'noopener';
-        const img = el('img');
-        img.src = a.url;
-        img.alt = `${item.title}, image ${n + 1} of ${frames.length}`;
-        img.loading = 'lazy';
-        link.appendChild(img);
-        strip.appendChild(link);
-      });
+      frames.forEach((a, n) => strip.appendChild(frame(a, `Image ${n + 1}`, `${item.title}, image ${n + 1} of ${frames.length}`)));
       wrap.appendChild(strip);
     }
 
@@ -379,6 +398,122 @@ export function mount(container, widget, ctx = {}) {
     }
     wrap.appendChild(tools);
     show();
+    return wrap;
+  }
+
+  // An image that opens full size, or a labelled placeholder in the preview.
+  function frame(a, placeholder, alt) {
+    if (simulate || !a.url) return el('div', 'ainb-frame ainb-frame-placeholder', placeholder);
+    const link = el('a', 'ainb-frame');
+    link.href = a.url;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    const img = el('img');
+    img.src = a.url;
+    img.alt = alt;
+    img.loading = 'lazy';
+    link.appendChild(img);
+    return link;
+  }
+
+  function occasionChip(o) {
+    let text = o.name;
+    if (o.date) text += ' · ' + new Date(o.date + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+    return el('span', 'ainb-chip ainb-chip-occasion', text);
+  }
+
+  // Ready-made files for one occasion (banner, flyer, story): a preview and a download for each.
+  function renderAssets(item) {
+    const p = item.payload;
+    const wrap = el('div', 'ainb-post');
+    if (p.occasion && p.occasion.name) {
+      const facts = el('div', 'ainb-post-facts');
+      facts.appendChild(occasionChip(p.occasion));
+      wrap.appendChild(facts);
+    }
+    if (p.headline) wrap.appendChild(labelled('Headline', p.headline));
+    const byName = new Map((item.attachments || []).map(a => [a.name, a]));
+    const grid = el('div', 'ainb-assets');
+    p.assets.forEach(asset => {
+      const a = byName.get(asset.name);
+      if (!a) return;
+      const cell = el('figure', 'ainb-asset');
+      const [w, h] = String(asset.size || '').split(/[×x]/).map(Number);
+      const shot = frame(a, asset.label, `${asset.label} for ${p.occasion ? p.occasion.name : item.title}`);
+      if (w && h) shot.style.aspectRatio = `${w} / ${h}`;
+      const caption = el('figcaption', 'ainb-asset-caption');
+      caption.append(el('span', 'ainb-asset-label', asset.label), el('span', 'ainb-asset-size', asset.size || ''));
+      if (!simulate && a.url) {
+        const down = el('a', 'ainb-btn ainb-btn-small', 'Download');
+        down.href = a.url + '?download=true';
+        down.setAttribute('download', '');
+        caption.appendChild(down);
+      }
+      cell.append(shot, caption);
+      grid.appendChild(cell);
+    });
+    wrap.appendChild(grid);
+    if (p.copy) {
+      wrap.appendChild(el('div', 'ainb-card-label', 'Flyer text'));
+      wrap.appendChild(el('div', 'ainb-body', p.copy));
+    }
+    return wrap;
+  }
+
+  // A REPORT that briefs on competitors: each competitor's changes, what they mean, then what to do.
+  function renderBrief(brief, body) {
+    const wrap = el('div', 'ainb-card');
+    if (brief.quiet) {
+      if (body) wrap.appendChild(el('div', 'ainb-body', body));
+    } else {
+      const competitors = Array.isArray(brief.competitors) ? brief.competitors : [];
+      if (competitors.length) {
+        const list = el('ul', 'ainb-rivals');
+        competitors.forEach(c => {
+          const row = el('li', 'ainb-rival');
+          const top = el('div', 'ainb-finding-top');
+          const status = c.status || 'changed';
+          top.append(el('span', `ainb-sev ainb-rival-${status}`, status === 'new' ? 'first look' : status), el('span', 'ainb-finding-issue', c.name));
+          row.appendChild(top);
+          if (c.url) row.appendChild(el('div', 'ainb-finding-where', c.url));
+          if (Array.isArray(c.changes) && c.changes.length) {
+            const changes = el('ul', 'ainb-bullets');
+            c.changes.forEach(t => changes.appendChild(el('li', null, t)));
+            row.appendChild(changes);
+          }
+          if (c.meaning) row.appendChild(labelled('For you', c.meaning));
+          list.appendChild(row);
+        });
+        wrap.appendChild(list);
+      } else if (body) {
+        wrap.appendChild(el('div', 'ainb-body', body));
+      }
+      bullets(wrap, 'What it means for you', brief.implications);
+      const moves = Array.isArray(brief.moves) ? brief.moves : [];
+      if (moves.length) {
+        wrap.appendChild(el('div', 'ainb-card-label', 'Moves to consider'));
+        const list = el('ol', 'ainb-findings');
+        moves.forEach(m => {
+          const row = el('li', 'ainb-finding');
+          row.appendChild(el('div', 'ainb-finding-issue', m.action));
+          if (m.why) row.appendChild(el('div', 'ainb-dim-note', m.why));
+          list.appendChild(row);
+        });
+        wrap.appendChild(list);
+      }
+      bullets(wrap, 'Watch next', brief.watchNext);
+    }
+    const sources = Array.isArray(brief.sources) ? brief.sources : [];
+    if (sources.length) {
+      wrap.appendChild(el('div', 'ainb-card-label', 'Pages read'));
+      const list = el('ul', 'ainb-sources');
+      sources.forEach(s => {
+        const row = el('li', s.ok ? 'ainb-source' : 'ainb-source ainb-source-failed');
+        row.append(el('span', 'ainb-source-detail', `${s.label} · ${s.detail}`), el('span', 'ainb-source-result', s.result || ''));
+        list.appendChild(row);
+      });
+      wrap.appendChild(list);
+    }
     return wrap;
   }
 

@@ -3,7 +3,7 @@
 // posts through the publishing runtime's SocialPostReader when the app adopts it.
 dependencies {
     implementation project(':os:agent-sdk')
-    implementation 'org.jsoup:jsoup:1.18.3'
+    implementation project(':os:web')
     compileOnly project(':os:runtime')
     compileOnly 'org.springframework:spring-context'
     compileOnly 'org.springframework:spring-beans'

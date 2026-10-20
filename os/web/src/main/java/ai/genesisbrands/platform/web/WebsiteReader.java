@@ -1,4 +1,4 @@
-package ai.genesisbrands.agent.brandguardian;
+package ai.genesisbrands.platform.web;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -29,8 +29,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Reads a client's public web page for review: its words, and the colours and fonts its CSS
- * uses. The address comes from the client, so every request, redirect hop and stylesheet is
+ * Reads a public web page for an agent: its words, and the colours and fonts its CSS uses.
+ * The address comes from a client, so every request, redirect hop and stylesheet is
  * checked to be a public website on a standard port before it is fetched; private, loopback,
  * link-local (cloud metadata) and carrier-NAT addresses are refused.
  *
@@ -38,12 +38,12 @@ import java.util.regex.Pattern;
  * server could answer differently the second time (DNS rebinding). The reader only ever
  * returns text to a model, never to the caller, which limits what such a request could leak.
  */
-final class WebsiteReader {
+public final class WebsiteReader {
 
-    static final int MAX_BYTES = 2_000_000;
-    static final int MAX_REDIRECTS = 3;
-    static final int MAX_STYLESHEETS = 3;
-    static final int TEXT_CHARS = 6000;
+    public static final int MAX_BYTES = 2_000_000;
+    public static final int MAX_REDIRECTS = 3;
+    public static final int MAX_STYLESHEETS = 3;
+    public static final int TEXT_CHARS = 6000;
     private static final Pattern HEX = Pattern.compile("(?<=[:\\s,(])#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})(?![0-9a-zA-Z_-])");
     private static final Pattern RGB = Pattern.compile("rgba?\\(\\s*(\\d{1,3})\\s*[, ]\\s*(\\d{1,3})\\s*[, ]\\s*(\\d{1,3})");
     private static final Pattern FONT = Pattern.compile("font-family\\s*:\\s*([^;}{]+)", Pattern.CASE_INSENSITIVE);
@@ -53,40 +53,40 @@ final class WebsiteReader {
         "blinkmacsystemfont", "emoji", "math");
 
     /** Why a page could not be read, in words the client can act on. */
-    static final class Unreadable extends Exception {
-        Unreadable(String message) {
+    public static final class Unreadable extends Exception {
+        public Unreadable(String message) {
             super(message);
         }
     }
 
-    interface Resolver {
+    public interface Resolver {
         InetAddress[] resolve(String host) throws UnknownHostException;
     }
 
     /** One request, never following redirects. */
-    interface Transport {
+    public interface Transport {
         Fetched get(URI uri) throws IOException;
     }
 
-    record Fetched(int status, String location, String contentType, byte[] body) {}
+    public record Fetched(int status, String location, String contentType, byte[] body) {}
 
     /** What the review needs from one page. Colours and fonts are ordered by how often they appear. */
-    record Page(String url, String title, String description, List<String> headings, String text,
+    public record Page(String url, String title, String description, List<String> headings, String text,
                 Map<String, Integer> colours, List<String> fonts) {}
 
     private final Resolver resolver;
     private final Transport transport;
 
-    WebsiteReader() {
+    public WebsiteReader() {
         this(InetAddress::getAllByName, new JdkTransport());
     }
 
-    WebsiteReader(Resolver resolver, Transport transport) {
+    public WebsiteReader(Resolver resolver, Transport transport) {
         this.resolver = resolver;
         this.transport = transport;
     }
 
-    Page read(String address) throws Unreadable {
+    public Page read(String address) throws Unreadable {
         URI uri = publicUri(address);
         Fetched page = fetch(uri);
         if (page.contentType() != null && !page.contentType().toLowerCase(Locale.ROOT).contains("html")) {
@@ -158,7 +158,7 @@ final class WebsiteReader {
     }
 
     /** An http(s) address on a standard port, without credentials; a bare domain gets https. */
-    static URI publicUri(String address) throws Unreadable {
+    public static URI publicUri(String address) throws Unreadable {
         String raw = address == null ? "" : address.strip();
         if (raw.isEmpty()) throw new Unreadable("no address was given.");
         if (!raw.contains("://")) raw = "https://" + raw;
@@ -191,7 +191,7 @@ final class WebsiteReader {
     }
 
     /** Loopback, private, link-local, carrier-NAT, multicast, unspecified and unique-local addresses. */
-    static boolean blocked(InetAddress a) {
+    public static boolean blocked(InetAddress a) {
         if (a.isAnyLocalAddress() || a.isLoopbackAddress() || a.isLinkLocalAddress() || a.isSiteLocalAddress()
                 || a.isMulticastAddress()) {
             return true;
@@ -217,7 +217,7 @@ final class WebsiteReader {
     }
 
     /** Colours in the CSS as lower-case #rrggbb, most used first, at most 12. */
-    static Map<String, Integer> colours(String css) {
+    public static Map<String, Integer> colours(String css) {
         Map<String, Integer> counts = new LinkedHashMap<>();
         Matcher hex = HEX.matcher(css);
         while (hex.find()) counts.merge(sixDigits(hex.group(1)), 1, Integer::sum);
@@ -234,7 +234,7 @@ final class WebsiteReader {
     }
 
     /** The first named family of each font-family declaration, most used first. */
-    static List<String> fonts(String css) {
+    public static List<String> fonts(String css) {
         Map<String, Integer> counts = new LinkedHashMap<>();
         Matcher m = FONT.matcher(css);
         while (m.find()) {
@@ -260,14 +260,14 @@ final class WebsiteReader {
         return e == null ? "" : e.attr("content").strip();
     }
 
-    static String clip(String s, int max) {
+    public static String clip(String s, int max) {
         if (s == null) return "";
         String t = s.strip();
         return t.length() <= max ? t : t.substring(0, max - 1) + "…";
     }
 
     /** The JDK client with redirects off, short timeouts and a capped body. */
-    static final class JdkTransport implements Transport {
+    public static final class JdkTransport implements Transport {
 
         private final HttpClient client = HttpClient.newBuilder()
             .followRedirects(HttpClient.Redirect.NEVER)
@@ -277,7 +277,7 @@ final class WebsiteReader {
         @Override
         public Fetched get(URI uri) throws IOException {
             HttpRequest req = HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(10))
-                .header("User-Agent", "GenesisBrandGuardian/1.0 (+https://www.genesisbrands.ai)")
+                .header("User-Agent", "GenesisReader/1.0 (+https://www.genesisbrands.ai)")
                 .header("Accept", "text/html,text/css;q=0.9,*/*;q=0.5")
                 .GET().build();
             try {

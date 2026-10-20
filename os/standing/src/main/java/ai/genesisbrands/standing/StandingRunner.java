@@ -159,7 +159,7 @@ public class StandingRunner {
                 String clientContext = readOnly.execute(tx -> context.build(client, agent.agentId()));
                 return agent.run(new StandingRunContext(runId, sub.getId(), client.getId(), clientName, options,
                     clientContext, decisions, previous, Instant.now(), sub.getNextRunAt(), zone(sub),
-                    prompt -> models.generate(agent.agentId(), prompt, null)));
+                    prompt -> models.generate(agent.agentId(), prompt, null), sub.getAgentMemory()));
             });
 
             List<StandingRunResult.Item> items = result == null || result.items() == null ? List.of() : result.items();
@@ -167,6 +167,7 @@ public class StandingRunner {
             run.setItemsCreated(items.size());
             run.setNote(truncate(result == null ? null : result.note(), 500));
             run.setStatus(StandingRun.SUCCEEDED);
+            if (result != null && result.memory() != null) saveMemory(sub.getId(), result.memory());
             notifier.itemsArrived(client, sub, items.size());
         } catch (Exception e) {
             log.warn("Standing run {} ({}) failed: {}", runId, run.getAgentId(), e.toString());
@@ -197,6 +198,15 @@ public class StandingRunner {
         i.setPayloadJson(item.payload() == null || item.payload().isEmpty() ? null : objectMapper.writeValueAsString(item.payload()));
         i.setAttachmentsJson(attachments.toJson(attachments.store(run.getClientUserId(), i.getId(), item.attachments())));
         return i;
+    }
+
+    /** Writes only the memory column, so a settings change made during the run is kept. */
+    private void saveMemory(String subscriptionId, String memory) {
+        if (memory.length() > StandingRunResult.MAX_MEMORY) {
+            log.warn("Standing memory for subscription {} is {} characters; not kept", subscriptionId, memory.length());
+            return;
+        }
+        subscriptions.saveMemory(subscriptionId, memory);
     }
 
     private static ZoneId zone(StandingSubscription sub) {
