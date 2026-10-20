@@ -360,6 +360,12 @@ next to `CoreAgent`. `os/standing` collects every such bean, so there is no wiri
 - **Metering and connectors.** Runs are metered per run id in the usage ledger. The client's own
   subscriptions and inbox are exposed as connectors (REST `/api/connect/standing`, MCP
   `standing_*` tools via `ClientToolContributor`).
+- **Reading what a client published.** An agent that reviews a client's posts asks for the core
+  port `SocialPostReader` (agent SDK) optionally; `os/publishing` implements it over the
+  client's connected accounts through `PublishChannel.recentPosts`. A REPORT that scores
+  something adds `payload.scorecard` (shape in `StandingRunResult`), which `agentInbox` renders.
+  The Brand guardian (`brands/agents/brand-guardian`) uses both. Its website reads go through
+  the SSRF-guarded `WebsiteReader`.
 - **Publishing to social accounts is client-initiated, never automatic.**
   - A platform is a channel module (`os/channels/<id>`, auto-included). It implements
     `PublishChannel` (os/channel-sdk).

@@ -231,7 +231,7 @@ cancellations of recurring products are not tracked yet: a client who paid once 
 | 1 | Standing runtime — **done 2026-10-19** | SDK `StandingAgent`, offer/subscription/run/inbox model, scheduler, admin section, `agentSubscriptions` + `agentInbox` widgets, connector exposure. Proven with a trivial core agent (client pulse). |
 | 2 | Content agent, draft-only — **done 2026-10-19** | Content agent producing drafts into the inbox; client approves and downloads. Real value before any platform review clears. |
 | 3 | Channels — **built 2026-10-19, inert until configured** | `PublishChannel` SPI, `channelConnections` widget, Meta + LinkedIn modules, token vault, scheduled publish. Submit Meta App Review / LinkedIn product access at the start of this phase. |
-| 4 | Brand guardian | Site/social/upload audits against the brand book via the existing evaluators; reads recent posts through the connected channels. |
+| 4 | Brand guardian — **done 2026-10-19** | Site/social audits against the brand book; reads recent posts through the connected channels. Uploads not wired yet. |
 | 5 | Occasions + market watch | Calendar-driven asset proposals; competitor briefs using the ingestion crawler. |
 | 6 | Lead-to-proposal, knowledge gardener | Event triggers (inbox/RFP), ingestion-pipeline extension. |
 | 7 | Metrics loop | Pull post metrics; the content agent weights pillars/kinds by what performs. |
@@ -400,6 +400,39 @@ Pages and the Instagram accounts linked to them, so one connect flow adds both.
 - **Not built:** post metrics (phase 7), Instagram's 24-hour publish cap per account, video,
   stories as a story format (they post as a feed image), and reminders before a LinkedIn
   token expires.
+
+**Phase 4 as built.**
+- **Agent** (`brands/agents/brand-guardian`, tenant: it judges against the brand book; adopted
+  by genesis-brands only). Weekly, fortnightly or monthly (default monthly).
+  - Options: up to 5 website pages, whether to check social posts, posts per account (3–20),
+    focus areas (voice and tone, messaging, colours, typography, consistency), notes, language.
+  - One Sonnet 5 call (`agents/brand-guardian/system.md`) returns a score, per-area scores and
+    at most 8 findings, each with evidence, where it was seen and a fix. Posts since the last
+    run are marked new. A rejection note feeds the next run.
+  - No model call when the client has no brand book yet, or when nothing could be read; the
+    inbox gets a short report saying what to do instead.
+- **Website reading.** `WebsiteReader` (jsoup) fetches each page and up to 3 linked stylesheets,
+  and extracts the title, description, headings, visible text, the most used colours and the
+  font families. It only reads public sites:
+  - https/http on ports 80 and 443, no user info in the address.
+  - Every resolved address must be public (no loopback, private, link-local, CGNAT, ULA or
+    mapped addresses).
+  - Redirects are followed by hand, at most 3, each one checked again.
+  - 2 MB per response, 5 s to connect, 10 s per request.
+  - Residual risk: DNS rebinding between the check and the connect.
+- **Reading posts.** New core port `SocialPostReader` (agent SDK), implemented by
+  `PublishingService` over the client's connected accounts, and asked for optionally, so an app
+  without publishing still runs the agent on its website. `PublishChannel.recentPosts` defaults
+  to none:
+  - Meta reads Facebook Page posts and Instagram media (captions; video thumbnails) with the
+    `pages_read_engagement` and `instagram_basic` permissions already in the default scopes.
+  - LinkedIn reads nothing: reading an organisation's posts needs Community Management access.
+  - An account whose token was refused is marked EXPIRED and listed as unreadable in the report.
+- **Scorecard.** A REPORT may carry `payload.scorecard` (shape in `StandingRunResult`).
+  `agentInbox` renders it as the score with its band, per-area meters, findings with severity,
+  what works, quick fixes and the list of what was checked. The plain body stays the fallback.
+- **Not built:** the UPLOAD trigger (judging a file the client sends), looking at images
+  (only captions, colours and fonts are judged), and reading LinkedIn posts.
 
 ## Open questions
 
