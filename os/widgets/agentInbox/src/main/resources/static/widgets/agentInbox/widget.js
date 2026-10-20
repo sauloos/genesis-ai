@@ -16,7 +16,30 @@ const SAMPLE = [
       variants: [
         { channel: 'instagram', label: 'Instagram', text: 'Light roasts taste of the farm, not the fire.\n\nWe stop early so you can taste the fruit and the place it grew.', hashtags: ['#specialtycoffee', '#lightroast', '#coffeeorigin'] },
         { channel: 'linkedin', label: 'LinkedIn', text: 'Most roasters chase consistency by roasting dark. We chose the harder path.\n\nRoasting light keeps what the farmer worked for.', hashtags: ['#coffee'] }] },
-    attachments: [{ index: 0, name: 'frame-1.png' }, { index: 1, name: 'frame-2.png' }] }
+    attachments: [{ index: 0, name: 'frame-1.png' }, { index: 1, name: 'frame-2.png' }] },
+  { id: 's4', agentName: 'Brand guardian', kind: 'REPORT', status: 'PENDING', createdAt: new Date(Date.now() - 5 * 36e5).toISOString(),
+    title: 'Brand check: 74/100 — Voice is right, the site drifts off-palette',
+    summary: 'Your posts sound like you; the website uses two colours that are not in your palette. Swap the button orange first.',
+    body: 'Overall: 74/100.',
+    payload: { scorecard: { score: 74,
+      dimensions: [
+        { name: 'Voice and tone', score: 88, note: 'Warm and plain-spoken, as the tone guide asks.' },
+        { name: 'Messaging', score: 79, note: 'The farm-first story comes through; the home page hero is generic.' },
+        { name: 'Colours', score: 58, note: 'Two off-palette colours carry the main buttons and links.' },
+        { name: 'Typography', score: 70, note: 'Headlines use the brand serif; body text falls back to Arial.' }],
+      findings: [
+        { severity: 'high', area: 'Colours', where: 'https://northwind.example/', issue: 'The main buttons use an orange that is not in the palette.',
+          evidence: '#ff7a00 (31 uses)', fix: 'Use Roast Brown #6b3e26 for buttons and Crema #f3e3c3 for their text.' },
+        { severity: 'medium', area: 'Messaging', where: 'https://northwind.example/', issue: 'The hero line could belong to any coffee shop.',
+          evidence: '"The best coffee in town"', fix: 'Lead with the tagline: "Light roasts that taste of the farm."' },
+        { severity: 'low', area: 'Typography', where: 'https://northwind.example/menu', issue: 'Body text is set in Arial instead of Inter.',
+          evidence: 'font-family: Arial', fix: 'Load Inter and set it as the body font.' }],
+      highlights: ['Instagram captions follow the tone guide closely (Instagram · @northwindcoffee · 2 Oct).'],
+      quickFixes: ['Replace #ff7a00 with #6b3e26 in the site theme settings.'],
+      sources: [
+        { label: 'Website', detail: 'https://northwind.example/', ok: true, result: 'Northwind Coffee Roasters' },
+        { label: 'Social', detail: 'Instagram · @northwindcoffee', ok: true, result: '10 posts' },
+        { label: 'Website', detail: 'https://northwind.example/shop', ok: false, result: 'could not be read: the site answered with status 404.' }] } } }
 ];
 
 // Publishing options for an approved post in the admin preview.
@@ -148,7 +171,9 @@ export function mount(container, widget, ctx = {}) {
   function renderDetail(item) {
     const detail = el('div', 'ainb-detail');
     const post = item.kind === 'DRAFT_POST' && item.payload && Array.isArray(item.payload.variants) && item.payload.variants.length;
+    const card = !post && item.kind === 'REPORT' && item.payload && item.payload.scorecard;
     if (post) detail.appendChild(renderPost(item));
+    else if (card) detail.appendChild(renderScorecard(card, item.body));
     else if (item.body) detail.appendChild(el('div', 'ainb-body', item.body));
     if (!post && item.attachments && item.attachments.length) detail.appendChild(renderFiles(item));
     if (item.status !== 'PENDING') {
@@ -191,6 +216,88 @@ export function mount(container, widget, ctx = {}) {
   }
 
   // A drafted social post: when and what, its images, then one tab per channel with copyable text.
+  // A REPORT that scores something: the score, each area's score, then the fixes ranked.
+  function renderScorecard(card, body) {
+    const wrap = el('div', 'ainb-card');
+    if (typeof card.score === 'number') {
+      const band = card.score >= 90 ? ['On brand', 'good'] : card.score >= 70 ? ['Mostly on brand', 'good']
+        : card.score >= 50 ? ['Needs work', 'warn'] : ['Off brand', 'bad'];
+      const head = el('div', 'ainb-card-head');
+      const score = el('div', `ainb-score ainb-score-${band[1]}`);
+      score.append(el('span', 'ainb-score-num', String(card.score)), el('span', 'ainb-score-of', '/100'));
+      head.append(score, el('span', `ainb-band ainb-band-${band[1]}`, band[0]));
+      wrap.appendChild(head);
+    } else if (body) {
+      wrap.appendChild(el('div', 'ainb-body', body));
+    }
+
+    const dims = Array.isArray(card.dimensions) ? card.dimensions : [];
+    if (dims.length) {
+      const list = el('ul', 'ainb-dims');
+      dims.forEach(d => {
+        const row = el('li', 'ainb-dim');
+        const top = el('div', 'ainb-dim-top');
+        top.append(el('span', 'ainb-dim-name', d.name), el('span', 'ainb-dim-score', String(d.score)));
+        const meter = el('div', 'ainb-meter');
+        meter.setAttribute('role', 'img');
+        meter.setAttribute('aria-label', `${d.name}: ${d.score} out of 100`);
+        const fill = el('div', `ainb-meter-fill ainb-meter-${d.score >= 70 ? 'good' : d.score >= 50 ? 'warn' : 'bad'}`);
+        fill.style.width = Math.max(0, Math.min(100, Number(d.score) || 0)) + '%';
+        meter.appendChild(fill);
+        row.append(top, meter);
+        if (d.note) row.appendChild(el('div', 'ainb-dim-note', d.note));
+        list.appendChild(row);
+      });
+      wrap.appendChild(list);
+    }
+
+    const findings = Array.isArray(card.findings) ? card.findings : [];
+    if (findings.length) {
+      wrap.appendChild(el('div', 'ainb-card-label', 'What to fix'));
+      const list = el('ol', 'ainb-findings');
+      findings.forEach(f => {
+        const row = el('li', 'ainb-finding');
+        const top = el('div', 'ainb-finding-top');
+        top.append(el('span', `ainb-sev ainb-sev-${f.severity || 'medium'}`, f.severity || 'medium'), el('span', 'ainb-finding-issue', f.issue));
+        row.appendChild(top);
+        if (f.where) row.appendChild(el('div', 'ainb-finding-where', [f.area, f.where].filter(Boolean).join(' · ')));
+        if (f.evidence) row.appendChild(labelled('Seen', f.evidence));
+        if (f.fix) row.appendChild(labelled('Fix', f.fix));
+        list.appendChild(row);
+      });
+      wrap.appendChild(list);
+    }
+    bullets(wrap, "What's working", card.highlights);
+    bullets(wrap, 'Quick fixes', card.quickFixes);
+
+    const sources = Array.isArray(card.sources) ? card.sources : [];
+    if (sources.length) {
+      wrap.appendChild(el('div', 'ainb-card-label', 'Checked'));
+      const list = el('ul', 'ainb-sources');
+      sources.forEach(s => {
+        const row = el('li', s.ok ? 'ainb-source' : 'ainb-source ainb-source-failed');
+        row.append(el('span', 'ainb-source-detail', `${s.label} · ${s.detail}`), el('span', 'ainb-source-result', s.result || ''));
+        list.appendChild(row);
+      });
+      wrap.appendChild(list);
+    }
+    return wrap;
+  }
+
+  function labelled(label, text) {
+    const line = el('div', 'ainb-finding-line');
+    line.append(el('span', 'ainb-finding-key', label + ' '), document.createTextNode(text));
+    return line;
+  }
+
+  function bullets(wrap, label, items) {
+    if (!Array.isArray(items) || !items.length) return;
+    wrap.appendChild(el('div', 'ainb-card-label', label));
+    const list = el('ul', 'ainb-bullets');
+    items.forEach(t => list.appendChild(el('li', null, t)));
+    wrap.appendChild(list);
+  }
+
   function renderPost(item) {
     const p = item.payload;
     const wrap = el('div', 'ainb-post');

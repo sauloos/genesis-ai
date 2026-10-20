@@ -7,6 +7,7 @@ import ai.genesisbrands.platform.channel.PublishChannel.ChannelGrant;
 import ai.genesisbrands.platform.channel.PublishChannel.ChannelNetwork;
 import ai.genesisbrands.platform.channel.PublishChannel.ChannelPost;
 import ai.genesisbrands.platform.channel.PublishChannel.Media;
+import ai.genesisbrands.platform.standing.SocialPostReader;
 import ai.genesisbrands.service.BlobStorageService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,7 +36,7 @@ import java.util.UUID;
  * touches that client's own rows. Platform tokens are decrypted only to call the platform.
  */
 @Service
-public class PublishingService {
+public class PublishingService implements SocialPostReader {
 
     private static final Logger log = LoggerFactory.getLogger(PublishingService.class);
 
@@ -256,6 +257,42 @@ public class PublishingService {
     }
 
     // ---- run ---------------------------------------------------------------------------
+
+    /**
+     * The client's own connected accounts, read through their channels for agents that review
+     * what was posted. An account whose token was revoked is marked for reconnecting, as when
+     * publishing; any other failure only skips that account.
+     */
+    @Override
+    public Feed recentPosts(String clientUserId, int perAccount) {
+        if (!ready()) return Feed.empty();
+        List<SocialPost> posts = new ArrayList<>();
+        List<String> unreadable = new ArrayList<>();
+        for (ChannelAccount a : accounts.findByClientUserIdOrderByConnectedAtAsc(clientUserId)) {
+            PublishChannel channel = channels.get(a.getProvider());
+            if (channel == null || !ChannelAccount.CONNECTED.equals(a.getStatus())) continue;
+            String label = networkLabel(a.getProvider(), a.getNetwork());
+            try {
+                ChannelAccountRef ref = new ChannelAccountRef(a.getNetwork(), a.getExternalId(), a.getDisplayName(),
+                    vault.decrypt(a.getAccessTokenEnc()));
+                for (PublishChannel.RecentPost p : channel.recentPosts(ref, perAccount)) {
+                    posts.add(new SocialPost(a.getNetwork(), a.getDisplayName(), p.text(), p.imageUrl(), p.url(), p.postedAt()));
+                }
+            } catch (ChannelException e) {
+                if (e.reauthorize()) {
+                    a.setStatus(ChannelAccount.EXPIRED);
+                    a.setLastError(e.getMessage());
+                    a.setUpdatedAt(Instant.now());
+                    accounts.save(a);
+                }
+                unreadable.add(label + " " + a.getDisplayName() + ": " + e.getMessage());
+            } catch (RuntimeException e) {
+                log.warn("Reading recent posts of account {} failed", a.getId(), e);
+                unreadable.add(label + " " + a.getDisplayName() + ": the posts could not be read.");
+            }
+        }
+        return new Feed(posts, unreadable);
+    }
 
     /** Publishes a job the scheduler has claimed (status RUNNING). Never throws. */
     void run(PublishJob job) {

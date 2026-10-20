@@ -48,6 +48,7 @@ dependencies {
     implementation project(':brands:agents:playbook')
     implementation project(':brands:agents:brand-book')
     implementation project(':brands:agents:content')
+    implementation project(':brands:agents:brand-guardian')
 
     // Spring Boot starters used directly in brands:app code
     // (os:runtime's implementation deps are not transitively visible)

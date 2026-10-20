@@ -141,4 +141,42 @@ class MetaChannelTest {
         assertFalse(bad.retryable());
         assertEquals("Caption too long", bad.getMessage());
     }
+
+    @Test
+    void readsRecentFacebookPostsSkippingEmptyOnes() {
+        Script s = new Script().reply(200, """
+            {"data":[
+              {"message":"Light roast week","created_time":"2026-10-01T10:00:00+0000","permalink_url":"https://fb.test/p/1","full_picture":"https://cdn.test/1.jpg"},
+              {"created_time":"2026-09-30T10:00:00+0000"},
+              {"message":"Open late on Friday","created_time":"bad"}]}""");
+        var posts = channel(s).recentPosts(PAGE, 5);
+        assertEquals(2, posts.size());
+        assertEquals("Light roast week", posts.get(0).text());
+        assertEquals("https://cdn.test/1.jpg", posts.get(0).imageUrl());
+        assertEquals(java.time.Instant.parse("2026-10-01T10:00:00Z"), posts.get(0).postedAt());
+        assertEquals(null, posts.get(1).postedAt());
+        assertTrue(s.sent.get(0).url().contains("/v26.0/123/posts?"));
+        assertTrue(s.sent.get(0).url().contains("limit=5"));
+    }
+
+    @Test
+    void readsRecentInstagramMediaUsingVideoThumbnails() {
+        Script s = new Script().reply(200, """
+            {"data":[
+              {"caption":"Reel","media_type":"VIDEO","media_url":"https://cdn.test/v.mp4","thumbnail_url":"https://cdn.test/t.jpg","permalink":"https://ig.test/r","timestamp":"2026-10-02T08:30:00+0000"},
+              {"caption":"Beans","media_type":"IMAGE","media_url":"https://cdn.test/b.jpg","permalink":"https://ig.test/b","timestamp":"2026-10-01T08:30:00+0000"}]}""");
+        var posts = channel(s).recentPosts(IG, 50);
+        assertEquals(2, posts.size());
+        assertEquals("https://cdn.test/t.jpg", posts.get(0).imageUrl());
+        assertEquals("https://cdn.test/b.jpg", posts.get(1).imageUrl());
+        assertTrue(s.sent.get(0).url().contains("/v26.0/999/media?"));
+        assertTrue(s.sent.get(0).url().contains("limit=25"));
+    }
+
+    @Test
+    void readingPostsWithARevokedTokenAsksToReconnect() {
+        Script s = new Script().reply(400, "{\"error\":{\"code\":190,\"message\":\"expired\"}}");
+        ChannelException e = assertThrows(ChannelException.class, () -> channel(s).recentPosts(PAGE, 5));
+        assertTrue(e.getMessage().contains("Connect the account again"));
+    }
 }

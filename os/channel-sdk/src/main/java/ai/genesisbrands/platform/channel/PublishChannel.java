@@ -32,6 +32,14 @@ public interface PublishChannel {
     /** Publishes now. Throws {@link ChannelException} with {@code retryable} set when a later attempt may succeed. */
     PublishResult publish(ChannelAccountRef account, ChannelPost post);
 
+    /**
+     * The account's latest posts, newest first, for agents that review what the client already
+     * published. A channel that cannot read posts with the permissions it asks for returns none.
+     */
+    default List<RecentPost> recentPosts(ChannelAccountRef account, int limit) {
+        return List.of();
+    }
+
     /** One network a channel publishes to and what a post there may hold. */
     record ChannelNetwork(String id, String label, int maxChars, int maxImages, boolean requiresImage) {}
 
@@ -56,4 +64,7 @@ public interface PublishChannel {
 
     /** The published post: the platform's id and, where it has one, a link to it. */
     record PublishResult(String externalPostId, String url) {}
+
+    /** A post already on the account: its text, its first image's URL and its link, where known. */
+    record RecentPost(String text, String imageUrl, String url, Instant postedAt) {}
 }

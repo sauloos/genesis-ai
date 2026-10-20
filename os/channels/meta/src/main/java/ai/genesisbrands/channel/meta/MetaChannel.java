@@ -9,6 +9,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -35,6 +39,7 @@ public class MetaChannel implements PublishChannel {
     /** Graph error codes for rate limits and transient failures. */
     private static final Set<Integer> TRANSIENT_ERRORS = Set.of(1, 2, 4, 17, 32, 341, 613, 9007);
     static final int STATUS_POLLS = 20;
+    private static final DateTimeFormatter GRAPH_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ");
 
     private final String appId;
     private final String appSecret;
@@ -203,6 +208,43 @@ public class MetaChannel implements PublishChannel {
             // Published; only the link lookup failed.
         }
         return new PublishResult(mediaId, url);
+    }
+
+    /** Reads a Page's feed ({@code pages_read_engagement}) or an Instagram account's media ({@code instagram_basic}). */
+    @Override
+    public List<RecentPost> recentPosts(ChannelAccountRef account, int limit) {
+        int n = Math.max(1, Math.min(25, limit));
+        Map<String, String> auth = bearer(account.accessToken());
+        List<RecentPost> posts = new ArrayList<>();
+        if (FACEBOOK.equals(account.network())) {
+            String url = graph(account.externalId() + "/posts") + "?" + ChannelHttp.query(Map.of(
+                "fields", "message,created_time,permalink_url,full_picture", "limit", String.valueOf(n)));
+            for (JsonNode p : read(http.get(url, auth)).path("data")) {
+                String text = p.path("message").asText("");
+                if (text.isBlank() && !p.hasNonNull("full_picture")) continue;
+                posts.add(new RecentPost(text, p.path("full_picture").asText(null), p.path("permalink_url").asText(null),
+                    time(p.path("created_time").asText(""))));
+            }
+        } else if (INSTAGRAM.equals(account.network())) {
+            String url = graph(account.externalId() + "/media") + "?" + ChannelHttp.query(Map.of(
+                "fields", "caption,media_type,media_url,thumbnail_url,permalink,timestamp", "limit", String.valueOf(n)));
+            for (JsonNode p : read(http.get(url, auth)).path("data")) {
+                String image = "VIDEO".equals(p.path("media_type").asText()) ? p.path("thumbnail_url").asText(null)
+                    : p.path("media_url").asText(null);
+                posts.add(new RecentPost(p.path("caption").asText(""), image, p.path("permalink").asText(null),
+                    time(p.path("timestamp").asText(""))));
+            }
+        }
+        return posts;
+    }
+
+    /** Graph times look like {@code 2026-10-01T10:00:00+0000}. */
+    static Instant time(String value) {
+        try {
+            return OffsetDateTime.parse(value, GRAPH_TIME).toInstant();
+        } catch (DateTimeParseException e) {
+            return null;
+        }
     }
 
     /** Waits until Meta has fetched and processed a container's media. */

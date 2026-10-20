@@ -25,6 +25,17 @@ public record StandingRunResult(List<Item> items, String note) {
      * </pre>
      * The images of a post are its {@code attachments}, in display order.
      *
+     * <p>A {@link #REPORT} that scores something may add a {@code scorecard}, which every inbox
+     * renders as scores and a ranked list of fixes (the plain {@code body} stays the fallback):
+     * <pre>
+     * { "scorecard": { "score": 78,
+     *     "dimensions": [ { "name": "Colours", "score": 64, "note": "..." } ],
+     *     "findings": [ { "severity": "high|medium|low", "area": "...", "where": "...",
+     *                     "issue": "...", "evidence": "...", "fix": "..." } ],
+     *     "highlights": ["..."], "quickFixes": ["..."],
+     *     "sources": [ { "label": "Website", "detail": "https://...", "ok": true, "result": "..." } ] } }
+     * </pre>
+     *
      * @param kind        {@link #REPORT}, {@link #DRAFT_POST}, {@link #ASSET} or {@link #PROPOSAL}
      * @param body        markdown shown in the inbox
      * @param payload     structured data for the item's kind (e.g. per-channel post variants); may be empty

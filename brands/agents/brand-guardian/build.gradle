@@ -1,0 +1,19 @@
+// Genesis Brands Brand guardian — a standing agent that checks the client's website and recent
+// social posts against their own brand book and reports what is off-brand, with fixes. Reads
+// posts through the publishing runtime's SocialPostReader when the app adopts it.
+dependencies {
+    implementation project(':os:agent-sdk')
+    implementation 'org.jsoup:jsoup:1.18.3'
+    compileOnly project(':os:runtime')
+    compileOnly 'org.springframework:spring-context'
+    compileOnly 'org.springframework:spring-beans'
+    compileOnly 'com.fasterxml.jackson.core:jackson-databind'
+
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
