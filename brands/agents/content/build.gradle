@@ -5,10 +5,12 @@ dependencies {
     implementation project(':os:agent-sdk')
     compileOnly project(':os:runtime')
     compileOnly 'org.springframework:spring-context'
+    compileOnly 'org.springframework:spring-beans'
     compileOnly 'com.fasterxml.jackson.core:jackson-databind'
     compileOnly 'org.springframework.ai:spring-ai-starter-model-openai'
 
     testImplementation 'com.fasterxml.jackson.core:jackson-databind'
+    testImplementation 'org.springframework:spring-beans'
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }

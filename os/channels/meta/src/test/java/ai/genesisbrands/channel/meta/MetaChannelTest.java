@@ -6,6 +6,7 @@ import ai.genesisbrands.platform.channel.PublishChannel.ChannelAccountRef;
 import ai.genesisbrands.platform.channel.PublishChannel.ChannelGrant;
 import ai.genesisbrands.platform.channel.PublishChannel.ChannelPost;
 import ai.genesisbrands.platform.channel.PublishChannel.Media;
+import ai.genesisbrands.platform.channel.PublishChannel.PostMetrics;
 import ai.genesisbrands.platform.channel.PublishChannel.PublishResult;
 import org.junit.jupiter.api.Test;
 
@@ -178,5 +179,47 @@ class MetaChannelTest {
         Script s = new Script().reply(400, "{\"error\":{\"code\":190,\"message\":\"expired\"}}");
         ChannelException e = assertThrows(ChannelException.class, () -> channel(s).recentPosts(PAGE, 5));
         assertTrue(e.getMessage().contains("Connect the account again"));
+    }
+    @Test
+    void facebookMetricsJoinCountsAndInsights() {
+        Script s = new Script()
+            .reply(200, "{\"reactions\":{\"summary\":{\"total_count\":48}},\"comments\":{\"summary\":{\"total_count\":7}},\"shares\":{\"count\":3}}")
+            .reply(200, """
+                {"data":[
+                  {"name":"post_impressions","values":[{"value":2140}]},
+                  {"name":"post_impressions_unique","values":[{"value":1800}]},
+                  {"name":"post_clicks","values":[{"value":61}]}]}""");
+        var m = channel(s).metrics(PAGE, "123_456").orElseThrow();
+        assertEquals(new PostMetrics(2140L, 1800L, 48L, 7L, 3L, null, 61L), m);
+        assertTrue(s.sent.get(0).url().contains("/v26.0/123_456?"));
+        assertTrue(s.sent.get(1).url().contains("/v26.0/123_456/insights?"));
+    }
+
+    @Test
+    void instagramInsightsFallBackToOneMetricAtATime() {
+        Script s = new Script()
+            .reply(200, "{\"like_count\":90,\"comments_count\":10}")
+            .reply(400, "{\"error\":{\"code\":100,\"message\":\"metric views not supported\"}}")
+            .reply(400, "{\"error\":{\"code\":100,\"message\":\"not supported\"}}")
+            .reply(200, "{\"data\":[{\"name\":\"reach\",\"total_value\":{\"value\":900}}]}")
+            .reply(200, "{\"data\":[{\"name\":\"saved\",\"values\":[{\"value\":12}]}]}")
+            .reply(200, "{\"data\":[{\"name\":\"shares\",\"values\":[{\"value\":4}]}]}");
+        var m = channel(s).metrics(IG, "m1").orElseThrow();
+        assertEquals(new PostMetrics(null, 900L, 90L, 10L, 4L, 12L, null), m);
+        assertEquals(6, s.sent.size());
+    }
+
+    @Test
+    void metricsWithoutPermissionAreEmptyButARevokedTokenAsksToReconnect() {
+        Script denied = new Script()
+            .reply(400, "{\"error\":{\"code\":10,\"message\":\"no permission\"}}")
+            .reply(400, "{\"error\":{\"code\":10,\"message\":\"no permission\"}}")
+            .reply(400, "{\"error\":{\"code\":10}}")
+            .reply(400, "{\"error\":{\"code\":10}}")
+            .reply(400, "{\"error\":{\"code\":10}}");
+        assertTrue(channel(denied).metrics(PAGE, "123_456").isEmpty());
+        Script revoked = new Script().reply(400, "{\"error\":{\"code\":190,\"message\":\"expired\"}}");
+        ChannelException e = assertThrows(ChannelException.class, () -> channel(revoked).metrics(PAGE, "123_456"));
+        assertTrue(e.reauthorize());
     }
 }

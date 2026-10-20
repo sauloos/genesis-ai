@@ -7,6 +7,7 @@ import ai.genesisbrands.platform.channel.PublishChannel.ChannelGrant;
 import ai.genesisbrands.platform.channel.PublishChannel.ChannelNetwork;
 import ai.genesisbrands.platform.channel.PublishChannel.ChannelPost;
 import ai.genesisbrands.platform.channel.PublishChannel.Media;
+import ai.genesisbrands.platform.channel.PublishChannel.PostMetrics;
 import ai.genesisbrands.platform.standing.SocialPostReader;
 import ai.genesisbrands.service.BlobStorageService;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -75,7 +76,8 @@ public class PublishingService implements SocialPostReader {
 
     public record JobView(String id, String accountId, String accountName, String provider, String network,
                           String networkLabel, String sourceRef, Instant scheduledAt, String status, int attempts,
-                          String url, String error, Instant createdAt, Instant finishedAt) {}
+                          String url, String error, Instant createdAt, Instant finishedAt,
+                          PostMetrics metrics, Instant metricsAt) {}
 
     /** {@code ready} is false until the operator sets the token key and public URL; nothing can connect until then. */
     public record ClientChannels(boolean ready, List<ProviderView> providers, List<AccountView> accounts) {}
@@ -358,6 +360,48 @@ public class PublishingService implements SocialPostReader {
         jobs.save(job);
     }
 
+    /**
+     * Reads a published post's figures through its channel and keeps them on the job. The read
+     * time is kept even when the platform gave nothing, so the post is not asked about again
+     * until the next refresh. Never throws.
+     */
+    void refreshMetrics(PublishJob job, Instant now) {
+        job.setMetricsAt(now);
+        ChannelAccount account = accounts.findById(job.getAccountId()).orElse(null);
+        PublishChannel channel = channels.get(job.getProvider());
+        if (account == null || channel == null || !ChannelAccount.CONNECTED.equals(account.getStatus())) {
+            jobs.save(job);
+            return;
+        }
+        try {
+            Optional<PostMetrics> metrics = channel.metrics(new ChannelAccountRef(account.getNetwork(), account.getExternalId(),
+                account.getDisplayName(), vault.decrypt(account.getAccessTokenEnc())), job.getExternalPostId());
+            if (metrics.isPresent() && metrics.get().any()) job.setMetricsJson(objectMapper.writeValueAsString(metrics.get()));
+        } catch (ChannelException e) {
+            if (e.reauthorize()) {
+                account.setStatus(ChannelAccount.EXPIRED);
+                account.setLastError(e.getMessage());
+                account.setUpdatedAt(now);
+                accounts.save(account);
+            }
+        } catch (Exception e) {
+            log.warn("Reading the figures of publish job {} failed", job.getId(), e);
+        }
+        jobs.save(job);
+    }
+
+    /**
+     * The client's posts published since {@code after} whose {@code sourceRef} starts with
+     * {@code sourceRefPrefix}, newest first, with their latest figures. For the module that
+     * scheduled them (standing agents) to learn what performs.
+     */
+    public List<JobView> publishedSince(String clientUserId, String sourceRefPrefix, Instant after) {
+        List<PublishJob> list = jobs.findByClientUserIdAndStatusAndSourceRefStartingWithAndFinishedAtAfterOrderByFinishedAtDesc(
+            clientUserId, PublishJob.PUBLISHED, sourceRefPrefix, after);
+        Map<String, ChannelAccount> byId = accountsById(list);
+        return list.stream().map(j -> view(j, byId)).toList();
+    }
+
     /** Accounts whose token has run out are marked so the client sees "connect again" before a post fails. */
     void expireAccounts(Instant now) {
         for (ChannelAccount a : accounts.findByStatusAndExpiresAtLessThan(ChannelAccount.CONNECTED, now)) {
@@ -462,7 +506,17 @@ public class PublishingService implements SocialPostReader {
         ChannelAccount a = byId.get(j.getAccountId());
         return new JobView(j.getId(), j.getAccountId(), a == null ? "Disconnected account" : a.getDisplayName(),
             j.getProvider(), j.getNetwork(), networkLabel(j.getProvider(), j.getNetwork()), j.getSourceRef(),
-            j.getScheduledAt(), j.getStatus(), j.getAttempts(), j.getUrl(), j.getError(), j.getCreatedAt(), j.getFinishedAt());
+            j.getScheduledAt(), j.getStatus(), j.getAttempts(), j.getUrl(), j.getError(), j.getCreatedAt(), j.getFinishedAt(),
+            metricsOf(j), j.getMetricsAt());
+    }
+
+    PostMetrics metricsOf(PublishJob j) {
+        if (j.getMetricsJson() == null) return null;
+        try {
+            return objectMapper.readValue(j.getMetricsJson(), PostMetrics.class);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static ResponseStatusException badRequest(String message) {

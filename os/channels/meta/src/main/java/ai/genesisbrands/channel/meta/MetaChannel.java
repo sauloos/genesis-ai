@@ -14,9 +14,11 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -47,7 +49,13 @@ public class MetaChannel implements PublishChannel {
     private final String scopes;
     private final ChannelHttp http;
     private final Sleeper sleeper;
+    private final List<String> facebookInsights;
+    private final List<String> instagramInsights;
     private final ObjectMapper json = new ObjectMapper();
+
+    /** Insight metrics asked for by default; Meta renames these between Graph versions, so both lists are configurable. */
+    static final String FACEBOOK_INSIGHTS = "post_impressions,post_impressions_unique,post_clicks";
+    static final String INSTAGRAM_INSIGHTS = "views,reach,saved,shares";
 
     interface Sleeper {
         void sleep(long millis) throws InterruptedException;
@@ -57,17 +65,31 @@ public class MetaChannel implements PublishChannel {
     public MetaChannel(@Value("${genesis.channels.meta.app-id:}") String appId,
                        @Value("${genesis.channels.meta.app-secret:}") String appSecret,
                        @Value("${genesis.channels.meta.graph-version:v26.0}") String version,
-                       @Value("${genesis.channels.meta.scopes:pages_show_list,pages_read_engagement,pages_manage_posts,instagram_basic,instagram_content_publish,business_management}") String scopes) {
-        this(appId, appSecret, version, scopes, new ChannelHttp(), Thread::sleep);
+                       @Value("${genesis.channels.meta.scopes:pages_show_list,pages_read_engagement,pages_manage_posts,instagram_basic,instagram_content_publish,business_management}") String scopes,
+                       @Value("${genesis.channels.meta.facebook-insights:" + FACEBOOK_INSIGHTS + "}") String facebookInsights,
+                       @Value("${genesis.channels.meta.instagram-insights:" + INSTAGRAM_INSIGHTS + "}") String instagramInsights) {
+        this(appId, appSecret, version, scopes, new ChannelHttp(), Thread::sleep, facebookInsights, instagramInsights);
     }
 
     MetaChannel(String appId, String appSecret, String version, String scopes, ChannelHttp http, Sleeper sleeper) {
+        this(appId, appSecret, version, scopes, http, sleeper, FACEBOOK_INSIGHTS, INSTAGRAM_INSIGHTS);
+    }
+
+    MetaChannel(String appId, String appSecret, String version, String scopes, ChannelHttp http, Sleeper sleeper,
+                String facebookInsights, String instagramInsights) {
         this.appId = appId == null ? "" : appId.trim();
         this.appSecret = appSecret == null ? "" : appSecret.trim();
         this.version = version;
         this.scopes = scopes;
         this.http = http;
         this.sleeper = sleeper;
+        this.facebookInsights = metricList(facebookInsights);
+        this.instagramInsights = metricList(instagramInsights);
+    }
+
+    private static List<String> metricList(String value) {
+        if (value == null) return List.of();
+        return Arrays.stream(value.split("[\\s,]+")).map(String::strip).filter(s -> !s.isEmpty()).toList();
     }
 
     @Override
@@ -236,6 +258,91 @@ public class MetaChannel implements PublishChannel {
             }
         }
         return posts;
+    }
+
+    /**
+     * A Facebook post's reactions, comments and shares ({@code pages_read_engagement}) or an
+     * Instagram media's likes and comments ({@code instagram_basic}), plus whatever insights
+     * the connection may read ({@code read_insights}, {@code instagram_manage_insights}).
+     */
+    @Override
+    public Optional<PostMetrics> metrics(ChannelAccountRef account, String externalPostId) {
+        if (externalPostId == null || externalPostId.isBlank()) return Optional.empty();
+        Map<String, String> auth = bearer(account.accessToken());
+        Long reactions = null, comments = null, shares = null;
+        List<String> insights;
+        if (FACEBOOK.equals(account.network())) {
+            JsonNode post = readOrNull(graph(externalPostId) + "?" + ChannelHttp.query(Map.of(
+                "fields", "reactions.summary(total_count).limit(0),comments.summary(total_count).limit(0),shares")), auth);
+            if (post != null) {
+                reactions = post.path("reactions").path("summary").path("total_count").asLong(0);
+                comments = post.path("comments").path("summary").path("total_count").asLong(0);
+                shares = post.path("shares").path("count").asLong(0);
+            }
+            insights = facebookInsights;
+        } else if (INSTAGRAM.equals(account.network())) {
+            JsonNode media = readOrNull(graph(externalPostId) + "?fields=like_count,comments_count", auth);
+            if (media != null) {
+                reactions = media.hasNonNull("like_count") ? media.get("like_count").asLong() : null;
+                comments = media.hasNonNull("comments_count") ? media.get("comments_count").asLong() : null;
+            }
+            insights = instagramInsights;
+        } else {
+            return Optional.empty();
+        }
+        Map<String, Long> values = insights(externalPostId, insights, auth);
+        Long impressions = first(values, "views", "post_impressions", "post_media_view", "impressions");
+        Long reach = first(values, "reach", "post_impressions_unique", "post_media_viewers");
+        Long saves = first(values, "saved", "saves");
+        Long clicks = first(values, "post_clicks", "clicks");
+        if (shares == null) shares = first(values, "shares");
+        PostMetrics metrics = new PostMetrics(impressions, reach, reactions, comments, shares, saves, clicks);
+        return metrics.any() ? Optional.of(metrics) : Optional.empty();
+    }
+
+    /**
+     * The insight values the connection may read. Graph refuses the whole request when any one
+     * metric is unknown or not permitted, so a refused batch is retried one metric at a time.
+     */
+    private Map<String, Long> insights(String objectId, List<String> metrics, Map<String, String> auth) {
+        Map<String, Long> values = new LinkedHashMap<>();
+        if (metrics.isEmpty()) return values;
+        JsonNode all = readOrNull(graph(objectId + "/insights") + "?" + ChannelHttp.query(Map.of("metric", String.join(",", metrics))), auth);
+        if (all != null) {
+            collectInsights(all, values);
+            return values;
+        }
+        if (metrics.size() == 1) return values;
+        for (String metric : metrics) {
+            JsonNode one = readOrNull(graph(objectId + "/insights") + "?" + ChannelHttp.query(Map.of("metric", metric)), auth);
+            if (one != null) collectInsights(one, values);
+        }
+        return values;
+    }
+
+    /** Insights come as {@code values[0].value} (lifetime) or {@code total_value.value}. */
+    private static void collectInsights(JsonNode body, Map<String, Long> into) {
+        for (JsonNode m : body.path("data")) {
+            String name = m.path("name").asText("");
+            JsonNode value = m.path("total_value").path("value");
+            if (!value.isNumber()) value = m.path("values").path(0).path("value");
+            if (!name.isEmpty() && value.isNumber()) into.put(name, value.asLong());
+        }
+    }
+
+    private static Long first(Map<String, Long> values, String... names) {
+        for (String n : names) if (values.containsKey(n)) return values.get(n);
+        return null;
+    }
+
+    /** The body, or null when Graph refused for a reason other than the token (missing permission, unknown metric). */
+    private JsonNode readOrNull(String url, Map<String, String> auth) {
+        try {
+            return read(http.get(url, auth));
+        } catch (ChannelException e) {
+            if (e.reauthorize()) throw e;
+            return null;
+        }
     }
 
     /** Graph times look like {@code 2026-10-01T10:00:00+0000}. */

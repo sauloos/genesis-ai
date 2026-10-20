@@ -4,6 +4,7 @@ import ai.genesisbrands.platform.AgentCustomOption;
 import ai.genesisbrands.platform.AgentCustomOption.OptionType;
 import ai.genesisbrands.platform.CoreAgent;
 import ai.genesisbrands.platform.standing.Cadence;
+import ai.genesisbrands.platform.standing.PostPerformance;
 import ai.genesisbrands.platform.standing.StandingAgent;
 import ai.genesisbrands.platform.standing.StandingRunContext;
 import ai.genesisbrands.platform.standing.StandingRunResult;
@@ -12,6 +13,8 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -28,6 +31,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 
 /**
  * Genesis Brands standing agent: each run plans and drafts a small batch of social posts in the
@@ -51,10 +55,20 @@ public class ContentAgent implements CoreAgent, StandingAgent {
         .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
         .build();
 
-    private final ContentImages images;
+    /** How far back published posts count when weighting topics and formats. */
+    static final int PERFORMANCE_DAYS = 60;
 
-    public ContentAgent(ContentImages images) {
+    private final ContentImages images;
+    private final Supplier<PostPerformance> performance;
+
+    @Autowired
+    public ContentAgent(ContentImages images, ObjectProvider<PostPerformance> performance) {
+        this(images, performance::getIfAvailable);
+    }
+
+    ContentAgent(ContentImages images, Supplier<PostPerformance> performance) {
         this.images = images;
+        this.performance = performance;
     }
 
     @Override
@@ -121,7 +135,8 @@ public class ContentAgent implements CoreAgent, StandingAgent {
     @Override
     public StandingRunResult run(StandingRunContext ctx) {
         Period period = Period.of(ctx);
-        List<Post> posts = Post.parseAll(ctx.model().complete(prompt(ctx, period)), channels(ctx));
+        ContentPerformance learned = performance(ctx);
+        List<Post> posts = Post.parseAll(ctx.model().complete(prompt(ctx, period, learned)), channels(ctx));
         if (posts.isEmpty()) throw new IllegalStateException("The model returned no usable posts");
         int limit = postCount(ctx);
         boolean drawImages = !"No images".equals(opt(ctx, "imageStyle")) && images.available();
@@ -143,10 +158,28 @@ public class ContentAgent implements CoreAgent, StandingAgent {
         }
         String note = items.size() + (items.size() == 1 ? " post" : " posts") + ", " + imageCount
             + (imageCount == 1 ? " image" : " images");
+        if (learned != null) note += ", weighted by " + learned.measured() + " published " + (learned.measured() == 1 ? "post" : "posts");
         return new StandingRunResult(items, note);
     }
 
+    /** What performed among this agent's published posts for the client, or null without enough figures. */
+    ContentPerformance performance(StandingRunContext ctx) {
+        PostPerformance source = performance.get();
+        if (source == null) return null;
+        Instant now = ctx.now() == null ? Instant.now() : ctx.now();
+        try {
+            return ContentPerformance.of(source.published(ctx.clientUserId(), ID, now.minus(Duration.ofDays(PERFORMANCE_DAYS))),
+                chosen(ctx, "pillars", PILLARS, 3), chosen(ctx, "formats", FORMATS, 2), postCount(ctx));
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
     static String prompt(StandingRunContext ctx, Period period) {
+        return prompt(ctx, period, null);
+    }
+
+    static String prompt(StandingRunContext ctx, Period period, ContentPerformance learned) {
         StringBuilder p = new StringBuilder();
         p.append("Client: ").append(ctx.clientName()).append("\n");
         p.append("This batch covers ").append(period.days()).append(period.days() == 1 ? " day" : " days")
@@ -160,6 +193,7 @@ public class ContentAgent implements CoreAgent, StandingAgent {
         p.append("Write in: ").append(or(opt(ctx, "language"), "English")).append("\n");
         if (!opt(ctx, "topicNotes").isBlank()) p.append("The client wants to talk about: ").append(opt(ctx, "topicNotes")).append("\n");
         if (!opt(ctx, "avoid").isBlank()) p.append("Avoid: ").append(opt(ctx, "avoid")).append("\n");
+        if (learned != null) p.append("\n").append(learned.section());
         if (!ctx.recentDecisions().isEmpty()) {
             p.append("\nThe client's recent posts and what they did with them (do not repeat these; follow their feedback):\n");
             for (StandingRunContext.Decision d : ctx.recentDecisions()) {
@@ -199,6 +233,12 @@ public class ContentAgent implements CoreAgent, StandingAgent {
         List<String> chosen = Arrays.stream(opt(ctx, "channels").split(","))
             .map(String::strip).filter(CHANNELS::contains).toList();
         return chosen.isEmpty() ? List.of("Instagram", "LinkedIn") : chosen;
+    }
+
+    /** The chosen values of a multi-select that are still known, or the option's first {@code defaults} values. */
+    static List<String> chosen(StandingRunContext ctx, String key, List<String> known, int defaults) {
+        List<String> picked = Arrays.stream(opt(ctx, key).split(",")).map(String::strip).filter(known::contains).toList();
+        return picked.isEmpty() ? known.subList(0, defaults) : picked;
     }
 
     private static String list(StandingRunContext ctx, String key, List<String> fallback) {

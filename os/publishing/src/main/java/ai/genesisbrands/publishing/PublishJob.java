@@ -81,4 +81,12 @@ public class PublishJob {
 
     @Column(name = "finished_at")
     private Instant finishedAt;
+
+    /** The published post's latest figures ({@code PublishChannel.PostMetrics} as JSON), or null before the first read. */
+    @Column(name = "metrics_json", columnDefinition = "TEXT")
+    private String metricsJson;
+
+    /** When the figures were last read (also set when the platform had none), so reads are spaced out. */
+    @Column(name = "metrics_at")
+    private Instant metricsAt;
 }

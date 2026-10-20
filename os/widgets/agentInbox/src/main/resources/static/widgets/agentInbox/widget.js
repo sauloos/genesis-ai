@@ -93,12 +93,27 @@ const SAMPLE_PUBLISH = {
     { index: 0, channel: 'instagram', label: 'Instagram', accounts: [{ id: 'a1', displayName: '@northwindcoffee', networkLabel: 'Instagram' }] },
     { index: 1, channel: 'linkedin', label: 'LinkedIn', accounts: [{ id: 'a2', displayName: 'Northwind Coffee', networkLabel: 'LinkedIn' }] }
   ],
-  jobs: []
+  jobs: [{ id: 'j0', accountId: 'a2', accountName: 'Northwind Coffee', networkLabel: 'LinkedIn', status: 'PUBLISHED',
+    finishedAt: '2026-10-14T09:00:00Z', url: 'https://www.linkedin.com/feed/',
+    metrics: { reactions: 48, comments: 7, shares: 3, impressions: 2140 } }]
 };
 
 const JOB_TEXT = { QUEUED: 'Scheduled', RUNNING: 'Publishing', PUBLISHED: 'Published', FAILED: 'Failed', CANCELLED: 'Cancelled' };
 
 const STATUS_TEXT = { PENDING: 'Waiting for you', APPROVED: 'Approved', REJECTED: 'Rejected' };
+
+// A published post's figures, e.g. "42 likes · 6 comments · reach 1,240"; empty when none were read yet.
+function metricsText(m) {
+  if (!m) return '';
+  const fmt = n => Number(n).toLocaleString();
+  const parts = [];
+  [['reactions', 'like'], ['comments', 'comment'], ['shares', 'share'], ['saves', 'save'], ['clicks', 'click']].forEach(([key, noun]) => {
+    if (m[key] != null) parts.push(`${fmt(m[key])} ${noun}${m[key] === 1 ? '' : 's'}`);
+  });
+  if (m.reach != null) parts.push(`reach ${fmt(m.reach)}`);
+  else if (m.impressions != null) parts.push(`${fmt(m.impressions)} views`);
+  return parts.join(' · ');
+}
 
 function el(tag, cls, text) {
   const node = document.createElement(tag);
@@ -725,6 +740,8 @@ export function mount(container, widget, ctx = {}) {
         if (j.status === 'PUBLISHED' && j.finishedAt) text += ' ' + when(j.finishedAt);
         state.textContent = text;
         if (j.status === 'FAILED' && j.error) state.appendChild(el('div', 'ainb-job-error', j.error));
+        const figures = j.status === 'PUBLISHED' && metricsText(j.metrics);
+        if (figures) state.appendChild(el('div', 'ainb-job-metrics', figures));
         li.append(what, state);
         const tools = el('div', 'ainb-job-tools');
         if (j.url) {

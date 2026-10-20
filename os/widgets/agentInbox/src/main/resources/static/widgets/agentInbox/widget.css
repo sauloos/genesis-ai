@@ -84,6 +84,7 @@
 .ainb-job-published { color: var(--theme-success); }
 .ainb-job-failed { color: var(--theme-danger); }
 .ainb-job-error { color: var(--theme-text-muted); margin-top: 3px; }
+.ainb-job-metrics { color: var(--theme-text-muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
 .ainb-job-tools { display: flex; gap: 6px; }
 
 .ainb-card { display: flex; flex-direction: column; gap: 12px; }

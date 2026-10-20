@@ -140,7 +140,7 @@ public interface PublishChannel {
     AuthorizationStart beginConnect(String clientUserId, String redirectUri);
     ConnectedAccount completeConnect(String clientUserId, Map<String, String> callback);
     PublishResult publish(ConnectedAccount account, ChannelPost post);
-    Optional<PostMetrics> metrics(ConnectedAccount account, String postId); // later
+    Optional<PostMetrics> metrics(ConnectedAccount account, String postId); // phase 7
 }
 ```
 
@@ -234,7 +234,7 @@ cancellations of recurring products are not tracked yet: a client who paid once 
 | 4 | Brand guardian — **done 2026-10-19** | Site/social audits against the brand book; reads recent posts through the connected channels. Uploads not wired yet. |
 | 5 | Occasions + market watch — **done 2026-10-20** | Calendar-driven post, banner and flyer proposals; competitor briefs from pages read with the shared website reader (not the ingestion crawler). |
 | 6 | Lead-to-proposal, knowledge gardener — **done 2026-10-20** | Event triggers (leads/RFPs sent by the client), ingestion-pipeline extension (`IngestionEventListener`). |
-| 7 | Metrics loop | Pull post metrics; the content agent weights pillars/kinds by what performs. |
+| 7 | Metrics loop — **done 2026-10-20** | Pull post metrics; the content agent weights pillars/kinds by what performs. |
 
 **Phase 0 as built** (os/runtime, package `ai.genesisbrands.usage`): `MeteredChatModel` wraps
 the primary `ChatModel` (both profiles), so every Spring AI chat call, streamed or not, writes a
@@ -397,7 +397,7 @@ Pages and the Instagram accounts linked to them, so one connect flow adds both.
   - Add `channelConnections` to the client dashboard flow.
   - Until Meta App Review and Business Verification clear, only the Meta app's own testers
     can connect.
-- **Not built:** post metrics (phase 7), Instagram's 24-hour publish cap per account, video,
+- **Not built:** Instagram's 24-hour publish cap per account, video,
   stories as a story format (they post as a feed image), and reminders before a LinkedIn
   token expires.
 
@@ -540,6 +540,53 @@ Pages and the Instagram accounts linked to them, so one connect flow adds both.
 - **Not built:** a public webhook or email address that receives leads directly (today the
   client pastes them or a connector sends them), the gardener applying YAML edits itself, gardening Layer 2, and the `UPLOAD`
   trigger.
+
+**Phase 7 as built.**
+- **Reading metrics (channel SDK).** `PublishChannel.metrics(account, externalPostId)` returns an
+  optional `PostMetrics` (impressions, reach, reactions, comments, shares, saves, clicks; any may
+  be null). The default returns empty, so a channel without it still works.
+  - Meta, Facebook: reactions, comments and shares from the post, plus the insights listed in
+    `genesis.channels.meta.facebook-insights` (default
+    `post_impressions,post_impressions_unique,post_clicks`).
+  - Meta, Instagram: likes and comments from the media, plus
+    `genesis.channels.meta.instagram-insights` (default `views,reach,saved,shares`). Meta
+    renames insight metrics between Graph versions, which is why both lists are config. When
+    Meta refuses the combined call, each metric is asked for alone.
+  - LinkedIn: a page's post reads `organizationalEntityShareStatistics` (impressions, unique
+    impressions, likes, comments, shares, clicks); a member's post, or a page whose statistics
+    are refused, reads `socialActions` (likes and comments).
+  - A refused read (missing scope, unsupported metric) only means fewer figures. An expired or
+    revoked token marks the account for reconnecting, as publishing does.
+- **Collecting (os/publishing).** `PostMetricsScheduler` refreshes every PUBLISHED job with a
+  post id, published in the last 30 days, at most every 12 hours, 25 per tick, every 15
+  minutes. Figures are stored on the job (`metrics_json`, `metrics_at`). It does nothing until
+  publishing is configured. Config: `genesis.publishing.metrics.days`, `.refresh-hours`,
+  `.batch`, `.poll-ms`, `.initial-delay-ms`.
+- **Showing.** The job view carries `metrics`, and `agentInbox` shows them under a published
+  post ("48 likes · 7 comments · 3 shares · 2,140 views").
+- **Learning (agent SDK port).** `PostPerformance.published(clientUserId, agentId, since)` lists
+  an agent's own inbox items that the client published, with their payload and latest figures.
+  `os/standing` implements it over the publish jobs (`StandingPublishing.Performance`); an agent
+  asks for it optionally, so it runs without publishing.
+- **The Content agent** reads its published posts from the last 60 days. With at least 2 that
+  have figures, it scores each post against the client's average engagement on that network
+  (so LinkedIn and Instagram compare fairly), ranks topics and formats, and shares the batch out
+  among the chosen topics in proportion (`ContentPerformance`). A topic not yet measured counts
+  as average, so it keeps being tried; no topic drops below a quarter of average. The prompt
+  gets a "What performed" section (topics, formats, the 3 best posts with their figures, and the
+  topic mix to aim for). The client's notes, feedback and avoid list still come first. The run
+  note adds "weighted by N published posts". A failed read only means no weighting.
+- **To turn it on:** nothing beyond publishing (phase 3). For more than likes and comments, add
+  the insight scopes to the channel apps and to `genesis.channels.<id>.scopes`: Meta
+  `read_insights` and `instagram_manage_insights`; LinkedIn `r_organization_social` (pages,
+  needs the Community Management API) or `r_member_social` (restricted). They are left out of
+  the defaults because a scope the app is not approved for breaks consent.
+- **Cost:** platform API reads only, which are free within rate limits. No model calls are
+  added; the Content prompt grows by about 300 tokens.
+- **Not built:** weighting for other agents (the port is generic, only Content uses it), an
+  admin or client analytics view, metrics for posts the client published outside the platform,
+  and timing (best day or hour) as a learned weight. Meta metric names drift, so watch for
+  empty insights after a Graph version bump and update the config lists.
 
 ## Open questions
 

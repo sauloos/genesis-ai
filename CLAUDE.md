@@ -384,6 +384,10 @@ next to `CoreAgent`. `os/standing` collects every such bean, so there is no wiri
   something adds `payload.scorecard` (shape in `StandingRunResult`), which `agentInbox` renders.
   The Brand guardian (`brands/agents/brand-guardian`) uses both. Its website reads go through
   the SSRF-guarded `WebsiteReader`.
+- **Learning what performs.** `PostMetricsScheduler` (os/publishing) pulls each published post's
+  figures through `PublishChannel.metrics` for 30 days. An agent that wants to know how its own
+  posts did asks for the optional SDK port `PostPerformance`, which `os/standing` implements.
+  The Content agent weights its topics and formats by it (`ContentPerformance`).
 - **Publishing to social accounts is client-initiated, never automatic.**
   - A platform is a channel module (`os/channels/<id>`, auto-included). It implements
     `PublishChannel` (os/channel-sdk).

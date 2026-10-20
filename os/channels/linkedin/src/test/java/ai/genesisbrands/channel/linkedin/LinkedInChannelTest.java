@@ -6,6 +6,7 @@ import ai.genesisbrands.platform.channel.PublishChannel.ChannelAccountRef;
 import ai.genesisbrands.platform.channel.PublishChannel.ChannelGrant;
 import ai.genesisbrands.platform.channel.PublishChannel.ChannelPost;
 import ai.genesisbrands.platform.channel.PublishChannel.Media;
+import ai.genesisbrands.platform.channel.PublishChannel.PostMetrics;
 import ai.genesisbrands.platform.channel.PublishChannel.PublishResult;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -113,5 +114,34 @@ class LinkedInChannelTest {
         ChannelException bad = assertThrows(ChannelException.class,
             () -> li.read(new ChannelHttp.Response(422, "{\"message\":\"Too long\"}", Map.of())));
         assertEquals("Too long", bad.getMessage());
+    }
+    @Test
+    void pageMetricsComeFromShareStatistics() {
+        ChannelAccountRef page = new ChannelAccountRef("linkedin", "urn:li:organization:42", "Northwind", "tok");
+        Script s = new Script().reply(200, """
+            {"elements":[{"totalShareStatistics":{"impressionCount":2140,"uniqueImpressionsCount":1500,
+              "likeCount":48,"commentCount":7,"shareCount":3,"clickCount":61,"engagement":0.05}}]}""");
+        LinkedInChannel li = new LinkedInChannel("id", "secret", "202610", "w_organization_social", s.http());
+        PostMetrics m = li.metrics(page, "urn:li:share:7").orElseThrow();
+        assertEquals(new PostMetrics(2140L, 1500L, 48L, 7L, 3L, null, 61L), m);
+        String url = s.sent.get(0).url();
+        assertTrue(url.contains("organizationalEntity=urn%3Ali%3Aorganization%3A42"), url);
+        assertTrue(url.contains("shares=List(urn%3Ali%3Ashare%3A7)"), url);
+    }
+
+    @Test
+    void memberMetricsComeFromSocialActionsAndARefusalIsEmpty() {
+        Script s = new Script().reply(200, """
+            {"likesSummary":{"totalLikes":12},"commentsSummary":{"aggregatedTotalComments":2}}""");
+        LinkedInChannel li = new LinkedInChannel("id", "secret", "202610", "w_member_social", s.http());
+        assertEquals(new PostMetrics(null, null, 12L, 2L, null, null, null), li.metrics(ME, "urn:li:share:7").orElseThrow());
+        assertTrue(s.sent.get(0).url().endsWith("/rest/socialActions/urn%3Ali%3Ashare%3A7"));
+
+        Script refused = new Script().reply(403, "{\"message\":\"Not enough permissions\"}");
+        assertTrue(new LinkedInChannel("id", "secret", "202610", "w_member_social", refused.http())
+            .metrics(ME, "urn:li:share:7").isEmpty());
+        Script expired = new Script().reply(401, "{\"message\":\"expired\"}");
+        assertTrue(assertThrows(ChannelException.class, () -> new LinkedInChannel("id", "secret", "202610", "w_member_social",
+            expired.http()).metrics(ME, "urn:li:share:7")).reauthorize());
     }
 }

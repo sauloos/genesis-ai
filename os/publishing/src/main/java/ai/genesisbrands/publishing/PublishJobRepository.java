@@ -32,6 +32,14 @@ public interface PublishJobRepository extends JpaRepository<PublishJob, String> 
 
     long countByStatus(String status);
 
+    /** Published posts younger than {@code since} whose figures were never read or were read before {@code staleBefore}. */
+    @Query("select j from PublishJob j where j.status = 'PUBLISHED' and j.externalPostId is not null and j.finishedAt > ?1"
+        + " and (j.metricsAt is null or j.metricsAt < ?2) order by j.finishedAt desc")
+    List<PublishJob> findMetricsDue(Instant since, Instant staleBefore, Pageable page);
+
+    List<PublishJob> findByClientUserIdAndStatusAndSourceRefStartingWithAndFinishedAtAfterOrderByFinishedAtDesc(
+        String clientUserId, String status, String sourceRefPrefix, Instant after);
+
     /**
      * Claims a due job: only one replica's update matches, the others update zero rows and
      * skip it, so a post is never published twice by two schedulers.

@@ -4,8 +4,11 @@ import ai.genesisbrands.connector.auth.ConnectorPrincipal;
 import ai.genesisbrands.connector.mcp.ClientToolContributor;
 import ai.genesisbrands.connector.mcp.McpTool;
 import ai.genesisbrands.model.ClientUser;
+import ai.genesisbrands.platform.channel.PublishChannel.PostMetrics;
+import ai.genesisbrands.platform.standing.PostPerformance;
 import ai.genesisbrands.publishing.PublishingService;
 import ai.genesisbrands.security.ClientAuthHelper;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -30,6 +33,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -160,6 +164,50 @@ public final class StandingPublishing {
 
         private static String network(Map<String, Object> v) {
             return String.valueOf(v.getOrDefault("channel", "")).trim().toLowerCase();
+        }
+    }
+
+    /**
+     * {@link PostPerformance} over the publishing runtime's jobs: each published job that came
+     * from an inbox item of the asking agent, with the item's payload and the job's figures.
+     */
+    @Component
+    @ConditionalOnClass(name = PUBLISHING)
+    @RequiredArgsConstructor
+    public static class Performance implements PostPerformance {
+
+        private final PublishingService publishing;
+        private final InboxItemRepository items;
+        private final ObjectMapper objectMapper;
+
+        @Override
+        public List<PublishedPost> published(String clientUserId, String agentId, Instant since) {
+            if (clientUserId == null || agentId == null) return List.of();
+            String prefix = sourceRef("");
+            List<PublishingService.JobView> jobs = publishing.publishedSince(clientUserId, prefix,
+                since == null ? Instant.EPOCH : since);
+            Map<String, InboxItem> byId = new HashMap<>();
+            items.findAllById(jobs.stream().map(j -> j.sourceRef().substring(prefix.length())).distinct().toList())
+                .forEach(i -> byId.put(i.getId(), i));
+            List<PublishedPost> out = new ArrayList<>();
+            for (PublishingService.JobView j : jobs) {
+                InboxItem item = byId.get(j.sourceRef().substring(prefix.length()));
+                if (item == null || !clientUserId.equals(item.getClientUserId()) || !agentId.equals(item.getAgentId())) continue;
+                PostMetrics m = j.metrics();
+                out.add(new PublishedPost(item.getId(), item.getTitle(), payload(item), j.network(), j.accountName(),
+                    j.finishedAt(), m == null ? null : new Metrics(m.impressions(), m.reach(), m.reactions(), m.comments(),
+                        m.shares(), m.saves(), m.clicks(), j.metricsAt())));
+            }
+            return out;
+        }
+
+        private Map<String, Object> payload(InboxItem item) {
+            if (item.getPayloadJson() == null) return Map.of();
+            try {
+                return objectMapper.readValue(item.getPayloadJson(), new TypeReference<Map<String, Object>>() {});
+            } catch (Exception e) {
+                return Map.of();
+            }
         }
     }
 

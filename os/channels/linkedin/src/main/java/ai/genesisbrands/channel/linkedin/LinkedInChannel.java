@@ -11,12 +11,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * LinkedIn through the versioned REST API ({@code /rest/posts}, {@code /rest/images}). The
@@ -161,6 +164,55 @@ public class LinkedInChannel implements PublishChannel {
         read(res);
         String urn = res.header("x-restli-id").or(() -> res.header("x-linkedin-id")).orElse(null);
         return new PublishResult(urn, urn == null ? null : "https://www.linkedin.com/feed/update/" + urn + "/");
+    }
+
+    /**
+     * An organisation post's share statistics ({@code r_organization_social}); otherwise the
+     * post's likes and comments ({@code r_member_social} for a member's own posts). LinkedIn
+     * grants both read scopes only to approved apps, so a refusal just leaves figures unknown.
+     */
+    @Override
+    public Optional<PostMetrics> metrics(ChannelAccountRef account, String externalPostId) {
+        if (externalPostId == null || externalPostId.isBlank()) return Optional.empty();
+        Map<String, String> headers = headers(account.accessToken());
+        String author = account.externalId();
+        if (author.startsWith("urn:li:organization:")) {
+            String param = externalPostId.startsWith("urn:li:ugcPost:") ? "ugcPosts" : "shares";
+            JsonNode stats = readOrNull(API + "/rest/organizationalEntityShareStatistics?q=organizationalEntity&organizationalEntity="
+                + encode(author) + "&" + param + "=List(" + encode(externalPostId) + ")", headers);
+            JsonNode total = stats == null ? null : stats.path("elements").path(0).path("totalShareStatistics");
+            if (total != null && total.isObject()) {
+                PostMetrics m = new PostMetrics(number(total, "impressionCount"), number(total, "uniqueImpressionsCount"),
+                    number(total, "likeCount"), number(total, "commentCount"), number(total, "shareCount"), null,
+                    number(total, "clickCount"));
+                if (m.any()) return Optional.of(m);
+            }
+        }
+        JsonNode social = readOrNull(API + "/rest/socialActions/" + encode(externalPostId), headers);
+        if (social == null) return Optional.empty();
+        Long likes = number(social.path("likesSummary"), "totalLikes");
+        Long comments = number(social.path("commentsSummary"), "aggregatedTotalComments");
+        if (comments == null) comments = number(social.path("commentsSummary"), "totalFirstLevelComments");
+        PostMetrics m = new PostMetrics(null, null, likes, comments, null, null, null);
+        return m.any() ? Optional.of(m) : Optional.empty();
+    }
+
+    private static Long number(JsonNode node, String field) {
+        return node.hasNonNull(field) && node.get(field).isNumber() ? node.get(field).asLong() : null;
+    }
+
+    private static String encode(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
+    }
+
+    /** The body, or null when LinkedIn refused for a reason other than the token (usually a scope the app lacks). */
+    private JsonNode readOrNull(String url, Map<String, String> headers) {
+        try {
+            return read(http.get(url, headers));
+        } catch (ChannelException e) {
+            if (e.reauthorize()) throw e;
+            return null;
+        }
     }
 
     /** Registers an image with LinkedIn, then uploads its bytes; returns the image URN. */
