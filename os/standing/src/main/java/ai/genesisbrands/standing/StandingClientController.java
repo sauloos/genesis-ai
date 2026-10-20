@@ -42,6 +42,9 @@ public class StandingClientController {
 
     public record Decision(String feedback) {}
 
+    /** One event for an event-triggered agent: its declared event fields, by key. */
+    public record EventRequest(Map<String, String> fields) {}
+
     @GetMapping("/offers")
     @Operation(summary = "Agents the client may subscribe to, with their current subscription")
     public List<StandingService.ClientOffer> offers(HttpServletRequest req) {
@@ -78,6 +81,13 @@ public class StandingClientController {
     @Operation(summary = "Run the agent now; its output arrives in the inbox when the run finishes")
     public StandingService.RunView runNow(@PathVariable String agentId, HttpServletRequest req) {
         return standing.runNow(clientId(req), agentId);
+    }
+
+    @PostMapping("/subscriptions/{agentId}/events")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    @Operation(summary = "Send an event-triggered agent one item (e.g. a lead); its output arrives in the inbox")
+    public StandingService.RunView event(@PathVariable String agentId, @RequestBody EventRequest body, HttpServletRequest req) {
+        return standing.submitEvent(clientId(req), agentId, body == null ? null : body.fields(), "inbox");
     }
 
     @GetMapping("/runs")

@@ -90,6 +90,11 @@ public class StandingRunner {
      * already has a run.
      */
     public StandingRun start(StandingSubscription sub, Instant slot, String trigger) {
+        return start(sub, slot, trigger, null);
+    }
+
+    /** As {@link #start(StandingSubscription, Instant, String)}, for a run that carries an event. */
+    public StandingRun start(StandingSubscription sub, Instant slot, String trigger, StandingRunContext.Event event) {
         String refusal = refusal(sub);
         StandingRun run = new StandingRun();
         run.setId(UUID.randomUUID().toString());
@@ -99,6 +104,13 @@ public class StandingRunner {
         run.setSlot(slot);
         run.setTrigger(trigger);
         run.setStartedAt(Instant.now());
+        if (event != null) {
+            try {
+                run.setEventJson(objectMapper.writeValueAsString(event));
+            } catch (Exception e) {
+                throw new IllegalStateException(e);
+            }
+        }
         if (refusal == null) {
             run.setStatus(StandingRun.RUNNING);
         } else {
@@ -152,6 +164,8 @@ public class StandingRunner {
                 .toList();
             Instant previous = runs.findFirstBySubscriptionIdAndStatusAndStartedAtLessThanOrderByStartedAtDesc(
                 sub.getId(), StandingRun.SUCCEEDED, run.getStartedAt()).map(StandingRun::getStartedAt).orElse(null);
+            StandingRunContext.Event event = run.getEventJson() == null ? null
+                : objectMapper.readValue(run.getEventJson(), StandingRunContext.Event.class);
             String clientName = client.getName() != null && !client.getName().isBlank() ? client.getName() : client.getEmail();
 
             UsageScope scope = UsageScope.of(client.getId(), agent.agentId(), "standing", runId);
@@ -159,7 +173,7 @@ public class StandingRunner {
                 String clientContext = readOnly.execute(tx -> context.build(client, agent.agentId()));
                 return agent.run(new StandingRunContext(runId, sub.getId(), client.getId(), clientName, options,
                     clientContext, decisions, previous, Instant.now(), sub.getNextRunAt(), zone(sub),
-                    prompt -> models.generate(agent.agentId(), prompt, null), sub.getAgentMemory()));
+                    prompt -> models.generate(agent.agentId(), prompt, null), sub.getAgentMemory(), event));
             });
 
             List<StandingRunResult.Item> items = result == null || result.items() == null ? List.of() : result.items();

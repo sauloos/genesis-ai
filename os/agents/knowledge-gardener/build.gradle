@@ -1,0 +1,24 @@
+// GenesisOS Knowledge gardener — reviews each source newly ingested into Layer 1 against the Layer 1
+// reasoning modules and flags contradictions and gaps for an admin to resolve. Hooks the ingestion
+// pipeline through the runtime's IngestionEventListener SPI; off until an admin enables it.
+configurations {
+    compileOnly { extendsFrom annotationProcessor }
+}
+
+dependencies {
+    implementation project(':os:agent-sdk')
+    compileOnly project(':os:runtime')
+    compileOnly 'org.springframework.boot:spring-boot-starter-web'
+    compileOnly 'org.springframework.boot:spring-boot-starter-data-jpa'
+    compileOnly 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-web'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

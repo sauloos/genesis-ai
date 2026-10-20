@@ -22,6 +22,8 @@ import java.util.Map;
  *                      this run
  * @param memory        what this agent kept for this subscription after its last successful
  *                      run ({@link StandingRunResult#memory()}), or null on the first run
+ * @param event         what started an {@link TriggerKind#EVENT} run (a lead, an RFP), or null
+ *                      for a scheduled or manual run
  */
 public record StandingRunContext(
     String runId,
@@ -36,19 +38,42 @@ public record StandingRunContext(
     Instant nextRunAt,
     ZoneId zone,
     Model model,
-    String memory
+    String memory,
+    Event event
 ) {
+
+    /** A context without an event, for scheduled runs (and tests). */
+    public StandingRunContext(String runId, String subscriptionId, String clientUserId, String clientName,
+                              Map<String, String> options, String clientContext, List<Decision> recentDecisions,
+                              Instant previousRunAt, Instant now, Instant nextRunAt, ZoneId zone, Model model, String memory) {
+        this(runId, subscriptionId, clientUserId, clientName, options, clientContext, recentDecisions,
+            previousRunAt, now, nextRunAt, zone, model, memory, null);
+    }
 
     /** A context without memory, for agents (and tests) that keep none. */
     public StandingRunContext(String runId, String subscriptionId, String clientUserId, String clientName,
                               Map<String, String> options, String clientContext, List<Decision> recentDecisions,
                               Instant previousRunAt, Instant now, Instant nextRunAt, ZoneId zone, Model model) {
         this(runId, subscriptionId, clientUserId, clientName, options, clientContext, recentDecisions,
-            previousRunAt, now, nextRunAt, zone, model, null);
+            previousRunAt, now, nextRunAt, zone, model, null, null);
     }
 
     public String option(String key) {
         return options == null ? null : options.get(key);
+    }
+
+    /**
+     * What a client (or their own system, through a connector) sent an event-triggered agent.
+     * The runtime has already kept only the agent's declared {@link StandingAgent#eventFields()}
+     * and capped their sizes; the values are still untrusted text from outside.
+     *
+     * @param source where it came from: {@code inbox} (the client's app), {@code connector}
+     */
+    public record Event(String source, Instant receivedAt, Map<String, String> fields) {
+
+        public String field(String key) {
+            return fields == null ? null : fields.get(key);
+        }
     }
 
     /** A past inbox item and what the client did with it. */

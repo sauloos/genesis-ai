@@ -233,7 +233,7 @@ cancellations of recurring products are not tracked yet: a client who paid once 
 | 3 | Channels — **built 2026-10-19, inert until configured** | `PublishChannel` SPI, `channelConnections` widget, Meta + LinkedIn modules, token vault, scheduled publish. Submit Meta App Review / LinkedIn product access at the start of this phase. |
 | 4 | Brand guardian — **done 2026-10-19** | Site/social audits against the brand book; reads recent posts through the connected channels. Uploads not wired yet. |
 | 5 | Occasions + market watch — **done 2026-10-20** | Calendar-driven post, banner and flyer proposals; competitor briefs from pages read with the shared website reader (not the ingestion crawler). |
-| 6 | Lead-to-proposal, knowledge gardener | Event triggers (inbox/RFP), ingestion-pipeline extension. |
+| 6 | Lead-to-proposal, knowledge gardener — **done 2026-10-20** | Event triggers (leads/RFPs sent by the client), ingestion-pipeline extension (`IngestionEventListener`). |
 | 7 | Metrics loop | Pull post metrics; the content agent weights pillars/kinds by what performs. |
 
 **Phase 0 as built** (os/runtime, package `ai.genesisbrands.usage`): `MeteredChatModel` wraps
@@ -485,6 +485,60 @@ Pages and the Instagram accounts linked to them, so one connect flow adds both.
 - **Not built:** reading pages that need a browser (sites that block plain fetches answer
   403 and are listed as unreadable), watching competitors' social accounts, sitemaps or
   whole-site crawls, and occasions from a public holiday API.
+
+**Phase 6 as built.**
+- **Event triggers (SDK + runtime).** An agent whose `triggers()` include `EVENT` declares
+  `eventFields()` (the same `AgentCustomOption` shape as its settings) and an `eventLabel()`.
+  The client sends an event with `POST /api/client/standing/subscriptions/{agentId}/events`
+  (`{fields: {...}}`, 202); connectors get `POST /api/connect/standing/subscriptions/{agentId}/events`
+  and the MCP tool `standing_send_event`. The run sees it as `StandingRunContext.event()`
+  (source, received at, fields), with trigger `EVENT`. Limits: 20 events per subscription per
+  hour, 20,000 characters of text. Each event is one run and counts against runs per month and
+  the spend cap like any other. An event-only agent has no cadence and no next run, and
+  run-now answers 400.
+- **Lead to proposal** (`os/agents/lead-proposal`, core: every tenant's client gets leads;
+  adopted by both apps). Event-only.
+  - Settings: what you offer (packages and prices), who is a good fit, who is not, what to
+    draft (reply and proposal, or reply only), tone, language (default: the lead's own), sign-off.
+  - The "Add a lead" form: name, company, email or phone, came in through, what they asked for
+    (the enquiry, email thread or RFP, up to 12,000 characters), budget, deadline.
+  - One PROPOSAL item per lead: `payload.qualification` (fit strong/possible/poor, score 0–100,
+    why, watch out for, questions to ask), `payload.reply` (subject, body), and for a fit that is
+    not poor `payload.proposal` (title, sections, investment, next steps). `agentInbox` renders it
+    with copy buttons for the reply and the proposal. Nothing is ever sent to the lead.
+  - Precedent is the client's **own** last 6 proposals, kept in agent memory, plus their
+    approve/reject feedback. It does **not** use Layer 2, because Layer 2 holds other clients'
+    engagements and is not anonymised yet (see the GDPR item).
+  - The same lead sent twice (same contact and message, ignoring case and spacing) costs no
+    model call. The prompt treats the lead text as untrusted data.
+  - Cost: one Sonnet 5 call per lead, about $0.03–0.06.
+- **Knowledge gardener** (`os/agents/knowledge-gardener`, core, admin-only: it is a
+  `CoreAgent` but not a standing agent, because it serves the platform's own Layer 1, not a client).
+  - New core SPI `IngestionEventListener` (os/runtime): `IngestionExecutionService` calls every
+    such bean after an ingestion event finishes. A listener failure is logged and never fails
+    the ingestion.
+  - On a finished Layer 1 event that ingested something, the gardener reads each new source
+    from Qdrant (newest first, at most "sources per ingestion", default 10), compares it with the
+    loaded Layer 1 reasoning modules in one model call per source, and stores up to 5 findings:
+    CONTRADICTION (module excerpt vs source excerpt) or GAP (something the modules miss), each
+    with an explanation and a suggested edit. A source already reviewed is skipped.
+  - The admin page `/dashboard/gardener` (nav "Knowledge gardener") has the on switch, the
+    sources-per-ingestion setting, the findings (Open / Applied / Dismissed, with "I edited the
+    module" and Dismiss plus a note), recent Layer 1 ingestions with "Review now" (works while
+    off), and the review log. API: `/api/admin/knowledge/gardener` (admin only).
+  - It never edits a module; an admin does, then marks the finding.
+  - Metered in the usage ledger under agent `knowledge-gardener`, with no client.
+  - Cost: one Sonnet 5 call per reviewed source, about $0.03–0.08 (source cut at 12,000 characters).
+- **To turn it on:**
+  - Lead to proposal: on `/dashboard/agents` set it available for Live view, then offer it on
+    `/dashboard/standing`. Both start off.
+  - Knowledge gardener: switch it on at `/dashboard/gardener`, or `PUT
+    /api/admin/knowledge/gardener/settings` with `{"enabled": true}`. It starts off (no settings
+    row means off).
+- **Not built:** a public webhook or email address that receives leads directly (today the
+  client pastes them or a connector sends them), Layer 2 precedent for proposals (waits for
+  anonymisation), the gardener applying YAML edits itself, gardening Layer 2, and the `UPLOAD`
+  trigger.
 
 ## Open questions
 

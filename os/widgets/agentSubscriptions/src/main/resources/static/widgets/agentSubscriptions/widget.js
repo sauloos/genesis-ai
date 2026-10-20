@@ -14,8 +14,27 @@ const SAMPLE = [{
     { key: 'tone', label: 'Tone', type: 'SELECT', allowedValues: ['Concise', 'Detailed'], defaultValue: 'Concise', locked: false }
   ],
   subscription: { active: true, cadence: 'WEEKLY', dayOfWeek: 1, dayOfMonth: 1, timeOfDay: '09:00', timezone: 'Europe/London',
-    options: { focus: 'Brand health,Pending decisions', tone: 'Concise' }, nextRunAt: new Date(Date.now() + 3 * 864e5).toISOString(), runsThisMonth: 2 }
+    options: { focus: 'Brand health,Pending decisions', tone: 'Concise' }, nextRunAt: new Date(Date.now() + 3 * 864e5).toISOString(), runsThisMonth: 2 },
+  triggers: ['SCHEDULE'], eventFields: []
+}, {
+  agentId: 'lead-proposal', displayName: 'Lead to proposal', icon: null,
+  description: 'Send it a new lead or RFP and it qualifies it against what you sell and drafts your reply and proposal.',
+  cadences: [], defaultCadence: 'WEEKLY', maxRunsPerMonth: 40, triggers: ['EVENT'], eventLabel: 'Add a lead',
+  options: [
+    { key: 'offer', label: 'What you offer', type: 'TEXT', defaultValue: '', helpText: 'Your services or packages, with prices if you quote them.', locked: false },
+    { key: 'tone', label: 'Tone', type: 'SELECT', allowedValues: ['Warm', 'Formal', 'Brief'], defaultValue: 'Warm', locked: false }
+  ],
+  eventFields: [
+    { key: 'name', label: 'Name', type: 'STRING', defaultValue: '' },
+    { key: 'company', label: 'Company', type: 'STRING', defaultValue: '' },
+    { key: 'message', label: 'What they asked for', type: 'TEXT', defaultValue: '', helpText: 'Paste the enquiry, the email thread or the RFP.' }
+  ],
+  subscription: { active: true, cadence: 'WEEKLY', timezone: 'Europe/London', options: { offer: 'Brand refresh: $4,000', tone: 'Warm' }, runsThisMonth: 3 }
 }];
+
+// An agent without a schedule runs only on what the client sends it.
+const scheduled = offer => !offer.triggers || offer.triggers.includes('SCHEDULE');
+const takesEvents = offer => (offer.triggers || []).includes('EVENT') && (offer.eventFields || []).length > 0;
 
 function el(tag, cls, text) {
   const node = document.createElement(tag);
@@ -61,6 +80,7 @@ export function mount(container, widget, ctx = {}) {
   const simulate = !!ctx.simulate;
   let offers = [];
   let openId = null;
+  let eventId = null;
 
   const panel = el('div', 'asub-panel');
   panel.appendChild(el('div', 'asub-label', 'Your agents'));
@@ -93,6 +113,7 @@ export function mount(container, widget, ctx = {}) {
   function renderOffer(offer) {
     const sub = offer.subscription;
     const card = el('div', 'asub-card');
+    card.dataset.agentId = offer.agentId;
     const head = el('div', 'asub-head');
     const info = el('div', 'asub-info');
     info.appendChild(el('div', 'asub-name', offer.displayName));
@@ -103,6 +124,9 @@ export function mount(container, widget, ctx = {}) {
     } else if (!sub.active) {
       state.textContent = sub.pausedReason === 'ADMIN' ? 'Paused by your account manager' : 'Paused';
       state.classList.add('asub-state-paused');
+    } else if (!scheduled(offer)) {
+      state.textContent = `On · runs on what you send it${sub.runsThisMonth ? ` · ${sub.runsThisMonth} this month` : ''}`;
+      state.classList.add('asub-state-on');
     } else {
       state.textContent = scheduleText(sub)
         + (sub.nextRunAt ? ` · next ${nextRunText(sub)}` : '');
@@ -114,9 +138,15 @@ export function mount(container, widget, ctx = {}) {
     const actions = el('div', 'asub-actions');
     const toggle = el('button', 'asub-btn', sub ? (openId === offer.agentId ? 'Close' : 'Settings') : 'Set up');
     toggle.type = 'button';
-    toggle.addEventListener('click', () => { openId = openId === offer.agentId ? null : offer.agentId; render(); });
+    toggle.addEventListener('click', () => { openId = openId === offer.agentId ? null : offer.agentId; eventId = null; render(); });
     actions.appendChild(toggle);
-    if (sub && sub.active) {
+    if (sub && sub.active && takesEvents(offer)) {
+      const send = el('button', 'asub-btn', eventId === offer.agentId ? 'Close' : (offer.eventLabel || 'Send'));
+      send.type = 'button';
+      send.addEventListener('click', () => { eventId = eventId === offer.agentId ? null : offer.agentId; openId = null; render(); });
+      actions.appendChild(send);
+    }
+    if (sub && sub.active && scheduled(offer)) {
       const run = el('button', 'asub-btn', 'Run now');
       run.type = 'button';
       run.addEventListener('click', async () => {
@@ -135,7 +165,47 @@ export function mount(container, widget, ctx = {}) {
     head.appendChild(actions);
     card.appendChild(head);
     if (openId === offer.agentId) card.appendChild(renderForm(offer));
+    if (eventId === offer.agentId) card.appendChild(renderEventForm(offer, card));
     return card;
+  }
+
+  // Generic over the agent's declared event fields, like the settings form over its options.
+  function renderEventForm(offer, card) {
+    const form = el('form', 'asub-form');
+    const values = {};
+    const fields = el('div', 'asub-fields');
+    for (const f of offer.eventFields) {
+      values[f.key] = f.defaultValue || '';
+      fields.appendChild(optionField({ ...f, locked: false }, values[f.key], v => { values[f.key] = v; }));
+    }
+    form.appendChild(fields);
+    const status = el('div', 'asub-status');
+    const buttons = el('div', 'asub-form-actions');
+    const send = el('button', 'asub-btn asub-btn-primary', offer.eventLabel || 'Send');
+    send.type = 'submit';
+    buttons.appendChild(send);
+    form.append(buttons, status);
+    form.addEventListener('submit', async ev => {
+      ev.preventDefault();
+      // Text inputs report on change; read them all once more so a value still being typed counts.
+      form.querySelectorAll('[data-key]').forEach(input => { values[input.dataset.key] = input.value; });
+      if (!Object.values(values).some(v => String(v).trim())) { status.textContent = 'Fill in at least one field.'; return; }
+      send.disabled = true;
+      try {
+        if (!simulate) {
+          await call(`/subscriptions/${encodeURIComponent(offer.agentId)}/events`, { method: 'POST', body: JSON.stringify({ fields: values }) });
+        }
+        eventId = null;
+        render();
+        const fresh = [...list.children].find(c => c.dataset.agentId === offer.agentId) || card;
+        flash(fresh, 'Sent. The drafts will arrive in your inbox in a minute or two.');
+      } catch (err) {
+        status.textContent = err.message;
+      } finally {
+        send.disabled = false;
+      }
+    });
+    return form;
   }
 
   function renderForm(offer) {
@@ -145,7 +215,8 @@ export function mount(container, widget, ctx = {}) {
     const fields = el('div', 'asub-fields');
 
     const cadence = select(offer.cadences.map(c => [c, CADENCE[c] || c]), sub ? sub.cadence : offer.defaultCadence);
-    fields.appendChild(field('How often', cadence));
+    const cadenceField = field('How often', cadence);
+    fields.appendChild(cadenceField);
     const weekday = select(WEEKDAYS.map((d, i) => [String(i + 1), d]), String(sub ? sub.dayOfWeek : 1));
     const weekdayField = field('On', weekday);
     fields.appendChild(weekdayField);
@@ -154,11 +225,13 @@ export function mount(container, widget, ctx = {}) {
     const monthDayField = field('Day of the month', monthDay, 'Shorter months use their last day.');
     fields.appendChild(monthDayField);
     const time = el('input', 'asub-input');
-    Object.assign(time, { type: 'time', value: sub ? sub.timeOfDay : '09:00', required: true });
-    fields.appendChild(field('At', time, `Your time zone: ${sub ? sub.timezone : browserZone()}`));
+    Object.assign(time, { type: 'time', value: sub && sub.timeOfDay ? sub.timeOfDay : '09:00', required: scheduled(offer) });
+    const timeField = field('At', time, `Your time zone: ${sub ? sub.timezone : browserZone()}`);
+    fields.appendChild(timeField);
     const syncDayFields = () => {
-      weekdayField.hidden = !['WEEKLY', 'FORTNIGHTLY'].includes(cadence.value);
-      monthDayField.hidden = cadence.value !== 'MONTHLY';
+      cadenceField.hidden = timeField.hidden = !scheduled(offer);
+      weekdayField.hidden = !scheduled(offer) || !['WEEKLY', 'FORTNIGHTLY'].includes(cadence.value);
+      monthDayField.hidden = !scheduled(offer) || cadence.value !== 'MONTHLY';
     };
     cadence.addEventListener('change', syncDayFields);
     syncDayFields();
@@ -205,7 +278,7 @@ export function mount(container, widget, ctx = {}) {
     form.addEventListener('submit', ev => {
       ev.preventDefault();
       const body = {
-        cadence: cadence.value,
+        cadence: scheduled(offer) ? cadence.value : null,
         dayOfWeek: Number(weekday.value),
         dayOfMonth: Number(monthDay.value) || 1,
         timeOfDay: time.value || '09:00',
@@ -215,7 +288,7 @@ export function mount(container, widget, ctx = {}) {
       };
       act(save, async () => {
         if (!simulate) await call(`/subscriptions/${encodeURIComponent(offer.agentId)}`, { method: 'PUT', body: JSON.stringify(body) });
-        else offer.subscription = { ...(sub || {}), ...body, active: true, nextRunAt: new Date(Date.now() + 864e5).toISOString() };
+        else offer.subscription = { ...(sub || {}), ...body, cadence: body.cadence || offer.defaultCadence, active: true, nextRunAt: scheduled(offer) ? new Date(Date.now() + 864e5).toISOString() : null };
         openId = null;
       }, true, status);
     });
@@ -266,6 +339,7 @@ export function mount(container, widget, ctx = {}) {
       input.value = current;
     }
     input.disabled = option.locked;
+    if (option.key) input.dataset.key = option.key;
     input.addEventListener('change', () => set(input.value));
     return field(option.label, input, help);
   }

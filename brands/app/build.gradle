@@ -21,6 +21,8 @@ dependencies {
     implementation project(':os:agents:consultant')
     implementation project(':os:agents:client-pulse')
     implementation project(':os:agents:market-watch')
+    implementation project(':os:agents:lead-proposal')
+    implementation project(':os:agents:knowledge-gardener')
     implementation project(':os:connectors')
     implementation project(':os:standing')
     implementation project(':os:publishing')

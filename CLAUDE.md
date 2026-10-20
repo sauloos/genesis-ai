@@ -367,6 +367,15 @@ next to `CoreAgent`. `os/standing` collects every such bean, so there is no wiri
 - **Metering and connectors.** Runs are metered per run id in the usage ledger. The client's own
   subscriptions and inbox are exposed as connectors (REST `/api/connect/standing`, MCP
   `standing_*` tools via `ClientToolContributor`).
+- **Event triggers.** An `EVENT` agent declares `eventFields()` and `eventLabel()`; the client
+  sends one through `agentSubscriptions` (`POST .../subscriptions/{agentId}/events`) or the
+  connectors (`standing_send_event`), and the run reads `StandingRunContext.event()`. Lead to
+  proposal (`os/agents/lead-proposal`) is event-only. Its precedent is the client's own past
+  proposals in agent memory, never Layer 2, until Layer 2 is anonymised.
+- **Ingestion listeners.** `IngestionEventListener` (os/runtime) beans are called after each
+  ingestion event finishes. The Knowledge gardener (`os/agents/knowledge-gardener`, admin page
+  `/dashboard/gardener`, off by default) uses it to flag contradictions and gaps between new
+  Layer 1 sources and the reasoning modules. Only admins edit the modules.
 - **Reading what a client published.** An agent that reviews a client's posts asks for the core
   port `SocialPostReader` (agent SDK) optionally; `os/publishing` implements it over the
   client's connected accounts through `PublishChannel.recentPosts`. A REPORT that scores

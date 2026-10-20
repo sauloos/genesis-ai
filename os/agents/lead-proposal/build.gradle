@@ -1,0 +1,13 @@
+// GenesisOS Lead to proposal — a standing agent that runs on events, not a schedule: each lead or
+// RFP the client sends it is qualified against what they sell and answered with a draft reply and
+// proposal, waiting in their inbox. Runs through the standing runtime (os/standing).
+dependencies {
+    implementation project(':os:agent-sdk')
+    compileOnly 'org.springframework:spring-context'   // provided by the adopting app
+    compileOnly 'com.fasterxml.jackson.core:jackson-databind'
+
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+tasks.named('test') { useJUnitPlatform() }

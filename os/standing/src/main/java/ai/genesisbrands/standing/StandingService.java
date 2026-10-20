@@ -4,6 +4,8 @@ import ai.genesisbrands.platform.AgentCustomOption;
 import ai.genesisbrands.platform.CoreAgent;
 import ai.genesisbrands.platform.standing.Cadence;
 import ai.genesisbrands.platform.standing.StandingAgent;
+import ai.genesisbrands.platform.standing.StandingRunContext;
+import ai.genesisbrands.platform.standing.TriggerKind;
 import ai.genesisbrands.repository.ClientUserRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,6 +26,7 @@ import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -43,6 +46,8 @@ public class StandingService {
 
     /** A client may start a run by hand at most this often per subscription. */
     static final Duration MANUAL_RUN_SPACING = Duration.ofMinutes(10);
+    /** Events one subscription accepts per hour, so a runaway integration cannot burn the budget. */
+    static final int EVENTS_PER_HOUR = 20;
 
     private final StandingCatalog catalog;
     private final StandingSubscriptionRepository subscriptions;
@@ -73,9 +78,14 @@ public class StandingService {
     public record ClientOption(String key, String label, AgentCustomOption.OptionType type, List<String> allowedValues,
                                String defaultValue, String helpText, boolean locked) {}
 
+    /**
+     * @param triggers    what starts this agent's runs; without SCHEDULE it has no schedule and
+     *                    runs only for the events the client sends ({@code eventFields})
+     */
     public record ClientOffer(String agentId, String displayName, String description, String icon,
                               List<ClientOption> options, List<Cadence> cadences, Cadence defaultCadence,
-                              Integer maxRunsPerMonth, SubscriptionView subscription) {}
+                              Integer maxRunsPerMonth, SubscriptionView subscription,
+                              List<TriggerKind> triggers, String eventLabel, List<ClientOption> eventFields) {}
 
     public record SubscriptionView(String id, String agentId, boolean active, String pausedReason, Cadence cadence,
                                    int dayOfWeek, int dayOfMonth, String timeOfDay, String timezone,
@@ -113,8 +123,12 @@ public class StandingService {
                 meta == null ? agent.agentId() : meta.displayName(),
                 meta == null ? null : meta.description(),
                 meta == null ? null : meta.icon(),
-                options, List.copyOf(catalog.cadences(agent, offer)), catalog.defaultCadence(agent, offer),
-                offer.getMaxRunsPerMonth(), sub));
+                options, scheduled(agent) ? List.copyOf(catalog.cadences(agent, offer)) : List.of(),
+                catalog.defaultCadence(agent, offer), offer.getMaxRunsPerMonth(), sub,
+                List.copyOf(agent.supportedTriggers()), agent.eventLabel(),
+                agent.eventFields().stream()
+                    .map(o -> new ClientOption(o.key(), o.label(), o.type(), o.allowedValues(), o.defaultValue(), o.helpText(), false))
+                    .toList()));
         }
         return out;
     }
@@ -123,8 +137,8 @@ public class StandingService {
     public SubscriptionView subscribe(String clientUserId, String agentId, SubscriptionRequest req) {
         StandingAgent agent = catalog.requireOfferedTo(agentId, clientUserId);
         StandingAgentOffer offer = catalog.offer(agentId);
-        Cadence cadence = req.cadence() == null ? catalog.defaultCadence(agent, offer) : req.cadence();
-        if (!catalog.cadences(agent, offer).contains(cadence)) throw badRequest("That frequency is not available for this agent.");
+        Cadence cadence = req.cadence() == null || !scheduled(agent) ? catalog.defaultCadence(agent, offer) : req.cadence();
+        if (scheduled(agent) && !catalog.cadences(agent, offer).contains(cadence)) throw badRequest("That frequency is not available for this agent.");
         int dayOfWeek = req.dayOfWeek() == null ? 1 : req.dayOfWeek();
         int dayOfMonth = req.dayOfMonth() == null ? 1 : req.dayOfMonth();
         String timeOfDay = req.timeOfDay() == null || req.timeOfDay().isBlank() ? "09:00" : req.timeOfDay().trim();
@@ -179,7 +193,7 @@ public class StandingService {
             sub.setActive(req.active());
             sub.setPausedReason(req.active() ? null : StandingSubscription.PAUSED_BY_CLIENT);
         }
-        sub.setNextRunAt(sub.isActive() ? schedule.next(Instant.now(), null) : null);
+        sub.setNextRunAt(sub.isActive() && scheduled(agent) ? schedule.next(Instant.now(), null) : null);
         sub.setUpdatedAt(Instant.now());
         return view(subscriptions.save(sub), agent, offer);
     }
@@ -205,7 +219,7 @@ public class StandingService {
         if (!sub.isActive()) {
             sub.setActive(true);
             sub.setPausedReason(null);
-            sub.setNextRunAt(StandingScheduler.schedule(sub).next(Instant.now(), null));
+            sub.setNextRunAt(nextRun(sub));
             sub.setUpdatedAt(Instant.now());
             subscriptions.save(sub);
         }
@@ -218,7 +232,8 @@ public class StandingService {
 
     /** Runs the agent now, outside the schedule. Counts toward the monthly cap like any run. */
     public RunView runNow(String clientUserId, String agentId) {
-        catalog.requireOfferedTo(agentId, clientUserId);
+        StandingAgent agent = catalog.requireOfferedTo(agentId, clientUserId);
+        if (!scheduled(agent)) throw badRequest("This agent runs when you send it something, not on its own.");
         StandingSubscription sub = ownSubscription(clientUserId, agentId);
         if (runs.existsBySubscriptionIdAndStatus(sub.getId(), StandingRun.RUNNING)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "A run is already in progress.");
@@ -233,6 +248,39 @@ public class StandingService {
         StandingRun run = runner.start(sub, Instant.now().truncatedTo(ChronoUnit.MILLIS), StandingRun.TRIGGER_MANUAL);
         if (run == null) throw new ResponseStatusException(HttpStatus.CONFLICT, "A run is already in progress.");
         return view(run);
+    }
+
+    /**
+     * Starts a run of an event-triggered agent for one event (a lead, an RFP). Only the agent's
+     * declared event fields are kept, each checked like an option value. Counts toward the
+     * monthly cap like any run; the subscription must be active.
+     */
+    public RunView submitEvent(String clientUserId, String agentId, Map<String, String> fields, String source) {
+        StandingAgent agent = catalog.requireOfferedTo(agentId, clientUserId);
+        if (!agent.supportedTriggers().contains(TriggerKind.EVENT)) throw badRequest("This agent does not take events.");
+        StandingSubscription sub = ownSubscription(clientUserId, agentId);
+        if (!sub.isActive()) throw new ResponseStatusException(HttpStatus.CONFLICT, "This agent is paused. Resume it first.");
+        Map<String, String> kept = new LinkedHashMap<>();
+        try {
+            for (AgentCustomOption f : agent.eventFields()) {
+                String value = OptionValues.normalize(f, fields == null ? null : fields.get(f.key()), OptionValues.MAX_EVENT_TEXT);
+                if (!value.isEmpty()) kept.put(f.key(), value);
+            }
+        } catch (IllegalArgumentException e) {
+            throw badRequest(e.getMessage());
+        }
+        if (kept.isEmpty()) throw badRequest("Fill in at least one field.");
+        if (runs.countBySubscriptionIdAndTriggerAndStartedAtAfter(sub.getId(), StandingRun.TRIGGER_EVENT,
+                Instant.now().minus(Duration.ofHours(1))) >= EVENTS_PER_HOUR) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Too many in the last hour. Please try again later.");
+        }
+        String refusal = runner.refusal(sub);
+        if (refusal != null) throw new ResponseStatusException(HttpStatus.CONFLICT, refusal);
+        Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+        StandingRun run = runner.start(sub, now, StandingRun.TRIGGER_EVENT,
+            new StandingRunContext.Event(source == null ? "inbox" : source, now, kept));
+        if (run == null) throw new ResponseStatusException(HttpStatus.CONFLICT, "Please try again.");
+        return clientRunView(run);
     }
 
     public List<RunView> runsFor(String clientUserId, int limit) {
@@ -429,7 +477,7 @@ public class StandingService {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No such subscription"));
         sub.setActive(!paused);
         sub.setPausedReason(paused ? StandingSubscription.PAUSED_BY_ADMIN : null);
-        sub.setNextRunAt(paused ? null : StandingScheduler.schedule(sub).next(Instant.now(), null));
+        sub.setNextRunAt(paused ? null : nextRun(sub));
         sub.setUpdatedAt(Instant.now());
         subscriptions.save(sub);
     }
@@ -443,6 +491,17 @@ public class StandingService {
     }
 
     // ---- helpers -----------------------------------------------------------------------
+
+    /** False for an agent that only runs on events: it has no schedule. */
+    static boolean scheduled(StandingAgent agent) {
+        return agent.supportedTriggers().contains(TriggerKind.SCHEDULE);
+    }
+
+    private Instant nextRun(StandingSubscription sub) {
+        StandingAgent agent = catalog.find(sub.getAgentId()).orElse(null);
+        if (agent != null && !scheduled(agent)) return null;
+        return StandingScheduler.schedule(sub).next(Instant.now(), null);
+    }
 
     private StandingSubscription ownSubscription(String clientUserId, String agentId) {
         return subscriptions.findByClientUserIdAndAgentId(clientUserId, agentId)

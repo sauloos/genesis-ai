@@ -21,6 +21,8 @@ public interface StandingRunRepository extends JpaRepository<StandingRun, String
 
     long countBySubscriptionIdAndStatusInAndStartedAtGreaterThanEqual(String subscriptionId, Collection<String> statuses, Instant since);
 
+    long countBySubscriptionIdAndTriggerAndStartedAtAfter(String subscriptionId, String trigger, Instant after);
+
     boolean existsBySubscriptionIdAndStatus(String subscriptionId, String status);
 
     boolean existsBySubscriptionIdAndTriggerAndStatusNotAndStartedAtAfter(String subscriptionId, String trigger, String status, Instant after);

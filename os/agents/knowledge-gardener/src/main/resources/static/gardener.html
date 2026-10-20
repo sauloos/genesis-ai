@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Genesis — Knowledge gardener</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --theme-bg-image: url('/bg-earth.jpg');
+    --theme-bg-transform: rotate(180deg);
+    --theme-bg-overlay: rgba(0, 0, 10, 0.52);
+    --theme-body-bg: #000010;
+    --theme-text-primary: #f2f2f2;
+    --theme-text-muted: rgba(255, 255, 255, 0.52);
+    --theme-text-label: rgba(255, 255, 255, 0.38);
+    --theme-card-bg: rgba(255, 255, 255, 0.07);
+    --theme-card-bg-hover: rgba(255, 255, 255, 0.12);
+    --theme-card-border: rgba(255, 255, 255, 0.10);
+    --theme-backdrop: blur(12px);
+    --theme-btn-color: rgba(255, 255, 255, 0.4);
+    --theme-btn-border: rgba(255, 255, 255, 0.12);
+    --theme-btn-color-hover: rgba(255, 255, 255, 0.75);
+    --theme-btn-border-hover: rgba(255, 255, 255, 0.3);
+    --theme-env-badge-bg: rgba(0, 0, 0, 0.4);
+    --theme-env-badge-border: rgba(255, 255, 255, 0.08);
+    --gardener-accent: #6fe0a5;
+    --gardener-warn: #f5b84a;
+    --gardener-bad: #f26d6d;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    min-height: 100vh;
+    color: var(--theme-text-primary);
+    background: var(--theme-body-bg);
+    position: relative;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: var(--theme-bg-image) var(--theme-bg-position, center center) / var(--theme-bg-size, cover) no-repeat;
+    transform: var(--theme-bg-transform, none);
+    z-index: -2;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: var(--theme-bg-overlay);
+    z-index: -1;
+  }
+
+  header { display: flex; align-items: center; justify-content: space-between; padding: 24px 40px 0; }
+  .back-btn {
+    font-size: 12px; color: var(--theme-btn-color); background: none;
+    border: 1px solid var(--theme-btn-border); border-radius: 6px; padding: 5px 12px;
+    cursor: pointer; text-decoration: none; transition: color 0.15s, border-color 0.15s;
+  }
+  .back-btn:hover { color: var(--theme-btn-color-hover); border-color: var(--theme-btn-border-hover); }
+
+  .hero { text-align: center; padding: 36px 24px 28px; }
+  .hero-logo {
+    height: 52px; width: auto; aspect-ratio: 805 / 220; display: block; margin: 0 auto 20px;
+    background-color: var(--theme-text-primary, currentColor);
+    -webkit-mask-image: url(/api/themes/active/logo); mask-image: url(/api/themes/active/logo);
+    -webkit-mask-size: contain; mask-size: contain;
+    -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+    -webkit-mask-position: center; mask-position: center;
+  }
+  .hero-label { font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--theme-text-label); margin-bottom: 10px; }
+  .hero h1 { font-size: clamp(20px, 3vw, 28px); font-weight: 600; letter-spacing: -0.3px; }
+  .hero-sub { font-size: 14px; color: var(--theme-text-muted); margin-top: 8px; }
+
+  .main { max-width: 1000px; margin: 0 auto; padding: 0 24px 80px; display: flex; flex-direction: column; gap: 16px; }
+
+  .panel {
+    background: var(--theme-card-bg); border: 1px solid var(--theme-card-border); border-radius: 16px;
+    backdrop-filter: var(--theme-backdrop); -webkit-backdrop-filter: var(--theme-backdrop);
+    padding: 20px 22px;
+  }
+  .panel-title { font-size: 10px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--theme-text-label); margin-bottom: 14px; }
+  .section-title { font-size: 13px; font-weight: 600; color: var(--theme-text-muted); margin: 12px 0 0; }
+
+  .offer-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .offer-name { font-size: 16px; font-weight: 600; }
+  .offer-desc { font-size: 13px; color: var(--theme-text-muted); margin-top: 4px; max-width: 60ch; }
+  .offer-meta { font-size: 12px; color: var(--theme-text-label); margin-top: 6px; }
+  .warn { color: var(--gardener-warn); }
+
+  .switch { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+  .switch input { accent-color: var(--gardener-accent); width: 16px; height: 16px; }
+
+  .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px 18px; margin-top: 18px; }
+  .field label.cap { display: block; font-size: 11px; color: var(--theme-text-label); margin-bottom: 6px; letter-spacing: 0.02em; }
+  .field input[type=number], .field input[type=text], .field select, .field textarea {
+    width: 100%; font: inherit; font-size: 13px; color: var(--theme-text-primary);
+    background: var(--theme-env-badge-bg); border: 1px solid var(--theme-card-border); border-radius: 8px; padding: 7px 9px;
+  }
+  .field textarea { min-height: 60px; resize: vertical; }
+  .field select[multiple] { min-height: 90px; }
+  .checks { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; }
+  .checks label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+  .checks input { accent-color: var(--gardener-accent); }
+  .lock { font-size: 11px; color: var(--theme-text-label); display: inline-flex; gap: 5px; align-items: center; margin-top: 5px; cursor: pointer; }
+  .help { font-size: 11px; color: var(--theme-text-label); margin-top: 4px; }
+
+  .actions { display: flex; align-items: center; gap: 12px; margin-top: 18px; }
+  .btn {
+    font-size: 12px; color: var(--theme-text-primary); background: var(--theme-card-bg-hover);
+    border: 1px solid var(--theme-btn-border-hover); border-radius: 6px; padding: 6px 14px; cursor: pointer;
+  }
+  .btn:hover { border-color: var(--gardener-accent); }
+  .btn.small { padding: 3px 10px; font-size: 11px; background: none; color: var(--theme-btn-color); border-color: var(--theme-btn-border); }
+  .btn:focus-visible, .switch input:focus-visible { outline: 2px solid var(--gardener-accent); outline-offset: 2px; }
+  .saved { font-size: 12px; color: var(--theme-text-muted); }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; font-weight: 600; color: var(--theme-text-label); padding: 0 8px 8px 0; white-space: nowrap; }
+  td { padding: 7px 8px 7px 0; border-top: 1px solid var(--theme-card-border); color: var(--theme-text-muted); vertical-align: top; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.date { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.name { color: var(--theme-text-primary); word-break: break-word; }
+  td.nowrap { white-space: nowrap; }
+  .pill { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; padding: 2px 7px; border-radius: 10px; border: 1px solid currentColor; }
+  .pill.SUCCEEDED, .pill.active { color: var(--gardener-accent); }
+  .pill.RUNNING { color: var(--theme-text-primary); }
+  .pill.SKIPPED, .pill.paused { color: var(--gardener-warn); }
+  .pill.FAILED { color: var(--gardener-bad); }
+  .pill.PUBLISHED { color: var(--gardener-accent); }
+  .pill.QUEUED { color: var(--gardener-warn); }
+  .pill.CANCELLED { color: var(--theme-text-muted); }
+
+  .empty { text-align: center; padding: 24px; color: var(--theme-text-muted); font-size: 13px; }
+
+  #env-badge {
+    position: fixed; bottom: 20px; left: 24px; display: flex; align-items: center; gap: 7px;
+    background: var(--theme-env-badge-bg); border: 1px solid var(--theme-env-badge-border);
+    border-radius: 20px; padding: 5px 12px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  }
+
+  @media (max-width: 480px) {
+    header { padding: 20px 16px 0; }
+    .hero { padding: 28px 16px 20px; }
+    .main { padding: 0 16px 60px; }
+  }
+  .finding { display: flex; flex-direction: column; gap: 8px; }
+  .finding + .finding { border-top: 1px solid var(--theme-card-border); padding-top: 16px; margin-top: 16px; }
+  .finding-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; }
+  .finding-source { font-size: 12px; color: var(--theme-text-muted); word-break: break-word; }
+  .finding-source a { color: inherit; }
+  .quotes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+  .quote { font-size: 13px; line-height: 1.5; padding: 8px 10px; border-radius: 8px; background: var(--theme-env-badge-bg); border: 1px solid var(--theme-card-border); }
+  .quote .cap { display: block; font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase; color: var(--theme-text-label); margin-bottom: 4px; }
+  .finding p { font-size: 13px; line-height: 1.5; color: var(--theme-text-primary); max-width: 75ch; }
+  .finding p.muted { color: var(--theme-text-muted); }
+  .note { width: 100%; max-width: 420px; font: inherit; font-size: 12px; color: var(--theme-text-primary); background: var(--theme-env-badge-bg); border: 1px solid var(--theme-card-border); border-radius: 6px; padding: 5px 8px; }
+  .pill.CONTRADICTION { color: var(--gardener-bad); }
+  .pill.GAP { color: var(--gardener-warn); }
+  .pill.APPLIED, .pill.REVIEWED, .pill.SUCCESS { color: var(--gardener-accent); }
+  .pill.DISMISSED { color: var(--theme-text-muted); }
+  .pill.OPEN, .pill.PARTIAL { color: var(--gardener-warn); }
+  .pill.FAILED { color: var(--gardener-bad); }
+  .tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+  .tabs .btn[aria-pressed="true"] { border-color: var(--gardener-accent); }
+</style>
+<link rel="stylesheet" href="/api/themes/active/styles.css">
+</head>
+<body>
+
+<header>
+  <a href="/dashboard" class="back-btn">← Dashboard</a>
+</header>
+
+<div class="hero">
+  <div class="hero-logo" role="img" aria-label="Genesis"></div>
+  <div class="hero-label">Brain Engine</div>
+  <h1>Knowledge gardener</h1>
+  <p class="hero-sub">Reads each source newly ingested into Layer 1 and flags where it contradicts the reasoning modules or teaches something they miss. You edit the modules; it never does.</p>
+</div>
+
+<div class="main">
+  <section class="panel">
+    <div class="offer-head">
+      <div>
+        <div class="offer-name">Review new Layer 1 sources automatically</div>
+        <div class="offer-desc" id="summary">Loading…</div>
+      </div>
+      <label class="switch"><input type="checkbox" id="enabled"> On</label>
+    </div>
+    <div class="fields">
+      <div class="field">
+        <label class="cap" for="max-sources">Sources reviewed per ingestion</label>
+        <input type="number" min="1" max="100" id="max-sources">
+        <div class="help">A big crawl is sampled, newest first. Each source is one model call.</div>
+      </div>
+    </div>
+    <div class="actions"><button class="btn" id="save" type="button">Save</button><span class="saved" id="saved" role="status"></span></div>
+  </section>
+
+  <div class="section-title">Findings</div>
+  <section class="panel">
+    <div class="tabs" id="tabs">
+      <button class="btn small" type="button" data-status="OPEN" aria-pressed="true">Open</button>
+      <button class="btn small" type="button" data-status="APPLIED" aria-pressed="false">Applied</button>
+      <button class="btn small" type="button" data-status="DISMISSED" aria-pressed="false">Dismissed</button>
+    </div>
+    <div id="findings"><div class="empty">Loading…</div></div>
+  </section>
+
+  <div class="section-title">Recent Layer 1 ingestions</div>
+  <section class="panel"><div class="table-wrap" id="events"></div></section>
+
+  <div class="section-title">Reviews</div>
+  <section class="panel"><div class="table-wrap" id="reviews"></div></section>
+</div>
+
+<script>
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const when = t => t ? new Date(t).toLocaleString() : '—';
+const BASE = '/api/admin/knowledge/gardener';
+let tab = 'OPEN';
+
+async function api(path, init = {}) {
+  const r = await fetch(BASE + path, { credentials: 'include', headers: { 'Content-Type': 'application/json' }, ...init });
+  if (!r.ok) {
+    let msg = `HTTP ${r.status}`;
+    try { msg = (await r.json()).message || msg; } catch {}
+    throw new Error(msg);
+  }
+  return r.status === 204 ? null : r.json();
+}
+
+async function loadStatus() {
+  const s = await api('');
+  document.getElementById('enabled').checked = s.enabled;
+  document.getElementById('max-sources').value = s.maxSourcesPerEvent;
+  document.getElementById('summary').textContent =
+    `${s.modules} reasoning module${s.modules === 1 ? '' : 's'} loaded · ${s.openFindings} open finding${s.openFindings === 1 ? '' : 's'}`
+    + (s.queued ? ` · ${s.queued} review${s.queued === 1 ? '' : 's'} in progress` : '')
+    + (s.modules ? '' : ' · With no modules it can only suggest what a first module should hold.');
+  const events = document.getElementById('events');
+  events.innerHTML = s.recentEvents.length ? `<table><thead><tr><th>Started</th><th>What</th><th>Status</th><th class="num">Ingested</th><th></th></tr></thead><tbody>${
+    s.recentEvents.map(e => `<tr><td class="date">${when(e.startedAt)}</td><td class="name">${esc(e.label)}</td>
+      <td><span class="pill ${esc(e.status)}">${esc(e.status)}</span></td><td class="num">${e.itemsIngested}</td>
+      <td class="nowrap">${e.itemsIngested ? `<button class="btn small" type="button" data-event="${esc(e.id)}">Review now</button>` : ''}</td></tr>`).join('')
+  }</tbody></table>` : '<div class="empty">No Layer 1 ingestions yet. Run one from Knowledge → Ingestion.</div>';
+}
+
+async function loadFindings() {
+  const list = await api(`/findings?status=${tab}`);
+  const box = document.getElementById('findings');
+  if (!list.length) {
+    box.innerHTML = `<div class="empty">${tab === 'OPEN' ? 'Nothing to resolve. New findings appear here after a Layer 1 ingestion is reviewed.' : 'None yet.'}</div>`;
+    return;
+  }
+  box.innerHTML = list.map(f => `
+    <article class="finding" data-id="${esc(f.id)}">
+      <div class="finding-head">
+        <span class="pill ${esc(f.kind)}">${f.kind === 'GAP' ? 'Gap' : 'Contradiction'}</span>
+        <strong>${esc(f.module || 'No module covers this yet')}</strong>
+        ${f.status !== 'OPEN' ? `<span class="pill ${esc(f.status)}">${esc(f.status)}</span>` : ''}
+      </div>
+      <div class="finding-source">From ${f.sourceUrl ? `<a href="${esc(f.sourceUrl)}" target="_blank" rel="noopener">${esc(f.sourceTitle || f.sourceUrl)}</a>` : esc(f.sourceTitle || f.sourceId)} · ${when(f.createdAt)}</div>
+      <div class="quotes">
+        ${f.moduleExcerpt ? `<div class="quote"><span class="cap">Module says</span>${esc(f.moduleExcerpt)}</div>` : ''}
+        ${f.sourceExcerpt ? `<div class="quote"><span class="cap">Source says</span>${esc(f.sourceExcerpt)}</div>` : ''}
+      </div>
+      ${f.explanation ? `<p>${esc(f.explanation)}</p>` : ''}
+      ${f.suggestion ? `<p class="muted">Suggested edit: ${esc(f.suggestion)}</p>` : ''}
+      ${f.note ? `<p class="muted">Note: ${esc(f.note)}</p>` : ''}
+      <div class="actions" style="margin-top:4px">
+        ${f.status === 'OPEN' ? `
+          <input class="note" type="text" id="note-${esc(f.id)}" placeholder="Optional note, e.g. what you changed" aria-label="Note">
+          <button class="btn small" type="button" data-resolve="APPLIED">I edited the module</button>
+          <button class="btn small" type="button" data-resolve="DISMISSED">Dismiss</button>`
+        : `<button class="btn small" type="button" data-resolve="OPEN">Reopen</button>`}
+      </div>
+    </article>`).join('');
+}
+
+async function loadReviews() {
+  const list = await api('/reviews?limit=50');
+  document.getElementById('reviews').innerHTML = list.length ? `<table><thead><tr><th>When</th><th>Source</th><th>Status</th><th class="num">Findings</th><th>Summary</th></tr></thead><tbody>${
+    list.map(r => `<tr><td class="date">${when(r.reviewedAt)}</td><td class="name">${esc(r.title || r.sourceUrl || r.sourceId)}</td>
+      <td><span class="pill ${esc(r.status)}">${esc(r.status)}</span></td><td class="num">${r.findings}</td>
+      <td>${esc(r.error || r.summary || '')}</td></tr>`).join('')
+  }</tbody></table>` : '<div class="empty">No sources reviewed yet.</div>';
+}
+
+function refresh() {
+  return Promise.all([loadStatus(), loadFindings(), loadReviews()]).catch(e => {
+    document.getElementById('summary').textContent = e.message;
+  });
+}
+
+document.getElementById('save').addEventListener('click', async () => {
+  const saved = document.getElementById('saved');
+  try {
+    await api('/settings', { method: 'PUT', body: JSON.stringify({
+      enabled: document.getElementById('enabled').checked,
+      maxSourcesPerEvent: Number(document.getElementById('max-sources').value) || 10 }) });
+    saved.textContent = 'Saved';
+    loadStatus();
+  } catch (e) { saved.textContent = e.message; }
+});
+
+document.getElementById('tabs').addEventListener('click', e => {
+  const b = e.target.closest('[data-status]');
+  if (!b) return;
+  tab = b.dataset.status;
+  document.querySelectorAll('#tabs [data-status]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  loadFindings();
+});
+
+document.getElementById('findings').addEventListener('click', async e => {
+  const b = e.target.closest('[data-resolve]');
+  if (!b) return;
+  const card = b.closest('[data-id]');
+  const note = card.querySelector('.note');
+  b.disabled = true;
+  try {
+    await api(`/findings/${encodeURIComponent(card.dataset.id)}`, { method: 'PUT', body: JSON.stringify({ status: b.dataset.resolve, note: note ? note.value : null }) });
+    refresh();
+  } catch (err) { b.disabled = false; b.textContent = err.message; }
+});
+
+document.getElementById('events').addEventListener('click', async e => {
+  const b = e.target.closest('[data-event]');
+  if (!b) return;
+  b.disabled = true;
+  try {
+    await api('/review', { method: 'POST', body: JSON.stringify({ eventId: b.dataset.event }) });
+    b.textContent = 'Queued';
+    setTimeout(refresh, 4000);
+  } catch (err) { b.textContent = err.message; }
+});
+
+refresh();
+</script>
+</body>
+</html>

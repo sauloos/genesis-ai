@@ -149,3 +149,8 @@
 .ainb-rival-changed { color: var(--theme-warning); background: color-mix(in srgb, var(--theme-warning) 14%, transparent); }
 .ainb-rival-new { color: var(--theme-success); background: color-mix(in srgb, var(--theme-success) 14%, transparent); }
 .ainb-rival-quiet { color: var(--theme-text-muted); background: color-mix(in srgb, var(--theme-text-primary) 7%, transparent); }
+
+.ainb-proposal { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: 8px;
+  border: 1px solid var(--theme-border); background: var(--theme-bg-elevated); }
+.ainb-proposal-title { font-size: 15px; font-weight: 700; color: var(--theme-text-primary); }
+.ainb-proposal-heading { font-size: 12px; font-weight: 700; color: var(--theme-text-primary); margin-top: 6px; }

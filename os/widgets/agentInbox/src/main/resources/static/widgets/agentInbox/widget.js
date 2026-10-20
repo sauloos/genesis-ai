@@ -69,7 +69,21 @@ const SAMPLE = [
       sources: [
         { label: 'Rival Roasters', detail: 'https://rival.example/pricing', ok: true, result: 'changed' },
         { label: 'Bean & Co', detail: 'https://beanco.example/', ok: true, result: 'unchanged' },
-        { label: 'Oak Coffee', detail: 'https://oak.example/', ok: false, result: 'could not be read: the site answered with status 403.' }] } } }
+        { label: 'Oak Coffee', detail: 'https://oak.example/', ok: false, result: 'could not be read: the site answered with status 403.' }] } } },
+  { id: 's8', agentName: 'Lead to proposal', kind: 'PROPOSAL', status: 'PENDING', createdAt: new Date(Date.now() - 20 * 6e4).toISOString(),
+    title: 'Proposal for Acme Cafés (strong fit)', summary: 'Acme Cafés opens a second site in March and wants its brand refreshed first.',
+    body: 'Hi Jo,\n\nThanks for getting in touch.',
+    payload: {
+      lead: { name: 'Jo Park', company: 'Acme Cafés', contact: 'jo@acme.example', channel: 'Website form', budget: 'about $5k' },
+      qualification: { fit: 'strong', score: 86,
+        reasons: ['A second site is exactly who you serve.', 'The budget covers the Refresh package.'],
+        risks: ['March is tight for a full identity.'],
+        questions: ['When does the new site open?', 'Who signs off on the design?'] },
+      reply: { subject: 'Your second café', body: 'Hi Jo,\n\nThanks for getting in touch, and congratulations on the second site.\n\nAna, Northwind' },
+      proposal: { title: 'Brand refresh for Acme Cafés',
+        sections: [{ heading: 'What you need', body: 'A refreshed brand ready before the new café opens in March.' },
+          { heading: 'What we will do', body: 'Refresh the logo, palette and signage templates, then roll them out to both sites.' }],
+        investment: '$4,000 (Refresh package)', nextSteps: ['A 30-minute call this week', 'Kick-off on signature'] } } }
 ];
 
 // Publishing options for an approved post in the admin preview.
@@ -204,7 +218,9 @@ export function mount(container, widget, ctx = {}) {
     const card = !post && item.kind === 'REPORT' && item.payload && item.payload.scorecard;
     const brief = !post && item.kind === 'REPORT' && item.payload && item.payload.brief;
     const pack = item.kind === 'ASSET' && item.payload && Array.isArray(item.payload.assets) && item.payload.assets.length;
+    const lead = item.kind === 'PROPOSAL' && item.payload && item.payload.qualification && item.payload.reply;
     if (post) detail.appendChild(renderPost(item));
+    else if (lead) detail.appendChild(renderProposal(item.payload));
     else if (card) detail.appendChild(renderScorecard(card, item.body));
     else if (brief) detail.appendChild(renderBrief(brief, item.body));
     else if (pack) detail.appendChild(renderAssets(item));
@@ -316,6 +332,70 @@ export function mount(container, widget, ctx = {}) {
       wrap.appendChild(list);
     }
     return wrap;
+  }
+
+  // A qualified lead: the fit, why, then the reply and the proposal to send, each copyable.
+  function renderProposal(p) {
+    const q = p.qualification;
+    const wrap = el('div', 'ainb-card');
+    const tone = { strong: 'good', possible: 'warn', poor: 'bad' }[q.fit] || 'warn';
+    const head = el('div', 'ainb-card-head');
+    if (typeof q.score === 'number') {
+      const score = el('div', `ainb-score ainb-score-${tone}`);
+      score.append(el('span', 'ainb-score-num', String(q.score)), el('span', 'ainb-score-of', '/100'));
+      head.appendChild(score);
+    }
+    head.appendChild(el('span', `ainb-band ainb-band-${tone}`, `${q.fit || 'possible'} fit`));
+    wrap.appendChild(head);
+
+    const who = p.lead || {};
+    const facts = el('div', 'ainb-post-facts');
+    for (const v of [who.name, who.company, who.contact, who.channel, who.budget && `Budget: ${who.budget}`, who.deadline && `By ${who.deadline}`]) {
+      if (v) facts.appendChild(el('span', 'ainb-chip', v));
+    }
+    if (facts.children.length) wrap.appendChild(facts);
+    bullets(wrap, 'Why', q.reasons);
+    bullets(wrap, 'Watch out for', q.risks);
+    bullets(wrap, 'Ask them', q.questions);
+
+    wrap.appendChild(el('div', 'ainb-card-label', 'Your reply'));
+    const reply = (p.reply.subject ? `Subject: ${p.reply.subject}\n\n` : '') + p.reply.body;
+    wrap.append(el('div', 'ainb-body ainb-post-text', reply), copyButton(reply, 'Copy reply'));
+
+    const prop = p.proposal;
+    if (prop) {
+      wrap.appendChild(el('div', 'ainb-card-label', 'Proposal'));
+      const doc = el('div', 'ainb-proposal');
+      if (prop.title) doc.appendChild(el('div', 'ainb-proposal-title', prop.title));
+      (prop.sections || []).forEach(sec => {
+        doc.append(el('div', 'ainb-proposal-heading', sec.heading), el('div', 'ainb-body', sec.body));
+      });
+      if (prop.investment) doc.appendChild(labelled('Investment', prop.investment));
+      wrap.appendChild(doc);
+      bullets(wrap, 'Next steps', prop.nextSteps);
+      const text = [prop.title, ...(prop.sections || []).map(sec => `${sec.heading}\n${sec.body}`),
+        prop.investment && `Investment: ${prop.investment}`,
+        prop.nextSteps && prop.nextSteps.length && 'Next steps\n' + prop.nextSteps.map(n => `- ${n}`).join('\n')]
+        .filter(Boolean).join('\n\n');
+      wrap.appendChild(copyButton(text, 'Copy proposal'));
+    }
+    return wrap;
+  }
+
+  function copyButton(text, label) {
+    const tools = el('div', 'ainb-post-tools');
+    const b = el('button', 'ainb-btn ainb-btn-small', label);
+    b.type = 'button';
+    b.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(text);
+        b.textContent = 'Copied';
+      } catch (_) {
+        b.textContent = 'Select the text to copy';
+      }
+    });
+    tools.appendChild(b);
+    return tools;
   }
 
   function labelled(label, text) {

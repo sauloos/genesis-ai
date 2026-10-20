@@ -34,6 +34,7 @@ public class StandingRun {
 
     public static final String TRIGGER_SCHEDULE = "SCHEDULE";
     public static final String TRIGGER_MANUAL = "MANUAL";
+    public static final String TRIGGER_EVENT = "EVENT";
 
     @Id
     @Column(length = 36)
@@ -75,4 +76,8 @@ public class StandingRun {
 
     @Column(columnDefinition = "TEXT")
     private String error;
+
+    /** For an EVENT run, the {@code StandingRunContext.Event} it was started with, as JSON. */
+    @Column(name = "event_json", columnDefinition = "TEXT")
+    private String eventJson;
 }

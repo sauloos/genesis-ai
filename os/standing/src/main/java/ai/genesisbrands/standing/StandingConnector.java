@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 import static ai.genesisbrands.connector.mcp.McpTool.integer;
+import static ai.genesisbrands.connector.mcp.McpTool.object;
 import static ai.genesisbrands.connector.mcp.McpTool.schema;
 import static ai.genesisbrands.connector.mcp.McpTool.string;
 import static ai.genesisbrands.connector.mcp.McpToolsets.optionalText;
@@ -56,6 +57,14 @@ public final class StandingConnector {
         @ResponseStatus(HttpStatus.ACCEPTED)
         public StandingService.RunView runNow(@PathVariable String agentId, HttpServletRequest req) {
             return standing.runNow(client(req), agentId);
+        }
+
+        @PostMapping("/subscriptions/{agentId}/events")
+        @ResponseStatus(HttpStatus.ACCEPTED)
+        @Operation(summary = "Send an event-triggered agent one item, e.g. a lead from your CRM or an RFP from your inbox")
+        public StandingService.RunView event(@PathVariable String agentId,
+                                             @RequestBody StandingClientController.EventRequest body, HttpServletRequest req) {
+            return standing.submitEvent(client(req), agentId, body == null ? null : body.fields(), "connector");
         }
 
         @GetMapping("/inbox")
@@ -103,6 +112,13 @@ public final class StandingConnector {
                     "Run one of your standing agents now instead of waiting for its schedule. Its output arrives in your inbox.",
                     schema(Map.of("agentId", string("The agent's id, from standing_list_subscriptions")), "agentId"),
                     args -> standing.runNow(client, text(args, "agentId"))),
+                new McpTool("standing_send_event",
+                    "Send one item to a standing agent that runs on events, such as a new lead for Lead to proposal. "
+                        + "The fields it takes are its eventFields in standing_list_subscriptions. Its output arrives in your inbox.",
+                    schema(Map.of(
+                        "agentId", string("The agent's id, from standing_list_subscriptions"),
+                        "fields", object("The event's fields by key, each a string")), "agentId", "fields"),
+                    args -> standing.submitEvent(client, text(args, "agentId"), fields(args), "connector")),
                 new McpTool("standing_list_inbox",
                     "List what your standing agents delivered, newest first.",
                     schema(Map.of(
@@ -115,6 +131,14 @@ public final class StandingConnector {
                     args -> standing.decide(client, text(args, "itemId"), true, optionalText(args, "feedback"))),
                 new McpTool("standing_reject_item", "Reject an item in your inbox.", itemSchema,
                     args -> standing.decide(client, text(args, "itemId"), false, optionalText(args, "feedback"))));
+        }
+
+        private static Map<String, String> fields(com.fasterxml.jackson.databind.JsonNode args) {
+            Map<String, String> out = new java.util.LinkedHashMap<>();
+            args.path("fields").properties().forEach(e -> {
+                if (!e.getValue().isNull()) out.put(e.getKey(), e.getValue().isTextual() ? e.getValue().asText() : e.getValue().toString());
+            });
+            return out;
         }
     }
 }

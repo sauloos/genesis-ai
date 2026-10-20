@@ -4,9 +4,11 @@ import ai.genesisbrands.model.IngestionEvent;
 import ai.genesisbrands.model.IngestionEvent.Kind;
 import ai.genesisbrands.model.IngestionEvent.Status;
 import ai.genesisbrands.model.IngestionPipeline;
+import ai.genesisbrands.platform.IngestionEventListener;
 import ai.genesisbrands.repository.IngestionEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -28,6 +30,7 @@ import java.util.regex.Pattern;
 public class IngestionExecutionService {
 
     private final IngestionEventRepository eventRepository;
+    private final ObjectProvider<IngestionEventListener> listeners;
 
     @Value("${genesis.ingestion.home-dir:/app/ingestion}")
     private String ingestionHomeDir;
@@ -251,6 +254,13 @@ public class IngestionExecutionService {
         event.setFinishedAt(Instant.now());
         eventRepository.save(event);
         log().info("Ingestion {} finished: {}", event.getId(), status);
+        listeners.orderedStream().forEach(listener -> {
+            try {
+                listener.finished(event);
+            } catch (RuntimeException e) {
+                log().warn("Ingestion listener {} failed for {}: {}", listener.getClass().getSimpleName(), event.getId(), e.getMessage());
+            }
+        });
     }
 
     private org.slf4j.Logger log() { return log; }

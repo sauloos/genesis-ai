@@ -16,6 +16,8 @@ import java.util.stream.Collectors;
 final class OptionValues {
 
     static final int MAX_TEXT = 4000;
+    /** An event's long text (an RFP, an enquiry with its thread) may run longer than a setting. */
+    static final int MAX_EVENT_TEXT = 20_000;
 
     private OptionValues() {}
 
@@ -40,6 +42,10 @@ final class OptionValues {
     }
 
     static String normalize(AgentCustomOption option, String raw) {
+        return normalize(option, raw, MAX_TEXT);
+    }
+
+    static String normalize(AgentCustomOption option, String raw, int maxText) {
         String value = raw == null ? "" : raw.trim();
         if (value.isEmpty()) return "";
         List<String> allowed = option.allowedValues() == null ? List.of() : option.allowedValues();
@@ -80,7 +86,7 @@ final class OptionValues {
                 yield value;
             }
             case TEXT -> {
-                if (value.length() > MAX_TEXT) throw invalid(option, "must be " + MAX_TEXT + " characters or fewer");
+                if (value.length() > maxText) throw invalid(option, "must be " + maxText + " characters or fewer");
                 yield value;
             }
         };

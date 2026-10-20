@@ -24,6 +24,20 @@ public interface StandingAgent {
         return EnumSet.of(TriggerKind.SCHEDULE);
     }
 
+    /**
+     * What one event carries, for an agent whose {@link #supportedTriggers()} include
+     * {@link TriggerKind#EVENT}: the client fills these in (the subscription widget renders them
+     * as a form) or sends them through a connector. Values travel as strings, like options.
+     */
+    default List<AgentCustomOption> eventFields() {
+        return List.of();
+    }
+
+    /** The action that sends an event, as the client sees it, e.g. "Add a lead". */
+    default String eventLabel() {
+        return "Send";
+    }
+
     /** What the client configures. Rendered by the subscription widget and the admin page. */
     default List<AgentCustomOption> subscriptionOptions() {
         return List.of();
@@ -39,7 +53,8 @@ public interface StandingAgent {
     }
 
     /**
-     * One unattended run. Returns drafts and reports for the inbox; it must never publish,
+     * One unattended run, on a schedule, by hand, or for one {@link StandingRunContext#event()}.
+     * Returns drafts and reports for the inbox; it must never publish,
      * send or change anything outside its own result. Throwing fails the run.
      */
     StandingRunResult run(StandingRunContext context);

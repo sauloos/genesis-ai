@@ -29,6 +29,7 @@
   border: 1px solid var(--theme-btn-border); border-radius: 8px; padding: 7px 9px; }
 .asub-input:disabled { opacity: 0.6; }
 textarea.asub-input { resize: vertical; }
+.asub-field:has(textarea) { grid-column: 1 / -1; }
 .asub-help { font-size: 11px; color: var(--theme-text-muted); margin-top: 4px; }
 .asub-check { font-size: 13px; color: var(--theme-text-primary); display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
 
