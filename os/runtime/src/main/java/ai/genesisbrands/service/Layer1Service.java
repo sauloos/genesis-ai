@@ -1,6 +1,8 @@
 package ai.genesisbrands.service;
 
 import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -25,31 +27,66 @@ import java.util.regex.Pattern;
 @Service
 public class Layer1Service {
 
-    private static final Path MODULES_DIR = Paths.get("knowledge/layer1/modules");
+    static final Path MODULES_DIR = Paths.get("knowledge/layer1/modules");
+
+    /**
+     * How far above the working directory to look for the modules. A deployed container runs with
+     * the knowledge tree at the working directory and matches on the first try; Gradle's
+     * {@code bootRun} runs in the subproject that owns the app ({@code brands/app}, {@code os/app}),
+     * two levels down. Before this search, a local run silently loaded zero modules and every agent
+     * that reads Layer 1 failed with "No Layer 1 module found" — far from its cause.
+     */
+    private static final int MAX_PARENTS = 4;
 
     /** Matches a top-level (unindented) {@code context:} key in a module's YAML. */
     private static final Pattern CONTEXT_KEY = Pattern.compile("^context:\\s*([A-Za-z_]+)\\s*(?:#.*)?$");
 
+    private static final Logger log = LoggerFactory.getLogger(Layer1Service.class);
+
     private final Map<String, String> modules = new LinkedHashMap<>();
     private final Set<String> onDemandKeys = new LinkedHashSet<>();
 
+    /** Where the modules were actually found, so keys stay relative to it. */
+    private Path modulesDir;
+
     @PostConstruct
     public void load() {
-        if (!Files.exists(MODULES_DIR)) {
+        modulesDir = findModulesDir();
+        if (modulesDir == null) {
+            log.warn("No Layer 1 modules directory found at or above {} — every agent that reads a "
+                + "module will fail. Expected {}.",
+                Paths.get("").toAbsolutePath(), MODULES_DIR);
             return;
         }
-        try (var walk = Files.walk(MODULES_DIR)) {
+        try (var walk = Files.walk(modulesDir)) {
             walk.filter(p -> p.toString().endsWith(".yaml") || p.toString().endsWith(".yml"))
                 .sorted()
                 .forEach(this::loadModule);
         } catch (IOException e) {
             throw new RuntimeException("Failed to load Layer 1 modules", e);
         }
+        log.info("Loaded {} Layer 1 modules from {} ({} on demand)",
+            modules.size(), modulesDir.toAbsolutePath(), onDemandKeys.size());
+    }
+
+    /**
+     * The modules directory at the working directory, or in the nearest ancestor that has one.
+     * Returns null when no ancestor within {@value #MAX_PARENTS} levels holds the tree.
+     */
+    static Path findModulesDir() {
+        Path base = Paths.get("").toAbsolutePath();
+        for (int i = 0; i <= MAX_PARENTS && base != null; i++, base = base.getParent()) {
+            Path candidate = base.resolve(MODULES_DIR);
+            if (Files.isDirectory(candidate)) {
+                return candidate;
+            }
+        }
+        return null;
     }
 
     private void loadModule(Path path) {
         try {
-            String key = MODULES_DIR.relativize(path).toString();
+            String key = modulesDir.relativize(path).toString();
             String content = Files.readString(path);
             modules.put(key, content);
             if (isOnDemand(content)) {

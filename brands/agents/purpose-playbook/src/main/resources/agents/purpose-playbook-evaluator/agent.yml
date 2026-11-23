@@ -1,0 +1,7 @@
+# The evaluator reads a 50k-character document against a rubric whose critical dimensions all turn
+# on cross-checking prose against the raw answers. Same model as the agent it reviews — a weaker
+# reviewer accepts a plausible document, which is the one failure mode this gate exists to prevent.
+# Its own output is a verdict and feedback, so the token budget is small; the mechanical rejection
+# triggers are decided in PurposePlaybookGuard before this agent is called at all.
+model: claude-opus-5
+max-tokens: 4000

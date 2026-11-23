@@ -1,0 +1,45 @@
+// Genesis Brands Purpose Playbook agent — the one document per engagement that every other
+// deliverable is briefed from. It reads a completed discovery questionnaire (answers keyed by
+// Layer 1 signal key, never by question id) and writes the discovery half, the strategy half
+// and the look-and-feel territory the specialist agents act on.
+//
+// It is upstream of everything, which is why it is the only brand agent that reads the look kit
+// directly (a client's taps are slugs; the kit resolves them into forms, hexes and roles) and
+// the only one that reads public pages first-hand through the SSRF-guarded WebsiteReader — the
+// reference playbooks comment on a competitor's actual site, and the rubric rejects a critique
+// written from the name alone.
+//
+// No live view yet: the Live Dashboard surface exists to regenerate an engagement's existing
+// document, and nothing stores a purpose playbook against an engagement until the orchestrator
+// is rewired (see docs — Phase 6). hasLiveView() stays false until then rather than shipping a
+// view against endpoints that do not exist.
+configurations {
+    compileOnly { extendsFrom annotationProcessor }
+}
+
+dependencies {
+    implementation project(':os:agent-sdk')
+    implementation project(':brands:look-kit')
+    implementation project(':os:web')
+    compileOnly project(':os:runtime')
+    compileOnly project(':shared-domain')
+    compileOnly 'org.springframework.boot:spring-boot-starter-web'
+    compileOnly 'org.springframework.boot:spring-boot-starter-data-jpa'
+    compileOnly 'org.springframework.ai:spring-ai-starter-model-anthropic'
+    compileOnly 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    testImplementation project(':brands:look-kit')
+    // The guard reads its required-section list out of a Layer 1 module, so the test subclasses
+    // Layer1Service to serve the real module text — compileOnly does not reach the test classpath.
+    testImplementation project(':os:runtime')
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.assertj:assertj-core'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
