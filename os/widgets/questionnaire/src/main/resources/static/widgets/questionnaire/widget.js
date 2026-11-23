@@ -187,6 +187,15 @@ export async function mount(container, widget, ctx) {
     input.oninput = () => { valueEl.textContent = describe(Number(input.value)); };
     wrap.appendChild(input);
 
+    // "Warm … cool" means nothing as two words. Where the scale IS a spectrum, the config
+    // carries the spectrum's colours and the band shows it — inline, because a theme cannot
+    // know a client's artwork and widget CSS may hold no colour of its own.
+    if (Array.isArray(config.trackColors) && config.trackColors.length > 1) {
+      const band = el('div', 'q-embed-slider-band');
+      band.style.background = 'linear-gradient(90deg, ' + config.trackColors.join(', ') + ')';
+      wrap.appendChild(band);
+    }
+
     const ends = el('div', 'q-embed-slider-labels');
     ends.append(el('span', null, config.minLabel || describe(min)),
       el('span', null, config.maxLabel || describe(max)));
@@ -227,6 +236,18 @@ export async function mount(container, widget, ctx) {
     refs[q.id].chosen = chosen;
   };
 
+  /**
+   * Fill {signal.key} placeholders from what the client has already said. Shared by the
+   * synthesis, which shows a whole paragraph back, and by a type specimen, which sets the
+   * client's own sentence so they judge their words rather than a typographer's pangram.
+   */
+  const fillTemplate = (text, missing) =>
+    (text || '').replace(/\{([^{}]+)\}/g, (whole, signalKey) => {
+      const value = signalValue(signalKey.trim());
+      if (isEmpty(value)) return missing;
+      return Array.isArray(value) ? value.join(', ') : String(value);
+    });
+
   /** Options may be plain strings or objects; everything downstream wants the object form. */
   function normaliseOption(opt) {
     if (typeof opt === 'string') return { value: opt, label: opt };
@@ -238,6 +259,7 @@ export async function mount(container, widget, ctx) {
       colors: opt.colors,
       fontFamily: opt.fontFamily,
       sampleText: opt.sampleText,
+      fallbackText: opt.fallbackText,
       note: opt.note
     };
   }
@@ -455,7 +477,8 @@ export async function mount(container, widget, ctx) {
       return strip;
     }
     if (type === 'TYPE_SPECIMEN') {
-      const specimen = el('span', 'q-embed-specimen', opt.sampleText || 'Handgloves');
+      const text = fillTemplate(opt.sampleText, opt.fallbackText || 'Handgloves');
+      const specimen = el('span', 'q-embed-specimen', text.trim() || 'Handgloves');
       if (opt.fontFamily) specimen.style.fontFamily = opt.fontFamily;
       return specimen;
     }
@@ -582,11 +605,7 @@ export async function mount(container, widget, ctx) {
    */
   const renderSynthesis = (body, q) => {
     const config = parseConfig(q);
-    const filled = (config.template || '').replace(/\{([^{}]+)\}/g, (whole, signalKey) => {
-      const value = signalValue(signalKey.trim());
-      if (isEmpty(value)) return '…';
-      return Array.isArray(value) ? value.join(', ') : String(value);
-    });
+    const filled = fillTemplate(config.template, '…');
 
     const existing = state.answers[q.id];
     const field = document.createElement('textarea');

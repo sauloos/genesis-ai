@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" width="320" height="220"
+     role="img" aria-label="Three panels of flat, even colour with hard edges">
+  <!-- Pair: surface. Same three panels as surface-graded.svg — flat ink here, graded and
+       grained there. Colour and geometry are held constant. -->
+  <rect width="320" height="220" fill="#F2F1ED"/>
+  <rect x="24" y="28" width="128" height="164" fill="#55697A"/>
+  <rect x="164" y="28" width="132" height="78" fill="#191B1F"/>
+  <rect x="164" y="114" width="132" height="78" fill="#9A9EA4"/>
+</svg>

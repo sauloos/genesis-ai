@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" width="320" height="220"
+     role="img" aria-label="An abstract mark built from a ring, a filled quadrant and a square">
+  <!-- Pair: mark. Compass-and-ruler construction — one radius, one filled quadrant, one
+       square on the same centre. Its opposite number is drawn freehand. -->
+  <rect width="320" height="220" fill="#F2F1ED"/>
+  <g transform="translate(160 110)">
+    <circle r="56" fill="none" stroke="#191B1F" stroke-width="8"/>
+    <path d="M0 -56 A56 56 0 0 1 56 0 L0 0 Z" fill="#55697A"/>
+    <rect x="-56" y="0" width="28" height="28" fill="#191B1F"/>
+  </g>
+</svg>

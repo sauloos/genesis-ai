@@ -54,6 +54,9 @@
 /* Sliders */
 .widget-questionnaire .q-embed-slider-wrap { padding: 12px 4px 0; }
 .widget-questionnaire .q-embed-slider-wrap input[type="range"] { width: 100%; accent-color: var(--theme-text-primary); }
+/* The spectrum under a slider whose config supplies trackColors; the gradient itself is set
+   inline from that data, so no colour is declared here. */
+.widget-questionnaire .q-embed-slider-band { height: 8px; border-radius: 4px; margin-top: 4px; }
 .widget-questionnaire .q-embed-slider-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--theme-text-muted); margin-top: 6px; }
 .widget-questionnaire .q-embed-slider-value { text-align: center; font-size: 18px; font-weight: 700; margin-top: 10px; color: var(--theme-text-primary); }
 

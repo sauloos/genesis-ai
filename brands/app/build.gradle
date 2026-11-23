@@ -53,6 +53,7 @@ dependencies {
     implementation project(':brands:agents:content')
     implementation project(':brands:agents:brand-guardian')
     implementation project(':brands:agents:occasions')
+    implementation project(':brands:look-kit')
 
     // Spring Boot starters used directly in brands:app code
     // (os:runtime's implementation deps are not transitively visible)

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" width="320" height="220"
+     role="img" aria-label="A loose editorial page: a two-line headline, one tall image block and a narrow text column with open space">
+  <rect width="320" height="220" fill="#F2F1ED"/>
+  <rect x="24" y="26" width="152" height="15" fill="#191B1F"/>
+  <rect x="24" y="48" width="104" height="15" fill="#191B1F"/>
+  <rect x="202" y="26" width="94" height="124" fill="#55697A"/>
+  <g fill="#9A9EA4">
+    <rect x="24" y="90" width="148" height="5"/>
+    <rect x="24" y="103" width="148" height="5"/>
+    <rect x="24" y="116" width="148" height="5"/>
+    <rect x="24" y="129" width="112" height="5"/>
+    <rect x="202" y="164" width="52" height="5"/>
+  </g>
+  <rect x="24" y="186" width="30" height="2" fill="#191B1F"/>
+</svg>

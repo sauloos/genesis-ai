@@ -647,6 +647,12 @@ sections:
           - light ground vs dark ground
           - muted palette vs saturated palette
           - symmetrical vs asymmetric composition
+        concrete_keys: >
+          Captured as eight questions, one per axis, keyed look.pairs.<axis>:
+          wordmark, mark, surface, imagery, layout, ground, intensity, composition. The tiles,
+          their labels and their design terms live in the look-and-feel asset kit
+          (brands/look-kit/.../catalogue.json); what each choice means is in
+          directions/look-and-feel-kit.yaml.
         derivation_note: >
           Tiles must be abstract, originated specimens — never screenshots of real brands. The
           pair is a forced choice with no neutral option, because the signal lives in the

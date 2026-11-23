@@ -432,9 +432,9 @@ const TYPES = [
 const TILE_TYPES = ['ICON_GRID', 'IMAGE_CHOICE', 'PALETTE_CHOICE', 'TYPE_SPECIMEN'];
 const TILE_HINTS = {
   ICON_GRID:      '[{"value":"craft","label":"Craft","icon":"🛠","note":"optional"}]',
-  IMAGE_CHOICE:   '[{"value":"warm-editorial","label":"Warm editorial","imageUrl":"/api/assets/looks/warm.jpg"}]',
+  IMAGE_CHOICE:   '[{"value":"wordmark-serif","label":"This one","imageUrl":"/look-kit/pairs/wordmark-serif.svg"}]',
   PALETTE_CHOICE: '[{"value":"earthy","label":"Earthy","colors":["#6B5B4A","#C9BBA4","#2F3A2F"]}]',
-  TYPE_SPECIMEN:  '[{"value":"grotesque","label":"Neo-grotesque","fontFamily":"Helvetica, Arial, sans-serif","sampleText":"Handgloves"}]'
+  TYPE_SPECIMEN:  '[{"value":"grotesque","label":"Neo-grotesque","fontFamily":"Helvetica, Arial, sans-serif","sampleText":"{setup.oneLiner}","fallbackText":"Handgloves"}]'
 };
 
 let currentId = null;
@@ -783,6 +783,13 @@ function renderFormFields(q) {
         <input type="text" id="f-labels" value="${esc((config.labels || []).join(', '))}"
           placeholder="Classic, …, Modern">
         <div class="hint-text">Given these, the client sees the word under the handle rather than a number.</div>
+      </div>
+      <div class="form-field">
+        <label>Spectrum colours (optional, comma-separated)</label>
+        <input type="text" id="f-trackcolors" value="${esc((config.trackColors || []).join(', '))}"
+          placeholder="#B55B33, #55697A">
+        <div class="hint-text">Where the scale is a spectrum — warm to cool — these draw it as a
+          band under the handle. Two or more CSS colours.</div>
       </div>`;
   } else if (formType === 'SINGLE_SELECT' || formType === 'MULTI_SELECT') {
     const options = config.options && config.options.length ? config.options : ['', ''];
@@ -827,6 +834,8 @@ function renderFormFields(q) {
         <div class="hint-text">Each tile needs <code>value</code> and <code>label</code>; then
           ${formType === 'PALETTE_CHOICE' ? '<code>colors</code> (array of CSS colours)'
             : formType === 'TYPE_SPECIMEN' ? '<code>fontFamily</code> and <code>sampleText</code>'
+              + ' (which may hold a <code>{signal.key}</code> so the client reads their own'
+              + ' sentence, with <code>fallbackText</code> for when that signal is still empty)'
             : formType === 'IMAGE_CHOICE' ? '<code>imageUrl</code>' : '<code>icon</code>'},
           and an optional <code>note</code>.</div>
       </div>
@@ -967,6 +976,8 @@ async function saveQuestion() {
     };
     const labels = val('f-labels').split(',').map(s => s.trim()).filter(Boolean);
     if (labels.length) config.labels = labels;
+    const track = val('f-trackcolors').split(',').map(s => s.trim()).filter(Boolean);
+    if (track.length > 1) config.trackColors = track;
   } else if (formType === 'SINGLE_SELECT' || formType === 'MULTI_SELECT') {
     config = { options: [...document.querySelectorAll('#options-list input')]
       .map(i => i.value.trim()).filter(Boolean) };

@@ -1,0 +1,209 @@
+{
+  "version": 1,
+  "about": [
+    "The Genesis Brands look-and-feel asset kit. Three catalogues — eight forced-choice pairs,",
+    "nine palettes and four type specimens — behind the taste questions of the Purpose Playbook",
+    "discovery questionnaire (knowledge/layer1/modules/intake/purpose-playbook-signals.yaml,",
+    "Act 5).",
+    "",
+    "Everything here is presentation and fact: what the client sees, and the hexes and faces an",
+    "agent needs to actually produce a palette or set a word. What a choice MEANS is reasoning",
+    "and lives in knowledge/layer1/modules/directions/look-and-feel-kit.yaml, keyed by the same",
+    "values. Nothing here is a screenshot or a real brand: every specimen is originated.",
+    "",
+    "Tile labels never name a design attribute ('serif', 'asymmetric'). A client who is told",
+    "what they are looking at answers with the word, not the taste. The design term is carried",
+    "separately in each option's `form`, for the agents and the designer."
+  ],
+
+  "pairs": [
+    {
+      "axis": "wordmark",
+      "signalKey": "look.pairs.wordmark",
+      "a": {
+        "value": "wordmark-serif", "label": "Has some history to it",
+        "form": "serif wordmark", "imageUrl": "/look-kit/pairs/wordmark-serif.svg"
+      },
+      "b": {
+        "value": "wordmark-sans", "label": "Plain and current",
+        "form": "sans wordmark", "imageUrl": "/look-kit/pairs/wordmark-sans.svg"
+      }
+    },
+    {
+      "axis": "mark",
+      "signalKey": "look.pairs.mark",
+      "a": {
+        "value": "mark-geometric", "label": "Precise",
+        "form": "geometric mark", "imageUrl": "/look-kit/pairs/mark-geometric.svg"
+      },
+      "b": {
+        "value": "mark-organic", "label": "Hand-made",
+        "form": "organic mark", "imageUrl": "/look-kit/pairs/mark-organic.svg"
+      }
+    },
+    {
+      "axis": "surface",
+      "signalKey": "look.pairs.surface",
+      "a": {
+        "value": "surface-flat", "label": "Clean and even",
+        "form": "flat colour", "imageUrl": "/look-kit/pairs/surface-flat.svg"
+      },
+      "b": {
+        "value": "surface-graded", "label": "Has depth and texture",
+        "form": "gradient and texture", "imageUrl": "/look-kit/pairs/surface-graded.svg"
+      }
+    },
+    {
+      "axis": "imagery",
+      "signalKey": "look.pairs.imagery",
+      "a": {
+        "value": "imagery-photographic", "label": "Real places and people",
+        "form": "photography-led", "imageUrl": "/look-kit/pairs/imagery-photographic.svg"
+      },
+      "b": {
+        "value": "imagery-illustrated", "label": "Drawn",
+        "form": "illustration-led", "imageUrl": "/look-kit/pairs/imagery-illustrated.svg"
+      }
+    },
+    {
+      "axis": "layout",
+      "signalKey": "look.pairs.layout",
+      "a": {
+        "value": "layout-grid", "label": "Ordered",
+        "form": "tight grid", "imageUrl": "/look-kit/pairs/layout-grid.svg"
+      },
+      "b": {
+        "value": "layout-editorial", "label": "Magazine-like",
+        "form": "loose editorial", "imageUrl": "/look-kit/pairs/layout-editorial.svg"
+      }
+    },
+    {
+      "axis": "ground",
+      "signalKey": "look.pairs.ground",
+      "a": {
+        "value": "ground-light", "label": "Light and open",
+        "form": "light ground", "imageUrl": "/look-kit/pairs/ground-light.svg"
+      },
+      "b": {
+        "value": "ground-dark", "label": "Dark and quiet",
+        "form": "dark ground", "imageUrl": "/look-kit/pairs/ground-dark.svg"
+      }
+    },
+    {
+      "axis": "intensity",
+      "signalKey": "look.pairs.intensity",
+      "a": {
+        "value": "intensity-muted", "label": "Softened",
+        "form": "muted palette", "imageUrl": "/look-kit/pairs/intensity-muted.svg"
+      },
+      "b": {
+        "value": "intensity-saturated", "label": "Loud",
+        "form": "saturated palette", "imageUrl": "/look-kit/pairs/intensity-saturated.svg"
+      }
+    },
+    {
+      "axis": "composition",
+      "signalKey": "look.pairs.composition",
+      "a": {
+        "value": "composition-symmetrical", "label": "Balanced",
+        "form": "symmetrical composition", "imageUrl": "/look-kit/pairs/composition-symmetrical.svg"
+      },
+      "b": {
+        "value": "composition-asymmetric", "label": "Deliberately off-centre",
+        "form": "asymmetric composition", "imageUrl": "/look-kit/pairs/composition-asymmetric.svg"
+      }
+    }
+  ],
+
+  "palettes": [
+    {
+      "value": "warm-earth", "label": "Warm earth", "note": "Clay, sand and rust",
+      "colors": ["#F6EFE6", "#E3C9A8", "#B55B33", "#7A4726", "#2E2622"],
+      "roles": { "ground": "#F6EFE6", "support": "#E3C9A8", "primary": "#B55B33",
+                 "secondary": "#7A4726", "ink": "#2E2622" }
+    },
+    {
+      "value": "deep-forest", "label": "Deep forest", "note": "Moss, pine and bark",
+      "colors": ["#F1F0E6", "#C3CFA8", "#5B7A4B", "#2C4433", "#1E241F"],
+      "roles": { "ground": "#F1F0E6", "support": "#C3CFA8", "primary": "#5B7A4B",
+                 "secondary": "#2C4433", "ink": "#1E241F" }
+    },
+    {
+      "value": "ink-and-paper", "label": "Ink and paper", "note": "Near-black, warm white, one grey",
+      "colors": ["#FBF9F4", "#DEDAD0", "#9A958B", "#3A3A38", "#121212"],
+      "roles": { "ground": "#FBF9F4", "support": "#DEDAD0", "primary": "#121212",
+                 "secondary": "#3A3A38", "ink": "#121212" }
+    },
+    {
+      "value": "coastal", "label": "Coastal", "note": "Sea glass, slate and driftwood",
+      "colors": ["#F2F5F4", "#BFD8D4", "#6C9A9B", "#3C5A68", "#223039"],
+      "roles": { "ground": "#F2F5F4", "support": "#BFD8D4", "primary": "#6C9A9B",
+                 "secondary": "#3C5A68", "ink": "#223039" }
+    },
+    {
+      "value": "heritage", "label": "Heritage", "note": "Oxblood, brass and navy",
+      "colors": ["#F4EFE4", "#C9A14A", "#7E1F2B", "#1F2A44", "#171A22"],
+      "roles": { "ground": "#F4EFE4", "support": "#C9A14A", "primary": "#7E1F2B",
+                 "secondary": "#1F2A44", "ink": "#171A22" }
+    },
+    {
+      "value": "signal", "label": "One loud note", "note": "Black and white, and one colour that shouts",
+      "colors": ["#FFFFFF", "#E8E8E8", "#9B9B9B", "#FF3B14", "#0A0A0A"],
+      "roles": { "ground": "#FFFFFF", "support": "#E8E8E8", "primary": "#FF3B14",
+                 "secondary": "#9B9B9B", "ink": "#0A0A0A" }
+    },
+    {
+      "value": "soft-bloom", "label": "Soft bloom", "note": "Blush, apricot and cream",
+      "colors": ["#FDF6F0", "#F7D9C4", "#E9A28C", "#C4647A", "#3B2B2E"],
+      "roles": { "ground": "#FDF6F0", "support": "#F7D9C4", "primary": "#E9A28C",
+                 "secondary": "#C4647A", "ink": "#3B2B2E" }
+    },
+    {
+      "value": "nordic", "label": "Nordic", "note": "Birch, pale grey and cold blue",
+      "colors": ["#FAFAF8", "#E4E6E2", "#AEBAC4", "#5C7792", "#232A31"],
+      "roles": { "ground": "#FAFAF8", "support": "#E4E6E2", "primary": "#5C7792",
+                 "secondary": "#AEBAC4", "ink": "#232A31" }
+    },
+    {
+      "value": "night-electric", "label": "Night electric", "note": "Deep indigo with an electric edge",
+      "colors": ["#15173A", "#272B63", "#5B61C9", "#38F5C8", "#EDEFFA"],
+      "roles": { "ground": "#15173A", "support": "#272B63", "primary": "#5B61C9",
+                 "secondary": "#38F5C8", "ink": "#EDEFFA" }
+    }
+  ],
+
+  "spectra": {
+    "look.slider.temperature": ["#B55B33", "#E3C9A8", "#F2F1ED", "#AEBAC4", "#3C5A68"]
+  },
+
+  "typeSpecimens": [
+    {
+      "value": "editorial-serif", "label": "Considered, with some history behind it",
+      "form": "editorial serif",
+      "fontFamily": "Georgia, 'Iowan Old Style', 'Times New Roman', serif",
+      "sampleText": "{setup.oneLiner}",
+      "fallbackText": "We make the thing people come back for."
+    },
+    {
+      "value": "neutral-grotesk", "label": "Plain-spoken and current",
+      "form": "neo-grotesque sans",
+      "fontFamily": "'Helvetica Neue', Helvetica, Arial, sans-serif",
+      "sampleText": "{setup.oneLiner}",
+      "fallbackText": "We make the thing people come back for."
+    },
+    {
+      "value": "geometric-sans", "label": "Open and friendly",
+      "form": "geometric sans",
+      "fontFamily": "Futura, 'Century Gothic', Avenir, 'Trebuchet MS', sans-serif",
+      "sampleText": "{setup.oneLiner}",
+      "fallbackText": "We make the thing people come back for."
+    },
+    {
+      "value": "technical-mono", "label": "Exact, with no flourish",
+      "form": "monospace",
+      "fontFamily": "ui-monospace, SFMono-Regular, Menlo, 'Courier New', monospace",
+      "sampleText": "{setup.oneLiner}",
+      "fallbackText": "We make the thing people come back for."
+    }
+  ]
+}

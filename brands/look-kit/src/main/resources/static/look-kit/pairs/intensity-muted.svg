@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" width="320" height="220"
+     role="img" aria-label="Four blocks and a ring in low-chroma, dusty colour">
+  <!-- Pair: intensity. Four hues held constant (teal, red, yellow, blue) and only their chroma
+       changed, so the client is choosing loudness rather than hue — hue is the palette
+       question's job, and these hues sit outside the nine palettes on purpose. -->
+  <rect width="320" height="220" fill="#F2F1ED"/>
+  <rect x="24" y="26" width="132" height="80" fill="#6E8F8C"/>
+  <rect x="164" y="26" width="132" height="80" fill="#B58679"/>
+  <rect x="24" y="114" width="132" height="80" fill="#C9B382"/>
+  <rect x="164" y="114" width="132" height="80" fill="#6B7190"/>
+  <circle cx="160" cy="110" r="30" fill="#F2F1ED"/>
+  <circle cx="160" cy="110" r="30" fill="none" stroke="#8A8F86" stroke-width="4"/>
+</svg>

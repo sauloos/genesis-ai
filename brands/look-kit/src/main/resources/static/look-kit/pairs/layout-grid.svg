@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" width="320" height="220"
+     role="img" aria-label="A page laid out on a tight three-column modular grid with even gutters">
+  <!-- Pair: layout. Same ink, same number of elements as layout-editorial.svg; only the
+       system changes — nine equal cells on one grid, every gutter the same. -->
+  <rect width="320" height="220" fill="#F2F1ED"/>
+  <g fill="#191B1F">
+    <rect x="24" y="30" width="84" height="44"/>
+    <rect x="212" y="84" width="84" height="44"/>
+    <rect x="118" y="138" width="84" height="44"/>
+  </g>
+  <g fill="#55697A">
+    <rect x="118" y="30" width="84" height="44"/>
+    <rect x="24" y="84" width="84" height="44"/>
+    <rect x="212" y="138" width="84" height="44"/>
+  </g>
+  <g fill="#9A9EA4">
+    <rect x="212" y="30" width="84" height="44"/>
+    <rect x="118" y="84" width="84" height="44"/>
+    <rect x="24" y="138" width="84" height="44"/>
+    <rect x="24" y="192" width="84" height="6"/>
+    <rect x="118" y="192" width="84" height="6"/>
+    <rect x="212" y="192" width="84" height="6"/>
+  </g>
+</svg>

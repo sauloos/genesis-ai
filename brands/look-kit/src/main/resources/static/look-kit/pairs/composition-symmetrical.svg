@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" width="320" height="220"
+     role="img" aria-label="A ring, two bars and a block arranged symmetrically about the centre line">
+  <!-- Pair: composition. The same four elements at the same sizes as
+       composition-asymmetric.svg — only where they sit changes. -->
+  <rect width="320" height="220" fill="#F2F1ED"/>
+  <circle cx="160" cy="78" r="36" fill="none" stroke="#191B1F" stroke-width="9"/>
+  <rect x="36" y="73" width="70" height="10" fill="#9A9EA4"/>
+  <rect x="214" y="73" width="70" height="10" fill="#9A9EA4"/>
+  <rect x="100" y="152" width="120" height="40" fill="#55697A"/>
+</svg>

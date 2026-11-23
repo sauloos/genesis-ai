@@ -13,14 +13,14 @@ import java.util.TreeMap;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Extend, don't copy: no module may ship a static agent-view or widget file at a path another
- * module already ships — a same-path file silently replaces the other one (whichever jar wins
- * the classpath). Change another module's view with an extension instead.
+ * Extend, don't copy: no module may ship a static agent-view, widget or look-kit file at a path
+ * another module already ships — a same-path file silently replaces the other one (whichever jar
+ * wins the classpath). Change another module's view with an extension instead.
  */
 class ModuleStaticPathsTest {
 
     @ParameterizedTest
-    @ValueSource(strings = {"static/agent-views/", "static/widgets/"})
+    @ValueSource(strings = {"static/agent-views/", "static/widgets/", "static/look-kit/"})
     void noStaticFileIsShippedByTwoModules(String root) throws Exception {
         Resource[] files = new PathMatchingResourcePatternResolver()
             .getResources("classpath*:" + root + "**/*.*");

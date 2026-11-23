@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" width="320" height="220"
+     role="img" aria-label="The same four blocks and ring at full chroma">
+  <rect width="320" height="220" fill="#F2F1ED"/>
+  <rect x="24" y="26" width="132" height="80" fill="#00968F"/>
+  <rect x="164" y="26" width="132" height="80" fill="#E8371C"/>
+  <rect x="24" y="114" width="132" height="80" fill="#F5B500"/>
+  <rect x="164" y="114" width="132" height="80" fill="#2B33D8"/>
+  <circle cx="160" cy="110" r="30" fill="#F2F1ED"/>
+  <circle cx="160" cy="110" r="30" fill="none" stroke="#191B1F" stroke-width="4"/>
+</svg>

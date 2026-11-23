@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" width="320" height="220"
+     role="img" aria-label="The same ring, two bars and block set off centre, with one large open area">
+  <rect width="320" height="220" fill="#F2F1ED"/>
+  <circle cx="92" cy="68" r="36" fill="none" stroke="#191B1F" stroke-width="9"/>
+  <rect x="188" y="118" width="70" height="10" fill="#9A9EA4"/>
+  <rect x="188" y="138" width="70" height="10" fill="#9A9EA4"/>
+  <rect x="24" y="160" width="120" height="40" fill="#55697A"/>
+</svg>

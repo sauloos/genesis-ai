@@ -41,6 +41,9 @@ if (osChannelsDir.exists()) {
 
 // Genesis Brands aggregator — the tenant app plus one module per Genesis Brands agent.
 include 'brands:app'
+// The look-and-feel asset kit: originated specimens + the palette/type catalogue behind the
+// discovery questionnaire's taste questions, shared by the seed script and the brand agents.
+include 'brands:look-kit'
 
 def brandsAgentsDir = new File(settingsDir, 'brands/agents')
 if (brandsAgentsDir.exists()) {

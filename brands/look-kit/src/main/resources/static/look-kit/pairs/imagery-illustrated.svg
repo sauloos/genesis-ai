@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" width="320" height="220"
+     role="img" aria-label="The same scene as crisp flat vector shapes: banded sky, hard-edged sun and two ridges">
+  <rect width="320" height="220" fill="#CFC7B9"/>
+  <rect width="320" height="92" fill="#28343F"/>
+  <rect y="92" width="320" height="34" fill="#55697A"/>
+  <circle cx="212" cy="92" r="30" fill="#F2E7D4"/>
+  <path d="M0 148 L82 126 L168 150 L250 124 L320 146 L320 220 L0 220 Z" fill="#1B232B"/>
+  <path d="M0 184 L96 166 L198 188 L268 172 L320 182 L320 220 L0 220 Z" fill="#0E1318"/>
+</svg>

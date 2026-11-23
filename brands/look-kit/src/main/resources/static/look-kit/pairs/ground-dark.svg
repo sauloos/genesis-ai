@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" width="320" height="220"
+     role="img" aria-label="The same ring mark and lettering bars in pale ink on a near-black ground">
+  <rect width="320" height="220" fill="#15171A"/>
+  <circle cx="70" cy="74" r="30" fill="none" stroke="#F2F1ED" stroke-width="9"/>
+  <rect x="124" y="56" width="140" height="13" fill="#F2F1ED"/>
+  <rect x="124" y="80" width="96" height="13" fill="#6E747C"/>
+  <rect x="40" y="142" width="240" height="46" fill="#8FA6B8"/>
+</svg>

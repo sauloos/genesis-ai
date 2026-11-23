@@ -1,0 +1,25 @@
+// Genesis Brands look-and-feel asset kit — the originated specimens, palettes and type
+// specimens the discovery questionnaire points a client at, plus the catalogue that resolves a
+// stored answer ("warm-earth") back into the facts an agent needs (its five hexes, its roles).
+//
+// It is a plain data module on purpose: the questionnaire widget stays generic (it renders
+// whatever imageUrl/colors arrive in configJson), the seed script reads the catalogue to author
+// the questions, and the purpose-playbook, visual-identity and logo agents read it to turn a
+// client's taps into a brief. What each choice *means* is reasoning, so it lives in Layer 1
+// (knowledge/layer1/modules/directions/look-and-feel-kit.yaml), never here.
+dependencies {
+    compileOnly 'org.springframework:spring-context'
+    compileOnly 'org.springframework:spring-beans'
+    compileOnly 'org.springframework:spring-core'
+    compileOnly 'com.fasterxml.jackson.core:jackson-databind'
+
+    testImplementation 'org.springframework:spring-core'
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.assertj:assertj-core'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

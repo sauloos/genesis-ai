@@ -1,0 +1,279 @@
+module: look-and-feel-kit
+version: 1.0
+context: on_demand
+description: >
+  How a client's taste answers are read. The discovery questionnaire captures taste by pointing
+  at things rather than asking for design vocabulary (see intake/purpose-playbook-signals.yaml,
+  Act 5), which leaves a set of slider positions, eight forced choices, two palettes liked and
+  one hated, and a type specimen. This module turns those into a visual brief. It is the only
+  place that says what a choice MEANS: the kit itself (brands/look-kit) carries the artwork and
+  the hexes, and interpretation must never be hard-coded beside them.
+
+companion_artefact: >
+  The catalogue at brands/look-kit/src/main/resources/static/look-kit/catalogue.json holds the
+  presentation and the facts — each value's label, its design term (`form`), its image, a
+  palette's five hexes addressed by role. Every value named in this module exists there, and the
+  module and the catalogue are changed together. An agent resolves a stored answer through
+  LookKit and reads its meaning here.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# The governing principle
+# ─────────────────────────────────────────────────────────────────────────────
+
+reading_principle: >
+  Taste answers are evidence of a disposition, never an instruction. A client who picks the dark
+  ground has not commissioned a black brand book; they have told you they are comfortable with
+  weight and contrast. Read the whole set for a posture, state that posture in one or two
+  sentences as look.territory, and let the specialist agents design from the posture. A brief
+  that forwards eight slugs has done no work.
+
+precedence: >
+  When answers disagree, trust them in this order, strongest first:
+
+    1. look.palette.forbidden and look.mustKeep — hard constraints, never traded away
+    2. look.palette.dislike — a whole territory eliminated with one tap
+    3. the eight pairs — a choice between two things the client could see
+    4. look.palette.like and look.typeSpecimen — also seen, but chosen for appeal
+    5. the seven sliders — self-reported, and the most aspirational of the set
+    6. look.admired — taste, never a template
+
+  The pairs beat the sliders because a slider is what a client believes about themselves and a
+  tile is what they actually reach for. When the two conflict, follow the tiles, and record the
+  tension in look.territory.tensions — it is real information about the gap between how the
+  client sees the business and what they are drawn to, and it is often the most useful line in
+  the whole playbook.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# The seven sliders
+# ─────────────────────────────────────────────────────────────────────────────
+
+sliders:
+  scale_note: >
+    Each slider is 1–5 with the first anchor at 1. Treat 1–2 and 4–5 as a stated preference and 3
+    as no preference, not as a midpoint to design to. Three or more 3s means the client has not
+    engaged with look and feel; say so in the playbook's confidence map rather than inventing a
+    territory.
+
+  look.slider.era:
+    low: >
+      Classic. Reach for established forms — a drawn serif, a crest or monogram, generous
+      leading, printed-matter conventions. Avoid anything that will date to this year.
+    high: >
+      Contemporary. Current conventions are welcome: a neutral grotesk, tight tracking, flat
+      colour, interface-first thinking.
+    feeds: [logo.brief, visualIdentity.typography, visualIdentity.brief]
+
+  look.slider.volume:
+    low: >
+      Quiet. The identity should recede and let the work speak: small marks, one weight, a lot of
+      air, colour used sparingly.
+    high: >
+      Bold. Scale and contrast are the point: a mark that holds at a distance, heavy weights,
+      colour used as a field rather than an accent.
+    feeds: [logo.brief, visualIdentity.brief, copy.toneSpectrum]
+
+  look.slider.temperature:
+    low: "Warm. Bias the palette to reds, clays, ochres and warm neutrals; warm the whites."
+    high: "Cool. Bias to blues, greens, greys and slate; keep the whites neutral or cold."
+    feeds: [visualIdentity.palette]
+    note: >
+      Temperature governs the whole palette, including the neutrals. A warm client given cool
+      greys reads the result as corporate and will not know why.
+
+  look.slider.mood:
+    low: "Playful. Room for wit, irregularity, an unexpected colour, a smile in the copy."
+    high: "Serious. Restraint and precision; no visual jokes, no exclamation marks."
+    feeds: [copy.toneSpectrum, visualIdentity.brief]
+
+  look.slider.market:
+    low: >
+      Premium and crafted. Fewer, better elements; material language (paper, ink, stone, brass);
+      price never leads. Carries into the value proposition, not just the look.
+    high: >
+      Accessible and everyday. Plain language, visible pricing, generous legibility, a palette
+      that survives cheap reproduction.
+    feeds: [visualIdentity.brief, playbook.best.valueProposition, copy.toneSpectrum]
+
+  look.slider.density:
+    low: "Simple. One idea per surface, large type, heavy white space."
+    high: "Rich. Pattern, ornament, layered information, more on the page."
+    feeds: [visualIdentity.brief, logo.brief]
+
+  look.slider.formality:
+    low: "Corporate. Third person, structured, accreditation forward."
+    high: "Human. First person, named people, photography of real staff, plain speech."
+    feeds: [copy.toneSpectrum, visualIdentity.brief]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# The eight forced-choice pairs
+# ─────────────────────────────────────────────────────────────────────────────
+
+pairs:
+  reading_note: >
+    Each pair isolates one axis: the two tiles share their palette, their geometry and their
+    craft, and differ only in the thing being asked about. So the choice is clean evidence on
+    that axis and says nothing about the others. Eight clean axes compose into a territory; no
+    single pair ever decides a direction on its own.
+
+  look.pairs.wordmark:
+    wordmark-serif: >
+      A drawn or serif wordmark. Implies permanence, craft and some inherited authority. Pairs
+      naturally with a low era slider; with a high one, read it as "current, but not disposable".
+    wordmark-sans: >
+      A sans wordmark. Implies clarity, neutrality and present tense. Let the mark, not the
+      lettering, carry personality.
+    feeds: [logo.brief, visualIdentity.typography]
+
+  look.pairs.mark:
+    mark-geometric: >
+      A constructed mark — circle, arc, grid, exact angles. Signals rigour, system and
+      scalability. Supports a strong icon that works alone at small sizes.
+    mark-organic: >
+      A drawn mark — irregular curve, hand evidence, no two parts the same. Signals care,
+      provenance and human hand. Needs a drawn, not constructed, logo brief.
+    feeds: [logo.brief]
+
+  look.pairs.surface:
+    surface-flat: >
+      Flat colour, hard edges, no depth. Cheap to reproduce everywhere, strict about palette,
+      unforgiving of weak composition.
+    surface-graded: >
+      Gradient, texture, grain, depth. Richer and more atmospheric; needs flat fallbacks
+      specified for embroidery, signage and single-colour print.
+    feeds: [visualIdentity.brief, logo.brief, assembly.reproductionRules]
+
+  look.pairs.imagery:
+    imagery-photographic: >
+      Photography-led. The brand's evidence is real places, real people, real product. Commit the
+      strategy to a photography line item — a photography-led identity with no photography budget
+      fails in month two.
+    imagery-illustrated: >
+      Illustration-led. A drawn world, controllable and ownable, no shoot required, but it needs a
+      defined illustration style the client can commission again.
+    feeds: [visualIdentity.brief, strategy.assets, strategy.costedItems]
+
+  look.pairs.layout:
+    layout-grid: >
+      A tight modular grid. Order, repeatability, easy templates. Suits a client who will produce
+      their own material after handover.
+    layout-editorial: >
+      Loose editorial composition. Asymmetry, scale contrast, generous space. More expressive and
+      harder to hand over — specify fewer, firmer rules.
+    feeds: [visualIdentity.brief, assembly.templateRules]
+
+  look.pairs.ground:
+    ground-light: "Light ground. Paper-first, open, the safe default for print and legibility."
+    ground-dark: >
+      Dark ground. Confidence and contrast, screen-first. Carry it into the brand book itself, and
+      state the light-ground inversion as a rule rather than an afterthought.
+    feeds: [visualIdentity.palette, assembly.brandBookTheme]
+
+  look.pairs.intensity:
+    intensity-muted: >
+      Low chroma. Sophistication and calm; relies on tonal spacing rather than hue, so get the
+      value steps right or it turns to mud.
+    intensity-saturated: >
+      High chroma. Energy and visibility; needs one colour to lead and the rest to hold back.
+    feeds: [visualIdentity.palette]
+    note: >
+      The four hues in this pair sit deliberately outside the nine palettes and only their chroma
+      changes between the tiles, so this answers loudness, never hue. Hue comes from the palette
+      questions and the temperature slider.
+
+  look.pairs.composition:
+    composition-symmetrical: "Centred and axial. Stability, formality, ceremony."
+    composition-asymmetric: "Off-centre with tension. Movement, modernity, editorial confidence."
+    feeds: [visualIdentity.brief, logo.brief]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Palettes
+# ─────────────────────────────────────────────────────────────────────────────
+
+palettes:
+  reading_note: >
+    The nine palettes are starting territories, not deliverables. The visual-identity agent owns
+    the final palette and will usually shift hue, adjust value steps and add or drop a colour; it
+    must stay recognisably within the chosen territory, because the client will check.
+
+  liking_rule: >
+    Two likes and one dislike are captured. Read the overlap of the two likes as the territory and
+    the dislike as a fence. Where the two likes share no character — ink-and-paper with
+    night-electric — the client is telling you they want restraint with one charged element, not a
+    blend; propose the restrained one as the base and the other's accent as the single charged note.
+
+  dislike_rule: >
+    The disliked palette is a hard negative constraint, not a preference. Nothing in its primary
+    or secondary role may lead the final palette, and the rubric checks this. Clients are far more
+    certain about what repels them, and showing them a near-neighbour of their dislike costs more
+    trust than any single other mistake in the engagement.
+
+  forbidden_rule: >
+    look.palette.forbidden is absolute and outranks everything, including a direction's posture. A
+    competitor's colour or a personally hated one does not reappear as a tint, an accent or a
+    gradient stop. Record it in the playbook as a named constraint so a later engagement does not
+    reintroduce it.
+
+  territories:
+    warm-earth: "Material, grounded, made by hand. Suits craft, food, building, wellbeing."
+    deep-forest: "Natural, patient, stewardship. Suits land, sustainability, outdoor, education."
+    ink-and-paper: "Editorial restraint. Suits professional services, publishing, architecture."
+    coastal: "Calm, clean, breathing room. Suits health, hospitality, marine, retreat."
+    heritage: "Earned authority. Suits legal, institutional, membership, long-established trade."
+    signal: "One decisive note on neutral. Suits challengers, sport, tooling, anything urgent."
+    soft-bloom: "Warmth and care. Suits beauty, childcare, therapy, small-batch consumer."
+    nordic: "Quiet precision. Suits design, technology, manufacture, interiors."
+    night-electric: "After-dark energy. Suits events, gaming, music, developer tooling."
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Type specimens
+# ─────────────────────────────────────────────────────────────────────────────
+
+type_specimens:
+  reading_note: >
+    Each specimen sets the client's own sentence (setup.oneLiner), so they are judging their words
+    in a voice rather than rating a pangram. The chosen value names a category, not a licence: the
+    visual-identity agent selects a real, licensable face in that category and states the licence
+    and a web-safe fallback.
+  editorial-serif: "A serif with editorial authority. Long-form credibility, considered pace."
+  neutral-grotesk: "A neutral grotesk. Gets out of the way; the system has to carry character."
+  geometric-sans: "A geometric sans. Open, optimistic, friendly; watch legibility at small sizes."
+  technical-mono: "A monospace. Exactness and process; use it for accents, rarely for body copy."
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Admired brands, current assets, and the output
+# ─────────────────────────────────────────────────────────────────────────────
+
+admired_rule: >
+  Admired brands establish taste and nothing else. Read the pages (WebsiteReader) and record what
+  transfers — a posture, a restraint, a use of space, a way of speaking — separately from what
+  does not: their sector, their scale, their budget, their marks. Never carry across a layout, a
+  palette or a typeface from an admired brand, and never name one in a direction's rationale as a
+  precedent to follow. The client must not believe they have commissioned an imitation, and
+  saying so plainly in the interface is part of the method.
+
+current_assets_rule: >
+  look.currentLogo and look.existingAssets are read for equity, not for instruction. Note what the
+  market already recognises — a colour, a shape, a name's setting — and treat look.logoIntent as
+  the client's own weighting of the three directions: "keep it" weights ANCHORED, "evolve it"
+  weights EVOLVED, "start fresh" weights DISRUPTIVE, "not sure" leaves the spread even. See
+  directions/purpose-to-direction.yaml, which owns how the directions then differ.
+
+output_contract: >
+  This module produces look.territory, which the purpose playbook carries in strategy.lookAndFeel
+  and every specialist agent reads:
+
+    look.territory:
+      summaryWords: 3–5 plain words, no design vocabulary, shown back to the client for
+                    correction as reflect.look
+      posture:      one or two sentences stating the disposition the whole set points at
+      palette:      the chosen territory, the fence (dislike) and any forbidden colour
+      typography:   the chosen category, with the reason in a clause
+      logo:         drawn or constructed, wordmark or mark-and-wordmark, and why
+      imagery:      photography-led or illustration-led, with its cost consequence named
+      tensions:     every place the pairs contradicted the sliders, stated as a tension and
+                    never silently resolved
+      confidence:   low / medium / high, lowered by unengaged sliders and raised when the
+                    pairs, the palettes and the specimen all point the same way
+
+  A direction may depart from this territory, but it must say that it is doing so and why. An
+  unexplained departure is a failed direction, not a bold one — see evaluation rubrics.
