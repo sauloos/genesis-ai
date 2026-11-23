@@ -17,6 +17,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Derives the three direction briefs straight from a questionnaire transcript.
+ *
+ * <p>This is the legacy path, and kept deliberately. Engagements taken before the Purpose Playbook
+ * instrument existed ran on questionnaires with no Layer 1 signal keys, so their answers carry no
+ * name the reasoning modules recognise — running the playbook agent on one would produce a
+ * confident document about nothing. {@link EngagementOrchestratorService} therefore chooses on the
+ * questionnaire: signal keys present, {@link PurposePlaybookBriefDerivation}; absent, this.
+ *
+ * <p>It also still backs the core {@code BriefDerivationExtension} SPI, which the Playground's
+ * derive-briefs endpoint calls with raw questions and answers.
+ *
+ * <p>Known shortcut, inherited: the model and token cap below are hardcoded rather than read from
+ * {@code AgentProperties}, so they cannot be changed from the agents admin page like every other
+ * agent's. Worth promoting if this path survives.
+ */
 @Service
 public class BriefDerivationService implements BriefDerivationExtension {
 
@@ -104,7 +120,9 @@ public class BriefDerivationService implements BriefDerivationExtension {
 
                 briefs.add(new DirectionBrief(
                     engagementId, brand, foundation, direction, ti,
-                    d.path("additionalContext").asText("")
+                    d.path("additionalContext").asText(""),
+                    // No Purpose Playbook on this path — that is what makes it the legacy path.
+                    null
                 ));
             }
             if (briefs.isEmpty()) {

@@ -4,14 +4,9 @@ import ai.genesisbrands.agent.core.AgentRevision;
 import ai.genesisbrands.agent.core.RefinementLoop;
 import ai.genesisbrands.agent.purposeplaybook.PurposePlaybookAgent;
 import ai.genesisbrands.agent.purposeplaybook.PurposePlaybookInput;
+import ai.genesisbrands.agent.purposeplaybook.PurposePlaybookInputFactory;
 import ai.genesisbrands.agent.purposeplaybook.PurposePlaybookOutput;
 import ai.genesisbrands.agent.purposeplaybook.PurposePlaybookRefinementLoop;
-import ai.genesisbrands.model.QuestionnaireAnswer;
-import ai.genesisbrands.model.QuestionnaireQuestion;
-import ai.genesisbrands.model.QuestionnaireResponse;
-import ai.genesisbrands.service.QuestionnaireResponseService;
-import ai.genesisbrands.service.QuestionnaireService;
-import ai.genesisbrands.service.QuestionnaireSignals;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,7 +17,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
-import java.util.Map;
 import java.util.NoSuchElementException;
 
 /**
@@ -46,17 +40,14 @@ public class PurposePlaybookAgentController {
 
     private final PurposePlaybookAgent agent;
     private final PurposePlaybookRefinementLoop refinementLoop;
-    private final QuestionnaireService questionnaireService;
-    private final QuestionnaireResponseService responseService;
+    private final PurposePlaybookInputFactory inputFactory;
 
     public PurposePlaybookAgentController(PurposePlaybookAgent agent,
                                           PurposePlaybookRefinementLoop refinementLoop,
-                                          QuestionnaireService questionnaireService,
-                                          QuestionnaireResponseService responseService) {
+                                          PurposePlaybookInputFactory inputFactory) {
         this.agent = agent;
         this.refinementLoop = refinementLoop;
-        this.questionnaireService = questionnaireService;
-        this.responseService = responseService;
+        this.inputFactory = inputFactory;
     }
 
     @PostMapping("/execute")
@@ -91,40 +82,19 @@ public class PurposePlaybookAgentController {
     }
 
     /**
-     * What the agent reads, built from a stored response.
-     *
-     * <p>{@code expectedSignals} comes from the <em>active</em> questions, not all of them: a
-     * question a condition gated away was never asked, and reporting it as unanswered would have
-     * the playbook tell a client they skipped something they never saw.
+     * What the agent reads, built from a stored response by the same factory the engagement
+     * orchestrator uses, so the Playground and a real engagement cannot diverge.
      */
     private PurposePlaybookInput inputFor(String responseId, RunOptions options) {
-        QuestionnaireResponse response;
+        RunOptions opts = options == null ? new RunOptions(null, null, null) : options;
         try {
-            response = responseService.getResponse(responseId);
+            return inputFactory.forResponse(responseId, opts.engagementId(),
+                opts.trainingInstructions(), opts.additionalContext());
         } catch (NoSuchElementException e) {
             // A stale response id in the Playground is a 404, not a server fault — the view shows
             // the status, and a 500 there reads as "the agent broke".
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
         }
-        List<QuestionnaireQuestion> questions =
-            questionnaireService.listActiveQuestions(response.getQuestionnaireId(), responseId);
-        List<QuestionnaireAnswer> answers = responseService.listAnswers(responseId);
-
-        Map<String, Object> signals = QuestionnaireSignals.collect(questions, answers);
-        List<String> expected = questions.stream()
-            .map(QuestionnaireQuestion::getSignalKey)
-            .filter(key -> key != null && !key.isBlank())
-            .map(String::trim)
-            .distinct()
-            .toList();
-
-        RunOptions opts = options == null ? new RunOptions(null, null, null) : options;
-        String engagementId = opts.engagementId() == null || opts.engagementId().isBlank()
-            ? "response-" + responseId
-            : opts.engagementId();
-
-        return new PurposePlaybookInput(engagementId, signals, expected,
-            opts.trainingInstructions(), opts.additionalContext());
     }
 
     public record ReviseRequest(PurposePlaybookInput input, PurposePlaybookOutput previous,

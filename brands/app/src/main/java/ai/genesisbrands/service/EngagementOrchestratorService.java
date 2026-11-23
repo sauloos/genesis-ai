@@ -17,6 +17,10 @@ import ai.genesisbrands.agent.playbook.PlaybookAgent;
 import ai.genesisbrands.agent.playbook.PlaybookInput;
 import ai.genesisbrands.agent.playbook.PlaybookOutput;
 import ai.genesisbrands.agent.playbook.PlaybookRefinementLoop;
+import ai.genesisbrands.agent.purposeplaybook.PurposePlaybookInput;
+import ai.genesisbrands.agent.purposeplaybook.PurposePlaybookInputFactory;
+import ai.genesisbrands.agent.purposeplaybook.PurposePlaybookOutput;
+import ai.genesisbrands.agent.purposeplaybook.PurposePlaybookRefinementLoop;
 import ai.genesisbrands.agent.visualidentity.VisualIdentityAgent;
 import ai.genesisbrands.agent.visualidentity.VisualIdentityOutput;
 import ai.genesisbrands.agent.visualidentity.VisualIdentityRefinementLoop;
@@ -52,6 +56,9 @@ public class EngagementOrchestratorService {
     private final QuestionnaireQuestionRepository questionRepo;
     private final QuestionnaireAnswerRepository answerRepo;
     private final BriefDerivationService briefDerivation;
+    private final PurposePlaybookInputFactory purposePlaybookInputs;
+    private final PurposePlaybookRefinementLoop purposePlaybookLoop;
+    private final PurposePlaybookBriefDerivation purposePlaybookBriefs;
     private final CopyAgent copyAgent;
     private final CopyRefinementLoop copyLoop;
     private final VisualIdentityAgent visualAgent;
@@ -100,8 +107,22 @@ public class EngagementOrchestratorService {
         saveEngagement(engagement);
 
         try {
+            // Write this engagement's Purpose Playbook, then derive the three directions from it.
+            // Null when the questionnaire carries no Layer 1 signal keys — see derivePlaybook.
+            PurposePlaybookOutput playbook = derivePlaybook(engagement, questions, answers);
+            if (playbook != null) {
+                // Stored before the briefs, on its own save. This document costs ten minutes of
+                // model time and is the client's permanent context; losing it to a failure in the
+                // derivation that follows would be the expensive half of the engagement thrown
+                // away for the cheap half's bug.
+                engagement.setPurposePlaybookJson(objectMapper.writeValueAsString(playbook));
+                saveEngagement(engagement);
+            }
+
             // Derive 3 direction briefs
-            List<DirectionBrief> briefs = briefDerivation.derive(engagementId, questions, answers);
+            List<DirectionBrief> briefs = playbook != null
+                ? purposePlaybookBriefs.derive(engagementId, playbook)
+                : briefDerivation.derive(engagementId, questions, answers);
             engagement.setBriefsJson(objectMapper.writeValueAsString(briefs));
             saveEngagement(engagement);
 
@@ -151,6 +172,47 @@ public class EngagementOrchestratorService {
             engagement.setUpdatedAt(Instant.now());
             saveEngagement(engagement);
         }
+    }
+
+    /**
+     * This engagement's Purpose Playbook, or null when the questionnaire cannot produce one.
+     *
+     * <p>The test is whether the questions carry Layer 1 signal keys, and it is not a convenience.
+     * Signal keys are the contract between the questionnaire, the reasoning modules and the
+     * playbook: a questionnaire without them hands the agent answers under no name any module
+     * recognises, and the agent would write a fluent, fully-sourced document about nothing. Every
+     * engagement taken before the Purpose Playbook instrument existed is in exactly that position,
+     * so those keep the legacy question-and-answer derivation, which is what they were built on.
+     *
+     * <p>Which question set is read depends on where the answers came from. An engagement with a
+     * stored response is read through the factory, which resolves the <em>active</em> questions —
+     * the ones a condition actually let through — because a question gated away was never asked
+     * and must not be reported as skipped. A PageFlow engagement has no stored response (see
+     * {@link PageFlowEngagementAdapter}) and its captured questions are already the asked set.
+     */
+    private PurposePlaybookOutput derivePlaybook(Engagement engagement,
+                                                 List<QuestionnaireQuestion> questions,
+                                                 List<QuestionnaireAnswer> answers) {
+        String engagementId = engagement.getId();
+        String responseId = engagement.getQuestionnaireResponseId();
+
+        PurposePlaybookInput input = responseId != null && !responseId.isBlank()
+            ? purposePlaybookInputs.forResponse(responseId, engagementId, null, null)
+            : purposePlaybookInputs.from(engagementId, questions, answers, null, null);
+
+        if (input.expectedSignals().isEmpty()) {
+            log.info("Engagement {} ran on a questionnaire with no Layer 1 signal keys — deriving "
+                + "briefs from the raw answers instead of a Purpose Playbook", engagementId);
+            return null;
+        }
+
+        log.info("Writing the Purpose Playbook for engagement {} ({} signals answered of {} asked)",
+            engagementId, input.signals().size(), input.expectedSignals().size());
+        var result = purposePlaybookLoop.run(input);
+        PurposePlaybookOutput playbook = result.output();
+        log.info("Purpose Playbook for engagement {}: {} sections, accepted on iteration {}",
+            engagementId, playbook.sections().size(), playbook.iteration());
+        return playbook;
     }
 
     /**

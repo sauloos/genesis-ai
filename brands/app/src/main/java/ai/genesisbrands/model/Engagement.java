@@ -33,6 +33,18 @@ public class Engagement {
     @Column(name = "eval_mode", nullable = false)
     private boolean evalMode;
 
+    /**
+     * JSON PurposePlaybookOutput — this engagement's Purpose Playbook: the client's own answers
+     * synthesised with the agency's strategy. Written before the briefs, because the briefs are
+     * derived from it and a document this expensive must not be lost to a failure further down.
+     *
+     * <p>Null on an engagement whose questionnaire carries no Layer 1 signal keys, which is every
+     * engagement taken before the Purpose Playbook instrument existed. Those went through the
+     * legacy question-and-answer derivation and have briefs but no playbook.
+     */
+    @Column(name = "purpose_playbook_json", columnDefinition = "TEXT")
+    private String purposePlaybookJson;
+
     /** JSON array of 3 DirectionBrief objects derived by the Brain Engine. */
     @Column(name = "briefs_json", columnDefinition = "TEXT")
     private String briefsJson;
