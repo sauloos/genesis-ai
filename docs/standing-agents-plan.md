@@ -588,6 +588,30 @@ Pages and the Instagram accounts linked to them, so one connect flow adds both.
   and timing (best day or hour) as a learned weight. Meta metric names drift, so watch for
   empty insights after a Graph version bump and update the config lists.
 
+## Client-facing widget placement (2026-11-23)
+
+The three standing widgets — `agentSubscriptions`, `agentInbox`, `channelConnections` — are
+placed on the existing `/live/dashboard` (Client Dashboard flow) on www.genesisbrands.ai:
+
+| Slot    | Order | Widget               | Label           |
+|---------|-------|----------------------|-----------------|
+| sidebar | 1     | agentSubscriptions   | My agents       |
+| sidebar | 2     | channelConnections   | Social accounts |
+| main    | 3     | agentInbox           | Inbox           |
+
+For fresh environments, run `deploy/seed-dashboard-widgets.py` after the app is up.
+
+**Alternative placement options (deferred — revisit when standing agents go live for clients):**
+- **Separate `/live/standing` flow** — a dedicated client-facing URL for subscriptions + inbox
+  + social accounts. Cleaner URL and navigation if the standing-agent section grows large, but
+  needs a link from the dashboard and an extra flow to maintain.
+- **Separate `/live/inbox` flow** — just the inbox at its own URL, with subscriptions and
+  channel connections staying on the dashboard. Useful if the inbox becomes a primary daily
+  destination clients bookmark directly.
+- **Tab/section within the dashboard** — keep the dashboard a single URL but split it into
+  "Brand" and "Agents" tabs client-side, without separate flows. Requires a tab widget or
+  client-side routing inside `agentInbox`/`agentSubscriptions`.
+
 ## Open questions
 
 - Pricing of the subscription tiers (posts/month, channels, agents included).
