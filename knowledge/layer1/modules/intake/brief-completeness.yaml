@@ -2,6 +2,19 @@ module: brief-completeness
 version: 1.0
 description: Criteria Genesis AI applies to decide when a client brief is complete enough to proceed to direction derivation.
 
+scope_note: >
+  This is the generic, sector-agnostic completeness floor, and it still governs any intake that
+  is not a Purpose Playbook discovery — a Playground run, a short-form brief, a tenant with its
+  own questionnaire. Where a Purpose Playbook discovery questionnaire was completed,
+  intake/purpose-playbook-signals.yaml supersedes this module: its signal catalogue is a strict
+  superset of the signals below, so a complete purpose-playbook discovery satisfies this module
+  by construction. Do not apply both and do not ask for a signal twice.
+
+  Mapping, for the avoidance of double-asking: business_name → setup.businessName,
+  industry_sector → setup.sector, target_audience → belong.persona.*, value_proposition →
+  best.ladder.*, brand_personality → belief.valueChips plus look.slider.*, competitive_context
+  → best.competitor.*, ambition → belief.aspire plus belief.growthGoal.
+
 required_signals:
   - name: business_name
     description: The name of the brand or business.

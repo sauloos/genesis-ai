@@ -1,0 +1,421 @@
+module: purpose-playbook-structure
+version: 1.0
+context: on_demand
+description: >
+  The structure of the Purpose Playbook — the single per-engagement document derived from the
+  discovery questionnaire, which every downstream deliverable is briefed from. It has two
+  halves: the DISCOVERY half, which records who the client is (the four pillars), and the
+  STRATEGY half, which records what Genesis recommends they do about it. One document per
+  engagement, not per direction.
+
+scope_boundary: >
+  Do not confuse this with assembly/playbook-structure.yaml. That module governs the BRAND
+  PLAYBOOK — one per creative direction, assembled after copy, visual identity and logo have
+  been generated and approved, expressing how that one direction is applied. This module
+  governs the PURPOSE PLAYBOOK — one per engagement, produced before any direction exists,
+  which is the brief the three directions are derived from.
+
+  The boundary is observable in the corpus: tagline, elevator pitch, boilerplate and
+  positioning statement appear in 0 of the 24 reference playbooks, because those are brand
+  playbook fields authored by the Copy agent. The Purpose Playbook never contains them.
+  Conversely the four pillars, the eight-beat story arc, the UN SDG selection and the inner
+  circle appear in all 24 and never belong in a brand playbook.
+
+  Order of authority: the Purpose Playbook is upstream. A brand playbook may not contradict
+  it. Where a direction deliberately departs from the purpose playbook (a disruptive direction
+  usually does), the departure is stated and justified in the brand playbook, not smuggled in.
+
+authorship_voice: >
+  Write as the facilitator writing up the workshop: second person to the client, present tense,
+  plain British English, no agency register. The reference playbooks read like "your business
+  has a clear sense of purpose, but the way you talk about it undersells the craft" — direct,
+  specific, occasionally uncomfortable. Never write "leverage", "synergy", "best-in-class",
+  "journey" as a metaphor, or any sentence that would read identically for a different client.
+
+grounding_rule: >
+  Every assertion in this document traces to a signal, an observed page, or a Layer 2
+  precedent, and the agent must be able to say which. Where a field is derived rather than
+  stated, derive it visibly: "you didn't put it this way, but across your answers X recurs".
+  Where a signal is thin, say so in the body rather than filling the gap with plausible
+  branding language. An invented value is worse than a blank one, because nobody downstream
+  knows it was invented.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HALF ONE — DISCOVERY
+# ─────────────────────────────────────────────────────────────────────────────
+
+sections:
+
+  - key: cover
+    title: Cover
+    required: true
+    contains: [businessName, descriptor, sector, date, engagementRef]
+    from: [setup.businessName, setup.oneLiner, setup.sector, setup.respondent]
+
+  - key: situation
+    title: Where you are now
+    required: true
+    length: 150-250 words
+    from: [belief.now, belief.origin, setup.stage, setup.teamSize, setup.website]
+    guidance: >
+      Present in 17 of 24 reference playbooks as an explicit opening. State the honest current
+      position, including what is not working — the reference playbooks say things like "the
+      offer is strong but the brand does not yet carry it". Where setup.website was read,
+      observe it first-hand rather than describing it in the abstract. This section earns the
+      client's trust in everything after it: if it reads like flattery, nothing below is
+      believed.
+
+  - key: belief
+    title: Belief
+    required: true
+    pillar: BELIEF
+    subsections:
+
+      - key: mission
+        title: Mission
+        required: true
+        shape: One sentence, under 25 words, no subordinate clauses.
+        from: [belief.cause.*, belief.loss, belief.origin, reflect.mission]
+        guidance: >
+          Derived from the CAUSE scaffold — Call, Ability, Utilize, Solution, Execute — which
+          is a facilitation device and must never appear as a labelled section or acronym in
+          the output. It appears in 1 of 24 reference playbooks (the template). The mission
+          must name a change in the world, not a service offered: "we help X do Y so that Z",
+          where Z is the part the client would be sad to lose. Test it against belief.loss —
+          if the mission could survive the business closing, it is not the mission.
+
+      - key: vision
+        title: Vision
+        required: true
+        shape: Four parts — where you are now, where you aspire to be, the leading position you claim, the first step.
+        from: [belief.now, belief.aspire, belief.firstStep, belief.growthGoal, belief.leadingPosition]
+        guidance: >
+          Dreaming with a deadline. Carry belief.growthGoal verbatim as the dated commitment —
+          a vision without a year is a mood. The leading position is the one sentence the
+          client wants to be the obvious answer to.
+
+      - key: values
+        title: Values
+        required: true
+        shape: Three to five values, each a single word or short phrase plus one behavioural sentence.
+        from: [belief.valueRanked, belief.valueCost, belief.neverWords, belief.origin, reflect.values]
+        guidance: >
+          Core values appear in 17 of 24 and "our values" in 16 of 24 — the label varies, the
+          content does not. Each value must be falsifiable: the behavioural sentence says what
+          the client does and does not do because of it, written from belief.valueCost.
+          "Integrity — we do the right thing" is not a value; "Integrity — we tell a client
+          their brief is wrong before we take the money, and we have walked away over it" is.
+          Prefer a value evidenced by cost over a higher-ranked value that is only aspirational,
+          and say when you have reordered. The rhythmic Values Statement in the template
+          appears in 1 of 24 — treat it as an optional device, never a required field.
+
+      - key: neverList
+        title: What we never want to be
+        required: true
+        shape: Three words, verbatim from the client.
+        from: [belief.neverWords]
+        guidance: >
+          Carried unedited. This is the negative constraint every downstream agent is held to,
+          and the rubrics reject output that lands on these words regardless of other merit.
+
+  - key: belong
+    title: Belong
+    required: true
+    pillar: BELONG
+    subsections:
+
+      - key: personas
+        title: Personas
+        required: true
+        repeat: per segment, one to three
+        shape: >
+          Each persona carries five canonical fields in this order — Demographics, Goals in
+          life, Interests, Motivations, Frustrations — plus a name and a one-line summary.
+        from: [belong.persona.*, belong.failedAlternatives]
+        guidance: >
+          The five-field shape is present in all 24 reference playbooks. Use the term persona
+          (24/24, 204 mentions); never "avatar" (3/24). All five fields are derived from the
+          single story answer plus the catchers — the client was never asked to fill them in
+          directly, and the writing should read as observed, not transcribed. Give each persona
+          a plausible first name and keep it consistent everywhere downstream, because the copy
+          and content agents will address them by it.
+
+      - key: painPoints
+        title: Pain points
+        required: true
+        from: [belong.failedAlternatives, belong.persona.decisionDriver, best.ladder.problem]
+        guidance: >
+          Lead with the problem, not the solution — the audience's felt pain in their own
+          words, and specifically what they already tried that failed them. A pain point the
+          client inferred rather than heard is marked as an assumption.
+
+      - key: uniqueReason
+        title: Your unique reason
+        required: true
+        shape: One short paragraph, written from the audience's side.
+        from: [belong.uniqueReason, best.usp, best.competitor.weaknesses]
+        guidance: >
+          Canonical field, 22 of 24. Distinct from the value proposition: this is why they
+          choose you, phrased as the customer would justify it to someone else. If it would
+          survive being said by a competitor, it is not unique — go back to the competitor
+          weaknesses and find the gap.
+
+      - key: innerCircle
+        title: Inner circle
+        required: true
+        shape: Five roles — wellbeing, direction, visibility, accountability, grounding — each with a first name or marked empty.
+        from: [belong.innerCircle.*]
+        guidance: >
+          Present in all 24. First names only; never a surname or contact detail. An empty slot
+          is a finding, not an omission: name it and let the Beyond pillar's dream team address
+          it.
+
+      - key: lineOfCircle
+        title: The line of the circle
+        required: true
+        from: [belong.lineOfCircle]
+        guidance: >
+          Present in 16 of 24, and the one that most sharpens a brand: what the business will
+          not do, even profitably. The boundary is what makes the inside legible.
+
+      - key: buyingPersona
+        title: Who signs it off
+        required: false
+        condition: "belong.buyerIsUser == 'no'"
+        from: [belong.buyer.*]
+
+      - key: generations
+        title: Generational considerations
+        required: false
+        from: [belong.generations]
+        guidance: >
+          Enrichment only — generational framing appears in roughly half the corpus. When
+          present, apply it to tone and channel recommendations, never to persona identity.
+
+      - key: touchpoints
+        title: Where they meet you
+        required: true
+        from: [belong.touchpoints, setup.website]
+        guidance: Present in 21 of 24. Feeds directly into the strategy half's channel priorities.
+
+  - key: best
+    title: Best
+    required: true
+    pillar: BEST
+    subsections:
+
+      - key: valueProposition
+        title: Value proposition
+        required: true
+        shape: One publishable sentence, plus the five-layer breakdown beneath it.
+        from: [best.ladder.*, best.victory, belief.cause.ability, reflect.valueProposition]
+        guidance: >
+          Present in all 24. Rewrite the six filled blanks into one sentence a client could put
+          on a homepage, then show the ladder — offer, problem, audience, method, result,
+          timeframe — beneath it so the derivation is auditable. Apply the template's four
+          tests before accepting it: are the benefits clearly articulated, would it excite a
+          new customer, is it specific about the value to the customer, and is that value
+          distinct from the competitors named in this document. A proposition that fails the
+          fourth test is positioning nothing.
+
+      - key: storyArc
+        title: Your story
+        required: true
+        shape: >
+          Eight beats, in order — characters, common goal, adversary, the plan, attempts and
+          failures, regroup, new plan same goal, victory — written as continuous prose, not a
+          bulleted list.
+        from: [best.hero, best.villain, best.failureStory, best.victory, belief.origin, belief.valueCost]
+        guidance: >
+          All eight beats are canonical: characters 24/24, common goal 24/24, adversary 23/24,
+          the plan 21/24, attempts and failures 23/24, regroup 24/24, victory 24/24. The
+          customer is the hero and the brand is the guide — if best.hero came back as "us",
+          write the correction into this section explicitly rather than silently casting the
+          client as the guide. Beats five to seven are where testimonials come from, so they
+          must be specific: a story arc with no real failure in it is a brochure, and the
+          corpus does not contain one.
+
+      - key: competitors
+        title: Who else they consider
+        required: true
+        shape: Three to five competitors, each with strengths, weaknesses and what it means for you.
+        from: [best.competitor.*]
+        guidance: >
+          Present in all 24. Where a URL was supplied, the evaluation includes first-hand
+          observation of the actual page — the reference playbooks comment on dated photography,
+          soft palettes, unclear offers. Never fabricate that observation from the name alone.
+          Close each entry with the consequence for this client, not a neutral summary.
+
+      - key: testimonialStrategy
+        title: Proof
+        required: true
+        from: [best.failureStory, belong.customerQuote, setup.stage]
+        guidance: >
+          Present in all 24 as a testimonial section. For a trading business, quote what
+          exists and say what is missing. For a pre-launch business there are no testimonials:
+          say so and specify the three proof points to collect first, with the question to ask.
+          Never write a specimen testimonial that could be mistaken for a real one.
+
+      - key: standout
+        title: What makes you stand out
+        required: true
+        from: [best.usp, best.misconception, belong.uniqueReason]
+
+  - key: beyond
+    title: Beyond
+    required: true
+    pillar: BEYOND
+    subsections:
+
+      - key: sdgs
+        title: Sustainable Development Goals
+        required: true
+        shape: Three selected goals, each with one sentence on how this business touches it.
+        from: [beyond.sdgs, beyond.accreditation]
+        guidance: >
+          Present in all 24. Mark inferred goals as inferred. The sentence must name something
+          the business actually does or will do — an SDG with no mechanism behind it is
+          decoration, and the corpus's weakest Beyond sections are exactly that.
+
+      - key: legacy
+        title: Legacy
+        required: true
+        from: [beyond.legacy, belief.loss, belief.cause.solution]
+        guidance: Present in all 24. What is said about them when they are not in the room.
+
+      - key: visionBoard
+        title: Vision board
+        required: true
+        shape: The three chosen themes, each with a one-line picture of what good looks like.
+        from: [beyond.visionBoardPicks, beyond.visionBoardDetail, setup.teamSize]
+        guidance: >
+          Present in 19 of 24. Themes seen across the corpus include personal, impact,
+          environment, culture and development, dream team, give back and celebration — in that
+          rough order of frequency. Keep each concrete enough to be recognisable in two years.
+
+      - key: giveBack
+        title: Giving back
+        required: false
+        from: [beyond.giveBack, beyond.accreditation]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HALF TWO — STRATEGY
+# ─────────────────────────────────────────────────────────────────────────────
+
+  - key: strategy
+    title: What we recommend
+    required: true
+    intent: >
+      The half that makes the document a playbook rather than a record. The reference playbooks
+      all carry it: having established who the client is, they recommend what to build, in what
+      order, and why — and that recommendation is where the agency's upsells legitimately come
+      from. Recommendations must follow from the discovery half, not from a standard menu.
+    subsections:
+
+      - key: positioningSummary
+        title: The brief in one page
+        required: true
+        length: 200-300 words
+        guidance: >
+          The hinge of the document, and the single most-read page downstream: this is what the
+          direction derivation, the copy agent and the visual identity agent are actually
+          briefed from. It restates purpose, audience, proposition, the never-list and the
+          look-and-feel territory in continuous prose, with no new content. If this page is
+          wrong, every deliverable is wrong, and nothing below will rescue it.
+
+      - key: lookAndFeel
+        title: Where your taste sits
+        required: true
+        from: [look.*]
+        shape: >
+          The seven-axis territory, the forced-choice pattern, the palette direction with its
+          exclusions, the typographic direction, the admired-brand read, and the logo intent.
+        guidance: >
+          Design commentary appears in most of the corpus — imagery 19/24, type 17/24, logo
+          16/24 — but written from the facilitator's own impression, because no taste signal
+          was ever captured. Here it is captured, so write what the answers actually say,
+          including where they contradict each other: a client whose sliders say "classic,
+          quiet" and whose tiles all pick saturated asymmetric work has told you something, and
+          the tiles are the truer signal. State the contradiction rather than averaging it
+          away. Record admired brands as taste, never as template, and say explicitly what
+          transfers and what does not. The palette dislike and any forbidden colour are hard
+          constraints and belong in this section as such.
+
+      - key: directionGuidance
+        title: The three directions
+        required: true
+        shape: One short paragraph per direction — anchored, evolved, disruptive.
+        guidance: >
+          Not the directions themselves, which are derived downstream. This is the instruction
+          for deriving them: what each should hold onto, what each should risk, and which the
+          client's own answers point towards. See directions/purpose-to-direction.yaml for the
+          weighting rules, including look.logoIntent's direct mapping.
+
+      - key: channels
+        title: Where to show up
+        required: true
+        from: [belong.touchpoints, belong.persona.*, look.placements]
+        guidance: >
+          Recommend against the persona's actual behaviour, not against channel fashion. The
+          corpus's stable spine is website (24/24), video (24/24), podcast (23/24), social
+          media (23/24), email (23/24), call to action (23/24), lead magnet (22/24), user
+          experience (22/24) and search (22/24) — a recommendation set that omits most of these
+          needs a reason. Exhibition stands, merchandise, packaging and signage appear only
+          where the business actually needs them, and look.placements is the gate: never
+          recommend an asset for a placement the client did not name.
+
+      - key: assets
+        title: What to build, and in what order
+        required: true
+        from: [look.placements, setup.stage, beyond.visionBoardPicks]
+        shape: A prioritised list, each item with what it is, why it is next, and what it depends on.
+        guidance: >
+          The honest sequencing section. A pre-launch business with no customers does not need
+          a podcast; it needs one page that explains the offer and one proof point. Order by
+          dependency and by what unblocks revenue, and say what to defer — a playbook that
+          recommends everything has recommended nothing. Items here are the agency's upsell
+          surface, so each must be defensible on the client's terms rather than the agency's.
+
+      - key: scorecard
+        title: How you will know it worked
+        required: false
+        from: [belief.growthGoal, belong.persona.decisionDriver]
+        guidance: >
+          Present in 17 of 24. Three to five measures tied to belief.growthGoal, each with a
+          current figure where one exists and "not yet measured" where it does not.
+
+      - key: flywheel
+        title: Your flywheel
+        required: false
+        from: [belong.touchpoints, best.ladder.*, best.failureStory]
+        guidance: >
+          Present in 19 of 24. The self-reinforcing loop — how a delivered result produces the
+          proof that wins the next customer. Write it only where the answers actually describe
+          one; an invented flywheel is obvious and undermines the rest.
+
+  - key: confidence
+    title: What we are sure of, and what we are not
+    required: true
+    shape: A short table — field, confidence (high / medium / thin), and what would raise it.
+    guidance: >
+      Genesis's advantage over a workshop write-up: it knows which answers were thin. List
+      every field derived from a thin or missing signal, and the one question that would fix
+      it. The three gaps that must be called out in the body rather than only here are an
+      unanswered belief.loss, an incomplete value-proposition ladder, and an unevidenced
+      audience pain. This section is read by the facilitator before the client meeting, and it
+      is what turns a gap into a fifteen-minute follow-up instead of a brand built on a guess.
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+output_contract:
+  format: >
+    Structured JSON keyed by section and subsection key as listed above, each holding rendered
+    prose plus a `sources` array of the signal keys it was derived from and a `confidence`
+    value. The rendered document and the per-pillar Layer 2 chunks are both produced from this
+    one object, so the keys are a stable contract — downstream briefs, the Consultant's client
+    context and ingestion all address them by key.
+  length_target: >
+    The 23 developed reference playbooks run from roughly 48,000 to 88,000 characters of
+    extracted text. Aim for the lower half of that band: completeness of the sections above
+    matters, padding does not, and a thin engagement should produce a shorter document that
+    says so rather than a full-length one that pads.

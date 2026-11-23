@@ -1,0 +1,137 @@
+module: purpose-to-direction
+version: 1.0
+context: on_demand
+description: >
+  How the three creative directions are derived from a completed Purpose Playbook. Replaces
+  deriving directions from a flat question-and-answer transcript: once a purpose playbook
+  exists, it is the brief, and this module governs how it is read.
+
+input_contract: >
+  The derivation reads the Purpose Playbook's structured output — primarily
+  strategy.positioningSummary, strategy.lookAndFeel, strategy.directionGuidance,
+  belief.values, belief.neverList, belong.personas, belong.uniqueReason,
+  best.valueProposition and best.storyArc — plus the closest Layer 2 precedents. It must not
+  read the raw questionnaire answers again: the playbook is the synthesis, and re-deriving
+  from the transcript reintroduces exactly the unsynthesised material the playbook exists to
+  resolve.
+
+shared_invariants: >
+  All three directions share one brief core and differ only in posture. These carry unchanged
+  into every direction, and a direction that breaks one is invalid rather than bold:
+
+    - the mission and what the business is for
+    - the audience, the personas and their pain
+    - the value proposition's substance (its expression may change, its claim may not)
+    - belief.neverList — the three words, as hard negative constraints
+    - belong.lineOfCircle — what the business will not do
+    - look.palette.forbidden and look.mustKeep — hard visual constraints
+    - any accreditation or regulatory mark
+
+  What varies between directions: tone, visual register, how much visual equity is retained,
+  how much of the audience is addressed versus which part of it is deliberately narrowed to,
+  and how much risk the expression takes.
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+directions:
+
+  - key: ANCHORED
+    posture: Keep what is already working and make it coherent.
+    retains: >
+      Existing visual equity, current audience, familiar register. Where a logo exists, the
+      mark's recognisable elements survive. Where the client has customers, nothing in this
+      direction asks those customers to re-learn the brand.
+    risks: Being invisible against the competitors named in the playbook.
+    reads_most_from: [belief.values, strategy.lookAndFeel.currentIdentity, best.competitors, belong.touchpoints]
+    guidance: >
+      This is not the safe option — it is the continuity option, and for an established
+      business with real equity it is often the right answer. Its job is to make the existing
+      brand consistent and intentional rather than accidental. Say what it keeps and why.
+
+  - key: EVOLVED
+    posture: The same brand, grown up.
+    retains: Recognisability to existing customers; the proposition's claim; the core palette's temperature.
+    risks: Landing between two positions and reading as a compromise.
+    reads_most_from: [strategy.lookAndFeel, belong.uniqueReason, best.valueProposition, belief.vision]
+    guidance: >
+      The default centre of gravity for most engagements. Evolved earns its name by resolving
+      a specific tension the playbook identified — an offer that outgrew its presentation, a
+      premium service that looks accessible, a claim the current brand cannot carry. Name that
+      tension explicitly; an evolved direction with no stated tension is just a tidier anchored.
+
+  - key: DISRUPTIVE
+    posture: Bet on the vision rather than the current position.
+    retains: Only the shared invariants above.
+    risks: Asking existing customers to re-learn the brand, and outrunning what the business can deliver.
+    reads_most_from: [belief.vision, belief.growthGoal, beyond.legacy, best.competitors, strategy.lookAndFeel.admired]
+    guidance: >
+      Derived from where the client said they are going, not where they are. It must still be
+      deliverable at setup.stage and setup.teamSize — a disruptive direction that assumes a
+      team of forty for a team of three is a fantasy, not a direction. Where it departs from
+      the purpose playbook, say so and justify it; a departure that is not acknowledged reads
+      as a misreading of the brief.
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+weighting_rules:
+
+  - signal: look.logoIntent
+    effect: >
+      The client's own answer about their existing logo maps directly onto the three postures —
+      "keep it" towards ANCHORED, "evolve it" towards EVOLVED, "start fresh" towards
+      DISRUPTIVE. Where the client answered, that direction is the one developed with the most
+      conviction and named first in the playbook's direction guidance. The other two are still
+      produced in full: the client chose a starting assumption, not an outcome, and the most
+      valuable moment in a presentation is often the direction they did not ask for. "Not sure"
+      weights nothing.
+
+  - signal: strategy.lookAndFeel contradiction
+    effect: >
+      Where the sliders and the forced-choice pairs disagree, the pairs are the truer taste
+      signal and the sliders are the aspiration. Use the pairs for the visual register of all
+      three directions, and use the stated aspiration as a reason one direction may reach
+      further than the tiles alone would suggest.
+
+  - signal: setup.stage
+    effect: >
+      Pre-launch and under-a-year businesses have little equity to anchor to, so ANCHORED has
+      less to retain and the spread between the three directions narrows. Say so rather than
+      inventing equity to preserve. Ten-years-plus businesses have the opposite problem: the
+      disruptive direction must reckon with what customers already recognise.
+
+  - signal: belief.neverList
+    effect: >
+      Applied as a filter after each direction is drafted, not as an input. Any direction whose
+      expression lands on a never-word is redrafted, however strong it otherwise is — including
+      a disruptive direction whose whole interest is that it is uncomfortable.
+
+  - signal: layer2_precedent
+    effect: >
+      Precedent informs craft, never content. Use the closest Layer 2 engagements to see how a
+      comparable tension was resolved and what the client chose in the end; never carry across
+      a palette, a mark, a proposition or a name. Where a precedent is used, name which and
+      what was taken from it. A direction that could be recognised as another client's brand
+      with the words swapped is a rejection, not a shortcut.
+
+archetype_rule: >
+  Each direction selects one primary archetype from directions/archetypes.yaml, chosen against
+  belief.values, best.storyArc and strategy.lookAndFeel — not against the sector. Two
+  directions may share an archetype only if their expression of it is genuinely different, and
+  the brief must then say how. The archetype is a lens for the specialist agents, not a label
+  for the client: it appears in the direction brief and never in client-facing copy.
+
+distinctness_rule: >
+  The three directions must be distinguishable by a client who is not a designer, in one
+  sentence each, without seeing the visuals. If the difference between two of them can only be
+  explained in design vocabulary, they are one direction drafted twice — collapse them and
+  derive a genuinely different third. The common failure is three variations on evolved;
+  anchored should feel reassuring and disruptive should feel slightly risky, and if neither
+  does, the spread is too narrow.
+
+output_contract: >
+  Three direction briefs, each carrying: the direction key, a one-sentence summary a
+  non-designer could repeat, the tension it resolves, the primary archetype, the tonal
+  register, the visual territory with its retained and released elements, the audience emphasis,
+  what it is betting on, what it risks, and the shared invariants restated as constraints. Each
+  brief states which purpose-playbook sections it was derived from, so a client questioning a
+  direction can be shown the answer it came from.

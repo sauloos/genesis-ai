@@ -2,6 +2,21 @@ module: playbook-structure
 version: 1.0
 description: Required structure and content for every brand playbook Genesis AI assembles.
 
+scope_note: >
+  This module governs the BRAND PLAYBOOK — one per creative direction, assembled after copy,
+  visual identity and logo have been generated and accepted, expressing how that one direction
+  is applied. It is not the Purpose Playbook, which is one per engagement, produced before any
+  direction exists, and structured by assembly/purpose-playbook-structure.yaml.
+
+  Where a Purpose Playbook exists for the engagement, it is upstream of this document and this
+  document inherits from it: the mission, values, personas, pain points, value proposition,
+  story arc and the never-list are carried through rather than re-derived, and must not be
+  contradicted. A direction that deliberately departs from the purpose playbook — a disruptive
+  direction usually does — states the departure and its reasoning in the strategic summary.
+
+  Fields that belong here and never in the purpose playbook: tagline, elevator pitch,
+  boilerplate, positioning statement, colour values, typeface names and logo rationale.
+
 sections:
   - name: Brand Foundation
     required: true

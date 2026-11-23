@@ -1,0 +1,137 @@
+module: purpose-playbook-evaluation-rubric
+version: 1.0
+context: on_demand
+description: >
+  Criteria Genesis AI uses to evaluate the Purpose Playbook produced from the discovery
+  questionnaire, before accepting it as the brief every downstream deliverable is derived from.
+  Distinct from evaluation/playbook-rubric.yaml, which evaluates the per-direction brand
+  playbook assembled after copy, visual identity and logo.
+
+stakes: >
+  This document is upstream of everything. A brand playbook that fails its rubric costs one
+  regeneration; a purpose playbook that passes while being wrong propagates a false premise
+  into three directions, five specialist outputs, the client's Consultant context and the
+  Layer 2 corpus. Evaluate it harder than any downstream artefact, and prefer rejecting a
+  plausible document over accepting a flattering one.
+
+evaluation_dimensions:
+
+  - name: groundedness
+    weight: critical
+    description: Does every assertion trace to a signal, an observed page, or a cited Layer 2 precedent?
+    pass_criteria: >
+      Each section's `sources` array names signal keys that actually carry content, and the
+      prose says nothing the client did not supply or that cannot be derived visibly from what
+      they did. Where a page was read, the observation matches what is on the page.
+    fail_criteria: >
+      Branding language appears with no answer behind it — an invented value, a fabricated
+      customer quote, a competitor critique written from the name alone, an SDG with no
+      mechanism, a flywheel the answers do not describe, or a testimonial specimen presented
+      as real.
+
+  - name: derivation_integrity
+    weight: critical
+    description: Are the workshop outputs genuinely derived, rather than the client's own words relabelled?
+    pass_criteria: >
+      The mission synthesises belief.cause.* and belief.loss into a claim about change in the
+      world. Values carry behavioural definitions written from belief.valueCost. The five
+      persona fields are observed from the persona story rather than transcribed. The value
+      proposition is one publishable sentence, with the ladder shown beneath it.
+    fail_criteria: >
+      A playbook field is a verbatim paste of the answer to a single question; the CAUSE
+      acronym or the Values Statement device appears as a labelled output section; values are
+      bare chip words with no behaviour attached; persona fields read as form entries.
+
+  - name: honest_gaps
+    weight: critical
+    description: Does the document distinguish what is known from what is assumed?
+    pass_criteria: >
+      The confidence section lists every field derived from a thin or missing signal with the
+      question that would close it. Inferred SDGs are marked inferred. Reordered values say so.
+      Assumed audience pain is marked as assumed. An unanswered belief.loss, an incomplete
+      value-proposition ladder, or an unevidenced audience pain is stated in the body, not only
+      in the table.
+    fail_criteria: >
+      A thin signal has been smoothed into confident prose; the confidence section is absent,
+      empty, or claims high confidence across the board on an engagement with known gaps.
+
+  - name: brief_sufficiency
+    weight: critical
+    description: Could the direction derivation and the five specialist agents be briefed from this alone?
+    pass_criteria: >
+      The one-page positioning summary carries purpose, audience, proposition, the never-list
+      and the look-and-feel territory in prose. The look-and-feel section gives the logo and
+      visual identity agents an actual territory with its exclusions — the palette dislike, any
+      forbidden colour, the logo intent, and what transfers from the admired brands. The
+      direction guidance says what each of the three directions should hold and risk.
+    fail_criteria: >
+      The positioning summary introduces new content, or omits one of its five components; the
+      look-and-feel section records sliders without interpreting them; a downstream agent would
+      have to guess at taste, constraint, or audience.
+
+  - name: usefulness_of_recommendation
+    weight: high
+    description: Is the strategy half a decision the client could act on, with things deliberately deferred?
+    pass_criteria: >
+      Assets are ordered by dependency and by what unblocks revenue, each with why it is next
+      and what it depends on; something is explicitly deferred; every recommended asset maps to
+      a placement the client actually named; the sequence is realistic for setup.stage.
+    fail_criteria: >
+      A standard channel menu reproduced regardless of the client's answers; a recommendation
+      for a placement the client did not name; a pre-launch business told to run a podcast
+      while having no page that explains the offer; nothing deferred.
+
+  - name: specificity
+    weight: high
+    description: Would this document read differently for a different client?
+    pass_criteria: >
+      Sections carry this client's names, figures, places, competitors and words. The persona
+      names are consistent throughout. The story arc's failure beat is a specific event.
+    fail_criteria: >
+      Paragraphs that would survive a find-and-replace of the business name; agency register
+      ("leverage", "synergy", "best-in-class", "journey" as metaphor); the story arc with the
+      failure beats skipped or generalised.
+
+  - name: pillar_completeness
+    weight: high
+    description: Is every required section present, in the canonical shape?
+    pass_criteria: >
+      All four pillars present. Eight story beats in order. Five persona fields in order, using
+      the term persona. Inner circle's five roles each named or explicitly marked empty. Three
+      SDGs. Never-list carried verbatim. Confidence section present.
+    fail_criteria: >
+      A pillar missing or collapsed into another; fewer than eight story beats; "avatar" used
+      for persona; the never-list edited; fewer than three competitors.
+
+  - name: scope_discipline
+    weight: medium
+    description: Does it stay a purpose playbook rather than drifting into the brand playbook's territory?
+    pass_criteria: >
+      No tagline, elevator pitch, boilerplate, positioning statement, brand promise, colour
+      hex values, typeface names or logo concepts. The look-and-feel section describes
+      territory and constraint, not solutions.
+    fail_criteria: >
+      The document proposes a tagline, names specific fonts or colours, or sketches a logo —
+      pre-empting the Copy, Visual Identity and Logo agents and biasing all three directions
+      toward one answer before any direction exists.
+
+rejection_triggers:
+  # Any one of these returns the playbook for revision regardless of other scores.
+  - A customer quote, testimonial or metric appears that no signal supplied
+  - A competitor is critiqued on visual or content specifics with no page actually read
+  - A value is stated with no behavioural definition, or with one unsupported by belief.valueCost
+  - The never-list has been reworded, reordered or extended
+  - The confidence section is missing, or reports no gaps on an engagement with thin signals
+  - The document proposes a tagline, typeface, colour value or logo concept
+  - The term "avatar" is used in place of "persona"
+  - The CAUSE acronym or the Values Statement device appears as a labelled section
+  - An asset is recommended for a placement absent from look.placements
+  - Fewer than eight story beats, or a story arc with no specific failure
+
+feedback_format: >
+  When returning a purpose playbook for revision, name the section, state which signal the
+  problem concerns, and say whether the fix is to derive differently, to ground the claim, or
+  to admit the gap. Never suggest the replacement text — a rewritten mission handed to the
+  agent produces an evaluator's brand, not the client's. Lead with the sections that are
+  carrying their weight, because this document goes to the facilitator before it goes anywhere
+  else, and they need to know what to keep.
