@@ -1,14 +1,30 @@
+/* Theme tokens only — no colour literals. Client artwork (palette swatches, reference images,
+   type specimens) carries its own colour as config data, applied inline by widget.js, because a
+   theme cannot know a client's palette. */
 .widget-questionnaire {
   border: 1px solid var(--theme-card-border); border-radius: 12px; padding: 24px;
 }
 .widget-questionnaire .q-embed-status { font-size: 13px; color: var(--theme-text-muted); }
 .widget-questionnaire .q-embed-progress { font-size: 11px; color: var(--theme-text-muted); text-transform: uppercase; letter-spacing: 0.5px;
   font-weight: 600; margin-bottom: 10px; }
+
+/* Act progress. Fixed parts, so the bar never revises itself downwards the way a question
+   count would once conditional questions resolve. */
+.widget-questionnaire .q-embed-acts { display: flex; gap: 4px; margin-bottom: 16px; }
+.widget-questionnaire .q-embed-act { flex: 1; height: 3px; border-radius: 2px; background: var(--theme-btn-border); }
+.widget-questionnaire .q-embed-act.done { background: color-mix(in srgb, var(--theme-text-primary) 45%, transparent); }
+.widget-questionnaire .q-embed-act.current { background: var(--theme-text-primary); }
+.widget-questionnaire .q-embed-act-intent { font-size: 13px; color: var(--theme-text-muted); line-height: 1.55; margin-bottom: 18px;
+  padding-left: 12px; border-left: 2px solid var(--theme-divider); }
+
+.widget-questionnaire .q-embed-question.stacked { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--theme-divider); }
 .widget-questionnaire .q-embed-prompt { font-size: 16px; font-weight: 700; line-height: 1.35; margin-bottom: 6px; color: var(--theme-text-primary); }
 .widget-questionnaire .q-embed-help { font-size: 12px; color: var(--theme-text-muted); margin-bottom: 16px; line-height: 1.5; }
 .widget-questionnaire .q-embed-body { min-height: 60px; }
+.widget-questionnaire .q-embed-error { font-size: 12px; color: var(--theme-danger); margin-top: 8px; min-height: 14px; line-height: 1.4; }
+
 .widget-questionnaire .q-embed-text-row { display: flex; gap: 8px; align-items: flex-start; }
-.widget-questionnaire .q-embed-text-row input[type="text"], .widget-questionnaire .q-embed-text-row textarea {
+.widget-questionnaire .q-embed-text-row input, .widget-questionnaire .q-embed-text-row textarea {
   flex: 1; padding: 10px 12px; border: 1px solid var(--theme-btn-border); border-radius: 8px;
   font-size: 14px; font-family: inherit; resize: vertical; background: transparent; color: var(--theme-text-primary);
 }
@@ -19,21 +35,100 @@
 }
 .widget-questionnaire .q-embed-mic-btn.recording { background: color-mix(in srgb, var(--theme-danger) 12%, transparent); border-color: var(--theme-danger); color: var(--theme-text-primary); }
 .widget-questionnaire .q-embed-voice-status { font-size: 12px; color: var(--theme-text-muted); margin-top: 6px; min-height: 14px; }
+
+/* Uploads */
 .widget-questionnaire .q-embed-dropzone {
   border: 2px dashed var(--theme-btn-border); border-radius: 10px; padding: 24px; text-align: center;
   cursor: pointer; color: var(--theme-text-muted); font-size: 13px;
 }
-.widget-questionnaire .q-embed-image-preview { max-width: 100%; max-height: 200px; border-radius: 8px; display: block; margin: 0 auto 10px; }
+.widget-questionnaire .q-embed-upload-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.widget-questionnaire .q-embed-upload-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+  border: 1px solid var(--theme-card-border); border-radius: 8px; }
+.widget-questionnaire .q-embed-upload-thumb { width: 44px; height: 44px; object-fit: contain; flex-shrink: 0;
+  background: var(--theme-preview-bg); border-radius: 6px; }
+.widget-questionnaire .q-embed-upload-name { flex: 1; font-size: 13px; color: var(--theme-text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.widget-questionnaire .q-embed-upload-pending { font-size: 11px; color: var(--theme-text-muted);
+  text-transform: uppercase; letter-spacing: 0.4px; }
+
+/* Sliders */
 .widget-questionnaire .q-embed-slider-wrap { padding: 12px 4px 0; }
 .widget-questionnaire .q-embed-slider-wrap input[type="range"] { width: 100%; accent-color: var(--theme-text-primary); }
 .widget-questionnaire .q-embed-slider-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--theme-text-muted); margin-top: 6px; }
-.widget-questionnaire .q-embed-slider-value { text-align: center; font-size: 22px; font-weight: 700; margin-top: 10px; font-variant-numeric: tabular-nums; color: var(--theme-text-primary); }
+.widget-questionnaire .q-embed-slider-value { text-align: center; font-size: 18px; font-weight: 700; margin-top: 10px; color: var(--theme-text-primary); }
+
+/* Single and multi select */
 .widget-questionnaire .q-embed-choice-list { display: flex; flex-direction: column; gap: 8px; }
 .widget-questionnaire .q-embed-choice-btn {
   text-align: left; padding: 11px 14px; border: 1px solid var(--theme-btn-border); border-radius: 8px;
   background: transparent; font-size: 14px; color: var(--theme-text-primary); cursor: pointer; font-family: inherit;
 }
 .widget-questionnaire .q-embed-choice-btn.selected { background: var(--theme-text-primary); color: var(--theme-body-bg); border-color: var(--theme-text-primary); }
+
+/* Word bank */
+.widget-questionnaire .q-embed-chip-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.widget-questionnaire .q-embed-chip {
+  padding: 7px 13px; border-radius: 999px; border: 1px solid var(--theme-btn-border); background: transparent;
+  font-size: 13px; font-family: inherit; color: var(--theme-text-primary); cursor: pointer;
+}
+.widget-questionnaire .q-embed-chip.selected { background: var(--theme-text-primary); color: var(--theme-body-bg); border-color: var(--theme-text-primary); }
+.widget-questionnaire .q-embed-chip-add { display: flex; gap: 8px; margin-top: 12px; }
+.widget-questionnaire .q-embed-chip-add input {
+  flex: 1; padding: 8px 12px; border: 1px solid var(--theme-btn-border); border-radius: 8px;
+  background: transparent; color: var(--theme-text-primary); font-size: 13px; font-family: inherit;
+}
+.widget-questionnaire .q-embed-chip-add-btn {
+  padding: 8px 14px; border-radius: 8px; border: 1px solid var(--theme-btn-border); background: transparent;
+  color: var(--theme-text-primary); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;
+}
+.widget-questionnaire .q-embed-chip-counter { font-size: 11px; color: var(--theme-text-muted); margin-top: 10px;
+  text-transform: uppercase; letter-spacing: 0.4px; }
+
+/* Ranking — click to place, click again to remove */
+.widget-questionnaire .q-embed-rank-list { display: flex; flex-direction: column; gap: 8px; }
+.widget-questionnaire .q-embed-rank-row {
+  display: flex; align-items: center; gap: 12px; text-align: left; padding: 10px 14px;
+  border: 1px solid var(--theme-btn-border); border-radius: 8px; background: transparent;
+  font-size: 14px; font-family: inherit; color: var(--theme-text-primary); cursor: pointer;
+}
+.widget-questionnaire .q-embed-rank-row.selected { border-color: var(--theme-text-primary); }
+.widget-questionnaire .q-embed-rank-place {
+  width: 24px; height: 24px; flex-shrink: 0; border-radius: 50%; border: 1px solid var(--theme-btn-border);
+  display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;
+}
+.widget-questionnaire .q-embed-rank-row.selected .q-embed-rank-place {
+  background: var(--theme-text-primary); color: var(--theme-body-bg); border-color: var(--theme-text-primary);
+}
+.widget-questionnaire .q-embed-rank-label { flex: 1; }
+
+/* Tile grids — icons, reference imagery, palettes, type specimens */
+.widget-questionnaire .q-embed-tile-grid {
+  display: grid; gap: 12px;
+  grid-template-columns: repeat(var(--q-embed-tile-columns, 3), minmax(0, 1fr));
+}
+.widget-questionnaire .q-embed-tile {
+  display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 12px;
+  border: 1px solid var(--theme-btn-border); border-radius: 10px; background: transparent;
+  font-family: inherit; color: var(--theme-text-primary); cursor: pointer; text-align: left;
+}
+.widget-questionnaire .q-embed-tile.selected { border-color: var(--theme-text-primary);
+  box-shadow: inset 0 0 0 1px var(--theme-text-primary); }
+.widget-questionnaire .q-embed-tile-label { font-size: 13px; font-weight: 600; line-height: 1.3; }
+.widget-questionnaire .q-embed-tile-note { font-size: 11px; color: var(--theme-text-muted); line-height: 1.4; }
+.widget-questionnaire .q-embed-tile-icon { font-size: 26px; line-height: 1.2; }
+.widget-questionnaire .q-embed-tile-image { display: block; aspect-ratio: 4 / 3; border-radius: 6px;
+  background: var(--theme-preview-bg); overflow: hidden; }
+.widget-questionnaire .q-embed-tile-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.widget-questionnaire .q-embed-swatch-strip { display: flex; height: 48px; border-radius: 6px; overflow: hidden; }
+.widget-questionnaire .q-embed-swatch { flex: 1; }
+.widget-questionnaire .q-embed-specimen { font-size: 26px; line-height: 1.3; }
+
+.widget-questionnaire .q-embed-synthesis {
+  width: 100%; box-sizing: border-box; padding: 12px 14px; border: 1px solid var(--theme-btn-border);
+  border-radius: 8px; background: transparent; color: var(--theme-text-primary);
+  font-size: 14px; font-family: inherit; line-height: 1.6; resize: vertical;
+}
+
 .widget-questionnaire .q-embed-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
 .widget-questionnaire .q-embed-nav-btn {
   padding: 9px 18px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600;
@@ -44,3 +139,8 @@
 .widget-questionnaire .q-embed-nav-ghost { background: none; color: var(--theme-text-muted); }
 .widget-questionnaire .q-embed-nav-ghost:disabled { opacity: 0.3; cursor: default; }
 .widget-questionnaire .q-embed-done { font-size: 14px; color: var(--theme-text-primary); font-weight: 600; }
+
+@media (max-width: 520px) {
+  .widget-questionnaire { padding: 16px; }
+  .widget-questionnaire .q-embed-tile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

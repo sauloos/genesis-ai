@@ -259,7 +259,35 @@
 
   .form-actions { display: flex; gap: 8px; margin-top: 16px; }
 
-  .hint-text { font-size: 11px; color: var(--theme-text-label); margin-top: 12px; }
+  .hint-text { font-size: 11px; color: var(--theme-text-label); line-height: 1.5;
+    margin-top: 12px; margin-bottom: 10px; }
+
+  /* Publish readiness. Cross-question problems (a condition pointing at a signal nothing
+     captures, a question in an undeclared part) cannot be caught at the individual save,
+     so they are reported here continuously rather than only at the publish. */
+  #validation-strip { margin: 0 32px 16px; font-size: 12px; line-height: 1.6; }
+  #validation-strip.ready { color: var(--theme-success); }
+  #validation-strip.issues {
+    color: var(--theme-warning); border: 1px solid var(--theme-warning); border-radius: 8px;
+    padding: 12px 14px; background: color-mix(in srgb, var(--theme-warning) 8%, transparent);
+  }
+  #validation-strip ul { margin: 6px 0 0; padding-left: 18px; }
+
+  #parts-block { margin: 0 32px 20px; border: 1px solid var(--theme-card-border); border-radius: 8px; padding: 12px 16px; }
+  #parts-block summary { font-size: 13px; font-weight: 700; cursor: pointer; color: var(--theme-text-primary); }
+  #parts-block #parts-count { font-weight: 400; color: var(--theme-text-muted); margin-left: 6px; }
+  #parts-block textarea {
+    width: 100%; box-sizing: border-box; margin-top: 10px; padding: 10px 12px; border-radius: 6px;
+    border: 1px solid var(--theme-btn-border); background: transparent; color: var(--theme-text-primary);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.5; resize: vertical;
+  }
+  .form-field textarea.code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.5;
+  }
+  /* A signal key, a step key or a condition is typed verbatim elsewhere, so it is shown
+     exactly as it is stored — uppercasing it would invite an author to retype it wrong. */
+  .qc-flag.signal { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    text-transform: none; letter-spacing: 0; }
 </style>
 <link rel="stylesheet" href="/api/themes/active/styles.css">
 </head>
@@ -339,6 +367,23 @@
       <button class="pbtn pbtn-ghost" id="unpublish-btn" onclick="unpublish()" style="display:none">Unpublish</button>
     </div>
 
+    <div id="validation-strip"></div>
+
+    <details id="parts-block">
+      <summary>Parts <span id="parts-count"></span></summary>
+      <p class="hint-text">
+        The acts a client walks through, in order. One JSON array of
+        <code>{"key","title","intent"}</code> — the key is what each question's "Part" refers to,
+        the title is shown as progress, the intent is the short line that opens the act.
+        Leave empty for a plain question count.
+      </p>
+      <textarea id="sections-input" rows="8" spellcheck="false"
+        placeholder='[{"key":"belief","title":"What you believe","intent":"Where this began."}]'></textarea>
+      <div class="form-actions">
+        <button class="pbtn pbtn-primary" onclick="saveSections()">Save parts</button>
+      </div>
+    </details>
+
     <div id="questions-area">
       <div id="questions-header">
         <h3>Questions</h3>
@@ -365,13 +410,32 @@ const KEY     = 'genesis-ai-key';
 const HEADERS = { 'Content-Type': 'application/json', 'X-Api-Key': KEY };
 
 const TYPES = [
-  { value: 'SHORT_TEXT',    label: 'Short text', icon: 'Aa' },
-  { value: 'LONG_TEXT',     label: 'Long text',  icon: '¶'  },
-  { value: 'IMAGE_UPLOAD',  label: 'Image',      icon: '🖼' },
-  { value: 'SLIDER',        label: 'Slider',     icon: '↔'  },
-  { value: 'SINGLE_SELECT', label: 'Single choice', icon: '◉' },
-  { value: 'MULTI_SELECT',  label: 'Multi choice',  icon: '☑' },
+  { value: 'SHORT_TEXT',     label: 'Short text',    icon: 'Aa' },
+  { value: 'LONG_TEXT',      label: 'Long text',     icon: '¶'  },
+  { value: 'URL',            label: 'Web address',   icon: '🔗' },
+  { value: 'SLIDER',         label: 'Slider',        icon: '↔'  },
+  { value: 'SINGLE_SELECT',  label: 'Single choice', icon: '◉' },
+  { value: 'MULTI_SELECT',   label: 'Multi choice',  icon: '☑' },
+  { value: 'CHIP_PICK',      label: 'Word bank',     icon: '🏷' },
+  { value: 'RANKING',        label: 'Ranking',       icon: '①' },
+  { value: 'ICON_GRID',      label: 'Icon grid',     icon: '⬚' },
+  { value: 'IMAGE_CHOICE',   label: 'Image choice',  icon: '🖼' },
+  { value: 'PALETTE_CHOICE', label: 'Palettes',      icon: '🎨' },
+  { value: 'TYPE_SPECIMEN',  label: 'Typefaces',     icon: 'Tt' },
+  { value: 'IMAGE_UPLOAD',   label: 'Image upload',  icon: '⬆' },
+  { value: 'FILE_UPLOAD',    label: 'File upload',   icon: '📎' },
+  { value: 'SYNTHESIS',      label: 'Say it back',   icon: '↩' },
 ];
+
+/* The four tile types take rich option objects, so they are authored as JSON rather than
+   through four bespoke sub-forms. Phase 3 seeds these; hand-authoring is the exception. */
+const TILE_TYPES = ['ICON_GRID', 'IMAGE_CHOICE', 'PALETTE_CHOICE', 'TYPE_SPECIMEN'];
+const TILE_HINTS = {
+  ICON_GRID:      '[{"value":"craft","label":"Craft","icon":"🛠","note":"optional"}]',
+  IMAGE_CHOICE:   '[{"value":"warm-editorial","label":"Warm editorial","imageUrl":"/api/assets/looks/warm.jpg"}]',
+  PALETTE_CHOICE: '[{"value":"earthy","label":"Earthy","colors":["#6B5B4A","#C9BBA4","#2F3A2F"]}]',
+  TYPE_SPECIMEN:  '[{"value":"grotesque","label":"Neo-grotesque","fontFamily":"Helvetica, Arial, sans-serif","sampleText":"Handgloves"}]'
+};
 
 let currentId = null;
 let currentQuestionnaire = null;
@@ -426,10 +490,66 @@ async function openQuestionnaire(id) {
   document.getElementById('title-input').value = currentQuestionnaire.title || '';
   document.getElementById('desc-input').value = currentQuestionnaire.description || '';
   autoResize(document.getElementById('desc-input'));
+  renderSections();
 
   hideAddForm();
   renderPublishBar();
   renderQuestions();
+  loadValidation();
+}
+
+// ── Parts ─────────────────────────────────────────────────────────────────────
+function renderSections() {
+  const raw = currentQuestionnaire.sectionsJson || '';
+  const input = document.getElementById('sections-input');
+  let parsed = [];
+  try { parsed = JSON.parse(raw) || []; } catch (e) { parsed = []; }
+  input.value = raw && Array.isArray(parsed) ? JSON.stringify(parsed, null, 2) : raw;
+  document.getElementById('parts-count').textContent =
+    Array.isArray(parsed) && parsed.length ? '· ' + parsed.length : '· none';
+}
+
+async function saveSections() {
+  const raw = document.getElementById('sections-input').value.trim();
+  const res = await fetch(`${API}/api/questionnaires/${currentId}`, {
+    method: 'PUT', headers: HEADERS,
+    body: JSON.stringify({
+      title: document.getElementById('title-input').value.trim() || 'Untitled',
+      description: document.getElementById('desc-input').value,
+      sectionsJson: raw
+    })
+  });
+  if (!await ok(res)) return;
+  await openQuestionnaire(currentId);
+}
+
+// ── Publish readiness ─────────────────────────────────────────────────────────
+async function loadValidation() {
+  const strip = document.getElementById('validation-strip');
+  const report = await fetch(`${API}/api/questionnaires/${currentId}/validation`, { headers: HEADERS })
+    .then(r => r.json()).catch(() => null);
+  if (!report) { strip.className = ''; strip.innerHTML = ''; return; }
+
+  if (report.ready) {
+    strip.className = 'ready';
+    strip.textContent = '✓ Ready to publish.';
+  } else {
+    strip.className = 'issues';
+    strip.innerHTML = '<strong>Not ready to publish</strong><ul>'
+      + report.issues.map(i => `<li>${esc(i)}</li>`).join('') + '</ul>';
+  }
+}
+
+/** Surfaces a 400 from the authoring guards instead of failing silently. */
+async function ok(res) {
+  if (res.ok) return true;
+  let message = 'Request failed (' + res.status + ')';
+  try {
+    const body = await res.json();
+    if (body && body.message) message = body.message;
+  } catch (e) { /* keep the status */ }
+  alert(message);
+  return false;
 }
 
 async function deleteQuestionnaire(e, id) {
@@ -482,9 +602,10 @@ function renderPublishBar() {
 }
 
 async function publishNow() {
-  await fetch(`${API}/api/questionnaires/${currentId}/publish`, {
+  const res = await fetch(`${API}/api/questionnaires/${currentId}/publish`, {
     method: 'POST', headers: HEADERS, body: JSON.stringify({ publishAt: null })
   });
+  if (!await ok(res)) return;
   await openQuestionnaire(currentId);
   await loadQuestionnaires();
 }
@@ -493,9 +614,10 @@ async function schedulePublish() {
   const input = document.getElementById('schedule-at');
   if (!input.value) { alert('Pick a date and time first.'); return; }
   const publishAt = new Date(input.value).toISOString();
-  await fetch(`${API}/api/questionnaires/${currentId}/publish`, {
+  const res = await fetch(`${API}/api/questionnaires/${currentId}/publish`, {
     method: 'POST', headers: HEADERS, body: JSON.stringify({ publishAt })
   });
+  if (!await ok(res)) return;
   await openQuestionnaire(currentId);
   await loadQuestionnaires();
 }
@@ -521,9 +643,13 @@ function renderQuestions() {
   currentQuestions.forEach((q, i) => {
     const typeInfo = TYPES.find(t => t.value === q.type) || TYPES[0];
     const flags = [];
-    if (q.required) flags.push('Required');
-    if (q.allowVoice) flags.push('Voice enabled');
-    flags.push(typeInfo.label);
+    if (q.required) flags.push({ text: 'Required' });
+    if (q.allowVoice) flags.push({ text: 'Voice enabled' });
+    flags.push({ text: typeInfo.label });
+    if (q.signalKey) flags.push({ text: q.signalKey, cls: 'signal' });
+    if (q.sectionKey) flags.push({ text: 'part: ' + q.sectionKey, cls: 'signal' });
+    if (q.stepKey) flags.push({ text: 'screen: ' + q.stepKey, cls: 'signal' });
+    if (q.conditionExpr) flags.push({ text: 'if ' + q.conditionExpr, cls: 'signal' });
 
     const div = document.createElement('div');
     div.className = 'qc-item';
@@ -532,7 +658,8 @@ function renderQuestions() {
       <div class="qc-body">
         <div class="qc-prompt">${esc(q.prompt)}</div>
         ${q.helpText ? `<div class="qc-help">${esc(q.helpText)}</div>` : ''}
-        <div class="qc-flags">${flags.map(f => `<span class="qc-flag">${esc(f)}</span>`).join('')}</div>
+        <div class="qc-flags">${flags.map(f =>
+          `<span class="qc-flag ${f.cls || ''}">${esc(f.text)}</span>`).join('')}</div>
       </div>
       <div class="qc-actions">
         <div class="qc-btn-row">
@@ -568,6 +695,7 @@ async function deleteQuestion(id) {
   await fetch(`${API}/api/questionnaires/${currentId}/questions/${id}`, { method: 'DELETE', headers: HEADERS });
   currentQuestions = currentQuestions.filter(q => q.id !== id);
   renderQuestions();
+  loadValidation();
 }
 
 // ── Add/edit question form ───────────────────────────────────────────────────
@@ -606,10 +734,32 @@ function renderTypePicker() {
 }
 
 function pickType(type) {
+  // The type's own config fields are replaced, but the prompt and the signal/part/screen/
+  // condition the author has already typed survive the switch — they are not type-specific,
+  // and losing them to a mis-click is the kind of small cruelty that makes authoring slow.
+  const carried = {
+    prompt: valueOf('f-prompt'), helpText: valueOf('f-help'),
+    signalKey: valueOf('f-signal'), sectionKey: valueOf('f-section'),
+    stepKey: valueOf('f-stepkey'), conditionExpr: valueOf('f-condition'),
+    required: isActive('f-required-yes'), allowVoice: isActive('f-voice-yes')
+  };
+  const existing = editingQuestionId ? currentQuestions.find(q => q.id === editingQuestionId) : null;
+
   formType = type;
   renderTypePicker();
-  const existing = editingQuestionId ? currentQuestions.find(q => q.id === editingQuestionId) : {};
-  renderFormFields(type === (existing && existing.type) ? existing : {});
+  renderFormFields(existing && existing.type === type
+    ? existing
+    : { ...carried, configJson: null });
+}
+
+function valueOf(id) {
+  const el = document.getElementById(id);
+  return el ? el.value : '';
+}
+
+function isActive(id) {
+  const el = document.getElementById(id);
+  return !!el && el.classList.contains('active');
 }
 
 function renderFormFields(q) {
@@ -627,19 +777,100 @@ function renderFormFields(q) {
       <div class="form-row">
         <div class="form-field"><label>Min label</label><input type="text" id="f-minlabel" value="${esc(config.minLabel || '')}"></div>
         <div class="form-field"><label>Max label</label><input type="text" id="f-maxlabel" value="${esc(config.maxLabel || '')}"></div>
+      </div>
+      <div class="form-field">
+        <label>Scale words (optional, comma-separated, one per step)</label>
+        <input type="text" id="f-labels" value="${esc((config.labels || []).join(', '))}"
+          placeholder="Classic, …, Modern">
+        <div class="hint-text">Given these, the client sees the word under the handle rather than a number.</div>
       </div>`;
   } else if (formType === 'SINGLE_SELECT' || formType === 'MULTI_SELECT') {
     const options = config.options && config.options.length ? config.options : ['', ''];
     extra = `
       <div class="form-field">
         <label>Options</label>
-        <div id="options-list">${options.map((o, i) => optionRow(o, i)).join('')}</div>
+        <div id="options-list">${options.map((o, i) => optionRow(typeof o === 'string' ? o : o.label, i)).join('')}</div>
         <button type="button" id="add-option-btn" onclick="addOptionRow()">+ Add option</button>
+      </div>`;
+  } else if (formType === 'CHIP_PICK') {
+    extra = `
+      <div class="form-field">
+        <label>Word bank (one per line)</label>
+        <textarea id="f-bank" rows="6" class="code">${esc((config.bank || []).join('\n'))}</textarea>
+        <div class="hint-text">A prompt, not a ceiling — the client can always add their own word.</div>
+      </div>
+      <div class="form-row">
+        <div class="form-field"><label>Most they can pick (0 = no limit)</label>
+          <input type="number" id="f-maxselect" value="${config.maxSelect ?? 0}"></div>
+        <div class="form-field"><label>"Add your own" placeholder</label>
+          <input type="text" id="f-addplaceholder" value="${esc(config.addPlaceholder || '')}"></div>
+      </div>`;
+  } else if (formType === 'RANKING') {
+    extra = `
+      <div class="form-row">
+        <div class="form-field"><label>Ranks what this signal captured</label>
+          <input type="text" id="f-sourcesignal" value="${esc(config.sourceSignal || '')}"
+            placeholder="belief.valueChips"></div>
+        <div class="form-field"><label>How many to rank (0 = all)</label>
+          <input type="number" id="f-pick" value="${config.pick ?? 0}"></div>
+      </div>
+      <div class="form-field">
+        <label>Fixed options instead (one per line, used when no source signal)</label>
+        <textarea id="f-rankoptions" rows="4" class="code">${esc((config.options || []).join('\n'))}</textarea>
+      </div>`;
+  } else if (TILE_TYPES.includes(formType)) {
+    extra = `
+      <div class="form-field">
+        <label>Tiles (JSON array)</label>
+        <textarea id="f-tilejson" rows="8" class="code" spellcheck="false"
+          placeholder='${esc(TILE_HINTS[formType])}'>${esc(config.options ? JSON.stringify(config.options, null, 2) : '')}</textarea>
+        <div class="hint-text">Each tile needs <code>value</code> and <code>label</code>; then
+          ${formType === 'PALETTE_CHOICE' ? '<code>colors</code> (array of CSS colours)'
+            : formType === 'TYPE_SPECIMEN' ? '<code>fontFamily</code> and <code>sampleText</code>'
+            : formType === 'IMAGE_CHOICE' ? '<code>imageUrl</code>' : '<code>icon</code>'},
+          and an optional <code>note</code>.</div>
+      </div>
+      <div class="form-row">
+        <div class="form-field"><label>Most they can pick</label>
+          <input type="number" id="f-maxselect" value="${config.maxSelect ?? 1}"></div>
+        <div class="form-field"><label>Columns</label>
+          <input type="number" id="f-columns" value="${config.columns ?? 3}"></div>
+      </div>`;
+  } else if (formType === 'IMAGE_UPLOAD' || formType === 'FILE_UPLOAD') {
+    extra = `
+      <div class="form-row">
+        <div class="form-field"><label>Accepted files</label>
+          <input type="text" id="f-accept" value="${esc(config.accept || '')}"
+            placeholder="image/*,.pdf,.ai,.svg"></div>
+        ${formType === 'FILE_UPLOAD' ? `<div class="form-field"><label>Most files (max 10)</label>
+          <input type="number" id="f-maxfiles" value="${config.maxFiles ?? 10}"></div>` : ''}
+      </div>
+      <div class="form-field"><label>Drop-zone wording</label>
+        <input type="text" id="f-cta" value="${esc(config.cta || '')}"></div>`;
+  } else if (formType === 'SYNTHESIS') {
+    extra = `
+      <div class="form-field">
+        <label>Template</label>
+        <textarea id="f-template" rows="5" class="code">${esc(config.template || '')}</textarea>
+        <div class="hint-text">Write it as a sentence with <code>{signal.key}</code> in the gaps —
+          those are filled from what the client already said, and they correct the wording.</div>
+      </div>
+      <div class="form-row">
+        <div class="form-field"><label>Rows</label><input type="number" id="f-rows" value="${config.rows ?? 4}"></div>
+        <div class="form-field"><label>Note under the box</label>
+          <input type="text" id="f-note" value="${esc(config.note || '')}"></div>
+      </div>`;
+  } else {
+    extra = `
+      <div class="form-row">
+        <div class="form-field"><label>Placeholder</label>
+          <input type="text" id="f-placeholder" value="${esc(config.placeholder || '')}"></div>
+        <div class="form-field"><label>Max characters (0 = no limit)</label>
+          <input type="number" id="f-maxlength" value="${config.maxLength ?? 0}"></div>
       </div>`;
   }
 
-  const showRequired = true;
-  const showVoice = formType === 'SHORT_TEXT' || formType === 'LONG_TEXT';
+  const showVoice = formType === 'SHORT_TEXT' || formType === 'LONG_TEXT' || formType === 'SYNTHESIS';
 
   el.innerHTML = `
     <div class="form-field">
@@ -651,6 +882,33 @@ function renderFormFields(q) {
       <input type="text" id="f-help" value="${esc(q.helpText || '')}">
     </div>
     ${extra}
+    <div class="form-row">
+      <div class="form-field">
+        <label>Signal key</label>
+        <input type="text" id="f-signal" value="${esc(q.signalKey || '')}" placeholder="belief.origin">
+      </div>
+      <div class="form-field">
+        <label>Part</label>
+        <input type="text" id="f-section" value="${esc(q.sectionKey || '')}" placeholder="belief">
+      </div>
+      <div class="form-field">
+        <label>Screen</label>
+        <input type="text" id="f-stepkey" value="${esc(q.stepKey || '')}" placeholder="values-step">
+      </div>
+    </div>
+    <div class="hint-text">
+      The signal key is what every agent and the client's own RAG context reads this answer by —
+      one key, one question, and renaming one later breaks whatever already refers to it.
+      Questions sharing a screen are asked together on one page.
+    </div>
+    <div class="form-field">
+      <label>Ask only if (optional)</label>
+      <input type="text" id="f-condition" value="${esc(q.conditionExpr || '')}"
+        placeholder="belong.buyerIsUser == 'no'">
+      <div class="hint-text">One clause:
+        <code>key == 'v'</code>, <code>key != 'v'</code>, <code>key contains 'v'</code>,
+        <code>key is present</code>, <code>key is absent</code>. No and/or.</div>
+    </div>
     <div class="form-field">
       <label>Required</label>
       <button type="button" class="seg-btn ${q.required ? 'active' : ''}" id="f-required-yes" onclick="toggleSeg('f-required',true)">Yes</button>
@@ -697,40 +955,90 @@ async function saveQuestion() {
   const voiceYes = document.getElementById('f-voice-yes');
   const allowVoice = voiceYes ? voiceYes.classList.contains('active') : false;
 
+  const val = (id) => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  const num = (id) => { const el = document.getElementById(id); return el ? Number(el.value) : 0; };
+  const lines = (id) => val(id).split('\n').map(s => s.trim()).filter(Boolean);
+
   let config = {};
   if (formType === 'SLIDER') {
     config = {
-      min: Number(document.getElementById('f-min').value),
-      max: Number(document.getElementById('f-max').value),
-      step: Number(document.getElementById('f-step').value),
-      minLabel: document.getElementById('f-minlabel').value,
-      maxLabel: document.getElementById('f-maxlabel').value,
+      min: num('f-min'), max: num('f-max'), step: num('f-step'),
+      minLabel: val('f-minlabel'), maxLabel: val('f-maxlabel')
     };
+    const labels = val('f-labels').split(',').map(s => s.trim()).filter(Boolean);
+    if (labels.length) config.labels = labels;
   } else if (formType === 'SINGLE_SELECT' || formType === 'MULTI_SELECT') {
-    const options = [...document.querySelectorAll('#options-list input')]
-      .map(i => i.value.trim()).filter(Boolean);
-    config = { options };
+    config = { options: [...document.querySelectorAll('#options-list input')]
+      .map(i => i.value.trim()).filter(Boolean) };
+  } else if (formType === 'CHIP_PICK') {
+    config = { bank: lines('f-bank') };
+    if (num('f-maxselect') > 0) config.maxSelect = num('f-maxselect');
+    if (val('f-addplaceholder')) config.addPlaceholder = val('f-addplaceholder');
+  } else if (formType === 'RANKING') {
+    config = {};
+    if (val('f-sourcesignal')) config.sourceSignal = val('f-sourcesignal');
+    if (num('f-pick') > 0) config.pick = num('f-pick');
+    const options = lines('f-rankoptions');
+    if (options.length) config.options = options;
+    if (!config.sourceSignal && !options.length) {
+      alert('A ranking question needs either a source signal or a list of options.');
+      return;
+    }
+  } else if (TILE_TYPES.includes(formType)) {
+    // Authored as JSON, so it is parsed here rather than reaching the client as a broken grid.
+    let options;
+    try {
+      options = JSON.parse(val('f-tilejson') || '[]');
+    } catch (e) {
+      alert('The tiles are not valid JSON: ' + e.message);
+      return;
+    }
+    if (!Array.isArray(options) || !options.length) {
+      alert('The tiles must be a non-empty JSON array.');
+      return;
+    }
+    const broken = options.find(o => !o || !o.value || !o.label);
+    if (broken) {
+      alert('Every tile needs both a "value" and a "label".');
+      return;
+    }
+    config = { options, maxSelect: Math.max(1, num('f-maxselect')), columns: Math.max(1, num('f-columns')) };
+  } else if (formType === 'IMAGE_UPLOAD' || formType === 'FILE_UPLOAD') {
+    config = {};
+    if (val('f-accept')) config.accept = val('f-accept');
+    if (val('f-cta')) config.cta = val('f-cta');
+    if (formType === 'FILE_UPLOAD') config.maxFiles = Math.min(10, Math.max(1, num('f-maxfiles') || 10));
+  } else if (formType === 'SYNTHESIS') {
+    config = { template: document.getElementById('f-template').value, rows: num('f-rows') || 4 };
+    if (val('f-note')) config.note = val('f-note');
+    if (!config.template.trim()) { alert('A "say it back" question needs a template.'); return; }
+  } else {
+    config = {};
+    if (val('f-placeholder')) config.placeholder = val('f-placeholder');
+    if (num('f-maxlength') > 0) config.maxLength = num('f-maxlength');
   }
 
   const body = {
     type: formType, prompt, helpText, required, allowVoice,
-    configJson: JSON.stringify(config)
+    configJson: JSON.stringify(config),
+    signalKey: val('f-signal'),
+    sectionKey: val('f-section'),
+    stepKey: val('f-stepkey'),
+    conditionExpr: val('f-condition')
   };
 
-  if (editingQuestionId) {
-    await fetch(`${API}/api/questionnaires/${currentId}/questions/${editingQuestionId}`, {
-      method: 'PUT', headers: HEADERS, body: JSON.stringify(body)
-    });
-  } else {
-    await fetch(`${API}/api/questionnaires/${currentId}/questions`, {
-      method: 'POST', headers: HEADERS, body: JSON.stringify(body)
-    });
-  }
+  const res = editingQuestionId
+    ? await fetch(`${API}/api/questionnaires/${currentId}/questions/${editingQuestionId}`, {
+        method: 'PUT', headers: HEADERS, body: JSON.stringify(body) })
+    : await fetch(`${API}/api/questionnaires/${currentId}/questions`, {
+        method: 'POST', headers: HEADERS, body: JSON.stringify(body) });
+  if (!await ok(res)) return;
 
   const detail = await fetch(`${API}/api/questionnaires/${currentId}`, { headers: HEADERS }).then(r => r.json());
   currentQuestions = detail.questions;
   renderQuestions();
   hideAddForm();
+  loadValidation();
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

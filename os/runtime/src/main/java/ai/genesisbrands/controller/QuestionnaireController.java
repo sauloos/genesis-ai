@@ -175,6 +175,13 @@ public class QuestionnaireController {
         return responseService.saveImageAnswer(responseId, questionId, image);
     }
 
+    @PostMapping(value = "/responses/{responseId}/answers/{questionId}/file", consumes = "multipart/form-data")
+    @Operation(summary = "Upload one or more files as a single answer — stored as a list")
+    public QuestionnaireAnswer saveFileAnswers(@PathVariable String responseId, @PathVariable String questionId,
+                                                @RequestParam("files") List<MultipartFile> files) throws IOException {
+        return responseService.saveFileAnswers(responseId, questionId, files);
+    }
+
     @PostMapping(value = "/responses/{responseId}/answers/{questionId}/voice", consumes = "multipart/form-data")
     @Operation(summary = "Upload a voice answer — transcribed automatically via Whisper")
     public QuestionnaireAnswer saveVoiceAnswer(@PathVariable String responseId, @PathVariable String questionId,

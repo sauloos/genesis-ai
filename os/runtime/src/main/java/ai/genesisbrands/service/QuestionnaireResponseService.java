@@ -17,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -25,6 +26,8 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class QuestionnaireResponseService {
+
+    private static final int MAX_FILES_PER_ANSWER = 10;
 
     private final QuestionnaireResponseRepository responseRepo;
     private final QuestionnaireAnswerRepository answerRepo;
@@ -68,20 +71,62 @@ public class QuestionnaireResponseService {
     }
 
     public QuestionnaireAnswer saveImageAnswer(String responseId, String questionId, MultipartFile image) throws IOException {
-        QuestionnaireResponse response = getResponse(responseId);
-        String blobPath = "questionnaires/" + response.getQuestionnaireId() + "/responses/" + responseId
-            + "/" + questionId + "/" + UUID.randomUUID() + "_" + image.getOriginalFilename();
-        blob.upload(blobPath, image.getBytes());
+        String blobPath = store(responseId, questionId, image);
         return saveAnswer(responseId, questionId, Map.of("blobPath", "/api/assets/" + blobPath));
     }
 
+    /**
+     * Several files under one answer, as a list — "your current logo" arrives as an .ai plus a
+     * PDF plus a PNG more often than it arrives as one file. The single-image answer above
+     * keeps its object shape, because existing responses and briefs are stored that way.
+     */
+    public QuestionnaireAnswer saveFileAnswers(String responseId, String questionId,
+                                                List<MultipartFile> files) throws IOException {
+        if (files == null || files.isEmpty()) {
+            throw new IllegalArgumentException("No files were uploaded.");
+        }
+        if (files.size() > MAX_FILES_PER_ANSWER) {
+            throw new IllegalArgumentException("At most " + MAX_FILES_PER_ANSWER + " files per answer.");
+        }
+        List<Map<String, Object>> stored = new ArrayList<>();
+        for (MultipartFile file : files) {
+            if (file.isEmpty()) continue;
+            String blobPath = store(responseId, questionId, file);
+            stored.add(Map.of(
+                "blobPath", "/api/assets/" + blobPath,
+                "name", safeName(file.getOriginalFilename()),
+                "contentType", file.getContentType() != null ? file.getContentType() : "application/octet-stream",
+                "size", file.getSize()));
+        }
+        return saveAnswer(responseId, questionId, stored);
+    }
+
     public QuestionnaireAnswer saveVoiceAnswer(String responseId, String questionId, MultipartFile audio) throws IOException {
-        QuestionnaireResponse response = getResponse(responseId);
-        String blobPath = "questionnaires/" + response.getQuestionnaireId() + "/responses/" + responseId
-            + "/" + questionId + "/" + UUID.randomUUID() + "_" + audio.getOriginalFilename();
-        blob.upload(blobPath, audio.getBytes());
+        store(responseId, questionId, audio);
         String transcript = transcribe(audio);
         return saveAnswer(responseId, questionId, transcript);
+    }
+
+    private String store(String responseId, String questionId, MultipartFile file) throws IOException {
+        QuestionnaireResponse response = getResponse(responseId);
+        String blobPath = "questionnaires/" + response.getQuestionnaireId() + "/responses/" + responseId
+            + "/" + questionId + "/" + UUID.randomUUID() + "_" + safeName(file.getOriginalFilename());
+        blob.upload(blobPath, file.getBytes());
+        return blobPath;
+    }
+
+    /**
+     * The uploader chooses this name, so it is never allowed into a storage key as given: a
+     * name carrying path separators would write outside the response's own folder.
+     */
+    private static String safeName(String originalFilename) {
+        if (originalFilename == null || originalFilename.isBlank()) return "upload";
+        String base = originalFilename.replace('\\', '/');
+        base = base.substring(base.lastIndexOf('/') + 1);
+        base = base.replaceAll("[^A-Za-z0-9._-]", "_");
+        while (base.startsWith(".")) base = base.substring(1);
+        if (base.isBlank()) return "upload";
+        return base.length() > 120 ? base.substring(base.length() - 120) : base;
     }
 
     public QuestionnaireResponse submit(String responseId) {
