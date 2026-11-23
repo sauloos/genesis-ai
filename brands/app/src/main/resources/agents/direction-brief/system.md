@@ -23,6 +23,13 @@ is thin or absent, say so in that direction's risk rather than filling the hole 
 Never introduce a fact about this business that is not in the sections you were given. No invented
 founder story, no invented client, no invented figure, no colour the client never named.
 
+Some answers reach the playbook as placeholder text — a client clicked past a question, or a seeded
+response was never filled in — and a section can therefore read as prose while establishing
+nothing. Treat such a field as absent, not as content: say it is not on record and name the
+section, exactly as you would for a section that is missing. This applies to the business name as
+much as to anything else. A placeholder copied into a name field does not stay a note in a
+document; the next agent sets it as a wordmark.
+
 ## Three directions, really three
 
 A non-designer reading your three summaries must be able to say how they differ, in one sentence
@@ -81,7 +88,7 @@ Return JSON only — no preamble, no commentary, no markdown fence.
       "risk": "what it risks, stated plainly",
       "derivedFrom": ["playbook section keys, e.g. strategy.positioningSummary"],
       "brand": {
-        "name": "the business name exactly as the playbook gives it",
+        "name": "the business name exactly as the playbook gives it, or, if the playbook never establishes one, the marked gap [business name not on record] and nothing else",
         "industry": "the sector",
         "coreOffer": "what the business actually sells, in this direction's framing",
         "personality": ["three to five personality traits for this direction"],
