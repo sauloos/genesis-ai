@@ -6,6 +6,7 @@ import ai.genesisbrands.model.QuestionnaireQuestion;
 import ai.genesisbrands.model.QuestionnaireResponse;
 import ai.genesisbrands.service.QuestionnaireResponseService;
 import ai.genesisbrands.service.QuestionnaireService;
+import ai.genesisbrands.service.QuestionnaireSignals;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/questionnaires")
@@ -56,9 +58,16 @@ public class QuestionnaireController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update a questionnaire's title/description")
+    @Operation(summary = "Update a questionnaire's title, description and section structure")
     public Questionnaire update(@PathVariable String id, @RequestBody CreateQuestionnaireRequest req) {
-        return questionnaireService.updateQuestionnaire(id, req.title(), req.description());
+        return questionnaireService.updateQuestionnaire(id, req.title(), req.description(), req.sectionsJson());
+    }
+
+    @GetMapping("/{id}/validation")
+    @Operation(summary = "What would stop this questionnaire being published — empty when it is ready")
+    public ValidationReport validation(@PathVariable String id) {
+        List<String> issues = questionnaireService.validateForPublish(id);
+        return new ValidationReport(issues.isEmpty(), issues);
     }
 
     @DeleteMapping("/{id}")
@@ -74,16 +83,14 @@ public class QuestionnaireController {
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Add a question to a questionnaire")
     public QuestionnaireQuestion addQuestion(@PathVariable String id, @RequestBody QuestionRequest req) {
-        return questionnaireService.addQuestion(id, req.type(), req.prompt(), req.helpText(),
-            req.required(), req.allowVoice(), req.configJson());
+        return questionnaireService.addQuestion(id, req.toSpec());
     }
 
     @PutMapping("/{id}/questions/{qid}")
     @Operation(summary = "Update a question")
     public QuestionnaireQuestion updateQuestion(@PathVariable String id, @PathVariable String qid,
                                                  @RequestBody QuestionRequest req) {
-        return questionnaireService.updateQuestion(id, qid, req.type(), req.prompt(), req.helpText(),
-            req.required(), req.allowVoice(), req.configJson());
+        return questionnaireService.updateQuestion(id, qid, req.toSpec());
     }
 
     @DeleteMapping("/{id}/questions/{qid}")
@@ -136,6 +143,24 @@ public class QuestionnaireController {
         return responseService.listAnswers(responseId);
     }
 
+    @GetMapping("/responses/{responseId}/active-questions")
+    @Operation(summary = "The questions that still apply, given the answers so far — "
+        + "conditions are evaluated server-side and nowhere else")
+    public List<QuestionnaireQuestion> activeQuestions(@PathVariable String responseId) {
+        QuestionnaireResponse response = responseService.getResponse(responseId);
+        return questionnaireService.listActiveQuestions(response.getQuestionnaireId(), responseId);
+    }
+
+    @GetMapping("/responses/{responseId}/signals")
+    @Operation(summary = "The response's answers keyed by Layer 1 signal key — what every "
+        + "downstream agent and the client's RAG context actually read")
+    public Map<String, Object> signals(@PathVariable String responseId) {
+        QuestionnaireResponse response = responseService.getResponse(responseId);
+        return QuestionnaireSignals.collect(
+            questionnaireService.listQuestions(response.getQuestionnaireId()),
+            responseService.listAnswers(responseId));
+    }
+
     @PutMapping("/responses/{responseId}/answers/{questionId}")
     @Operation(summary = "Save a text/slider/select answer")
     public QuestionnaireAnswer saveAnswer(@PathVariable String responseId, @PathVariable String questionId,
@@ -163,12 +188,31 @@ public class QuestionnaireController {
         return responseService.submit(responseId);
     }
 
+    /**
+     * A malformed signal key, duplicate signal or unparseable condition is the author's
+     * mistake, not the server's. Scoped to this controller rather than added to the shared
+     * advice, so nothing else changes status codes.
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public AgentExceptionHandler.ErrorResponse handleInvalid(IllegalArgumentException e) {
+        return new AgentExceptionHandler.ErrorResponse(e.getMessage());
+    }
+
     // ── Records ───────────────────────────────────────────────────────────────
 
-    public record CreateQuestionnaireRequest(String title, String description) {}
+    public record CreateQuestionnaireRequest(String title, String description, String sectionsJson) {}
     public record QuestionnaireDetail(Questionnaire questionnaire, List<QuestionnaireQuestion> questions) {}
     public record QuestionRequest(QuestionnaireQuestion.Type type, String prompt, String helpText,
-                                   boolean required, boolean allowVoice, String configJson) {}
+                                   boolean required, boolean allowVoice, String configJson,
+                                   String signalKey, String sectionKey, String stepKey,
+                                   String conditionExpr) {
+        QuestionnaireService.QuestionSpec toSpec() {
+            return new QuestionnaireService.QuestionSpec(type, prompt, helpText, required, allowVoice,
+                configJson, signalKey, sectionKey, stepKey, conditionExpr);
+        }
+    }
+    public record ValidationReport(boolean ready, List<String> issues) {}
     public record ReorderRequest(List<String> orderedQuestionIds) {}
     public record PublishRequest(Instant publishAt) {}
     public record SaveAnswerRequest(Object value) {}

@@ -181,9 +181,28 @@ export async function mount(container, widget, ctx) {
     body.appendChild(list);
   };
 
+  // A question type this build has no renderer for. Says so rather than showing an empty
+  // step, because the alternative is a client staring at a prompt with nothing to answer it
+  // with — and a required one passing through with no answer recorded at all.
+  const renderUnsupportedStep = (body, q) => {
+    body.appendChild(el('div', 'q-embed-help',
+      'This question needs a newer version of the questionnaire. Please let us know — '
+      + 'question type: ' + q.type));
+  };
+
+  const RENDERED_TYPES = ['SHORT_TEXT', 'LONG_TEXT', 'IMAGE_UPLOAD', 'SLIDER', 'SINGLE_SELECT', 'MULTI_SELECT'];
+
   // Saves the current step's answer; false when a required answer is missing.
   const persistStep = async () => {
     const q = state.questions[state.index];
+
+    if (!RENDERED_TYPES.includes(q.type)) {
+      if (q.required) {
+        alert('This question cannot be answered in this version of the questionnaire. Please contact us.');
+        return false;
+      }
+      return true;
+    }
 
     if (q.type === 'SHORT_TEXT' || q.type === 'LONG_TEXT') {
       const value = refs.textField.value.trim();
@@ -272,6 +291,7 @@ export async function mount(container, widget, ctx) {
     else if (q.type === 'IMAGE_UPLOAD') renderImageStep(body, q);
     else if (q.type === 'SLIDER') renderSliderStep(body, q);
     else if (q.type === 'SINGLE_SELECT' || q.type === 'MULTI_SELECT') renderChoiceStep(body, q);
+    else renderUnsupportedStep(body, q);
 
     appendFooter();
   };

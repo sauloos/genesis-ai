@@ -22,6 +22,16 @@ public class Questionnaire {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    /**
+     * The acts this questionnaire is divided into, as a JSON array of
+     * {@code {"key","title","intent"}} — the keys a question's {@code sectionKey} refers to.
+     * Titles live here rather than on every question so a rename is one edit, and so the
+     * client-side progress UI can read the whole structure in one go. Null for a flat
+     * questionnaire with no acts.
+     */
+    @Column(name = "sections_json", columnDefinition = "TEXT")
+    private String sectionsJson;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Status status = Status.DRAFT;
