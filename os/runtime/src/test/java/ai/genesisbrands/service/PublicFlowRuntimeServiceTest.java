@@ -22,6 +22,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -105,6 +106,40 @@ class PublicFlowRuntimeServiceTest {
         assertThat(view.ended()).isFalse();
         assertThat(view.page().pageId()).isEqualTo("p1");
         assertThat(view.page().outcomes()).extracting(WidgetOutcome::key).containsExactly("next");
+    }
+
+    @Test
+    void start_signedInVisitorOnAuthPage_rendersTheLinkedSessionNotTheStaleCopy() {
+        PageFlow f = flow("f1", "dashboard");
+        when(pageFlowRepo.findLiveByRoute(null, "dashboard")).thenReturn(Optional.of(f));
+        // start() hands back the row as created; linking happens on a separate copy.
+        when(flowSessionService.start("f1", false)).thenReturn(session("tok", "f1", "p1", false));
+        FlowSession linked = session("tok", "f1", "p1", false);
+        linked.setClientUserId("cu-1");
+        when(flowSessionService.get("tok")).thenReturn(linked);
+        Page p = page("p1", "f1");
+        p.setRequiresAuth(true);
+        when(pageRepo.findById("p1")).thenReturn(Optional.of(p));
+        when(pageWidgetRepo.findByPageIdOrderByOrderInSlotAsc("p1")).thenReturn(List.of());
+        when(pageTransitionService.outcomesForPage(p)).thenReturn(List.of(WidgetOutcome.DEFAULT));
+
+        PublicFlowRuntimeService.PublicSessionView view = service.start("dashboard", null, "cu-1");
+
+        verify(flowSessionService).linkClientUser("tok", "cu-1");
+        assertThat(view.page().pageId()).isEqualTo("p1");
+    }
+
+    @Test
+    void start_anonymousVisitorOnAuthPage_stillRequiresAuth() {
+        PageFlow f = flow("f1", "dashboard");
+        when(pageFlowRepo.findLiveByRoute(null, "dashboard")).thenReturn(Optional.of(f));
+        when(flowSessionService.start("f1", false)).thenReturn(session("tok", "f1", "p1", false));
+        Page p = page("p1", "f1");
+        p.setRequiresAuth(true);
+        when(pageRepo.findById("p1")).thenReturn(Optional.of(p));
+
+        assertThatThrownBy(() -> service.start("dashboard", null, null))
+            .isInstanceOf(AuthRequiredException.class);
     }
 
     @Test

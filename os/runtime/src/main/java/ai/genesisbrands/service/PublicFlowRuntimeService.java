@@ -41,9 +41,22 @@ public class PublicFlowRuntimeService {
     public PublicSessionView start(String slug, String rootPrefix, String clientUserId) {
         PageFlow flow = pageFlowRepo.findLiveByRoute(rootPrefix, slug)
             .orElseThrow(() -> new NoSuchElementException("No live PageFlow for slug: " + slug));
-        FlowSession session = flowSessionService.start(flow.getId(), false);
-        flowSessionService.linkClientUser(session.getToken(), clientUserId);
+        FlowSession session = linked(flowSessionService.start(flow.getId(), false), clientUserId);
         return toView(session, flow, null);
+    }
+
+    /**
+     * Links a signed-in visitor to a session this request just created, and returns the
+     * session as stored. linkClientUser writes in its own transaction and, with
+     * open-in-view off, on its own copy of the row, so the object start() returned still
+     * has no client. Rendering that copy made a signed-in visitor's start on a
+     * requiresAuth page (e.g. /live/dashboard) fail with AuthRequiredException, and the
+     * runtime then bounced between /login and the flow for ever.
+     */
+    private FlowSession linked(FlowSession created, String clientUserId) {
+        if (clientUserId == null) return created;
+        flowSessionService.linkClientUser(created.getToken(), clientUserId);
+        return flowSessionService.get(created.getToken());
     }
 
     /** Admin Simulate preview: resolves by id instead of a live slug (a draft flow has
@@ -88,8 +101,8 @@ public class PublicFlowRuntimeService {
         flowSessionService.linkClientUser(token, clientUserId);
         FlowSessionService.AdvanceResult result = flowSessionService.advance(token, outcomeKey);
         if (result.redirectToFlowId() != null) {
-            FlowSession redirected = flowSessionService.start(result.redirectToFlowId(), result.session().isSimulated());
-            flowSessionService.linkClientUser(redirected.getToken(), clientUserId);
+            FlowSession redirected = linked(
+                flowSessionService.start(result.redirectToFlowId(), result.session().isSimulated()), clientUserId);
             return toView(redirected);
         }
         PageFlow flow = pageFlowRepo.findById(result.session().getPageFlowId())

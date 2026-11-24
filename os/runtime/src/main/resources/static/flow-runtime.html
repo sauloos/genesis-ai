@@ -203,6 +203,13 @@ async function boot() {
       // throws AuthRequiredException) — send them to sign in rather than showing a
       // generic "no live page" error, then bring them straight back here.
       if (res.status === 403) {
+        // Already signed in? Then /login would send them straight back here — stop
+        // rather than bounce between the two pages for ever.
+        const me = await fetch(`${API}/api/auth/me`, { headers: HEADERS }).catch(() => null);
+        if (me && me.ok) {
+          showState('Can’t open this page', 'You are signed in, but this page could not be opened for your account. Please try again in a moment.');
+          return;
+        }
         window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname + window.location.search);
         return;
       }
