@@ -517,7 +517,13 @@ export async function mount(container, widget, ctx) {
   const renderUpload = (body, q) => {
     const config = parseConfig(q);
     const multiple = q.type === 'FILE_UPLOAD';
-    const existing = state.answers[q.id];
+    const maxFiles = multiple ? (config.maxFiles || 10) : 1;
+
+    const savedItems = () => {
+      const current = state.answers[q.id];
+      return multiple ? (Array.isArray(current) ? current : [])
+        : (current && current.blobPath ? [current] : []);
+    };
 
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
@@ -528,18 +534,31 @@ export async function mount(container, widget, ctx) {
 
     const dropZone = el('div', 'q-embed-dropzone',
       config.cta || (multiple ? 'Click to choose files' : 'Click to upload an image'));
-    dropZone.onclick = () => fileInput.click();
+    dropZone.setAttribute('role', 'button');
+    dropZone.tabIndex = 0;
+    dropZone.onclick = () => { if (!refs[q.id].uploading.length) fileInput.click(); };
+    dropZone.onkeydown = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); dropZone.onclick(); }
+    };
+    // Dropping works as well as clicking: the zone has always said "drop it in".
+    dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('dragging'); };
+    dropZone.ondragleave = () => dropZone.classList.remove('dragging');
+    dropZone.ondrop = (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragging');
+      upload(Array.from((e.dataTransfer && e.dataTransfer.files) || []));
+    };
     body.appendChild(dropZone);
 
     const preview = el('div', 'q-embed-upload-list');
     body.appendChild(preview);
 
-    refs[q.id].pending = [];
+    refs[q.id].uploading = [];
 
     const paint = () => {
       preview.innerHTML = '';
-      const saved = multiple ? (Array.isArray(existing) ? existing : [])
-        : (existing && existing.blobPath ? [existing] : []);
+      const saved = savedItems();
+      dropZone.classList.toggle('busy', refs[q.id].uploading.length > 0);
 
       saved.forEach(item => {
         const row = el('div', 'q-embed-upload-row');
@@ -550,60 +569,103 @@ export async function mount(container, widget, ctx) {
           row.appendChild(img);
         }
         row.appendChild(el('span', 'q-embed-upload-name', item.name || 'Uploaded'));
+        row.appendChild(el('span', 'q-embed-upload-state done', 'Uploaded'));
         const removeBtn = el('button', 'q-embed-nav-btn q-embed-nav-ghost', 'Remove');
         removeBtn.type = 'button';
         removeBtn.onclick = async () => {
-          const next = multiple ? saved.filter(s => s !== item) : null;
+          const next = multiple ? savedItems().filter(s => s !== item) : null;
           await saveAnswer(q.id, multiple ? next : '');
           state.answers[q.id] = multiple ? next : undefined;
-          renderStep();
+          paint();
         };
         row.appendChild(removeBtn);
         preview.appendChild(row);
       });
 
-      refs[q.id].pending.forEach(file => {
+      refs[q.id].uploading.forEach(file => {
         const row = el('div', 'q-embed-upload-row');
         row.appendChild(el('span', 'q-embed-upload-name', file.name));
-        row.appendChild(el('span', 'q-embed-upload-pending', 'ready to upload'));
+        row.appendChild(el('span', 'q-embed-upload-state', 'Uploading…'));
         preview.appendChild(row);
       });
     };
 
-    fileInput.onchange = (e) => {
-      const picked = Array.from(e.target.files || []);
-      if (!picked.length) return;
-      const maxFiles = config.maxFiles || 10;
-      refs[q.id].pending = multiple ? picked.slice(0, maxFiles) : picked.slice(0, 1);
-      if (multiple && picked.length > maxFiles) {
-        showError(q, 'Taking the first ' + maxFiles + ' files.');
+    // A file is uploaded the moment it is picked, so the client sees it land (or fail) on
+    // this screen, rather than a "ready" row that silently uploads on Next.
+    const upload = async (picked) => {
+      if (!picked.length || refs[q.id].uploading.length) return;
+      showError(q, '');
+      const room = maxFiles - (multiple ? savedItems().length : 0);
+      if (room <= 0) {
+        showError(q, 'That is the most files this question takes — remove one to add another.');
+        return;
+      }
+      const batch = picked.slice(0, room);
+      if (picked.length > batch.length) {
+        showError(q, 'Taking the first ' + batch.length + ' — this question takes ' + maxFiles + ' files.');
+      }
+
+      refs[q.id].uploading = batch;
+      paint();
+      const result = await uploadFiles(q, batch);
+      refs[q.id].uploading = [];
+
+      if (result.error) {
+        showError(q, result.error);
+      } else if (multiple) {
+        // The server stores what it was sent as the whole answer, so earlier files are put back.
+        const earlier = savedItems();
+        const combined = earlier.concat(result.items);
+        if (earlier.length) await saveAnswer(q.id, combined);
+        state.answers[q.id] = combined;
+      } else {
+        state.answers[q.id] = result.items;
       }
       paint();
+    };
+
+    fileInput.onchange = (e) => {
+      const picked = Array.from(e.target.files || []);
+      fileInput.value = '';  // picking the same file again still fires change
+      upload(picked);
     };
 
     paint();
   };
 
-  /** Uploads happen on leaving the step, so a client who goes back loses nothing. */
-  const saveUpload = async (q) => {
-    const pending = refs[q.id].pending || [];
-    if (!pending.length) return state.answers[q.id];
-
+  const uploadFiles = async (q, files) => {
     const multiple = q.type === 'FILE_UPLOAD';
     const form = new FormData();
     if (multiple) {
-      pending.forEach(file => form.append('files', file));
+      files.forEach(file => form.append('files', file));
     } else {
-      form.append('image', pending[0]);
+      form.append('image', files[0]);
     }
-    const res = await fetch(
-      `/api/questionnaires/responses/${state.responseId}/answers/${q.id}/${multiple ? 'file' : 'image'}`,
-      { method: 'POST', headers: { 'X-Api-Key': KEY }, body: form }
-    );
-    if (!res.ok) return { error: 'That upload did not go through — please try again.' };
+    let res;
+    try {
+      res = await fetch(
+        `/api/questionnaires/responses/${state.responseId}/answers/${q.id}/${multiple ? 'file' : 'image'}`,
+        { method: 'POST', headers: { 'X-Api-Key': KEY }, body: form }
+      );
+    } catch (e) {
+      return { error: 'The upload could not reach us. Check your connection and choose the file again.' };
+    }
+    if (!res.ok) {
+      const tooBig = res.status === 413;
+      return { error: tooBig
+        ? 'That file is too large — files up to 50 MB go through.'
+        : 'That upload did not go through (' + res.status + '). Choose the file again to retry.' };
+    }
     const body = await res.json();
-    refs[q.id].pending = [];
-    return JSON.parse(body.valueJson);
+    return { items: JSON.parse(body.valueJson) };
+  };
+
+  /** Files are already saved by the time the client leaves the step; this only waits for them. */
+  const saveUpload = async (q) => {
+    if (refs[q.id].uploading && refs[q.id].uploading.length) {
+      return { error: 'Still uploading — one moment.' };
+    }
+    return state.answers[q.id];
   };
 
   /**

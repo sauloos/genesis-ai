@@ -41,6 +41,12 @@
   border: 2px dashed var(--theme-btn-border); border-radius: 10px; padding: 24px; text-align: center;
   cursor: pointer; color: var(--theme-text-muted); font-size: 13px;
 }
+.widget-questionnaire .q-embed-dropzone:hover,
+.widget-questionnaire .q-embed-dropzone:focus-visible,
+.widget-questionnaire .q-embed-dropzone.dragging {
+  border-color: var(--theme-text-primary); color: var(--theme-text-primary); outline: none;
+}
+.widget-questionnaire .q-embed-dropzone.busy { cursor: progress; opacity: 0.6; }
 .widget-questionnaire .q-embed-upload-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 .widget-questionnaire .q-embed-upload-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px;
   border: 1px solid var(--theme-card-border); border-radius: 8px; }
@@ -48,8 +54,9 @@
   background: var(--theme-preview-bg); border-radius: 6px; }
 .widget-questionnaire .q-embed-upload-name { flex: 1; font-size: 13px; color: var(--theme-text-primary);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.widget-questionnaire .q-embed-upload-pending { font-size: 11px; color: var(--theme-text-muted);
+.widget-questionnaire .q-embed-upload-state { font-size: 11px; color: var(--theme-text-muted);
   text-transform: uppercase; letter-spacing: 0.4px; }
+.widget-questionnaire .q-embed-upload-state.done { color: var(--theme-success); }
 
 /* Sliders */
 .widget-questionnaire .q-embed-slider-wrap { padding: 12px 4px 0; }
