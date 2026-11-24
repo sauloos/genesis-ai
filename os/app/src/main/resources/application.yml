@@ -66,6 +66,10 @@ genesis:
     password: ${BASIC_AUTH_PASSWORD:change-me-in-prod}
   google-oauth:
     client-id: ${GOOGLE_OAUTH_CLIENT_ID:}
+  images:
+    # Every agent that generates a picture calls this model. When OpenAI retires it, set
+    # GENESIS_IMAGE_MODEL and add the new id to UsagePricing — no code change.
+    model: ${GENESIS_IMAGE_MODEL:gpt-image-2.6-sunburst}
   training:
     interpretation:
       enabled: true

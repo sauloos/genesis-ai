@@ -24,7 +24,7 @@ public class UsageService {
         record(UsageEvent.Kind.CHAT, model, inputTokens, outputTokens, 0, scope, agentHint);
     }
 
-    /** For image models called outside Spring AI (the Logo agent calls gpt-image-1 over REST). */
+    /** For image models, whose calls carry no token counts (the Logo agent also calls Ideogram over REST). */
     public void recordImage(String model, int images) {
         record(UsageEvent.Kind.IMAGE, model, 0, 0, images, UsageContext.current(), UsageContext.agentHint());
     }

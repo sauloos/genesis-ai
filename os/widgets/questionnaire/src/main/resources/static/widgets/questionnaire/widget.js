@@ -245,8 +245,16 @@ export async function mount(container, widget, ctx) {
     (text || '').replace(/\{([^{}]+)\}/g, (whole, signalKey) => {
       const value = signalValue(signalKey.trim());
       if (isEmpty(value)) return missing;
-      return Array.isArray(value) ? value.join(', ') : String(value);
+      return Array.isArray(value) ? joinWords(value) : String(value);
     });
+
+  /** "a", "a and b", "a, b and c" — a template reads a multi-pick back as a sentence, so a
+   *  bare comma join ("protect, change people") is wrong where the words are the subject. */
+  const joinWords = (values) => {
+    const parts = values.map(String).filter((v) => v.trim() !== '');
+    if (parts.length < 2) return parts.join('');
+    return parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1];
+  };
 
   /** Options may be plain strings or objects; everything downstream wants the object form. */
   function normaliseOption(opt) {

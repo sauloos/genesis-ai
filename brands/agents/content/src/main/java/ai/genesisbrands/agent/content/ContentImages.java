@@ -1,5 +1,6 @@
 package ai.genesisbrands.agent.content;
 
+import ai.genesisbrands.platform.ImageModelProperties;
 import ai.genesisbrands.usage.UsageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,15 +22,18 @@ import java.util.Base64;
 public class ContentImages {
 
     private static final Logger log = LoggerFactory.getLogger(ContentImages.class);
-    static final String MODEL = "gpt-image-1";
-    /** The usage ledger prices medium quality under its own key. */
-    static final String METERED_AS = "gpt-image-1-medium";
+    /** The usage ledger prices medium quality under its own key, the model id plus this suffix. */
+    static final String MEDIUM_SUFFIX = "-medium";
 
     private final ObjectProvider<ImageModel> imageModel;
+    private final ImageModelProperties imageModels;
     private final UsageService usageService;
 
-    public ContentImages(ObjectProvider<ImageModel> imageModel, UsageService usageService) {
+    public ContentImages(ObjectProvider<ImageModel> imageModel,
+                         ImageModelProperties imageModels,
+                         UsageService usageService) {
         this.imageModel = imageModel;
+        this.imageModels = imageModels;
         this.usageService = usageService;
     }
 
@@ -43,14 +47,14 @@ public class ContentImages {
         if (model == null) return null;
         try {
             OpenAiImageOptions options = OpenAiImageOptions.builder()
-                .model(MODEL)
+                .model(imageModels.getModel())
                 .quality("medium")
                 .N(1)
                 .build();
             options.setSize(size);
             ImageResponse response = model.call(new ImagePrompt(brief, options));
             String b64 = response.getResult().getOutput().getB64Json();
-            usageService.recordImage(METERED_AS, 1);
+            usageService.recordImage(imageModels.getModel() + MEDIUM_SUFFIX, 1);
             return b64 == null ? null : Base64.getDecoder().decode(b64);
         } catch (Exception e) {
             log.warn("Content image failed, keeping the post without it: {}", e.getMessage());

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import ai.genesisbrands.agent.config.AgentProperties;
 import ai.genesisbrands.agent.core.AgentRevision;
 import ai.genesisbrands.agent.core.DirectionBrief;
+import ai.genesisbrands.platform.ImageModelProperties;
 import ai.genesisbrands.service.BlobStorageService;
 import ai.genesisbrands.service.RetrievalService;
 import ai.genesisbrands.usage.UsageService;
@@ -36,12 +37,10 @@ public class LogoAgent {
     private static final String AGENT_ID_SVG = "logo-svg";
     private static final String AGENT_ID_IDEOGRAM = "logo-ideogram";
     private static final String IDEOGRAM_API_URL = "https://api.ideogram.ai/generate";
-    // OpenAI retired dall-e-3; gpt-image-1 is the current image model. It always returns
-    // b64_json (no response_format param) and takes "size" as a string, not width/height.
-    private static final String IMAGE_MODEL = "gpt-image-1";
 
     private final ChatClient chatClient;
     private final ImageModel imageModel;
+    private final ImageModelProperties imageModels;
     private final AgentProperties agentProperties;
     private final ObjectMapper objectMapper;
     private final BlobStorageService blobStorageService;
@@ -54,6 +53,7 @@ public class LogoAgent {
 
     public LogoAgent(ChatClient.Builder chatClientBuilder,
                       ImageModel imageModel,
+                      ImageModelProperties imageModels,
                       AgentProperties agentProperties,
                       ObjectMapper objectMapper,
                       BlobStorageService blobStorageService,
@@ -61,6 +61,7 @@ public class LogoAgent {
                       UsageService usageService) {
         this.chatClient = chatClientBuilder.build();
         this.imageModel = imageModel;
+        this.imageModels = imageModels;
         this.agentProperties = agentProperties;
         this.objectMapper = objectMapper;
         this.blobStorageService = blobStorageService;
@@ -236,19 +237,20 @@ public class LogoAgent {
     }
 
     private byte[] generateImage(String imagePrompt) {
+        String model = imageModels.getModel();
         try {
             OpenAiImageOptions options = OpenAiImageOptions.builder()
-                .model(IMAGE_MODEL)
+                .model(model)
                 .quality("high")
                 .N(1)
                 .build();
             options.setSize("1024x1024");
             ImageResponse response = imageModel.call(new ImagePrompt(imagePrompt, options));
             String b64 = response.getResult().getOutput().getB64Json();
-            usageService.recordImage(IMAGE_MODEL, 1);
+            usageService.recordImage(model, 1);
             return Base64.getDecoder().decode(b64);
         } catch (Exception e) {
-            throw new IllegalStateException("DALL-E image generation failed: " + e.getMessage(), e);
+            throw new IllegalStateException("Image generation failed (" + model + "): " + e.getMessage(), e);
         }
     }
 

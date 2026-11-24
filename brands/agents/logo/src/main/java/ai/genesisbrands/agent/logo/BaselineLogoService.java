@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import ai.genesisbrands.agent.config.AgentProperties;
 import ai.genesisbrands.agent.core.DirectionBrief;
+import ai.genesisbrands.platform.ImageModelProperties;
 import ai.genesisbrands.service.BlobStorageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,23 +31,23 @@ public class BaselineLogoService {
 
     private static final Logger log = LoggerFactory.getLogger(BaselineLogoService.class);
     private static final String AGENT_ID_SVG = "logo-svg";
-    // OpenAI retired dall-e-3; gpt-image-1 is the current image model. It always returns
-    // b64_json (no response_format param) and takes "size" as a string, not width/height.
-    private static final String IMAGE_MODEL = "gpt-image-1";
 
     private final ChatClient chatClient;
     private final ImageModel imageModel;
+    private final ImageModelProperties imageModels;
     private final AgentProperties agentProperties;
     private final ObjectMapper objectMapper;
     private final BlobStorageService blobStorageService;
 
     public BaselineLogoService(ChatClient.Builder chatClientBuilder,
                                 ImageModel imageModel,
+                                ImageModelProperties imageModels,
                                 AgentProperties agentProperties,
                                 ObjectMapper objectMapper,
                                 BlobStorageService blobStorageService) {
         this.chatClient = chatClientBuilder.build();
         this.imageModel = imageModel;
+        this.imageModels = imageModels;
         this.agentProperties = agentProperties;
         this.objectMapper = objectMapper;
         this.blobStorageService = blobStorageService;
@@ -63,7 +64,7 @@ public class BaselineLogoService {
             .formatted(b.name(), b.industry(), b.coreOffer(), b.tone());
 
         OpenAiImageOptions options = OpenAiImageOptions.builder()
-            .model(IMAGE_MODEL)
+            .model(imageModels.getModel())
             .quality("medium")
             .N(1)
             .build();

@@ -193,8 +193,10 @@ public class EngagementOrchestratorService {
      * <p>Which question set is read depends on where the answers came from. An engagement with a
      * stored response is read through the factory, which resolves the <em>active</em> questions —
      * the ones a condition actually let through — because a question gated away was never asked
-     * and must not be reported as skipped. A PageFlow engagement has no stored response (see
-     * {@link PageFlowEngagementAdapter}) and its captured questions are already the asked set.
+     * and must not be reported as skipped. A PageFlow engagement has no stored response on the
+     * engagement (see {@link PageFlowEngagementAdapter}) and arrives with its questions already
+     * resolved to the asked set, which each widget's {@code FlowAnswerSource} is responsible for
+     * — {@code QuestionnaireAnswerSource} applies the same condition evaluation there.
      */
     private PurposePlaybookOutput derivePlaybook(Engagement engagement,
                                                  List<QuestionnaireQuestion> questions,

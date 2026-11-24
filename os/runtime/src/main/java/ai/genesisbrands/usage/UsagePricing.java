@@ -52,10 +52,18 @@ public class UsagePricing {
         DEFAULTS.put("claude-opus", new Price("5", "25", "0"));
         DEFAULTS.put("claude-sonnet", new Price("3", "15", "0"));
         DEFAULTS.put("claude-haiku", new Price("1", "5", "0"));
-        // gpt-image-1, 1024x1024 at high quality, the setting the Logo agent uses.
+        // Image models, 1024x1024. The bare id is high quality (what the Logo agent asks for);
+        // the "-medium" key is what an agent that renders at medium quality meters itself as
+        // (the Content agent). OpenAI bills images per output token, so these are the
+        // per-image figures its own calculator gives for that size and quality. Keys match by
+        // longest prefix, so a key has to name a whole model id: "gpt-image-2.6" alone would
+        // also price -flare, which is a different model, even though today it costs the same.
         DEFAULTS.put("gpt-image-1", new Price("0", "0", "0.167"));
-        // gpt-image-1, 1024x1024 at medium quality, the setting the Content agent uses.
         DEFAULTS.put("gpt-image-1-medium", new Price("0", "0", "0.042"));
+        DEFAULTS.put("gpt-image-2.6-sunburst", new Price("0", "0", "0.053"));
+        DEFAULTS.put("gpt-image-2.6-sunburst-medium", new Price("0", "0", "0.044"));
+        DEFAULTS.put("gpt-image-2.6-flare", new Price("0", "0", "0.053"));
+        DEFAULTS.put("gpt-image-2.6-flare-medium", new Price("0", "0", "0.044"));
         DEFAULTS.put("ideogram-v2", new Price("0", "0", "0.08"));
         DEFAULTS.put("text-embedding-3-small", new Price("0.02", "0", "0"));
         DEFAULTS.put("text-embedding-3-large", new Price("0.13", "0", "0"));

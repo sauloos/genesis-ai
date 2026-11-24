@@ -204,7 +204,8 @@ Each run:
 2. Plan the week: pillar and kind per slot, no repeats of recent topics.
 3. Write per-channel copy (Copy agent's tone guide; LinkedIn longer, Instagram shorter with
    hashtags).
-4. Generate images (`gpt-image-1`, palette and logo constraints; carousel = several frames).
+4. Generate images (`genesis.images.model`, palette and logo constraints; carousel = several
+   frames).
 5. Evaluate with the copy/visual evaluators (reused from the SLOT agents); loop or drop.
 6. Emit one `InboxItem` per post with its variants and a proposed publish time.
 
@@ -246,7 +247,7 @@ request (the client from a connector key or the session cookie, resolved only wh
 called), `UsageTaskDecorator` carries it into `@Async` work, and a standing run will set it
 with `UsageContext.callWith` (agent id + run id). The agent comes from the config key the
 agent last read through `AgentProperties.get`. Image calls outside Spring AI's chat model
-(Logo: gpt-image-1, Ideogram) record through `UsageService.recordImage`. Admin page:
+(Logo: the configured image model, Ideogram) record through `UsageService.recordImage`. Admin page:
 `/dashboard/usage` (`UsageNavExtension`). `UsageService.spentThisMonthMicros(clientUserId)`
 is the hook for phase 1 budgets. Embeddings are not metered yet (fractions of a cent).
 
@@ -296,9 +297,10 @@ is the hook for phase 1 budgets. Embeddings are not metered yet (fractions of a 
   images), language, avoid. Weekly, fortnightly or monthly.
   - One Sonnet 5 call plans and writes the batch as JSON; each post carries a `day` within the
     period (now to the next run, in the client's zone) that becomes `proposedFor`.
-  - Images: `gpt-image-1` at medium quality (1024×1024, 1024×1536 for stories; carousels up to
-    3 frames), metered as `gpt-image-1-medium` ($0.042). A failed image drops that frame, not
-    the post. A two-post run with three images cost about $0.15.
+  - Images: the configured image model (`genesis.images.model`, today
+    `gpt-image-2.6-sunburst`) at medium quality (1024×1024, 1024×1536 for stories; carousels
+    up to 3 frames), metered as that id plus `-medium` (about $0.044). A failed image drops
+    that frame, not the post. A two-post run with three images cost about $0.15.
   - Not done (deliberately): reusing the copy / visual evaluators, editing a draft in place and
     regenerate-with-feedback. A rejection note feeds the next run instead.
 - **SDK.** `StandingRunResult.Item` gained `attachments` (`Attachment(name, contentType, data)`)
@@ -462,7 +464,7 @@ Pages and the Instagram accounts linked to them, so one connect flow adds both.
     publishing a post sends all its images.
   - Memory remembers what was proposed, so an occasion is never proposed twice; entries are
     forgotten 60 days after their date.
-  - Cost: one Sonnet 5 call (about $0.03–0.05) plus about $0.04 per gpt-image-1 medium image,
+  - Cost: one Sonnet 5 call (about $0.03–0.05) plus about $0.04 per medium-quality image,
     so roughly $0.20–0.35 per occasion with all four assets.
 - **Market watch** (`os/agents/market-watch`, core: any tenant's client has competitors;
   adopted by both apps). Weekly, fortnightly or monthly (default weekly).
