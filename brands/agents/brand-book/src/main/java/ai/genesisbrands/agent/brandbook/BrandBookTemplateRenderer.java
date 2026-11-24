@@ -479,11 +479,31 @@ public class BrandBookTemplateRenderer {
         subs.put("{{PHOTO_APP_DATA}}",      fetchPhotoDataUri(brief.engagementId(), "stationery"));
 
         // Apply section filter before substitution so excluded section HTML is never processed
-        String filtered = filterSections(templateHtml, includedSections);
-        for (Map.Entry<String, String> e : subs.entrySet()) {
-            filtered = filtered.replace(e.getKey(), e.getValue() != null ? e.getValue() : "");
+        return substitute(filterSections(templateHtml, includedSections), subs);
+    }
+
+    private static final Pattern PLACEHOLDER = Pattern.compile("\\{\\{[A-Z0-9_]+\\}\\}");
+
+    /**
+     * Fills every {@code {{TOKEN}}} in one pass. The photos are inlined as base64 data URIs, so
+     * the page runs to megabytes, and replacing token by token copied all of it once per token
+     * (some forty times a render): a few previews at once ran the heap out. Tokens with no entry
+     * are left as written, and a value is never scanned for tokens itself.
+     */
+    static String substitute(String html, Map<String, String> subs) {
+        java.util.regex.Matcher m = PLACEHOLDER.matcher(html);
+        long extra = 0;
+        for (String v : subs.values()) if (v != null) extra += v.length();
+        StringBuilder sb = new StringBuilder((int) Math.min(Integer.MAX_VALUE - 8L, html.length() + extra));
+        int last = 0;
+        while (m.find()) {
+            String token = m.group();
+            if (!subs.containsKey(token)) continue;
+            String value = subs.get(token);
+            sb.append(html, last, m.start()).append(value != null ? value : "");
+            last = m.end();
         }
-        return filtered;
+        return sb.append(html, last, html.length()).toString();
     }
 
     // ── HTML snippet builders ─────────────────────────────────────────────────

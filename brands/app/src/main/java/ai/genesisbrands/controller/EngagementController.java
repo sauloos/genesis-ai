@@ -13,6 +13,7 @@ import ai.genesisbrands.security.AdminAuthHelper;
 import ai.genesisbrands.security.ClientAuthHelper;
 import ai.genesisbrands.service.AgentRegenerationService;
 import ai.genesisbrands.service.BlobStorageService;
+import ai.genesisbrands.service.BrandBookPreviewCache;
 import ai.genesisbrands.service.EngagementOrchestratorService;
 import ai.genesisbrands.service.PhotoSourcingService;
 import ai.genesisbrands.service.EngagementOrchestratorService.DirectionOutput;
@@ -54,6 +55,7 @@ public class EngagementController {
     private final AgentRegenerationJobRepository regenerationJobRepo;
     private final AgentRegenerationService regenerationService;
     private final EngagementDirectionVersionRepository versionRepo;
+    private final BrandBookPreviewCache previewCache;
 
     // ── Create ────────────────────────────────────────────────────────────────
 
@@ -194,15 +196,19 @@ public class EngagementController {
         BrandBookInput input = new BrandBookInput(
             dir.brief(), dir.playbook(), dir.copy(), dir.visualIdentity(), dir.logo()
         );
+        // The results JSON changes whenever any direction is regenerated, so a stale cover is
+        // never served.
+        String key = id + ":" + dir.direction() + ":" + e.getResultsJson().hashCode();
         byte[] jpeg;
         try {
-            jpeg = pdfRenderer.renderPreviewImage(input, dir.brandBook());
+            jpeg = previewCache.get(key, () -> pdfRenderer.renderPreviewImage(input, dir.brandBook()));
         } catch (Exception ex) {
             log.error("Preview render failed for engagement {} direction {}: {}", id, direction, ex.getMessage(), ex);
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
         }
         return ResponseEntity.ok()
             .contentType(MediaType.IMAGE_JPEG)
+            .header(HttpHeaders.CACHE_CONTROL, "private, no-cache")
             .body(jpeg);
     }
 
@@ -350,6 +356,7 @@ public class EngagementController {
             .orElseThrow(() -> new NoSuchElementException("Engagement not found: " + id));
 
         boolean adminAccess = adminAuth.isAdminRequest(req);
+        if (!adminAccess) requireOwner(e, req);
         if (!adminAccess && e.getPaymentStatus() != Engagement.PaymentStatus.PAID) {
             return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).build();
         }
@@ -430,6 +437,7 @@ public class EngagementController {
             .orElseThrow(() -> new NoSuchElementException("Engagement not found: " + id));
 
         boolean adminAccess = adminAuth.isAdminRequest(req);
+        if (!adminAccess) requireOwner(e, req);
         if (!adminAccess && e.getPaymentStatus() != Engagement.PaymentStatus.PAID) {
             return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).build();
         }

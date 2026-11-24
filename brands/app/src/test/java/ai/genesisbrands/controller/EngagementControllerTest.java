@@ -10,6 +10,7 @@ import ai.genesisbrands.security.AdminAuthHelper;
 import ai.genesisbrands.security.ClientAuthHelper;
 import ai.genesisbrands.service.AgentRegenerationService;
 import ai.genesisbrands.service.BlobStorageService;
+import ai.genesisbrands.service.BrandBookPreviewCache;
 import ai.genesisbrands.service.EngagementOrchestratorService;
 import ai.genesisbrands.service.EngagementOrchestratorService.DirectionOutput;
 import ai.genesisbrands.service.EngagementOrchestratorService.EngagementResults;
@@ -31,6 +32,9 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -53,7 +57,8 @@ class EngagementControllerTest {
     @BeforeEach
     void setUp() {
         controller = new EngagementController(engagementRepo, orchestrator, pdfRenderer, blobStorageService,
-            photoSourcingService, new ObjectMapper(), adminAuth, clientAuthHelper, regenerationJobRepo, regenerationService, versionRepo);
+            photoSourcingService, new ObjectMapper(), adminAuth, clientAuthHelper, regenerationJobRepo, regenerationService, versionRepo,
+            new BrandBookPreviewCache());
     }
 
     private ClientUser clientUser(String id) {
@@ -179,5 +184,45 @@ class EngagementControllerTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(resp.getBody()).isEqualTo(jpeg);
+    }
+
+    @Test
+    void preview_repeatRequests_renderOnce() {
+        Engagement e = engagementWithResults("e1", "owner-1", Engagement.Status.DONE, "ANCHORED");
+        when(engagementRepo.findById("e1")).thenReturn(Optional.of(e));
+        when(clientAuthHelper.resolve(req)).thenReturn(Optional.of(clientUser("owner-1")));
+        when(pdfRenderer.renderPreviewImage(any(), any())).thenReturn(new byte[] {1});
+
+        controller.preview("e1", "anchored", req);
+        controller.preview("e1", "ANCHORED", req);
+
+        verify(pdfRenderer, times(1)).renderPreviewImage(any(), any());
+    }
+
+    // ── downloads ─────────────────────────────────────────────────────────────
+
+    @Test
+    void downloadPdf_paidButCallerIsNotOwner_throwsForbidden() {
+        Engagement e = engagementWithResults("e1", "owner-1", Engagement.Status.DONE, "ANCHORED");
+        e.setPaymentStatus(Engagement.PaymentStatus.PAID);
+        when(engagementRepo.findById("e1")).thenReturn(Optional.of(e));
+        when(clientAuthHelper.resolve(req)).thenReturn(Optional.of(clientUser("intruder")));
+
+        assertThatThrownBy(() -> controller.downloadPdf("e1", "anchored", req))
+            .isInstanceOf(ResponseStatusException.class)
+            .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+        verify(pdfRenderer, never()).render(any(), any());
+    }
+
+    @Test
+    void downloadLogoZip_paidButAnonymous_throwsForbidden() {
+        Engagement e = engagementWithResults("e1", "owner-1", Engagement.Status.DONE, "ANCHORED");
+        e.setPaymentStatus(Engagement.PaymentStatus.PAID);
+        when(engagementRepo.findById("e1")).thenReturn(Optional.of(e));
+        when(clientAuthHelper.resolve(req)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> controller.downloadLogoZip("e1", "anchored", req))
+            .isInstanceOf(ResponseStatusException.class)
+            .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
     }
 }

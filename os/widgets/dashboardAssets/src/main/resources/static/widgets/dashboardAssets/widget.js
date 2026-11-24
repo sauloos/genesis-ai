@@ -11,15 +11,30 @@ function addLock(thumb) {
   thumb.appendChild(lock);
 }
 
-async function fetchBlobUrl(url) {
-  try {
-    const res = await fetch(url, { headers: HEADERS });
-    if (!res.ok) return null;
-    const blob = await res.blob();
-    return URL.createObjectURL(blob);
-  } catch (_) {
-    return null;
+// Preview images by URL, so a re-render (the in-progress poll re-renders every 10s) reuses
+// the covers it already has instead of asking the server to render them again. Cleared
+// whenever the assets may have changed.
+const previewCache = new Map();
+
+function clearPreviewCache() {
+  previewCache.forEach(p => p.then(url => { if (url) URL.revokeObjectURL(url); }));
+  previewCache.clear();
+}
+
+function fetchBlobUrl(url) {
+  if (!previewCache.has(url)) {
+    const pending = fetch(url, { headers: HEADERS })
+      .then(res => (res.ok ? res.blob() : null))
+      .then(blob => (blob ? URL.createObjectURL(blob) : null))
+      .catch(() => null)
+      .then(objectUrl => {
+        // A failed preview is retried on the next render rather than remembered.
+        if (!objectUrl && previewCache.get(url) === pending) previewCache.delete(url);
+        return objectUrl;
+      });
+    previewCache.set(url, pending);
   }
+  return previewCache.get(url);
 }
 
 async function downloadAsset(downloadUrl, filename, tile, labelEl, originalLabel, busyLabel) {
@@ -33,8 +48,13 @@ async function downloadAsset(downloadUrl, filename, tile, labelEl, originalLabel
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
+    a.style.display = 'none';
+    // Some browsers ignore a click on a detached link, and revoking the URL straight away
+    // can cancel the download before it starts.
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
   } catch (err) {
     alert('Download failed: ' + (err.message || err));
   } finally {
@@ -221,15 +241,18 @@ function renderWorkItemBlock(item) {
 
 const IN_PROGRESS_POLL_MS = 10000;
 
-async function render(container) {
+async function render(container, fromPoll = false) {
   const listEl = container.querySelector('.dass-list');
   clearTimeout(container._dassPoll);
+  if (!fromPoll) clearPreviewCache();
 
   try {
     const items = await fetch('/api/client/workspace', { headers: HEADERS }).then(r => {
       if (!r.ok) throw new Error(String(r.status));
       return r.json();
     });
+    // Something finished since the last poll: its covers may be new.
+    if (fromPoll && !items.some(i => i.inProgress)) clearPreviewCache();
     listEl.innerHTML = '';
     const blocks = items.map(renderWorkItemBlock).filter(Boolean);
     if (blocks.length === 0) {
@@ -239,7 +262,7 @@ async function render(container) {
     blocks.forEach(b => listEl.appendChild(b));
     // Something is still being produced — check again until it's ready (or the visitor leaves).
     if (items.some(i => i.inProgress)) {
-      container._dassPoll = setTimeout(() => { if (container.isConnected) render(container); }, IN_PROGRESS_POLL_MS);
+      container._dassPoll = setTimeout(() => { if (container.isConnected) render(container, true); }, IN_PROGRESS_POLL_MS);
     }
   } catch (err) {
     listEl.innerHTML = '<div class="dass-empty">Could not load your assets right now.</div>';
