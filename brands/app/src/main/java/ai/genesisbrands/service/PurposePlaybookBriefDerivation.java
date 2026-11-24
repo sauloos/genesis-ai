@@ -40,8 +40,13 @@ public class PurposePlaybookBriefDerivation {
 
     /**
      * Config-only agent id — no {@code CoreAgent} bean, because this is a step inside the
-     * engagement pipeline rather than a surface anyone selects. Same arrangement as
-     * {@code purpose-playbook-evaluator}.
+     * engagement pipeline rather than a surface anyone selects.
+     *
+     * <p>One consequence, which {@code purpose-playbook-evaluator} does not share: that key is
+     * admin-editable because {@code purpose-playbook} is a {@code CoreAgent} and
+     * {@code AgentSettingsService.ownerOf} matches an {@code <id>-} prefix, while this key and
+     * {@code brief-derivation} match no agent at all and so are not reachable from the agents
+     * admin page. Retuning either means editing its {@code agent.yml} and releasing.
      */
     static final String AGENT_ID = "direction-brief";
 

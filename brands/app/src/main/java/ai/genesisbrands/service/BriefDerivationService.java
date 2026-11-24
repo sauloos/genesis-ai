@@ -40,7 +40,9 @@ public class BriefDerivationService implements BriefDerivationExtension {
     /**
      * Config-only agent id — no {@code CoreAgent} bean, because this is a step inside the
      * engagement pipeline rather than a surface anyone selects. Same arrangement as
-     * {@code direction-brief}, its Purpose Playbook successor.
+     * {@code direction-brief}, its Purpose Playbook successor, including the limitation recorded
+     * there: no owning agent means the agents admin page cannot reach this key, so the
+     * {@code agent.yml} values below are the only ones it will ever run with.
      */
     static final String AGENT_ID = "brief-derivation";
 
