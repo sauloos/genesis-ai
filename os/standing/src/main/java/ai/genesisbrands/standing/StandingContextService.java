@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -30,7 +31,14 @@ import java.util.Optional;
 @Service
 public class StandingContextService {
 
-    static final int MAX_CHARS = 30_000;
+    /**
+     * The whole context budget. Generous because the client's own brand foundation is a real
+     * document — a Purpose Playbook renders at around 34k characters — and a standing run happens
+     * a few times a month against a million-token context window, so there is nothing to save by
+     * starving it. {@link #capPerSection} is what keeps one long section from crowding out the
+     * rest, which matters more than the total.
+     */
+    static final int MAX_CHARS = 120_000;
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneOffset.UTC);
 
     private final ClientUserRepository clientUsers;
@@ -58,14 +66,53 @@ public class StandingContextService {
     }
 
     public String build(ClientUser client, String agentId) {
-        StringBuilder out = new StringBuilder();
-        append(out, safely("subject", () -> subjectSection(client)));
-        append(out, safely("workspace", () -> workspaceSection(client.getId())));
-        append(out, safely("inbox", () -> inboxSection(client.getId())));
+        List<String> sections = new ArrayList<>();
+        collect(sections, safely("subject", () -> subjectSection(client)));
+        collect(sections, safely("workspace", () -> workspaceSection(client.getId())));
+        collect(sections, safely("inbox", () -> inboxSection(client.getId())));
         for (StandingContextContributor c : contributors) {
-            append(out, safely(c.getClass().getSimpleName(), () -> c.section(client.getId(), agentId)));
+            collect(sections, safely(c.getClass().getSimpleName(), () -> c.section(client.getId(), agentId)));
         }
-        return out.length() > MAX_CHARS ? out.substring(0, MAX_CHARS) + "\n\n(context truncated)" : out.toString();
+        return assemble(sections);
+    }
+
+    /**
+     * Joins the sections, trimming the longest ones if the whole thing is over budget.
+     *
+     * <p>Deliberately not a tail truncation. The sections are in descending order of generality,
+     * not of importance, and the one that can be arbitrarily long — the client's brand, which now
+     * carries their whole Purpose Playbook — is the first one appended. Cutting the tail would
+     * have dropped the inbox, which is where the client's own approvals and rejections are
+     * recorded and the one thing a standing run is required to read before repeating itself.
+     * Capping instead means a long brand section loses its last paragraphs while every short,
+     * decision-bearing section survives whole.
+     */
+    static String assemble(List<String> sections) {
+        int cap = capPerSection(sections);
+        StringBuilder out = new StringBuilder();
+        for (String section : sections) {
+            if (!out.isEmpty()) out.append("\n");
+            out.append(section.length() <= cap
+                ? section
+                : section.substring(0, cap) + "\n\n(this section was truncated)").append("\n");
+        }
+        return out.toString();
+    }
+
+    /**
+     * The largest a section may be so that the set fits {@link #MAX_CHARS}: an equal share of what
+     * is left, with every section that comes in under its share handing the slack to the longer
+     * ones. With one long section and three short ones, the long one gets nearly the whole budget.
+     */
+    private static int capPerSection(List<String> sections) {
+        List<Integer> lengths = sections.stream().map(String::length).sorted().toList();
+        int remaining = MAX_CHARS;
+        for (int i = 0; i < lengths.size(); i++) {
+            int share = remaining / (lengths.size() - i);
+            if (lengths.get(i) > share) return share;
+            remaining -= lengths.get(i);
+        }
+        return MAX_CHARS;
     }
 
     public Optional<ClientUser> client(String clientUserId) {
@@ -131,10 +178,9 @@ public class StandingContextService {
         if (value != null && !value.isBlank()) sb.append("- ").append(label).append(": ").append(value.trim()).append("\n");
     }
 
-    private static void append(StringBuilder out, String section) {
+    private static void collect(List<String> sections, String section) {
         if (section == null || section.isBlank()) return;
-        if (!out.isEmpty()) out.append("\n");
-        out.append(section.trim()).append("\n");
+        sections.add(section.trim());
     }
 
     /** One broken section never fails the run; the agent works with what is left. */

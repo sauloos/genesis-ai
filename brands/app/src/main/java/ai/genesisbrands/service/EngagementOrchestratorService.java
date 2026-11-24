@@ -59,6 +59,7 @@ public class EngagementOrchestratorService {
     private final PurposePlaybookInputFactory purposePlaybookInputs;
     private final PurposePlaybookRefinementLoop purposePlaybookLoop;
     private final PurposePlaybookBriefDerivation purposePlaybookBriefs;
+    private final EngagementPlaybookLayer2Ingest playbookIngest;
     private final CopyAgent copyAgent;
     private final CopyRefinementLoop copyLoop;
     private final VisualIdentityAgent visualAgent;
@@ -165,6 +166,11 @@ public class EngagementOrchestratorService {
             saveEngagement(engagement);
 
             log.info("Engagement {} completed successfully", engagementId);
+
+            // Layer 2 ingestion on completion, as the architecture has always specified. Last and
+            // non-fatal by design: the engagement is already saved as DONE, and project memory for
+            // future clients is not worth marking this client's finished work as failed for.
+            playbookIngest.ingest(engagement);
         } catch (Exception e) {
             log.error("Engagement {} failed: {}", engagementId, e.getMessage(), e);
             engagement.setStatus(Engagement.Status.FAILED);

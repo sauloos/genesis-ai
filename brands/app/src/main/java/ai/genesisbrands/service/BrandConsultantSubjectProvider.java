@@ -13,6 +13,7 @@ import ai.genesisbrands.repository.QuestionnaireQuestionRepository;
 import ai.genesisbrands.repository.QuestionnaireResponseRepository;
 import ai.genesisbrands.service.EngagementOrchestratorService.DirectionOutput;
 import ai.genesisbrands.service.EngagementOrchestratorService.EngagementResults;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Component;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -43,12 +45,15 @@ public class BrandConsultantSubjectProvider implements ConsultantSubjectProvider
     private final QuestionnaireQuestionRepository questionnaireQuestionRepo;
     private final QuestionnaireAnswerRepository questionnaireAnswerRepo;
     private final ObjectMapper objectMapper;
+    private final PurposePlaybookContextService playbookContext;
 
     public BrandConsultantSubjectProvider(BrandRepository brandRepo, EngagementRepository engagementRepo,
                                            QuestionnaireResponseRepository questionnaireResponseRepo,
                                            QuestionnaireQuestionRepository questionnaireQuestionRepo,
                                            QuestionnaireAnswerRepository questionnaireAnswerRepo,
-                                           ObjectMapper objectMapper) {
+                                           ObjectMapper objectMapper,
+                                           PurposePlaybookContextService playbookContext) {
+        this.playbookContext = playbookContext;
         this.brandRepo = brandRepo;
         this.engagementRepo = engagementRepo;
         this.questionnaireResponseRepo = questionnaireResponseRepo;
@@ -76,27 +81,92 @@ public class BrandConsultantSubjectProvider implements ConsultantSubjectProvider
         Engagement e = engagementRepo.findById(engagementId)
             .orElseThrow(() -> new IllegalArgumentException("Engagement not found: " + engagementId));
 
-        EngagementResults results;
-        try {
-            results = objectMapper.readValue(e.getResultsJson(), EngagementResults.class);
-        } catch (Exception ex) {
-            throw new IllegalStateException("Could not parse results for engagement: " + engagementId, ex);
+        DirectionOutput dir = chosenDirection(e).orElse(null);
+        if (dir == null) {
+            return beforeADirectionIsChosen(e);
         }
-        DirectionOutput dir = results.directions().stream()
-            .filter(d -> d.direction().equalsIgnoreCase(e.getChosenDirection()))
-            .findFirst()
-            .orElseThrow(() -> new IllegalStateException("Chosen direction not found in results: " + engagementId));
-
         var brand = dir.brief().brand();
         return new ConsultantSubject(
             ENGAGEMENT_PREFIX + engagementId,
             brand.name(), brand.industry(), brand.targetAudience(),
-            buildQuestionnaireContext(e) + buildBrief(dir)
+            buildDiscoveryContext(e) + buildBrief(dir)
         );
     }
 
-    /** Surfaces the client's own raw intake answers, not just the derived brief —
-     *  so the consultant can reference what the client actually said. */
+    /** The chosen direction's output, or empty while the engagement has no chosen direction. */
+    private Optional<DirectionOutput> chosenDirection(Engagement e) {
+        if (e.getResultsJson() == null || e.getResultsJson().isBlank() || e.getChosenDirection() == null) {
+            return Optional.empty();
+        }
+        EngagementResults results;
+        try {
+            results = objectMapper.readValue(e.getResultsJson(), EngagementResults.class);
+        } catch (Exception ex) {
+            throw new IllegalStateException("Could not parse results for engagement: " + e.getId(), ex);
+        }
+        return results.directions().stream()
+            .filter(d -> d.direction().equalsIgnoreCase(e.getChosenDirection()))
+            .findFirst();
+    }
+
+    /**
+     * A subject for a client whose engagement is still in flight: the playbook is written, the
+     * directions are not chosen, and there is no specialist output to describe yet.
+     *
+     * <p>Worth having rather than failing. The discovery context — their Purpose Playbook — is the
+     * substance of what the consultant needs, and it exists from the moment discovery finishes.
+     * What is missing is a chosen identity, so the name is taken from the derived briefs if they
+     * exist and otherwise said to be unestablished, never guessed: this string is read out to the
+     * client as their brand's name.
+     */
+    private ConsultantSubject beforeADirectionIsChosen(Engagement e) {
+        DirectionBrief.BrandContext brand = firstBriefBrand(e).orElse(null);
+        return new ConsultantSubject(
+            ENGAGEMENT_PREFIX + e.getId(),
+            brand == null || brand.name() == null || brand.name().isBlank()
+                ? "(no brand name established yet)" : brand.name(),
+            brand == null ? null : brand.industry(),
+            brand == null ? null : brand.targetAudience(),
+            buildDiscoveryContext(e)
+        );
+    }
+
+    private Optional<DirectionBrief.BrandContext> firstBriefBrand(Engagement e) {
+        if (e.getBriefsJson() == null || e.getBriefsJson().isBlank()) {
+            return Optional.empty();
+        }
+        try {
+            List<DirectionBrief> briefs = objectMapper.readValue(
+                e.getBriefsJson(), new TypeReference<List<DirectionBrief>>() {});
+            return briefs.isEmpty() ? Optional.empty() : Optional.ofNullable(briefs.get(0).brand());
+        } catch (Exception ex) {
+            // The briefs are only being read here for a display name; an unreadable one is not a
+            // reason to deny the client a consultant that has their playbook.
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * What the client said in discovery, settled rather than raw where possible.
+     *
+     * <p>The playbook wins over the transcript whenever the engagement has one. They are not two
+     * renderings of the same material: the transcript is 131 unreconciled answers, including every
+     * contradiction the client gave and every question they clicked past, and a consultant reading
+     * it has to re-derive the client's position on the fly, differently each turn. The playbook is
+     * that derivation, done once and agreed, with a confidence map saying which parts are thin.
+     * Reading the transcript instead would reintroduce exactly the unresolved material the playbook
+     * exists to settle — and it is the bigger of the two.
+     *
+     * <p>The transcript remains the fallback for engagements that ran before the instrument
+     * existed, where it is the only record of what the client said.
+     */
+    private String buildDiscoveryContext(Engagement e) {
+        return playbookContext.forEngagement(e.getId())
+            .map(playbook -> playbookContext.render(playbook, "This client's Purpose Playbook"))
+            .orElseGet(() -> buildQuestionnaireContext(e));
+    }
+
+    /** The client's raw intake answers — the legacy path, for engagements with no playbook. */
     private String buildQuestionnaireContext(Engagement e) {
         if (e.getQuestionnaireResponseId() == null) return "";
         QuestionnaireResponse response = questionnaireResponseRepo.findById(e.getQuestionnaireResponseId()).orElse(null);
