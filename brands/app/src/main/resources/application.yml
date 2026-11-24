@@ -13,6 +13,11 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: false
+    # Off so a request holds a DB connection only while it queries. With it on, every
+    # brand-book preview kept its connection while queued on the Playwright render pool,
+    # and one results page (three previews, reloaded) drained the 10-connection pool.
+    # No entity has a lazy association, so nothing loads outside a repository call.
+    open-in-view: false
   h2:
     console:
       enabled: true

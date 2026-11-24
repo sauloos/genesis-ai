@@ -14,8 +14,12 @@
   cursor: pointer; font-family: inherit;
 }
 .widget-brand-results .br-cards {
-  width: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px; margin-top: 6px;
+}
+/* Three directions side by side, equal columns; one column only at phone width. */
+@media (max-width: 560px) {
+  .widget-brand-results .br-cards { grid-template-columns: minmax(0, 1fr); }
 }
 .widget-brand-results .br-card {
   display: flex; flex-direction: column; align-items: center; gap: 8px;
@@ -25,7 +29,7 @@
 .widget-brand-results .br-card-label { font-size: 13px; font-weight: 700; letter-spacing: 0.3px; color: var(--theme-text-primary); }
 .widget-brand-results .br-card-tagline { font-size: 12px; color: var(--theme-text-muted); line-height: 1.4; }
 .widget-brand-results .br-choose-btn {
-  width: 100%; margin-top: 4px; padding: 10px; border-radius: 9px; border: none;
+  width: 100%; margin-top: auto; padding: 10px; border-radius: 9px; border: none;
   background: var(--theme-text-primary); color: var(--theme-body-bg);
   font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
 }
