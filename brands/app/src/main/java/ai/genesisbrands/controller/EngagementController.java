@@ -10,6 +10,7 @@ import ai.genesisbrands.repository.AgentRegenerationJobRepository;
 import ai.genesisbrands.repository.EngagementDirectionVersionRepository;
 import ai.genesisbrands.repository.EngagementRepository;
 import ai.genesisbrands.security.AdminAuthHelper;
+import ai.genesisbrands.security.AdminSessionService;
 import ai.genesisbrands.security.ClientAuthHelper;
 import ai.genesisbrands.service.AgentRegenerationService;
 import ai.genesisbrands.service.BlobStorageService;
@@ -56,12 +57,16 @@ public class EngagementController {
     private final AgentRegenerationService regenerationService;
     private final EngagementDirectionVersionRepository versionRepo;
     private final BrandBookPreviewCache previewCache;
+    private final AdminSessionService adminSession;
 
     // ── Create ────────────────────────────────────────────────────────────────
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public EngagementSummary create(@RequestBody CreateRequest req) {
+    public EngagementSummary create(@RequestBody CreateRequest req, HttpServletRequest httpReq) {
+        // Flows start engagements server-side; over HTTP this is an operator tool, and every
+        // run costs model spend.
+        requireAdmin(httpReq);
         Engagement e = new Engagement();
         e.setId(UUID.randomUUID().toString());
         e.setSource(req.source() != null ? req.source() : Engagement.Source.CLIENT);
@@ -79,7 +84,8 @@ public class EngagementController {
 
     @PostMapping("/import")
     @ResponseStatus(HttpStatus.CREATED)
-    public EngagementSummary importResults(@RequestBody ImportRequest req) {
+    public EngagementSummary importResults(@RequestBody ImportRequest req, HttpServletRequest httpReq) {
+        requireAdmin(httpReq);
         Engagement e = new Engagement();
         e.setId(UUID.randomUUID().toString());
         e.setSource(req.source() != null ? req.source() : Engagement.Source.SIMULATION);
@@ -97,7 +103,9 @@ public class EngagementController {
     // ── Read ──────────────────────────────────────────────────────────────────
 
     @GetMapping
-    public List<EngagementSummary> list(@RequestParam(required = false) String source) {
+    public List<EngagementSummary> list(@RequestParam(required = false) String source,
+                                        HttpServletRequest req) {
+        requireAdmin(req);
         List<Engagement> rows = source != null
             ? engagementRepo.findAllBySourceOrderByCreatedAtDesc(Engagement.Source.valueOf(source.toUpperCase()))
             : engagementRepo.findAllByOrderByCreatedAtDesc();
@@ -118,6 +126,9 @@ public class EngagementController {
     public EngagementDetail get(@PathVariable String id, HttpServletRequest req) {
         Engagement e = engagementRepo.findById(id)
             .orElseThrow(() -> new NoSuchElementException("Engagement not found: " + id));
+        // An unclaimed engagement (a visitor who hasn't signed in yet) is reachable only by its
+        // unguessable id; once claimed, only its owner or an admin can read it.
+        if (e.getClientUserId() != null && !isAdmin(req)) requireOwner(e, req);
 
         EngagementResults results = null;
         if (e.getResultsJson() != null) {
@@ -128,7 +139,7 @@ public class EngagementController {
             }
         }
 
-        boolean adminAccess = adminAuth.isAdminRequest(req);
+        boolean adminAccess = isAdmin(req);
         String clientUserId = resolveClientUserId(req);
         boolean ownsEngagement = clientUserId != null && clientUserId.equals(e.getClientUserId());
         boolean downloadAllowed = adminAccess || e.getPaymentStatus() == Engagement.PaymentStatus.PAID;
@@ -210,6 +221,21 @@ public class EngagementController {
             .contentType(MediaType.IMAGE_JPEG)
             .header(HttpHeaders.CACHE_CONTROL, "private, no-cache")
             .body(jpeg);
+    }
+
+    /**
+     * Admin credentials as {@code AdminAgentApiFilter} accepts them: HTTP Basic, or the signed
+     * session cookie the admin pages carry on same-origin fetches. The shared X-Api-Key ships in
+     * public JS, so it never counts.
+     */
+    private boolean isAdmin(HttpServletRequest req) {
+        return adminSession.hasValidSession(req) || adminAuth.isAdminRequest(req);
+    }
+
+    private void requireAdmin(HttpServletRequest req) {
+        if (!isAdmin(req)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Admin credentials required");
+        }
     }
 
     private void requireOwner(Engagement e, HttpServletRequest req) {
@@ -326,7 +352,9 @@ public class EngagementController {
     // ── Payment placeholder ───────────────────────────────────────────────────
 
     @PostMapping("/{id}/request-payment")
-    public EngagementSummary requestPayment(@PathVariable String id, @RequestBody PaymentRequest req) {
+    public EngagementSummary requestPayment(@PathVariable String id, @RequestBody PaymentRequest req,
+                                            HttpServletRequest httpReq) {
+        requireAdmin(httpReq);
         Engagement e = engagementRepo.findById(id)
             .orElseThrow(() -> new NoSuchElementException("Engagement not found: " + id));
         if (e.getClientEmail() == null) e.setClientEmail(req.email());
@@ -337,7 +365,8 @@ public class EngagementController {
     }
 
     @PostMapping("/{id}/mark-paid")
-    public EngagementSummary markPaid(@PathVariable String id) {
+    public EngagementSummary markPaid(@PathVariable String id, HttpServletRequest req) {
+        requireAdmin(req);
         Engagement e = engagementRepo.findById(id)
             .orElseThrow(() -> new NoSuchElementException("Engagement not found: " + id));
         e.setPaymentStatus(Engagement.PaymentStatus.PAID);
@@ -355,7 +384,7 @@ public class EngagementController {
         Engagement e = engagementRepo.findById(id)
             .orElseThrow(() -> new NoSuchElementException("Engagement not found: " + id));
 
-        boolean adminAccess = adminAuth.isAdminRequest(req);
+        boolean adminAccess = isAdmin(req);
         if (!adminAccess) requireOwner(e, req);
         if (!adminAccess && e.getPaymentStatus() != Engagement.PaymentStatus.PAID) {
             return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).build();
@@ -436,7 +465,7 @@ public class EngagementController {
         Engagement e = engagementRepo.findById(id)
             .orElseThrow(() -> new NoSuchElementException("Engagement not found: " + id));
 
-        boolean adminAccess = adminAuth.isAdminRequest(req);
+        boolean adminAccess = isAdmin(req);
         if (!adminAccess) requireOwner(e, req);
         if (!adminAccess && e.getPaymentStatus() != Engagement.PaymentStatus.PAID) {
             return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).build();

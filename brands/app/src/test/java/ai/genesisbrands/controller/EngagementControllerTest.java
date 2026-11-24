@@ -7,6 +7,7 @@ import ai.genesisbrands.repository.AgentRegenerationJobRepository;
 import ai.genesisbrands.repository.EngagementDirectionVersionRepository;
 import ai.genesisbrands.repository.EngagementRepository;
 import ai.genesisbrands.security.AdminAuthHelper;
+import ai.genesisbrands.security.AdminSessionService;
 import ai.genesisbrands.security.ClientAuthHelper;
 import ai.genesisbrands.service.AgentRegenerationService;
 import ai.genesisbrands.service.BlobStorageService;
@@ -46,6 +47,7 @@ class EngagementControllerTest {
     @Mock private BlobStorageService blobStorageService;
     @Mock private PhotoSourcingService photoSourcingService;
     @Mock private AdminAuthHelper adminAuth;
+    @Mock private AdminSessionService adminSession;
     @Mock private ClientAuthHelper clientAuthHelper;
     @Mock private AgentRegenerationJobRepository regenerationJobRepo;
     @Mock private AgentRegenerationService regenerationService;
@@ -58,7 +60,7 @@ class EngagementControllerTest {
     void setUp() {
         controller = new EngagementController(engagementRepo, orchestrator, pdfRenderer, blobStorageService,
             photoSourcingService, new ObjectMapper(), adminAuth, clientAuthHelper, regenerationJobRepo, regenerationService, versionRepo,
-            new BrandBookPreviewCache());
+            new BrandBookPreviewCache(), adminSession);
     }
 
     private ClientUser clientUser(String id) {
@@ -224,5 +226,86 @@ class EngagementControllerTest {
         assertThatThrownBy(() -> controller.downloadLogoZip("e1", "anchored", req))
             .isInstanceOf(ResponseStatusException.class)
             .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+    }
+
+    // ── operator-only routes ──────────────────────────────────────────────────
+
+    private void assertStatus(HttpStatus status, org.assertj.core.api.ThrowableAssert.ThrowingCallable call) {
+        assertThatThrownBy(call)
+            .isInstanceOf(ResponseStatusException.class)
+            .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode()).isEqualTo(status));
+    }
+
+    private void assertForbidden(org.assertj.core.api.ThrowableAssert.ThrowingCallable call) {
+        assertStatus(HttpStatus.FORBIDDEN, call);
+    }
+
+    @Test
+    void operatorRoutes_withoutAdminCredentials_areRefusedAndChangeNothing() {
+        assertStatus(HttpStatus.UNAUTHORIZED, () -> controller.list(null, req));
+        assertStatus(HttpStatus.UNAUTHORIZED, () -> controller.markPaid("e1", req));
+        assertStatus(HttpStatus.UNAUTHORIZED, () -> controller.requestPayment("e1", new EngagementController.PaymentRequest("a@b.test", "A"), req));
+        assertStatus(HttpStatus.UNAUTHORIZED, () -> controller.importResults(null, req));
+        assertStatus(HttpStatus.UNAUTHORIZED, () -> controller.create(null, req));
+
+        verify(engagementRepo, never()).save(any());
+        verify(orchestrator, never()).runEngagement(any());
+    }
+
+    @Test
+    void list_adminSessionCookie_counts() {
+        when(adminSession.hasValidSession(req)).thenReturn(true);
+        when(engagementRepo.findAllByOrderByCreatedAtDesc()).thenReturn(List.of());
+
+        assertThat(controller.list(null, req)).isEmpty();
+    }
+
+    @Test
+    void markPaid_admin_marksPaid() {
+        Engagement e = engagementWithResults("e1", "owner-1", Engagement.Status.DONE, "ANCHORED");
+        when(adminAuth.isAdminRequest(req)).thenReturn(true);
+        when(engagementRepo.findById("e1")).thenReturn(Optional.of(e));
+        when(engagementRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        controller.markPaid("e1", req);
+
+        assertThat(e.getPaymentStatus()).isEqualTo(Engagement.PaymentStatus.PAID);
+    }
+
+    // ── detail read ───────────────────────────────────────────────────────────
+
+    @Test
+    void get_claimedEngagement_otherClient_throwsForbidden() {
+        Engagement e = engagementWithResults("e1", "owner-1", Engagement.Status.DONE, "ANCHORED");
+        when(engagementRepo.findById("e1")).thenReturn(Optional.of(e));
+        when(clientAuthHelper.resolve(req)).thenReturn(Optional.of(clientUser("intruder")));
+
+        assertForbidden(() -> controller.get("e1", req));
+    }
+
+    @Test
+    void get_claimedEngagement_ownerReadsResults() {
+        Engagement e = engagementWithResults("e1", "owner-1", Engagement.Status.DONE, "ANCHORED");
+        when(engagementRepo.findById("e1")).thenReturn(Optional.of(e));
+        when(clientAuthHelper.resolve(req)).thenReturn(Optional.of(clientUser("owner-1")));
+
+        assertThat(controller.get("e1", req).results()).isNotNull();
+    }
+
+    @Test
+    void get_claimedEngagement_adminReadsResults() {
+        Engagement e = engagementWithResults("e1", "owner-1", Engagement.Status.DONE, "ANCHORED");
+        when(engagementRepo.findById("e1")).thenReturn(Optional.of(e));
+        when(adminAuth.isAdminRequest(req)).thenReturn(true);
+
+        assertThat(controller.get("e1", req).results()).isNotNull();
+    }
+
+    @Test
+    void get_unclaimedEngagement_readableByIdBeforeSignIn() {
+        Engagement e = engagementWithResults("e1", null, Engagement.Status.DONE, "ANCHORED");
+        when(engagementRepo.findById("e1")).thenReturn(Optional.of(e));
+
+        assertThat(controller.get("e1", req).results()).isNotNull();
     }
 }
