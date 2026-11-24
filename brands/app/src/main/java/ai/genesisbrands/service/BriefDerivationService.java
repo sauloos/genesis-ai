@@ -1,5 +1,6 @@
 package ai.genesisbrands.service;
 
+import ai.genesisbrands.agent.config.AgentProperties;
 import ai.genesisbrands.agent.core.DirectionBrief;
 import ai.genesisbrands.model.QuestionnaireAnswer;
 import ai.genesisbrands.model.QuestionnaireQuestion;
@@ -9,6 +10,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.stereotype.Service;
 
@@ -28,26 +31,32 @@ import java.util.stream.Collectors;
  *
  * <p>It also still backs the core {@code BriefDerivationExtension} SPI, which the Playground's
  * derive-briefs endpoint calls with raw questions and answers.
- *
- * <p>Known shortcut, inherited: the model and token cap below are hardcoded rather than read from
- * {@code AgentProperties}, so they cannot be changed from the agents admin page like every other
- * agent's. Worth promoting if this path survives.
  */
 @Service
 public class BriefDerivationService implements BriefDerivationExtension {
 
     private static final Logger log = LoggerFactory.getLogger(BriefDerivationService.class);
 
+    /**
+     * Config-only agent id — no {@code CoreAgent} bean, because this is a step inside the
+     * engagement pipeline rather than a surface anyone selects. Same arrangement as
+     * {@code direction-brief}, its Purpose Playbook successor.
+     */
+    static final String AGENT_ID = "brief-derivation";
+
+    /** Anthropic's stop reason for a response that ran into {@code max_tokens}. */
+    private static final String MAX_TOKENS_FINISH = "max_tokens";
+
     private final ChatClient chatClient;
     private final ObjectMapper objectMapper;
-    private final TenantBriefConfig tenantBriefConfig;
+    private final AgentProperties agentProperties;
 
     public BriefDerivationService(ChatClient.Builder builder,
                                    ObjectMapper objectMapper,
-                                   TenantBriefConfig tenantBriefConfig) {
+                                   AgentProperties agentProperties) {
         this.chatClient = builder.build();
         this.objectMapper = objectMapper;
-        this.tenantBriefConfig = tenantBriefConfig;
+        this.agentProperties = agentProperties;
     }
 
     @Override
@@ -63,17 +72,42 @@ public class BriefDerivationService implements BriefDerivationExtension {
             qa.append("Q: ").append(q.getPrompt()).append("\nA: ").append(answer).append("\n\n");
         }
 
-        String raw = chatClient.prompt()
+        // Read per request, never cached in a field, so an admin change applies without a restart.
+        AgentProperties.AgentConfig config = agentProperties.get(AGENT_ID);
+
+        ChatResponse response = chatClient.prompt()
             .options(AnthropicChatOptions.builder()
-                .model("claude-opus-5")
-                .maxTokens(8000)
+                .model(config.getModel())
+                .maxTokens(config.getMaxTokens())
                 .build())
-            .system(tenantBriefConfig.systemPrompt())
+            .system(agentProperties.systemPrompt(AGENT_ID))
             .user("Client intake responses:\n\n" + qa)
             .call()
-            .content();
+            .chatResponse();
 
-        return parseBriefs(engagementId, raw);
+        return parseBriefs(engagementId, text(response, config));
+    }
+
+    /**
+     * The response text, with a truncated response named as truncated.
+     *
+     * <p>Without this, hitting the cap arrives downstream as "Failed to parse direction briefs" on
+     * JSON that is perfectly well-formed up to where it stops — which sends whoever is debugging it
+     * at the prompt or the model rather than at {@code max-tokens}.
+     */
+    private String text(ChatResponse response, AgentProperties.AgentConfig config) {
+        Generation result = response == null ? null : response.getResult();
+        String raw = result == null || result.getOutput() == null ? null : result.getOutput().getText();
+        if (raw == null || raw.isBlank()) {
+            throw new RuntimeException("Brief derivation returned an empty response.");
+        }
+        String finishReason = result.getMetadata() == null ? null : result.getMetadata().getFinishReason();
+        if (MAX_TOKENS_FINISH.equalsIgnoreCase(finishReason)) {
+            throw new RuntimeException("The briefs were cut off at the " + config.getMaxTokens()
+                + "-token cap after " + raw.length() + " characters, so they are incomplete rather "
+                + "than malformed. Raise max-tokens for " + AGENT_ID + ".");
+        }
+        return raw;
     }
 
     private List<DirectionBrief> parseBriefs(String engagementId, String raw) {
