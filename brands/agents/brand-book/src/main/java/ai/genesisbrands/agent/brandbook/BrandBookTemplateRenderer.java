@@ -382,6 +382,10 @@ public class BrandBookTemplateRenderer {
         String neutralHex   = findSwatchHex(visual.colorPalette(), "neutral",   3);
         String primaryDark  = darken(primaryHex, 0.35);
         String primaryLight = lighten(primaryHex, 0.75);
+        String primaryInk   = legibleOnWhite(primaryHex, visual.colorPalette(), MIN_TEXT_CONTRAST,
+                                             Fallback.DEEPEST);
+        String primaryPanel = legibleOnWhite(primaryHex, visual.colorPalette(), MIN_PANEL_CONTRAST,
+                                             Fallback.MOST_COLOUR);
 
         // Typography
         String headlineFont    = visual.typography().headlineFont();
@@ -426,6 +430,8 @@ public class BrandBookTemplateRenderer {
         subs.put("{{PRIMARY_HEX}}",       primaryHex);
         subs.put("{{PRIMARY_DARK_HEX}}", primaryDark);
         subs.put("{{PRIMARY_LIGHT_HEX}}", primaryLight);
+        subs.put("{{PRIMARY_INK_HEX}}",   primaryInk);
+        subs.put("{{PRIMARY_PANEL_HEX}}", primaryPanel);
         subs.put("{{SECONDARY_HEX}}",    secondaryHex);
         subs.put("{{ACCENT_HEX}}",       accentHex);
         subs.put("{{NEUTRAL_HEX}}",      neutralHex);
@@ -766,6 +772,115 @@ public class BrandBookTemplateRenderer {
             Math.min(255, (int)(rgb[0] + (255 - rgb[0]) * factor)),
             Math.min(255, (int)(rgb[1] + (255 - rgb[1]) * factor)),
             Math.min(255, (int)(rgb[2] + (255 - rgb[2]) * factor)));
+    }
+
+    /** WCAG AA for body-sized type: what {@code --primary-ink} guarantees against the white page. */
+    private static final double MIN_TEXT_CONTRAST = 4.5;
+
+    /**
+     * WCAG AA for large type and UI surfaces: what {@code --primary-panel} guarantees, so white
+     * display type reads on a brand-coloured fill. Deliberately lower than
+     * {@link #MIN_TEXT_CONTRAST} — holding panels to the body-text bar would replace perfectly
+     * good mid-tone brand colours with near-black and flatten the book (Kindling Retrofit's
+     * EVOLVED clay is 3.51:1: right for a cover, too weak for a caption).
+     */
+    private static final double MIN_PANEL_CONTRAST = 3.0;
+
+    /**
+     * A brand colour that is guaranteed to separate from white by {@code minRatio}, for type on
+     * the white page ({@code --primary-ink}) and for fills that carry white type
+     * ({@code --primary-panel}).
+     *
+     * <p>A palette's primary is chosen to look right as a fill, and the Visual Identity agent may
+     * legitimately give that role to a pale paper colour — Kindling Retrofit's primary was
+     * {@code #F3ECE1}, 1.17:1 against white. Every template paints its labels, headings, section
+     * numbers and the statement pull-quote in the primary, and fills its sidebar, cover and
+     * closing page with it, so that book's type was all but invisible both ways round
+     * (found 2026-11-23).
+     *
+     * <p>Resolution order: the primary itself when it already clears the ratio, so a well-chosen
+     * palette renders exactly as before; else the palette's own darkest passing swatch, because a
+     * palette that calls one colour "Paper" almost always carries a deep companion the designer
+     * named for ink; else the primary stepped toward black, which is legible but loses the hue a
+     * near-neutral never had.
+     */
+    /**
+     * Which passing swatch to borrow when the primary itself is unusable. Both are legible; they
+     * differ in what they sacrifice.
+     */
+    enum Fallback {
+        /**
+         * The deepest swatch that passes — what type wants. A palette that calls one colour
+         * "Paper" almost always carries a deep companion the designer named for ink, and a
+         * heading set in it reads as deliberate rather than as an accent that strayed into
+         * body copy.
+         */
+        DEEPEST,
+        /**
+         * The passing swatch closest to the threshold — what a fill wants. A book whose cover,
+         * sidebar and chrome bars all fell back to the palette's near-black would read as a
+         * different brand, so a panel keeps as much of the palette's own colour as the ratio
+         * allows: Kindling Retrofit's rust rather than its bark.
+         */
+        MOST_COLOUR
+    }
+
+    static String legibleOnWhite(String primaryHex, List<VisualIdentityOutput.ColorSwatch> palette,
+                                 double minRatio, Fallback fallback) {
+        if (contrastWithWhite(channelsOf(primaryHex)) >= minRatio) return primaryHex;
+        String chosen = null;
+        double bestMargin = fallback == Fallback.DEEPEST ? -1 : Double.MAX_VALUE;
+        if (palette != null) {
+            for (VisualIdentityOutput.ColorSwatch s : palette) {
+                double margin = contrastWithWhite(channelsOf(s.hex())) - minRatio;
+                if (margin < 0) continue;
+                boolean better = fallback == Fallback.DEEPEST ? margin > bestMargin : margin < bestMargin;
+                if (better) { bestMargin = margin; chosen = s.hex(); }
+            }
+        }
+        return chosen != null ? chosen : inkOnWhite(primaryHex, minRatio);
+    }
+
+    private static double[] channelsOf(String hex) {
+        int[] rgb = parseHex(hex);
+        return new double[]{rgb[0], rgb[1], rgb[2]};
+    }
+
+    /** The primary stepped toward black until it carries body type. Last resort of {@link #legibleOnWhite}. */
+    static String inkOnWhite(String hex) {
+        return inkOnWhite(hex, MIN_TEXT_CONTRAST);
+    }
+
+    /** The primary stepped toward black until it clears {@code minRatio} against white. */
+    static String inkOnWhite(String hex, double minRatio) {
+        int[] rgb = parseHex(hex);
+        double[] c = {rgb[0], rgb[1], rgb[2]};
+        // 60 steps of 2.5% take any colour to black, where contrast is 21:1. The test is on the
+        // rounded channels, because those are the ones the page actually paints — stopping on the
+        // unrounded value lands a hair under the threshold.
+        for (int i = 0; i < 60 && contrastWithWhite(rounded(c)) < minRatio; i++) {
+            for (int ch = 0; ch < 3; ch++) c[ch] *= 0.975;
+        }
+        double[] out = rounded(c);
+        return String.format("#%02x%02x%02x", (int) out[0], (int) out[1], (int) out[2]);
+    }
+
+    private static double[] rounded(double[] c) {
+        return new double[]{Math.round(c[0]), Math.round(c[1]), Math.round(c[2])};
+    }
+
+    private static double contrastWithWhite(double[] rgb) {
+        return 1.05 / (relativeLuminance(rgb) + 0.05);
+    }
+
+    /** WCAG 2.1 relative luminance. */
+    private static double relativeLuminance(double[] rgb) {
+        double[] lin = new double[3];
+        for (int i = 0; i < 3; i++) {
+            double s = rgb[i] / 255.0;
+            lin[i] = s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+        }
+        return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
     }
 
     // ── String helpers ────────────────────────────────────────────────────────
