@@ -36,9 +36,19 @@ spring:
           max-tokens: 8000
     openai:
       api-key: ${OPENAI_API_KEY:}
+      # Embeddings and images can each be served by an Azure OpenAI resource instead, so they
+      # draw on Azure (Microsoft for Startups) credits. Point the base URL at the resource's
+      # v1 API, https://<resource>.openai.azure.com/openai, and give it that resource's key;
+      # the model id is then the Azure deployment's name. Left empty, both fall back to
+      # api.openai.com and OPENAI_API_KEY. Claude stays on Anthropic: the credits exclude it.
       embedding:
+        base-url: ${OPENAI_EMBEDDING_BASE_URL:}
+        api-key: ${OPENAI_EMBEDDING_API_KEY:}
         options:
-          model: text-embedding-3-small
+          model: ${OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
+      image:
+        base-url: ${OPENAI_IMAGE_BASE_URL:}
+        api-key: ${OPENAI_IMAGE_API_KEY:}
 
 # Same env names as genesis-brands. Without this mapping AZURE_STORAGE_ACCOUNT/KEY never bind,
 # and BlobStorageService falls back to local disk, which a redeploy wipes.
