@@ -13,6 +13,8 @@ You receive the agency's logo-craft module (how studio ideas are found and built
 
 Be concrete about form: say what is drawn, in which typeface style, which letter carries a device, what is filled and what is empty, so a critic can picture it. Never describe a shape as "abstract", "dynamic" or "modern" without saying exactly what it is.
 
+When the input lists cases from the agency's library, apply each lesson: a BAD case shows a mistake no concept may repeat, and a GOOD case shows a quality to reach by your own form, never by copying its form.
+
 If the input contains a review of an earlier round, every new concept must answer it: do not resubmit the rejected ideas in new clothes.
 
 ## Output format

@@ -4,11 +4,13 @@ import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import ai.genesisbrands.agent.config.AgentProperties;
 import ai.genesisbrands.agent.core.DirectionBrief;
+import ai.genesisbrands.platform.knowledge.KnowledgeCases;
 import ai.genesisbrands.service.Layer1Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -38,6 +40,11 @@ public class LogoConceptStudio {
     private final AgentProperties agentProperties;
     private final Layer1Service layer1Service;
     private final ObjectMapper objectMapper;
+    private final ObjectProvider<KnowledgeCases> knowledgeCases;
+
+    /** Approved cases from the case library shown to the designer and the critic. */
+    @Value("${genesis.logo.cases:12}")
+    private int caseCount = 12;
 
     /** Concepts written per round of ideation. */
     @Value("${genesis.logo.concepts:10}")
@@ -50,7 +57,9 @@ public class LogoConceptStudio {
     public LogoConceptStudio(ChatClient.Builder chatClientBuilder,
                              AgentProperties agentProperties,
                              Layer1Service layer1Service,
-                             ObjectMapper objectMapper) {
+                             ObjectMapper objectMapper,
+                             ObjectProvider<KnowledgeCases> knowledgeCases) {
+        this.knowledgeCases = knowledgeCases;
         this.chatClient = chatClientBuilder.build();
         this.agentProperties = agentProperties;
         this.layer1Service = layer1Service;
@@ -98,7 +107,7 @@ public class LogoConceptStudio {
     public List<Concept> develop(DirectionBrief brief, LogoIdentity identity, String briefPrompt,
                                  String earlierReview) {
         String craft = module(CRAFT_KEY);
-        String taken = takenByOtherDirections(brief);
+        String taken = takenByOtherDirections(brief) + casesBlock(brief);
         Ideas ideas = ideate(briefPrompt + taken, craft, earlierReview);
         Review review = critique(brief, identity, craft, taken, ideas, true);
 
@@ -117,6 +126,27 @@ public class LogoConceptStudio {
             brief.engagementId(), out.stream().map(c -> c.name() + " (" + c.technique() + ", "
                 + c.nameVersion() + ")").toList());
         return out;
+    }
+
+    // ── Case library ──────────────────────────────────────────────────────────
+
+    /**
+     * Approved logo cases from the agency's case library, closest to this brand's sector first.
+     * Empty when the app has no library or nothing is approved yet.
+     */
+    String casesBlock(DirectionBrief brief) {
+        KnowledgeCases library = knowledgeCases.getIfAvailable();
+        if (library == null || caseCount <= 0) return "";
+        String hint = brief.brand() == null ? "" : brief.brand().industry() + " " + brief.brand().coreOffer();
+        List<KnowledgeCases.Case> cases;
+        try {
+            cases = library.approved("logo", hint, caseCount);
+        } catch (RuntimeException e) {
+            log.warn("Could not read the logo case library: {}", e.getMessage());
+            return "";
+        }
+        if (!cases.isEmpty()) log.info("Logo concepts read {} approved library case(s)", cases.size());
+        return LogoCases.render(cases);
     }
 
     // ── Spread across directions ──────────────────────────────────────────────

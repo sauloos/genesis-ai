@@ -611,6 +611,29 @@
     z-index: 200;
   }
   #toast.show { opacity: 1; }
+
+  /* Case library */
+  .section-header .case-add {
+    margin-left: auto; font: inherit; font-size: 10px; padding: 1px 7px; border-radius: 4px; cursor: pointer;
+    background: transparent; color: var(--theme-text-muted); border: 1px solid color-mix(in srgb, var(--theme-text-muted) 40%, transparent);
+  }
+  .section-header .case-add:hover, .section-header .case-add:focus-visible { color: var(--theme-text-primary); border-color: var(--theme-text-primary); }
+  .case-hint { font-size: 12px; color: var(--theme-text-muted); line-height: 1.5; margin: -4px 0 14px; }
+  .case-verdict-pick { display: flex; gap: 16px; flex-wrap: wrap; }
+  .case-verdict-pick .form-check { display: inline-flex; align-items: center; gap: 6px; text-transform: none; letter-spacing: 0; }
+  .case-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .case-tag { font-size: 9px; letter-spacing: .06em; text-transform: uppercase; margin-left: auto; opacity: .7; }
+  .case-detail { display: grid; grid-template-columns: minmax(0, 280px) minmax(0, 1fr); gap: 20px; align-items: start; }
+  .case-image { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 6px;
+    background: repeating-conic-gradient(color-mix(in srgb, var(--theme-text-muted) 12%, transparent) 0 25%, transparent 0 50%) 0 0 / 16px 16px; }
+  .case-noimage { aspect-ratio: 1; display: grid; place-items: center; border-radius: 6px; font-size: 12px; color: var(--theme-text-muted);
+    border: 1px dashed color-mix(in srgb, var(--theme-text-muted) 40%, transparent); }
+  .case-fields { display: flex; flex-direction: column; gap: 12px; }
+  .case-fields label { display: block; font-size: 11px; color: var(--theme-text-muted); margin-bottom: 4px; }
+  .case-fields textarea.form-control { min-height: 90px; }
+  .case-verdict-GOOD { color: #6fe0a5; }
+  .case-verdict-BAD { color: #e07070; }
+  @media (max-width: 760px) { .case-detail, .case-row { grid-template-columns: 1fr; } }
 </style>
 <link rel="stylesheet" href="/api/themes/active/styles.css">
 </head>
@@ -737,6 +760,18 @@
         <span class="section-count" id="training-count"></span>
       </div>
       <div class="section-body open" id="training-body">
+        <div class="sidebar-msg">Loading…</div>
+      </div>
+      <!-- Case library sub-section -->
+      <div class="section-header" data-section="cases">
+        <svg class="section-chevron open" width="7" height="7" viewBox="0 0 8 8" fill="none">
+          <path d="M2.5 1.5L5.5 4L2.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="section-title">Case Library</span>
+        <span class="section-count" id="cases-count"></span>
+        <button class="case-add" id="btn-add-case" title="Add a good or bad example">+ Add</button>
+      </div>
+      <div class="section-body open" id="cases-body">
         <div class="sidebar-msg">Loading…</div>
       </div>
     </div>
@@ -897,6 +932,42 @@
   </div>
 </div>
 
+<!-- Add case modal -->
+<div class="modal-overlay" id="case-modal">
+  <div class="modal-box">
+    <h2>Add a case</h2>
+    <p class="case-hint">A real example the agents should learn from. Opus drafts the analysis and the lesson; you edit and approve before any agent sees it.</p>
+    <div class="form-group">
+      <label for="cm-kind">Kind of work</label>
+      <input class="form-control" id="cm-kind" value="logo" list="cm-kinds">
+      <datalist id="cm-kinds"><option value="logo"></option><option value="copy"></option><option value="visual-identity"></option></datalist>
+    </div>
+    <div class="form-group">
+      <label>Verdict</label>
+      <div class="case-verdict-pick">
+        <label class="form-check"><input type="radio" name="cm-verdict" id="cm-good" value="GOOD" checked><span>Good — do more of this</span></label>
+        <label class="form-check"><input type="radio" name="cm-verdict" id="cm-bad" value="BAD"><span>Bad — never do this</span></label>
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="cm-image">Image (PNG, JPEG, WebP or GIF, up to 5 MB)</label>
+      <input class="form-control" id="cm-image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" style="padding:6px">
+    </div>
+    <div class="form-group">
+      <label for="cm-note">Why is it good or bad?</label>
+      <textarea class="form-control" id="cm-note" placeholder="e.g. Nobody thinks of the degassing valve when they think of coffee — it's trade jargon, not an insight."></textarea>
+    </div>
+    <div class="form-group case-row">
+      <div><label for="cm-sector">Sector (optional)</label><input class="form-control" id="cm-sector" placeholder="coffee"></div>
+      <div><label for="cm-source">Source URL (optional)</label><input class="form-control" id="cm-source" placeholder="https://…"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="case-cancel">Cancel</button>
+      <button class="btn btn-primary" id="case-submit">Add and draft</button>
+    </div>
+  </div>
+</div>
+
 <div id="confirm-overlay">
   <div id="confirm-box">
     <h2>Delete source?</h2>
@@ -933,6 +1004,7 @@ let pendingDeleteId = null;
   renderModules();
   renderTraining();
   renderSources();
+  loadCases();
 })();
 
 async function fetchJSON(url, method, body) {
@@ -1101,6 +1173,7 @@ function bindItems(container) {
       if (type === 'module')        showModule(id);
       else if (type === 'training') showTraining(id);
       else if (type === 'source')   showSource(id);
+      else if (type === 'case')     showCase(id);
       else if (type === 'pipeline') showPipelineDetail(id);
       else if (type === 'event')    loadAndShowEvent(id);
     }));
@@ -1349,7 +1422,171 @@ document.addEventListener('click', () => document.getElementById('nav-menu').cla
 // ── Search ────────────────────────────────────────────────────────────────
 document.getElementById('search-input').addEventListener('input', e => {
   const q = e.target.value.toLowerCase();
-  renderModules(q); renderTraining(q); renderSources(q);
+  renderModules(q); renderTraining(q); renderSources(q); renderCases(q);
+});
+
+// ── Case library ──────────────────────────────────────────────────────────
+// Admin-only API: authenticated by the admin session cookie this page already carries.
+const CASES_API = `${API}/api/admin/knowledge-cases`;
+let allCases = [];
+
+async function casesFetch(path = '', init = {}) {
+  const r = await fetch(CASES_API + path, { credentials: 'same-origin', ...init });
+  if (r.status === 204) return null;
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body.error || `Request failed (${r.status})`);
+  return body;
+}
+
+async function loadCases() {
+  try { allCases = await casesFetch() || []; }
+  catch (e) { allCases = []; document.getElementById('cases-body').innerHTML = `<div class="sidebar-msg">${escHtml(e.message)}</div>`; return; }
+  renderCases(document.getElementById('search-input').value.toLowerCase());
+}
+
+function renderCases(q = '') {
+  const body = document.getElementById('cases-body');
+  const filtered = allCases.filter(c => matchQ(q, c.title, c.kind, c.sector, (c.tags || []).join(' '), c.verdict, c.lesson));
+  document.getElementById('cases-count').textContent = filtered.length;
+  if (!allCases.length) { body.innerHTML = '<div class="sidebar-msg">No cases yet — add a good or bad example</div>'; return; }
+  const groups = {};
+  for (const c of filtered) (groups[c.kind] = groups[c.kind] || []).push(c);
+  let html = '';
+  for (const [kind, items] of Object.entries(groups)) {
+    const gid = 'cg-' + kind.replace(/\W+/g, '_');
+    html += `<div class="group-header" data-group="${gid}">
+      <span class="group-chevron open">▶</span>${escHtml(kind)}
+      <span style="color:#3a3a3a;font-size:9px;margin-left:2px">(${items.length})</span>
+    </div><div class="group-items open" id="${gid}">`;
+    for (const c of items) {
+      const active = selectedType === 'case' && selectedId === c.id ? ' active' : '';
+      const mark = c.verdict === 'GOOD' ? '✓' : '✗';
+      html += `<div class="tree-item${active}" data-type="case" data-id="${escAttr(c.id)}" title="${escAttr(c.lesson || c.title || '')}">
+        <span class="item-icon case-verdict-${escAttr(c.verdict)}">${mark}</span><span class="item-label">${escHtml(c.title || 'Untitled case')}</span>
+        ${c.status === 'DRAFT' ? '<span class="case-tag">draft</span>' : ''}
+      </div>`;
+    }
+    html += '</div>';
+  }
+  body.innerHTML = html || '<div class="sidebar-msg">No matches</div>';
+  bindItems(body);
+}
+
+function showCase(id) {
+  const c = allCases.find(x => x.id === id);
+  if (!c) return;
+  const approved = c.status === 'APPROVED';
+  setHeader(c.verdict === 'GOOD' ? '✓' : '✗', c.title || 'Untitled case',
+    `${c.kind} · ${c.verdict === 'GOOD' ? 'good example' : 'bad example'} · ${approved ? 'approved — agents read it' : 'draft — agents do not see it yet'}`, [
+      { label: 'Save', cls: 'btn-secondary', fn: () => saveCase(id) },
+      approved
+        ? { label: 'Move to draft', cls: 'btn-secondary', fn: () => saveCase(id, 'DRAFT') }
+        : { label: 'Save and approve', cls: 'btn-primary', fn: () => saveCase(id, 'APPROVED') },
+      { label: 'Redraft', cls: 'btn-secondary', fn: () => redraftCase(id) },
+      { label: 'Delete', cls: 'btn-danger', fn: () => deleteCase(id) },
+    ]);
+  const img = c.hasImage
+    ? `<img class="case-image" alt="${escAttr(c.title || 'Case image')}" src="${CASES_API}/${encodeURIComponent(c.id)}/image?v=${encodeURIComponent(c.updatedAt || '')}">`
+    : '<div class="case-noimage">No image</div>';
+  document.getElementById('detail-body').innerHTML = `
+    <div class="meta-row">
+      ${chip('Kind', c.kind)}${chip('Verdict', c.verdict)}${chip('Status', c.status)}${chip('Added', fmtDate(c.createdAt))}
+      ${c.sourceUrl ? `<a class="chip" href="${escAttr(c.sourceUrl)}" target="_blank" rel="noopener noreferrer"><strong>Source</strong>${escHtml(c.sourceUrl)}</a>` : ''}
+    </div>
+    <div class="case-detail">
+      <div>${img}</div>
+      <div class="case-fields">
+        <div><label for="cf-title">Title</label><input class="form-control" id="cf-title" value="${escAttr(c.title || '')}"></div>
+        <div class="case-row">
+          <div><label for="cf-verdict">Verdict</label>
+            <select class="form-control" id="cf-verdict">
+              <option value="GOOD"${c.verdict === 'GOOD' ? ' selected' : ''}>Good — do more of this</option>
+              <option value="BAD"${c.verdict === 'BAD' ? ' selected' : ''}>Bad — never do this</option>
+            </select></div>
+          <div><label for="cf-sector">Sector</label><input class="form-control" id="cf-sector" value="${escAttr(c.sector || '')}"></div>
+        </div>
+        <div><label for="cf-tags">Tags (comma-separated)</label><input class="form-control" id="cf-tags" value="${escAttr((c.tags || []).join(', '))}"></div>
+        <div><label for="cf-lesson">Lesson — the rule agents apply to other brands</label><textarea class="form-control" id="cf-lesson">${escHtml(c.lesson || '')}</textarea></div>
+        <div><label for="cf-analysis">Analysis — what is there, and why it works or fails</label><textarea class="form-control" id="cf-analysis" style="min-height:140px">${escHtml(c.analysis || '')}</textarea></div>
+        <div><label for="cf-note">Your note</label><textarea class="form-control" id="cf-note">${escHtml(c.note || '')}</textarea></div>
+      </div>
+    </div>`;
+  showDetail();
+}
+
+async function saveCase(id, status) {
+  const patch = {
+    title: document.getElementById('cf-title').value,
+    verdict: document.getElementById('cf-verdict').value,
+    sector: document.getElementById('cf-sector').value,
+    tags: document.getElementById('cf-tags').value,
+    lesson: document.getElementById('cf-lesson').value,
+    analysis: document.getElementById('cf-analysis').value,
+    note: document.getElementById('cf-note').value,
+  };
+  if (status) patch.status = status;
+  try {
+    const saved = await casesFetch(`/${encodeURIComponent(id)}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
+    replaceCase(saved);
+    toast(status === 'APPROVED' ? 'Approved — agents now learn from this case' : status === 'DRAFT' ? 'Moved to draft' : 'Saved');
+  } catch (e) { toast(e.message); }
+}
+
+async function redraftCase(id) {
+  if (!confirm('Redraft the title, analysis and lesson with Opus? Your edits to those fields are replaced.')) return;
+  toast('Drafting with Opus…');
+  try { replaceCase(await casesFetch(`/${encodeURIComponent(id)}/redraft`, { method: 'POST' })); toast('Redrafted'); }
+  catch (e) { toast(e.message); }
+}
+
+async function deleteCase(id) {
+  const c = allCases.find(x => x.id === id);
+  if (!confirm(`Delete "${c && c.title || 'this case'}" and its image? This cannot be undone.`)) return;
+  try {
+    await casesFetch(`/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    allCases = allCases.filter(x => x.id !== id);
+    selectedType = null; selectedId = null; hideDetail();
+    renderCases(document.getElementById('search-input').value.toLowerCase());
+    toast('Case deleted');
+  } catch (e) { toast(e.message); }
+}
+
+function replaceCase(saved) {
+  allCases = allCases.map(x => x.id === saved.id ? saved : x);
+  renderCases(document.getElementById('search-input').value.toLowerCase());
+  selectedType = 'case'; selectedId = saved.id;
+  showCase(saved.id);
+}
+
+document.getElementById('btn-add-case').addEventListener('click', e => {
+  e.stopPropagation();
+  ['cm-note', 'cm-sector', 'cm-source', 'cm-image'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('cm-good').checked = true;
+  document.getElementById('case-modal').classList.add('visible');
+});
+document.getElementById('case-cancel').addEventListener('click', () =>
+  document.getElementById('case-modal').classList.remove('visible'));
+document.getElementById('case-submit').addEventListener('click', async () => {
+  const btn = document.getElementById('case-submit');
+  const form = new FormData();
+  form.append('kind', document.getElementById('cm-kind').value || 'logo');
+  form.append('verdict', document.getElementById('cm-bad').checked ? 'BAD' : 'GOOD');
+  form.append('note', document.getElementById('cm-note').value);
+  form.append('sector', document.getElementById('cm-sector').value);
+  form.append('sourceUrl', document.getElementById('cm-source').value);
+  const file = document.getElementById('cm-image').files[0];
+  if (file) form.append('image', file);
+  if (!file && !document.getElementById('cm-note').value.trim()) { toast('Add an image or a note'); return; }
+  btn.disabled = true; btn.textContent = 'Drafting with Opus…';
+  try {
+    const created = await casesFetch('', { method: 'POST', body: form });
+    allCases = [created, ...allCases];
+    document.getElementById('case-modal').classList.remove('visible');
+    replaceCase(created);
+    toast('Drafted — review the lesson, then approve');
+  } catch (e) { toast(e.message); }
+  finally { btn.disabled = false; btn.textContent = 'Add and draft'; }
 });
 
 // ── Utils ─────────────────────────────────────────────────────────────────
