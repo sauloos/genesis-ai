@@ -256,7 +256,10 @@ current_assets_rule: >
   market already recognises — a colour, a shape, a name's setting — and treat look.logoIntent as
   the client's own weighting of the three directions: "keep it" weights ANCHORED, "evolve it"
   weights EVOLVED, "start fresh" weights DISRUPTIVE, "not sure" leaves the spread even. See
-  directions/purpose-to-direction.yaml, which owns how the directions then differ.
+  directions/purpose-to-direction.yaml, which owns how the directions then differ. When the
+  current logo has been assessed, evaluation/existing-logo-audit.yaml owns what its verdict
+  binds: "keep it" puts the client's own logo on ANCHORED, and "evolve it" makes the EVOLVED
+  logo carry over the elements the assessment says to keep.
 
 output_contract: >
   This module produces look.territory, which the purpose playbook carries in strategy.lookAndFeel

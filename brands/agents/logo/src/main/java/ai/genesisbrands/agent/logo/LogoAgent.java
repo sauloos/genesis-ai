@@ -100,13 +100,16 @@ public class LogoAgent {
 
     public LogoOutput executeWithRevision(DirectionBrief brief, LogoOutput previous, AgentRevision revision,
                                           LogoIdentity identity) {
-        return run(brief, previous.method(), identity, previous, revision, previous.iteration() + 1);
+        // Regenerating the client's own logo means drawing a new one.
+        LogoOutput.Method method = previous.method() == LogoOutput.Method.CLIENT
+            ? LogoOutput.Method.DALLE : previous.method();
+        return run(brief, method, identity, previous, revision, previous.iteration() + 1);
     }
 
     private LogoOutput run(DirectionBrief brief, LogoOutput.Method method, LogoIdentity identity,
                            LogoOutput previous, AgentRevision revision, int iteration) {
         String agentId = switch (method) {
-            case DALLE -> AGENT_ID_DALLE;
+            case DALLE, CLIENT -> AGENT_ID_DALLE;
             case IDEOGRAM -> AGENT_ID_IDEOGRAM;
             case SVG_CONCEPT -> AGENT_ID_SVG;
         };

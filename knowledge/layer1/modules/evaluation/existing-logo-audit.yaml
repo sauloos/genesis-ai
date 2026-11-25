@@ -1,0 +1,120 @@
+module: existing-logo-audit
+version: 1.0
+context: on_demand
+description: >
+  How Genesis AI assesses the logo a client already has, before any new logo is drawn. The client
+  uploads it during discovery and says how they feel about it; the creative director looks at it
+  against the brief and this module, scores it, and recommends keeping, evolving or replacing it.
+  The client sees the assessment and makes the final call. The same scores are used again at the
+  end, when each direction's new logo is compared with the one the client has today.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# What is judged. Each criterion is scored 0–10. The overall score (0–100) is the
+# weighted mean of the scores: critical counts 3, high 2, medium 1.
+# ─────────────────────────────────────────────────────────────────────────────
+
+criteria:
+
+  - key: meaning
+    label: Says what the brand means
+    weight: critical
+    question: >
+      Does the logo carry what the founder says the name and the brand stand for? A logo can be
+      well drawn and still say nothing about this business.
+    high: The idea is traceable to the brief (the name's meaning, the promise, the differentiator) and a customer would sense it without being told.
+    low: It says only the category ("this is a coffee shop"), or something the founder did not intend.
+
+  - key: distinctiveness
+    label: Distinctive and ownable
+    weight: critical
+    question: >
+      Apply the swap test: put a competitor's name in it. Would it still work? Is the symbol a
+      stock icon or a category cliché (a cup for coffee, a leaf for natural, a swoosh, a globe)?
+    high: Nobody else in the category could use it; it would be recognised with the name covered.
+    low: A stock or clip-art symbol, or a generic layout any brand in the category could have.
+
+  - key: fit
+    label: Fits who they want to be
+    weight: high
+    question: >
+      Does its posture match the brand the client described — the personality, the audience, the
+      look-and-feel answers, the brands they admire? A logo can be right for the business they
+      were and wrong for the one they are building.
+    high: Weight, type, tone and colour belong to the brand in the brief.
+    low: It contradicts the brief (playful where they want authority, heritage where they want modern).
+
+  - key: craft
+    label: Craft
+    weight: high
+    question: >
+      Is it finished, professional work? Optical balance, consistent strokes, considered spacing
+      and kerning, a deliberate relationship between symbol and name.
+    high: It could have come from a good studio.
+    low: Default type, uneven strokes, clip-art detail, effects, awkward spacing or proportions.
+
+  - key: reduction
+    label: Works small and in one colour
+    weight: high
+    question: >
+      Does the symbol (or the logo, if there is no symbol) read at favicon size, in one flat
+      colour, on a dark and a light ground?
+    high: It survives 16px and a single colour with nothing lost.
+    low: It depends on fine detail, thin lines, many colours or gradients.
+
+  - key: equity
+    label: Recognition worth keeping
+    weight: medium
+    question: >
+      What do customers already recognise — a colour, a shape, a way the name is set? Judge from
+      what the brief says about how long the business has traded and where the logo is used.
+      A young business has little equity to protect; a known one has a lot.
+    high: Years of use and clear recognition that a change would throw away.
+    low: Recently made, little used, or not recognised.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# The recommendation
+# ─────────────────────────────────────────────────────────────────────────────
+
+verdicts:
+  KEEP: >
+    The logo already does the job: it means something, it is distinctive, and it is well made.
+    Overall 75 or more, with no critical criterion under 6. The identity is built around it; the
+    ANCHORED direction uses the client's own logo as it is.
+  EVOLVE: >
+    There is something worth keeping — real equity, or a good idea let down by craft — but the
+    logo is not good enough as it is. Name exactly what carries over (the elements to keep) and
+    what must change. The EVOLVED direction is built from those elements.
+  REPLACE: >
+    Nothing in it is worth carrying over: it says only the category, uses a stock symbol, and
+    has little equity. Say so plainly and kindly; a new logo starts fresh.
+
+verdict_rules:
+  - The score suggests the verdict; equity and the client's feelings can move it one step (REPLACE to EVOLVE, EVOLVE to KEEP), never two.
+  - A logo with high equity (8+) is never REPLACE; it is EVOLVE at most, because recognition is expensive to rebuild.
+  - A stock or clip-art symbol cannot be KEEP, however clean the wordmark beside it. Keep the wordmark's qualities in an EVOLVE instead.
+  - When the image is too small, blurred, a photo of a sign or a mockup, say what could not be judged and lower confidence instead of guessing.
+
+client_feelings_rule: >
+  The client may say what they like and dislike about their logo. Read it as evidence, not as an
+  instruction: what they love often marks real equity or a meaning worth keeping, and what they
+  dislike often names the weakness the scores already see. Answer it directly in the summary
+  ("You said you like X — we agree, and it carries over" or "…but it is the weakest part").
+  Never reverse an honest score to please them.
+
+client_choice_rule: >
+  The client makes the final call after reading the assessment, and their choice wins. "Keep it"
+  means the ANCHORED direction uses their logo as it is and the other two directions still draw
+  new ones; "evolve it" means the EVOLVED direction must carry over the elements to keep; "start
+  fresh" means no direction is bound to it. When their choice differs from the recommendation,
+  record both: the results say which they chose and why we recommended otherwise.
+
+comparison_rule: >
+  When the new logos are chosen, each is judged against the client's current logo on these same
+  criteria, and the results say plainly where the new one is stronger and where the current one
+  still wins. A new logo that does not beat the current one on meaning or distinctiveness is not
+  ready to show.
+
+tone: >
+  The client made or paid for this logo, and may love it. Start with what genuinely works, then
+  be honest about what does not. Plain words, no design jargon without a plain explanation, no
+  scorn. Every weakness comes with what would fix it.

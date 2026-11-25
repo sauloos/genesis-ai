@@ -25,7 +25,7 @@ public class LogoRefinementLoop {
     public RefinementLoop.RefinementResult<LogoOutput> run(DirectionBrief brief, LogoOutput.Method method,
                                                            LogoIdentity identity) {
         String agentId = switch (method) {
-            case DALLE -> "logo-dalle";
+            case DALLE, CLIENT -> "logo-dalle";
             case IDEOGRAM -> "logo-ideogram";
             case SVG_CONCEPT -> "logo-svg";
         };

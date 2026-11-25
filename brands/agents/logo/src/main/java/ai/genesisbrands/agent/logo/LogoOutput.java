@@ -29,7 +29,8 @@ public record LogoOutput(
     List<String> candidateImageUrls,
     String selectionRationale
 ) {
-    public enum Method { DALLE, SVG_CONCEPT, IDEOGRAM }
+    /** CLIENT is the client's own logo, adopted as it is (they chose to keep it). */
+    public enum Method { DALLE, SVG_CONCEPT, IDEOGRAM, CLIENT }
 
     public LogoOutput(String engagementId, Method method, String conceptDescription, String symbolism,
                       String imagePrompt, String imageUrl, String svgMarkup, String reasoning, int iteration) {
@@ -40,6 +41,6 @@ public record LogoOutput(
     /** True for the methods that produce a raster image rather than SVG markup. */
     @JsonIgnore
     public boolean isImage() {
-        return method == Method.DALLE || method == Method.IDEOGRAM;
+        return method == Method.DALLE || method == Method.IDEOGRAM || method == Method.CLIENT;
     }
 }

@@ -251,6 +251,108 @@ public class AgentRegenerationService {
         return job;
     }
 
+    /** The job id an admin logo replacement is tracked under; it never counts toward the client's cap. */
+    public static final String ADMIN_LOGO_JOB = "admin-logo";
+
+    /**
+     * Admin-only: queues putting {@code logo} (already stored, see AdoptedLogos) into a direction
+     * of a finished engagement. The caller then runs {@link #applyAdminLogo} through this bean's
+     * proxy so the cascade runs in the background.
+     */
+    public AgentRegenerationJob queueAdminLogo(String engagementId, String direction, String note) {
+        Engagement engagement = engagementRepo.findById(engagementId)
+            .orElseThrow(() -> new NoSuchElementException("Engagement not found: " + engagementId));
+        if (engagement.getStatus() != Engagement.Status.DONE) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Engagement is " + engagement.getStatus() + ", not DONE");
+        }
+        String normalizedDirection = direction.toUpperCase();
+        if (findDirectionOutput(engagement, normalizedDirection) == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown direction: " + direction);
+        }
+        Object slotLock = regenerationSlotLocks.computeIfAbsent(engagementId + ":" + normalizedDirection, k -> new Object());
+        synchronized (slotLock) {
+            boolean inFlight = jobRepo.findFirstByEngagementIdAndDirectionAndStatusIn(
+                engagementId, normalizedDirection,
+                List.of(AgentRegenerationJob.Status.QUEUED, AgentRegenerationJob.Status.RUNNING)).isPresent();
+            if (inFlight) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "A regeneration is already in progress for this direction");
+            }
+            AgentRegenerationJob job = new AgentRegenerationJob();
+            job.setId(UUID.randomUUID().toString());
+            job.setEngagementId(engagementId);
+            job.setDirection(normalizedDirection);
+            job.setAgentId(ADMIN_LOGO_JOB);
+            job.setFeedback(note);
+            return jobRepo.save(job);
+        }
+    }
+
+    /**
+     * Puts the logo in, re-runs the Playbook and Brand Book with it, re-renders the PDF and the
+     * logo package, archives the direction's previous output as a version and writes the result
+     * straight into the engagement: an admin decided this, so there is no client approval step.
+     */
+    @Async
+    public void applyAdminLogo(String jobId, LogoOutput logo) {
+        AgentRegenerationJob job = jobRepo.findById(jobId)
+            .orElseThrow(() -> new RuntimeException("Regeneration job not found: " + jobId));
+        job.setStatus(AgentRegenerationJob.Status.RUNNING);
+        jobRepo.save(job);
+        try {
+            Engagement engagement = engagementRepo.findById(job.getEngagementId())
+                .orElseThrow(() -> new RuntimeException("Engagement not found: " + job.getEngagementId()));
+            DirectionOutput dir = findDirectionOutput(engagement, job.getDirection());
+            if (dir == null) throw new RuntimeException("Direction not found: " + job.getDirection());
+
+            PlaybookOutput playbook = playbookAgent.execute(
+                new PlaybookInput(dir.brief(), dir.copy(), dir.visualIdentity(), logo));
+            BrandBookOutput brandBook = brandBookAgent.execute(
+                new BrandBookInput(dir.brief(), playbook, dir.copy(), dir.visualIdentity(), logo));
+            DirectionOutput rebuilt = new DirectionOutput(dir.direction(), dir.brief(), dir.copy(),
+                dir.visualIdentity(), logo, playbook, brandBook, dir.pdfBlobPath(), dir.logoZipBlobPath());
+            rebuilt = rebuilt.withPdfBlobPath(renderAndStorePdf(rebuilt, jobId));
+            rebuilt = rebuilt.withLogoZipBlobPath(exportLogoPackage(rebuilt, jobId));
+
+            // Re-read: the cascade took minutes and the other directions may have changed since.
+            Engagement fresh = engagementRepo.findById(job.getEngagementId()).orElseThrow();
+            EngagementResults results = objectMapper.readValue(fresh.getResultsJson(), EngagementResults.class);
+            List<DirectionOutput> directions = new ArrayList<>(results.directions());
+            for (int i = 0; i < directions.size(); i++) {
+                if (directions.get(i).direction().equalsIgnoreCase(job.getDirection())) {
+                    archiveVersion(job.getEngagementId(), job.getDirection(), directions.get(i), jobId);
+                    directions.set(i, rebuilt);
+                }
+            }
+            fresh.setResultsJson(objectMapper.writeValueAsString(new EngagementResults(directions)));
+            fresh.setUpdatedAt(Instant.now());
+            saveEngagement(fresh);
+
+            job.setDraftOutputJson(objectMapper.writeValueAsString(rebuilt));
+            job.setStatus(AgentRegenerationJob.Status.DONE);
+            job.setCompletedAt(Instant.now());
+            jobRepo.save(job);
+            log.info("Admin logo job {}: {} direction of engagement {} now uses {} ({})", jobId,
+                job.getDirection(), job.getEngagementId(), logo.imageUrl(), logo.method());
+        } catch (Exception e) {
+            log.error("Admin logo job {} failed: {}", jobId, e.getMessage(), e);
+            job.setStatus(AgentRegenerationJob.Status.FAILED);
+            job.setErrorMessage(e.getMessage());
+            job.setCompletedAt(Instant.now());
+            jobRepo.save(job);
+        }
+    }
+
+    public AgentRegenerationJob saveJob(AgentRegenerationJob job) {
+        return jobRepo.save(job);
+    }
+
+    /** An admin logo job, for polling. */
+    public AgentRegenerationJob adminJob(String jobId) {
+        return jobRepo.findById(jobId)
+            .filter(j -> ADMIN_LOGO_JOB.equals(j.getAgentId()))
+            .orElseThrow(() -> new NoSuchElementException("Job not found: " + jobId));
+    }
+
     private void requireOwner(Engagement engagement, String callerClientUserId) {
         if (callerClientUserId == null || !callerClientUserId.equals(engagement.getClientUserId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not the owner of this engagement");
