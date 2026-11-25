@@ -306,7 +306,7 @@ public class AgentRegenerationService {
                 logoZipAffected = true;
             }
             case "logo" -> {
-                logo = logoAgent.executeWithRevision(dir.brief(), logo, revision);
+                logo = logoAgent.executeWithRevision(dir.brief(), logo, revision, LogoIdentities.from(visual));
                 logoZipAffected = true;
             }
             case "playbook" -> playbook = playbookAgent.executeWithRevision(

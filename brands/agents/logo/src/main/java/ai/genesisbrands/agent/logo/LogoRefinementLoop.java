@@ -19,6 +19,11 @@ public class LogoRefinementLoop {
     }
 
     public RefinementLoop.RefinementResult<LogoOutput> run(DirectionBrief brief, LogoOutput.Method method) {
+        return run(brief, method, null);
+    }
+
+    public RefinementLoop.RefinementResult<LogoOutput> run(DirectionBrief brief, LogoOutput.Method method,
+                                                           LogoIdentity identity) {
         String agentId = switch (method) {
             case DALLE -> "logo-dalle";
             case IDEOGRAM -> "logo-ideogram";
@@ -26,8 +31,8 @@ public class LogoRefinementLoop {
         };
         return RefinementLoop.run("Logo", brief.engagementId(),
             agentProperties.get(agentId).getMaxIterations(),
-            () -> logoAgent.execute(brief, method),
-            output -> logoEvaluator.evaluate(brief, output),
-            (prev, rev) -> logoAgent.executeWithRevision(brief, prev, rev));
+            () -> logoAgent.execute(brief, method, identity),
+            output -> logoEvaluator.evaluate(brief, output, identity),
+            (prev, rev) -> logoAgent.executeWithRevision(brief, prev, rev, identity));
     }
 }

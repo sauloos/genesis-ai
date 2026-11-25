@@ -69,6 +69,9 @@ public class UsagePricing {
         DEFAULTS.put("gpt-image-2.5-sunburst", new Price("0", "0", "0.053"));
         DEFAULTS.put("gpt-image-2.5-sunburst-medium", new Price("0", "0", "0.013"));
         DEFAULTS.put("ideogram-v2", new Price("0", "0", "0.08"));
+        // Ideogram v2 API, quality "high" (up to 2K), per image.
+        DEFAULTS.put("ideogram-4-6", new Price("0", "0", "0.10"));
+        DEFAULTS.put("ideogram-4-5", new Price("0", "0", "0.10"));
         DEFAULTS.put("text-embedding-3-small", new Price("0.02", "0", "0"));
         DEFAULTS.put("text-embedding-3-large", new Price("0.13", "0", "0"));
     }

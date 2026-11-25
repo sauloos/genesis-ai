@@ -5,6 +5,7 @@ import ai.genesisbrands.agent.core.DirectionBrief;
 import ai.genesisbrands.agent.logo.BaselineLogoOutput;
 import ai.genesisbrands.agent.logo.BaselineLogoService;
 import ai.genesisbrands.agent.logo.LogoAgent;
+import ai.genesisbrands.agent.logo.LogoIdentity;
 import ai.genesisbrands.agent.logo.LogoOutput;
 import ai.genesisbrands.agent.logo.LogoRefinementLoop;
 import ai.genesisbrands.agent.core.RefinementLoop;
@@ -36,13 +37,13 @@ public class LogoAgentController {
 
     @PostMapping("/execute")
     public ResponseEntity<LogoOutput> execute(@RequestBody ExecuteRequest request) {
-        return ResponseEntity.ok(logoAgent.execute(request.brief(), resolveMethod(request.method())));
+        return ResponseEntity.ok(logoAgent.execute(request.brief(), resolveMethod(request.method()), request.identity()));
     }
 
     @PostMapping("/revise")
     public ResponseEntity<LogoOutput> revise(@RequestBody ReviseRequest request) {
         return ResponseEntity.ok(
-            logoAgent.executeWithRevision(request.brief(), request.previous(), request.revision())
+            logoAgent.executeWithRevision(request.brief(), request.previous(), request.revision(), request.identity())
         );
     }
 
@@ -60,7 +61,7 @@ public class LogoAgentController {
 
     @PostMapping("/execute-with-evaluation")
     public ResponseEntity<RefinementLoop.RefinementResult<LogoOutput>> executeWithEvaluation(@RequestBody ExecuteRequest request) {
-        return ResponseEntity.ok(logoRefinementLoop.run(request.brief(), resolveMethod(request.method())));
+        return ResponseEntity.ok(logoRefinementLoop.run(request.brief(), resolveMethod(request.method()), request.identity()));
     }
 
     @PostMapping("/compare-with-evaluation")
@@ -75,12 +76,14 @@ public class LogoAgentController {
         return ResponseEntity.ok(new CompareEvaluatedResult(genesisAi, baselineAi, t1 - t0, t2 - t1));
     }
 
-    public record ExecuteRequest(DirectionBrief brief, LogoOutput.Method method) {}
+    /** {@code identity} is optional: the direction's palette and typefaces, when the caller has them. */
+    public record ExecuteRequest(DirectionBrief brief, LogoOutput.Method method, LogoIdentity identity) {}
 
     public record ReviseRequest(
         DirectionBrief brief,
         LogoOutput previous,
-        AgentRevision revision
+        AgentRevision revision,
+        LogoIdentity identity
     ) {}
 
     public record CompareResult(

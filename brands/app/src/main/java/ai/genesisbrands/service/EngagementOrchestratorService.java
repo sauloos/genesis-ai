@@ -65,6 +65,10 @@ public class EngagementOrchestratorService {
     private final VisualIdentityAgent visualAgent;
     private final VisualIdentityRefinementLoop visualLoop;
     private final LogoAgent logoAgent;
+
+    /** DALLE (the configured gpt-image model) or IDEOGRAM. */
+    @org.springframework.beans.factory.annotation.Value("${genesis.logo.default-method:DALLE}")
+    private String logoMethodName = "DALLE";
     private final LogoRefinementLoop logoLoop;
     private final PlaybookAgent playbookAgent;
     private final PlaybookRefinementLoop playbookLoop;
@@ -251,9 +255,11 @@ public class EngagementOrchestratorService {
             ? visualLoop.run(brief).output()
             : visualAgent.execute(brief);
 
+        LogoOutput.Method logoMethod = LogoOutput.Method.valueOf(logoMethodName.trim().toUpperCase());
+        var identity = LogoIdentities.from(visual);
         LogoOutput logo = evalMode
-            ? logoLoop.run(brief, LogoOutput.Method.DALLE).output()
-            : logoAgent.execute(brief, LogoOutput.Method.DALLE);
+            ? logoLoop.run(brief, logoMethod, identity).output()
+            : logoAgent.execute(brief, logoMethod, identity);
 
         PlaybookInput playbookIn = new PlaybookInput(brief, copy, visual, logo);
         PlaybookOutput playbook = evalMode

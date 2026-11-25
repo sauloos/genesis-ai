@@ -395,6 +395,9 @@ public class BrandBookTemplateRenderer {
 
         // Logo markup — primary + recoloured variants (SVG only; DALLE falls back to CSS filters)
         String logoMarkup        = buildLogoMarkup(logo, brand.name());
+        // The symbol alone, for icon-sized slots; a logo without one uses the primary markup.
+        String logoSymbol        = logo.symbolImageUrl() != null
+            ? rasterMarkup(logo.symbolImageUrl(), logoMarkup) : logoMarkup;
         String logoMarkupWhiteout = buildLogoVariant(logo, "#ffffff", brand.name());
         String logoMarkupMono     = buildLogoVariant(logo, primaryHex, brand.name());
 
@@ -453,6 +456,7 @@ public class BrandBookTemplateRenderer {
         subs.put("{{LOGO_WHITEOUT}}",    logoMarkupWhiteout);
         subs.put("{{LOGO_MONO}}",        logoMarkupMono);
         subs.put("{{LOGO_PRIMARY}}",     logoMarkup);
+        subs.put("{{LOGO_SYMBOL}}",      logoSymbol);
         subs.put("{{LOGO_CLEARANCE_SVG}}", clearanceSvg);
         subs.put("{{LOGO_USAGE}}",       esc(output.logoUsageGuidelines()));
         subs.put("{{LOGO_DONTS_HTML}}", dontsHtml);
@@ -702,19 +706,25 @@ public class BrandBookTemplateRenderer {
             }
             return svg;
         }
-        if (logo.method() == LogoOutput.Method.DALLE && logo.imageUrl() != null) {
-            String blobPath = logo.imageUrl().startsWith(ASSET_URL_PREFIX)
-                ? logo.imageUrl().substring(ASSET_URL_PREFIX.length())
-                : logo.imageUrl();
-            try {
-                byte[] bytes = blobStorageService.download(blobPath);
-                return "<img src=\"data:image/png;base64," + Base64.getEncoder().encodeToString(bytes)
-                    + "\" style=\"max-width:100%;max-height:100%;object-fit:contain;\">";
-            } catch (Exception e) {
-                log.warn("Cannot load DALLE logo for brand book PDF (falling back to text logo): {}", e.getMessage());
-            }
+        if (logo.isImage() && logo.imageUrl() != null) {
+            return rasterMarkup(logo.imageUrl(), buildTextLogoSvg(brandName));
         }
         return buildTextLogoSvg(brandName);
+    }
+
+    /** An inline PNG from blob storage, or {@code fallback} when it cannot be loaded. */
+    private String rasterMarkup(String imageUrl, String fallback) {
+        String blobPath = imageUrl.startsWith(ASSET_URL_PREFIX)
+            ? imageUrl.substring(ASSET_URL_PREFIX.length())
+            : imageUrl;
+        try {
+            byte[] bytes = blobStorageService.download(blobPath);
+            return "<img src=\"data:image/png;base64," + Base64.getEncoder().encodeToString(bytes)
+                + "\" style=\"max-width:100%;max-height:100%;object-fit:contain;\">";
+        } catch (Exception e) {
+            log.warn("Cannot load logo image {} for brand book (using fallback): {}", blobPath, e.getMessage());
+            return fallback;
+        }
     }
 
     private String buildLogoVariant(LogoOutput logo, String targetColor, String brandName) {
@@ -723,7 +733,7 @@ public class BrandBookTemplateRenderer {
             if (svg.startsWith("<?xml")) svg = svg.substring(svg.indexOf("?>") + 2).strip();
             return logoVariantService.recolor(svg, targetColor);
         }
-        // DALLE PNG — return primary markup; CSS filters in the template handle visual treatment
+        // Raster logo — return primary markup; CSS filters in the template handle visual treatment
         return buildLogoMarkup(logo, brandName);
     }
 

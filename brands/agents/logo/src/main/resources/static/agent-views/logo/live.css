@@ -1,4 +1,5 @@
 @import url('/agent-views/_shared/regenerate.css');
 
-.av-logo-image { max-width: 180px; max-height: 180px; border-radius: 10px; border: 1px solid var(--av-border-subtle); display: block; }
+.av-logo-image { max-width: 280px; max-height: 180px; border-radius: 10px; border: 1px solid var(--av-border-subtle); display: block; }
 .av-logo-svg { max-width: 180px; max-height: 180px; }
+.av-logo-symbol { max-width: 96px; max-height: 96px; }

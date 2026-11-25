@@ -32,9 +32,13 @@ function renderFields(el, logo) {
   } else if (logo.imageUrl) {
     preview = `<img class="av-logo-image" src="${esc(logo.imageUrl)}" alt="Logo preview">`;
   }
+  const symbol = logo.symbolImageUrl
+    ? `<div class="av-section"><div class="av-label">Symbol</div><img class="av-logo-image av-logo-symbol" src="${esc(logo.symbolImageUrl)}" alt="Logo symbol"></div>`
+    : '';
 
   el.innerHTML = `
-    <div class="av-section"><div class="av-label">Mark</div>${preview}</div>
+    <div class="av-section"><div class="av-label">Logo</div>${preview}</div>
+    ${symbol}
     <div class="av-section"><div class="av-label">Concept</div><div class="av-value">${esc(logo.conceptDescription)}</div></div>
     <div class="av-section"><div class="av-label">Symbolism</div><div class="av-value">${esc(logo.symbolism)}</div></div>
   `;
