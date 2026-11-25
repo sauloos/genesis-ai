@@ -330,6 +330,18 @@ public class BrandBookTemplateRenderer {
         return html.substring(0, idx) + watermarkCss + html.substring(idx);
     }
 
+    /**
+     * A raster logo fits its slot by default, but at zero specificity, so each template's own
+     * size cap for that slot ({@code .e-card-logo img { max-height: 12mm }}) still wins. Inline
+     * limits beat those caps, and a logo then grew past its slot.
+     */
+    static String injectRasterLogoCss(String html) {
+        String css = "\n:where(img." + RASTER_LOGO_CLASS + ") { max-width: 100%; max-height: 100%; object-fit: contain; }\n";
+        int idx = html.indexOf("</style>");
+        if (idx < 0) return html;
+        return html.substring(0, idx) + css + html.substring(idx);
+    }
+
     private static String injectPrintBleedCss(String html) {
         // 3 mm bleed: page grows to 216×303 mm; crop marks are drawn inside the bleed
         // zone as thin black L-lines at each corner of the 210×297 mm trim box.
@@ -483,7 +495,7 @@ public class BrandBookTemplateRenderer {
         subs.put("{{PHOTO_APP_DATA}}",      fetchPhotoDataUri(brief.engagementId(), "stationery"));
 
         // Apply section filter before substitution so excluded section HTML is never processed
-        return substitute(filterSections(templateHtml, includedSections), subs);
+        return injectRasterLogoCss(substitute(filterSections(templateHtml, includedSections), subs));
     }
 
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{\\{[A-Z0-9_]+\\}\\}");
@@ -713,14 +725,22 @@ public class BrandBookTemplateRenderer {
     }
 
     /** An inline PNG from blob storage, or {@code fallback} when it cannot be loaded. */
+    static final String RASTER_LOGO_CLASS = "bb-raster-logo";
+
     private String rasterMarkup(String imageUrl, String fallback) {
+        return rasterMarkup(imageUrl, fallback, "");
+    }
+
+    private String rasterMarkup(String imageUrl, String fallback, String extraStyle) {
         String blobPath = imageUrl.startsWith(ASSET_URL_PREFIX)
             ? imageUrl.substring(ASSET_URL_PREFIX.length())
             : imageUrl;
         try {
-            byte[] bytes = blobStorageService.download(blobPath);
-            return "<img src=\"data:image/png;base64," + Base64.getEncoder().encodeToString(bytes)
-                + "\" style=\"max-width:100%;max-height:100%;object-fit:contain;\">";
+            byte[] bytes = LogoKnockout.apply(LogoTrim.trim(blobStorageService.download(blobPath)));
+            // Size limits come from injectRasterLogoCss, never inline, so template caps apply.
+            return "<img class=\"" + RASTER_LOGO_CLASS + "\" src=\"data:image/png;base64,"
+                + Base64.getEncoder().encodeToString(bytes) + "\""
+                + (extraStyle.isEmpty() ? "" : " style=\"" + extraStyle + "\"") + ">";
         } catch (Exception e) {
             log.warn("Cannot load logo image {} for brand book (using fallback): {}", blobPath, e.getMessage());
             return fallback;
@@ -733,7 +753,11 @@ public class BrandBookTemplateRenderer {
             if (svg.startsWith("<?xml")) svg = svg.substring(svg.indexOf("?>") + 2).strip();
             return logoVariantService.recolor(svg, targetColor);
         }
-        // Raster logo — return primary markup; CSS filters in the template handle visual treatment
+        // A raster logo can't be recoloured, but a transparent one can be whited out: every pixel
+        // becomes white and its transparency stays. Not every template filters this stage itself.
+        if (logo.isImage() && logo.imageUrl() != null && "#ffffff".equalsIgnoreCase(targetColor)) {
+            return rasterMarkup(logo.imageUrl(), buildTextLogoSvg(brandName), "filter:brightness(0) invert(1);");
+        }
         return buildLogoMarkup(logo, brandName);
     }
 

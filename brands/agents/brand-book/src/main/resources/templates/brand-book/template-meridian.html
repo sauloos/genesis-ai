@@ -620,6 +620,17 @@ body {
   max-height: 18mm;
 }
 .m-devices-icon svg, .m-devices-icon img { max-height: 18mm; max-width: 30mm; }
+/* Reversed on the dark ground. */
+.m-devices-icon img { filter: brightness(0) invert(1); }
+/* The renderer emits each variant as .stroke-item; on this dark page they need light ink. */
+.m-devices-variants .stroke-item {
+  font-family: var(--font-body);
+  font-size: 7.5pt;
+  line-height: 1.5;
+  color: rgba(255,255,255,0.75);
+  padding: 2mm 0;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+}
 .m-devices-row {
   display: flex;
   gap: 6mm;
@@ -849,7 +860,9 @@ body {
   gap: 3mm;
   margin-bottom: 2mm;
 }
-.m-lh-logo-area { max-height: 7mm; }
+/* A fixed box: a raster logo's own max-width/height of 100% then resolves against it. */
+.m-lh-logo-area { flex: none; width: 20mm; height: 7mm; display: flex; align-items: center; }
+.m-lh-logo-area > * { max-width: 100%; max-height: 100%; }
 .m-lh-logo-area svg, .m-lh-logo-area img { max-height: 7mm; max-width: 20mm; }
 .m-lh-brand {
   font-family: var(--font-heading);
