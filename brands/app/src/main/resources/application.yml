@@ -32,6 +32,12 @@ spring:
         cachecontrol:
           no-store: true
   ai:
+    # A rate limit (429) is worth waiting out: Spring AI otherwise treats every 4xx as final,
+    # so one throttled image call failed a whole engagement. The Azure image deployment allows
+    # only 2 requests a minute, and an engagement draws three logos at once. Backoff is the
+    # Spring AI default (2s, x5, capped at 3 min, 10 attempts).
+    retry:
+      on-http-codes: 429
     anthropic:
       api-key: ${ANTHROPIC_API_KEY:}
       base-url: ${ANTHROPIC_BASE_URL:https://api.anthropic.com}
@@ -43,7 +49,8 @@ spring:
       api-key: ${OPENAI_API_KEY:}
       # Embeddings and images can each be served by an Azure OpenAI resource instead, so they
       # draw on Azure (Microsoft for Startups) credits. Point the base URL at the resource's
-      # v1 API, https://<resource>.openai.azure.com/openai, and give it that resource's key;
+      # v1 API, https://<resource>.openai.azure.com/openai/ (the trailing slash matters: Spring
+      # joins it to the relative image path without one), and give it that resource's key;
       # the model id is then the Azure deployment's name. Left empty, both fall back to
       # api.openai.com and OPENAI_API_KEY. Claude stays on Anthropic: the credits exclude it.
       embedding:

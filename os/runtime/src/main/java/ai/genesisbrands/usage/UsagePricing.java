@@ -64,6 +64,10 @@ public class UsagePricing {
         DEFAULTS.put("gpt-image-2.6-sunburst-medium", new Price("0", "0", "0.044"));
         DEFAULTS.put("gpt-image-2.6-flare", new Price("0", "0", "0.053"));
         DEFAULTS.put("gpt-image-2.6-flare-medium", new Price("0", "0", "0.044"));
+        // Azure OpenAI deployment (startup credits). $30 per 1M output tokens; measured on
+        // 2026-11-25 at 1,756 output tokens for high and 439 for medium.
+        DEFAULTS.put("gpt-image-2.5-sunburst", new Price("0", "0", "0.053"));
+        DEFAULTS.put("gpt-image-2.5-sunburst-medium", new Price("0", "0", "0.013"));
         DEFAULTS.put("ideogram-v2", new Price("0", "0", "0.08"));
         DEFAULTS.put("text-embedding-3-small", new Price("0.02", "0", "0"));
         DEFAULTS.put("text-embedding-3-large", new Price("0.13", "0", "0"));
