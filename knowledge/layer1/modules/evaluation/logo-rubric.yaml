@@ -59,7 +59,7 @@ evaluation_dimensions:
     pass_criteria: N/A — see method_notes.
     fail_criteria: N/A — see method_notes.
     method_notes:
-      dalle: One isolated lockup on a transparent background, the brand name spelled exactly, no other text, no mockup, sheet, frame or scene.
+      dalle: One isolated logo (a lockup, or a wordmark carrying its own device) on a transparent background, the brand name spelled exactly, no other text, no mockup, sheet, frame or scene.
       ideogram: Same as dalle.
       svg_concept: SVG markup (if present) is well-formed and matches the written concept description.
 
@@ -67,6 +67,7 @@ rejection_triggers:
   # If any of these are present, return the output for revision regardless of other scores.
   - The brand name is misspelled, or there are garbled letters or any text beyond the brand name
   - The symbol is a recognisable category cliché or stock symbol with no brand-specific rationale
+  - The drawn mark would pass unnoticed in an interface icon set (upload chevron, radio button, tick, pin, speech bubble, bare arrow), whatever the concept claims it means
   - Image methods — the image is a mockup, scene, presentation sheet or set of variations rather than one isolated lockup
   - svg_concept method — markup is malformed or contradicts the written concept description
   - Concept description or symbolism is under 2 sentences or purely a list of adjectives

@@ -1,0 +1,261 @@
+module: logo-craft
+version: 1.0
+context: on_demand
+description: >
+  How a leading identity studio finds and builds a logo idea. Used by the Logo Agent when it
+  generates concepts and by Genesis AI when it critiques them, before anything is drawn. The
+  evaluation rubric (evaluation/logo-rubric.yaml) says what passes; this module says how to get
+  there. Distilled in the agency's own words from the identity-design literature listed under
+  sources, from well-documented identity case studies, and from the agency's own failed drafts.
+
+sources:
+  - Paul Rand, A Designer's Art (1985) and Design, Form, and Chaos (1993)
+  - Chermayeff, Geismar & Haviv, Identify (2011) and Identity (2018)
+  - Alina Wheeler, Designing Brand Identity
+  - David Airey, Logo Design Love
+  - Michael Bierut, How to use graphic design to sell things, explain things, make things look better... (2015)
+  - Published case studies of the identities named below
+  - The agency's own logo rounds (anonymised anti-examples)
+
+principles:
+  - name: idea_before_form
+    rule: >
+      A logo is an idea first and a drawing second. If the idea cannot be said in one plain
+      sentence ("the arrow lives in the gap between two letters"), there is no idea yet, only a shape. Never
+      start by choosing a symbol; start by finding something true that only this brand can claim.
+  - name: identify_not_explain
+    rule: >
+      A logo's job is to identify, not to describe what the company does. A logo earns its meaning
+      from the quality of the business it marks, over years of use. So an apt, simple, distinctive
+      mark beats one that tries to illustrate the whole offer. Literal depiction of the product
+      (a cup, a bean, a house, a tooth) is almost always the weakest answer.
+  - name: appropriate_distinctive_simple
+    rule: >
+      The studio test, in order: appropriate (its tone and form fit this brand and audience),
+      distinctive (it could not be mistaken for a competitor's, nor for a stock icon), simple (few
+      elements, each necessary; it survives at 16px and in one colour). Memorable follows from
+      these; it is not a separate trick.
+  - name: one_idea_one_place
+    rule: >
+      Put the cleverness in one place: one modified letter, one negative-space device, one
+      construction rule. Everything around it stays quiet and impeccably made. Two ideas in one
+      mark cancel each other out.
+  - name: craft_is_restraint
+    rule: >
+      What reads as "expensive" is precision and restraint: optical balance, consistent weights,
+      deliberate spacing, generous empty space, flat colour, at most two colours. Ornament,
+      gradients, texture and detail read as cheap, however elaborate.
+  - name: a_logo_is_a_system
+    rule: >
+      A logo lives in a system: a primary lockup, an icon that stands alone, a single-colour
+      version. The idea should survive being cut down to the icon. Some of the strongest modern
+      identities are systems whose mark changes in use (a field that is filled, a frame that holds
+      different content); this is a legitimate concept when it encodes something the brand does.
+
+insight_mining:
+  description: >
+    Where real logo ideas come from. Before writing any concept, list concrete facts from the
+    brief under these headings; the concepts are then built from these facts, not from the
+    category. A fact only counts if the brand's customers would recognise it and care about it.
+    Being obscure is not a virtue: an insight nobody outside the trade notices makes a mark that
+    has to be explained, and a mark that has to be explained has failed.
+  sources_of_insight:
+    - name: the_founders_meaning
+      look_for: >
+        Why the brand is called what it is and what the founders want it to stand for, in their
+        own words. When the brief records this, it is the first and strongest source and it
+        outranks any meaning the designer finds in the name. A clever reading the founder never
+        intended, such as a pun, a technical term or a trade jargon sense, is a misreading of the
+        client, not a discovery. When the brief does not say why the name was chosen, do not
+        invent a story for it. Build on the purpose and the promise instead, and say in the
+        insights that the name's origin is unknown.
+    - name: the_name
+      look_for: >
+        The letters themselves (shapes, a letter that can carry a device, a numeral), the
+        initials, and the plain meaning of each word as the founder uses it. Illustrating the
+        name's obvious meaning with a generic shape is a trap (see literalism below). When the
+        founder's meaning is the obvious one, the idea is allowed, and the work is to find the
+        specific, culturally recognisable form of it. That means the actual object or sign the
+        founder has in mind, drawn with its own proportions and conventions, rather than a bare
+        arrow or a generic icon of it.
+    - name: what_the_customer_knows
+      look_for: >
+        Things the customer actually sees, handles and talks about: the ritual of using the
+        product, the moment it arrives, a convention of the category the customer already reads
+        (a label, a stamp, a date), a cultural sign they grew up with. Technical internals do not
+        count, because customers do not think of them and a mark built on them reads as a
+        diagram or an insider joke. Examples are packaging components, machine parts, lab
+        readings and supply-chain jargon.
+    - name: the_promise_made_visible
+      look_for: >
+        The differentiator as an observable thing: a date, a number, a measurement, a timing, a
+        guarantee. How could the mark show the promise rather than claim it?
+    - name: the_process
+      look_for: A distinctive step in how the product is made or delivered, its rhythm or its sequence.
+    - name: the_people_and_place
+      look_for: >
+        The founder's signature, a craft gesture, a place with a recognisable form. Use only when
+        the brief makes the person or place central to the positioning.
+  first_association_ban: >
+    Before generating concepts, write down the first three things anyone would draw for this
+    category and the first three for the name's literal meaning. These six are banned as the
+    main idea. They may appear only if transformed by a second reading that makes them ownable.
+
+techniques:
+  - name: negative_space
+    how: A second form appears in the gap between or inside shapes, so the mark rewards a second look.
+    examples:
+      - FedEx (Landor, 1994) — an arrow formed by the white space between the E and the x; the wordmark stays a plain, bold sans.
+      - WWF panda — the panda is only partly drawn; the white ground completes it.
+    watch_out: The hidden form must be found, not forced; if the letters have to be distorted to make room, the idea fails.
+
+  - name: letterform_device
+    how: One letter of the name is redrawn to carry the idea while still reading as the letter. The rest of the wordmark stays plain.
+    examples:
+      - Mobil (Chermayeff & Geismar, 1964) — a clean blue wordmark whose single red O makes it ownable.
+      - Pirelli (1908) — the stretched P, a single typographic gesture that became the whole identity.
+    watch_out: The modified letter must still read instantly as that letter at small size, or the name breaks.
+
+  - name: double_reading
+    how: One shape means two things at once — the obvious reading and a brand-specific one.
+    examples:
+      - Amazon (Turner Duckworth, 2000) — a curve under the name that is both a smile and an arrow from a to z.
+      - Baskin-Robbins (2005) — the B and R hide the number 31, the brand's original count of flavours.
+      - Toblerone — a bear hidden in the mountain, the emblem of the town where it was made.
+    watch_out: The second reading must matter to the brand's story; a pun for its own sake is a gimmick.
+
+  - name: wordmark_only
+    how: >
+      The name alone, in a deliberately chosen or customised typeface, with exact spacing and one
+      considered detail. The right answer more often than generators suggest, especially for short
+      or distinctive names and for brands whose personality is plain-spoken.
+    examples:
+      - FedEx, Mobil, Pirelli above are all wordmarks first.
+    watch_out: >
+      A wordmark is not "the name in a nice font". It needs a reason: a typeface whose voice is
+      the brand's voice, a spacing or case decision with meaning, or one letterform device.
+
+  - name: abstract_by_construction
+    how: >
+      A non-figurative mark built from a strict geometric rule, which becomes meaningful through
+      use rather than depiction. It must still be specific: the construction rule should come from
+      the brand.
+    examples:
+      - Chase (Chermayeff & Geismar, 1961) — four identical rotated segments forming an octagon around a square; abstract on purpose, so it could become the bank's own.
+      - NBC peacock (Chermayeff & Geismar, 1986) — six feathers reduced to flat segments, one for each of the network's divisions at the time.
+    watch_out: Abstract marks drift into stock shapes (swooshes, orbiting dots, interlocking rings) unless the rule is strict and the reason is real.
+
+  - name: specific_pictorial
+    how: >
+      A depicted object, but one that is not the category's default and is drawn with one detail
+      that makes it unmistakable.
+    examples:
+      - Apple (Rob Janoff, 1977) — the bite makes the silhouette read as an apple and not a cherry, and gives the shape its character.
+    watch_out: This is the technique generators use by default; it passes only when the object is unexpected for the category or carries a second reading.
+
+  - name: living_system
+    how: >
+      A fixed frame whose content changes: the logo is completed by real data, colours or images
+      in use. Strong when the brand's promise is about something that changes (a date, a place, a
+      programme).
+    examples:
+      - Tate (Wolff Olins, 2000) — the name appears in several states of focus, signalling a gallery that is never fixed.
+      - City of Melbourne (Landor, 2009) — one bold M filled with endlessly varied patterns.
+      - Casa da Música (Sagmeister, 2007) — the faceted shape of the building, recoloured for every use.
+      - MIT Media Lab (2011) — a generative mark with tens of thousands of variations.
+    watch_out: The fixed part must be strong enough to be recognised alone, and the variable part must be driven by something real.
+
+  - name: emblem_or_badge
+    how: The name and a device held inside a defined shape.
+    watch_out: >
+      Only when real heritage or a physical stamp/seal is part of the brand's practice. Otherwise
+      a badge is a crutch that hides a weak idea, and it fails at small sizes.
+
+typography:
+  - Choose the typeface for its voice, not its popularity; the wordmark's typeface should sound like the brand's tone of voice.
+  - Case is a decision: capitals read institutional and declarative; lowercase reads approachable; title case reads conventional.
+  - Capitals need positive tracking; lowercase usually needs tighter, optically even spacing.
+  - Customise in one place only (a letter, a join, a terminal); the rest stays faithful to the typeface.
+  - In a lockup, the symbol is usually between the cap height and twice the cap height (horizontal), or about the wordmark's width or less (stacked). A symbol that dwarfs the name, or a name that dwarfs the symbol, reads as amateur.
+  - Heavy, expanded or condensed faces are personality; use them when the direction calls for force, not as decoration.
+
+form_tests:
+  - name: one_sentence
+    test: Can the idea be described in one plain sentence that mentions something specific to this brand?
+  - name: swap
+    test: Put a competitor's name under the mark. If it still works, the mark is not distinctive.
+  - name: stock_icon
+    test: >
+      Does the drawn form look like a common interface icon or stock glyph? A chevron in a circle
+      reads as an upload or "scroll to top" button; an arrow alone reads as navigation; a tick as
+      "done"; a ring with a dot as a radio button or target; a speech bubble as chat; a location
+      pin as maps. If yes, the idea may be fine but the drawing must change.
+  - name: favicon
+    test: Shrink the icon to 16px in one colour. Does it still read as the same thing?
+  - name: literalism
+    test: >
+      Is the main shape a direct illustration of the name's obvious meaning (a fox for "Fox", a
+      compass for "North", a mountain for "Summit") or of the product (a cup, a bean)? If yes, it
+      fails unless a second reading transforms it.
+  - name: audience
+    test: >
+      Explain the mark in one sentence to the brand's target customer. Do they recognise the
+      thing it is built from, and would they say "yes, that is them"? If the explanation needs
+      knowledge only the trade has (a packaging part, a process step, a technical term), or
+      contradicts what the founder says the name means, it fails.
+  - name: posture
+    test: >
+      Does it fit the direction? ANCHORED should look inevitable and impeccably crafted, built on
+      codes the brand already owns. EVOLVED keeps a recognisable root but moves it somewhere
+      fresher. DISRUPTIVE should make the category look dated; if it would sit comfortably on a
+      competitor's shelf, it is not disruptive.
+
+category_cliches:
+  coffee_tea: [coffee bean, cup or mug, steam swirl, leaf, mountain, coffee plant branch]
+  food_restaurant: [chef's hat, fork and knife, wheat stalk, steaming bowl, flame]
+  bakery: [wheat, rolling pin, whisk, loaf outline]
+  technology_software: [circuit traces, connected nodes, cloud, abstract swoosh, hexagon, infinity loop, rocket]
+  finance_fintech: [rising arrow or chart, shield, classical pillar, coin, upward chevrons]
+  health_wellness: [medical cross, heart, leaf, cupped hands, lotus, heartbeat line]
+  beauty_cosmetics: [lotus, leaf, female face silhouette, water droplet, flourish script]
+  real_estate_construction: [roof line, house outline, key, skyline, crane]
+  consulting_professional: [globe, interlocking rings, abstract arrow, upward swoosh, puzzle piece]
+  education: [open book, mortarboard, apple, owl, lightbulb]
+  legal: [scales of justice, column, gavel, shield]
+  fitness_sport: [dumbbell, flexing figure, flame, lightning bolt, running figure]
+  sustainability_outdoor: [leaf, tree, globe, recycling arrows, mountain and sun]
+  any_category: [generic monogram in a circle, abstract people holding hands, lightbulb, swoosh, globe, star]
+
+anti_examples:
+  description: >
+    The agency's own failed rounds, anonymised. Each shows a failure the concept step must catch
+    before anything is drawn.
+  cases:
+    - drafted: A coffee bean split by a wavy line, a small green square on the split.
+      failure: Category cliché (the bean), with a decorative accent that carries no idea.
+    - drafted: A horizontal arrow with a small coloured tick on its shaft, for a brand whose name describes a direction.
+      failure: >
+        A generic arrow is the name's obvious meaning drawn as a stock shape: clean but
+        forgettable, and any logistics firm could own it. Even where the direction is exactly
+        what the founder meant, the mark has to come from the specific sign or object they had
+        in mind, with its own form and conventions, not from an icon set.
+    - drafted: An arc like a gauge with a rising diagonal arrow through it.
+      failure: Two half-ideas fighting (dial and arrow); reads as a generic growth or analytics icon.
+    - drafted: A thin ring with a dot in the centre, or a tiny arrow alone on a large canvas.
+      failure: No idea and no craft; reads as a radio button or a placeholder.
+    - drafted: >
+        A disc with an upward chevron cut out of it, and later a letter O redrawn as the same
+        part, meant as a technical component of the packaging that happens to share the
+        brand's name.
+      failure: >
+        Wrong insight. The founder named the brand after something else entirely, and customers
+        never think about that packaging part, so no one in the category would put it in their
+        logo. It also reads as an upload button. The concept step should have started from the
+        founder's own reason for the name and from what customers actually see.
+
+concept_process:
+  - Start from the founder's own meaning for the name and purpose, when the brief gives it, then mine 5–8 concrete facts under insight_mining that the customer would recognise. Write the six banned first associations.
+  - Write each concept as one plain sentence of idea, then its technique, then the form in words.
+  - Spread the concepts across at least four techniques, and include at least one wordmark-led concept.
+  - Kill any concept that fails one_sentence, swap, literalism, audience or the cliché list before it is drawn.
+  - For each survivor, decide how it should be drawn so it does not collapse into a stock icon.

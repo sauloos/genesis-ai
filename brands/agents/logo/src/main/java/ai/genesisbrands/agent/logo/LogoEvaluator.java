@@ -151,9 +151,9 @@ public class LogoEvaluator {
 
         StringBuilder sb = new StringBuilder();
         appendContext(sb, brief, identity);
-        sb.append("## The Logo Agent's concept\n").append(conceptSummary).append("\n\n");
+        sb.append("## The concepts and how they were drawn\n").append(conceptSummary).append("\n\n");
         sb.append("## Candidates\n").append(candidates.size())
-            .append(" candidate lockups are attached, in order: candidate 1 is the first image.\n");
+            .append(" candidate logos are attached, in order: candidate 1 is the first image.\n");
         sb.append(allowRevise
             ? "You may return REVISE if no candidate is good enough to show the client.\n"
             : "This is the final round: return ACCEPT with the strongest candidate.\n");

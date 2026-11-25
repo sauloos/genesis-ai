@@ -24,12 +24,13 @@ import java.util.Map;
 /**
  * Designs one direction's logo.
  *
- * <p>For the image methods (DALLE = the OpenAI/Azure gpt-image model, IDEOGRAM) it builds a small
- * logo system the way a studio would: the agent writes the concept and an art-directed prompt for
- * the primary lockup (symbol + wordmark, set in the direction's own typeface and palette); the
- * image model draws several candidates on a transparent background; Genesis AI looks at all of
- * them and picks one, or sends the concept back once if none is good enough; and the symbol is
- * then cut from the chosen lockup by an edit, so the icon and the lockup always match.
+ * <p>For the image methods (DALLE = the OpenAI/Azure gpt-image model, IDEOGRAM) it works the way a
+ * studio does: {@link LogoConceptStudio} writes a sketchbook of concepts in words and the creative
+ * director pins up the strongest few; for each, the agent writes an art-directed prompt for the
+ * primary logo (a lockup, or a wordmark carrying its own device, in the direction's own typeface
+ * and palette); the image model draws several candidates of each on a transparent background;
+ * Genesis AI looks at all of them and picks one, or sends the work back once for new concepts if
+ * none is good enough; and the icon is then cut from the chosen logo, so the two always match.
  *
  * <p>SVG_CONCEPT still returns hand-written SVG markup in one step.
  */
@@ -46,6 +47,7 @@ public class LogoAgent {
     private final OpenAiImageClient openAiImages;
     private final IdeogramImageClient ideogramImages;
     private final LogoEvaluator evaluator;
+    private final LogoConceptStudio studio;
     private final AgentProperties agentProperties;
     private final ObjectMapper objectMapper;
     private final BlobStorageService blobStorageService;
@@ -64,6 +66,7 @@ public class LogoAgent {
                      OpenAiImageClient openAiImages,
                      IdeogramImageClient ideogramImages,
                      LogoEvaluator evaluator,
+                     LogoConceptStudio studio,
                      AgentProperties agentProperties,
                      ObjectMapper objectMapper,
                      BlobStorageService blobStorageService,
@@ -73,6 +76,7 @@ public class LogoAgent {
         this.openAiImages = openAiImages;
         this.ideogramImages = ideogramImages;
         this.evaluator = evaluator;
+        this.studio = studio;
         this.agentProperties = agentProperties;
         this.objectMapper = objectMapper;
         this.blobStorageService = blobStorageService;
@@ -122,10 +126,9 @@ public class LogoAgent {
         IllegalStateException lastFailure = null;
         for (int attempt = 1; attempt <= 2; attempt++) {
             try {
-                Map<String, Object> concept = concept(agentId, config, userPrompt);
                 return method == LogoOutput.Method.SVG_CONCEPT
-                    ? buildSvgOutput(brief, concept, iteration)
-                    : buildImageOutput(brief, method, identity, agentId, config, userPrompt, concept, iteration);
+                    ? buildSvgOutput(brief, concept(agentId, config, userPrompt), iteration)
+                    : buildImageOutput(brief, method, identity, agentId, config, userPrompt, iteration);
             } catch (IllegalStateException e) {
                 lastFailure = e;
                 log.warn("LogoAgent ({}) output failed on attempt {}/2: {}", method, attempt, e.getMessage());
@@ -147,91 +150,138 @@ public class LogoAgent {
         return parseConcept(raw);
     }
 
-    // ── Image methods: candidates → selection → symbol ───────────────────────
+    // ── Image methods: concepts → candidates → selection → icon ─────────────
 
-    /** A drawn lockup, the concept it was drawn from, and where it is stored. */
-    private record Candidate(byte[] bytes, String url, Map<String, Object> concept) {}
+    /** A drawn logo, the art direction it was drawn from, its concept, and where it is stored. */
+    private record Candidate(byte[] bytes, String url, Map<String, Object> artDirection,
+                             LogoConceptStudio.Concept concept) {}
 
     private LogoOutput buildImageOutput(DirectionBrief brief, LogoOutput.Method method, LogoIdentity identity,
                                         String agentId, AgentProperties.AgentConfig config, String userPrompt,
-                                        Map<String, Object> concept, int iteration) {
+                                        int iteration) {
         Renderer renderer = renderer(method);
         String stem = "assets/logos/%s/%s-%d".formatted(
             brief.engagementId(), brief.direction().name().toLowerCase(), iteration);
 
-        List<Candidate> pool = new ArrayList<>(draw(renderer, concept, stem + "-r1", 1));
+        List<Candidate> pool = new ArrayList<>();
+        StringBuilder summary = new StringBuilder();
+        List<LogoConceptStudio.Concept> concepts = studio.develop(brief, identity, userPrompt, null);
+        drawConcepts(renderer, concepts, agentId, config, userPrompt, stem + "-r1", pool, summary);
+
         int rounds = Math.max(0, extraRounds);
         LogoEvaluator.Selection selection = evaluator.select(
-            brief, identity, summary(concept), bytes(pool), rounds > 0);
+            brief, identity, summary.toString(), bytes(pool), rounds > 0);
 
         for (int round = 2; selection.revise() && round <= rounds + 1; round++) {
             log.info("Logo round {} for {} direction of engagement {}: {}",
                 round, brief.direction(), brief.engagementId(), selection.rationale());
-            Map<String, Object> revised = concept(agentId, config,
-                userPrompt + selectionFeedback(concept, selection));
-            pool.addAll(draw(renderer, revised, stem + "-r" + round, pool.size() + 1));
-            selection = evaluator.select(brief, identity, summary(revised), bytes(pool), round <= rounds);
-            concept = revised;
+            String review = selectionFeedback(summary.toString(), selection);
+            concepts = studio.develop(brief, identity, userPrompt, review);
+            drawConcepts(renderer, concepts, agentId, config, userPrompt, stem + "-r" + round, pool, summary);
+            selection = evaluator.select(brief, identity, summary.toString(), bytes(pool), round <= rounds);
         }
 
         Candidate chosen = pool.get(selection.index());
-        Map<String, Object> chosenConcept = chosen.concept();
-        String symbolUrl = cutSymbol(renderer, chosen, chosenConcept, stem);
+        Map<String, Object> art = chosen.artDirection();
+        String symbolUrl = cutSymbol(renderer, chosen, stem);
 
         return new LogoOutput(
             brief.engagementId(),
             method,
-            str(chosenConcept, "conceptDescription"),
-            str(chosenConcept, "symbolism"),
-            str(chosenConcept, "imagePrompt"),
+            str(art, "conceptDescription"),
+            str(art, "symbolism"),
+            str(art, "imagePrompt"),
             chosen.url(),
             null,
-            str(chosenConcept, "reasoning"),
+            str(art, "reasoning"),
             iteration,
             symbolUrl,
-            str(chosenConcept, "symbolDescription"),
+            str(art, "symbolDescription"),
             pool.stream().map(Candidate::url).toList(),
             selection.rationale()
         );
     }
 
-    private List<Candidate> draw(Renderer renderer, Map<String, Object> concept, String stem, int firstNumber) {
-        String prompt = str(concept, "imagePrompt");
+    /**
+     * Art-directs and draws each chosen concept, adding the candidates to the pool and a line per
+     * concept to the selector's summary. One concept failing does not lose the others' drawings;
+     * only a round that draws nothing fails.
+     */
+    private void drawConcepts(Renderer renderer, List<LogoConceptStudio.Concept> concepts, String agentId,
+                              AgentProperties.AgentConfig config, String userPrompt, String stem,
+                              List<Candidate> pool, StringBuilder summary) {
+        int before = pool.size();
+        RuntimeException lastFailure = null;
+        for (int i = 0; i < concepts.size(); i++) {
+            LogoConceptStudio.Concept c = concepts.get(i);
+            try {
+                Map<String, Object> art = concept(agentId, config, userPrompt
+                    + "## The chosen concept to draw\n" + c.render() + "\n");
+                int first = pool.size() + 1;
+                List<Candidate> drawn = draw(renderer, art, c, stem + "-k" + (i + 1), first);
+                pool.addAll(drawn);
+                summary.append("### Candidates ").append(first).append("–").append(pool.size())
+                    .append(": concept \"").append(c.name()).append("\" (")
+                    .append(c.technique()).append(", ").append(c.wordmark() ? "WORDMARK" : "LOCKUP").append(")\n")
+                    .append(c.render()).append(summary(art)).append("\n");
+            } catch (RuntimeException e) {
+                lastFailure = e;
+                log.warn("Logo concept \"{}\" could not be drawn ({}): {}", c.name(), stem, e.getMessage());
+            }
+        }
+        if (pool.size() == before) {
+            throw new IllegalStateException("No logo concept could be drawn"
+                + (lastFailure == null ? "" : ": " + lastFailure.getMessage()), lastFailure);
+        }
+    }
+
+    private List<Candidate> draw(Renderer renderer, Map<String, Object> art, LogoConceptStudio.Concept concept,
+                                 String stem, int firstNumber) {
+        String prompt = str(art, "imagePrompt");
         if (prompt == null || prompt.isBlank()) throw new IllegalStateException("Logo concept has no imagePrompt");
         List<byte[]> images = renderer.generate(prompt, Math.max(1, candidatesPerRound));
         List<Candidate> out = new ArrayList<>();
         for (int i = 0; i < images.size(); i++) {
             String path = stem + "-c" + (firstNumber + i) + ".png";
             store(path, images.get(i));
-            out.add(new Candidate(images.get(i), ASSET_URL_PREFIX + path, concept));
+            out.add(new Candidate(images.get(i), ASSET_URL_PREFIX + path, art, concept));
         }
         return out;
     }
 
     /**
-     * The chosen lockup's symbol alone. It is cut from the lockup's pixels when the layout
-     * separates cleanly ({@link SymbolCrop}), so it is exactly the lockup's symbol; otherwise the
-     * image model edits the wordmark out, which can redraw details. Failing here never fails the
-     * logo: the lockup still stands.
+     * The chosen logo's icon alone. For a lockup it is cut from the lockup's pixels when the
+     * layout separates cleanly ({@link SymbolCrop}), so it is exactly the lockup's symbol;
+     * otherwise, and always for a wordmark (whose icon is a letter or device inside the type), the
+     * image model edits everything else out, which can redraw details. Failing here never fails
+     * the logo: the logo still stands.
      */
-    private String cutSymbol(Renderer renderer, Candidate chosen, Map<String, Object> concept, String stem) {
+    private String cutSymbol(Renderer renderer, Candidate chosen, String stem) {
         String path = stem + "-symbol.png";
-        var cropped = SymbolCrop.crop(chosen.bytes());
-        if (cropped.isPresent()) {
-            try {
-                store(path, cropped.get());
-                return ASSET_URL_PREFIX + path;
-            } catch (RuntimeException e) {
-                log.warn("Storing the cropped logo symbol failed ({}): {}", stem, e.getMessage());
+        boolean wordmark = chosen.concept() != null && chosen.concept().wordmark();
+        if (!wordmark) {
+            var cropped = SymbolCrop.crop(chosen.bytes());
+            if (cropped.isPresent()) {
+                try {
+                    store(path, cropped.get());
+                    return ASSET_URL_PREFIX + path;
+                } catch (RuntimeException e) {
+                    log.warn("Storing the cropped logo symbol failed ({}): {}", stem, e.getMessage());
+                }
             }
+            log.info("Logo symbol for {} does not separate cleanly from the wordmark; editing it out", stem);
         }
-        log.info("Logo symbol for {} does not separate cleanly from the wordmark; editing it out", stem);
-        String symbol = str(concept, "symbolDescription");
-        String prompt = "This image is a finished logo lockup: a symbol and a wordmark. "
-            + "Return the symbol alone. Remove the wordmark and every letter, word and tagline completely. "
-            + "Keep the symbol exactly as it is drawn: the same shapes, proportions, colours and line weights; "
-            + "do not redraw, restyle, simplify or add anything. "
-            + (symbol == null || symbol.isBlank() ? "" : "The symbol is: " + symbol + ". ")
+        String symbol = str(chosen.artDirection(), "symbolDescription");
+        String described = symbol == null || symbol.isBlank() ? "" : "The icon is: " + symbol + ". ";
+        String prompt = (wordmark
+            ? "This image is a finished wordmark logo. Return only the element that carries its idea, as a "
+                + "stand-alone app icon: " + described + "Remove every other letter and word completely. "
+                + "Keep that element exactly as it is drawn: the same shapes, proportions, colours and weights; "
+                + "do not redraw, restyle, simplify or add anything. "
+            : "This image is a finished logo lockup: a symbol and a wordmark. "
+                + "Return the symbol alone. Remove the wordmark and every letter, word and tagline completely. "
+                + "Keep the symbol exactly as it is drawn: the same shapes, proportions, colours and line weights; "
+                + "do not redraw, restyle, simplify or add anything. " + described)
             + "Centre it on a square canvas with an even margin of about one sixth of the canvas on every side, "
             + "on a fully transparent background. No text, no frame, no shadow, no mockup.";
         try {
@@ -239,22 +289,22 @@ public class LogoAgent {
             store(path, bytes);
             return ASSET_URL_PREFIX + path;
         } catch (RuntimeException e) {
-            log.warn("Logo symbol cut failed ({}); the lockup stands on its own: {}", stem, e.getMessage());
+            log.warn("Logo icon cut failed ({}); the logo stands on its own: {}", stem, e.getMessage());
             return null;
         }
     }
 
-    private static String selectionFeedback(Map<String, Object> concept, LogoEvaluator.Selection selection) {
-        StringBuilder sb = new StringBuilder("## Creative Director's review of your first lockups\n");
-        sb.append("None of the lockups drawn from your concept is ready for the client. Write a new ")
-            .append("concept and prompt that fixes this; keep what the review says is working.\n\n");
+    private static String selectionFeedback(String summary, LogoEvaluator.Selection selection) {
+        StringBuilder sb = new StringBuilder("## Creative Director's review of the drawn logos\n");
+        sb.append("None of the logos drawn from the last concepts is ready for the client. Write a new set ")
+            .append("of concepts that answers this review; keep what the review says is working.\n\n");
         if (selection.rationale() != null) sb.append("Review: ").append(selection.rationale()).append("\n");
         AgentRevision r = selection.revision();
         if (r != null) {
             if (r.feedback() != null) sb.append("Feedback: ").append(r.feedback()).append("\n");
             if (r.specificIssues() != null) r.specificIssues().forEach(i -> sb.append("- ").append(i).append("\n"));
         }
-        sb.append("\nThe prompt that produced them:\n").append(str(concept, "imagePrompt")).append("\n\n");
+        sb.append("\nWhat was drawn:\n").append(summary).append("\n");
         return sb.toString();
     }
 
