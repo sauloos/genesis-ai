@@ -65,7 +65,8 @@ evaluation_dimensions:
 
 rejection_triggers:
   # If any of these are present, return the output for revision regardless of other scores.
-  - The brand name is misspelled, or there are garbled letters or any text beyond the brand name
+  - The name is misspelled, or there are garbled letters, a legal suffix (Ltd, LLC, Inc), or any text beyond the brand name or one of its name versions on record (the core name, or the name with a secondary descriptor such as "Coffee Roasters")
+  - The logo looks at a glance like the one another direction of the same engagement already has (same sign, device or layout), so the client would be choosing between near-identical marks
   - The symbol is a recognisable category cliché or stock symbol with no brand-specific rationale
   - The drawn mark would pass unnoticed in an interface icon set (upload chevron, radio button, tick, pin, speech bubble, bare arrow), whatever the concept claims it means
   - Image methods — the image is a mockup, scene, presentation sheet or set of variations rather than one isolated lockup

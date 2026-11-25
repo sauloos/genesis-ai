@@ -164,7 +164,7 @@ public class LogoAgent {
             brief.engagementId(), brief.direction().name().toLowerCase(), iteration);
 
         List<Candidate> pool = new ArrayList<>();
-        StringBuilder summary = new StringBuilder();
+        StringBuilder summary = new StringBuilder(studio.takenByOtherDirections(brief));
         List<LogoConceptStudio.Concept> concepts = studio.develop(brief, identity, userPrompt, null);
         drawConcepts(renderer, concepts, agentId, config, userPrompt, stem + "-r1", pool, summary);
 
@@ -183,6 +183,7 @@ public class LogoAgent {
 
         Candidate chosen = pool.get(selection.index());
         Map<String, Object> art = chosen.artDirection();
+        studio.recordWinner(brief, chosen.concept(), str(art, "conceptDescription"));
         String symbolUrl = cutSymbol(renderer, chosen, stem);
 
         return new LogoOutput(

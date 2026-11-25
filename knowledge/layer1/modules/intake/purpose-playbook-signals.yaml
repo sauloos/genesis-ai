@@ -58,6 +58,29 @@ sections:
         required: true
         derives: [playbook.cover.businessName, engagement.brandName]
         probing_question: "What's the business called?"
+        derivation_note: >
+          Clients often type the registered name. The brand name is the trading name: drop any
+          legal suffix (Ltd, Limited, LLC, Inc, PLC, GmbH) everywhere except legal lines, and
+          keep the registered form only as the legal name.
+
+      - signal_key: setup.nameMeaning
+        required: true
+        substantive: true
+        derives: [playbook.cover.nameMeaning, logo.insight, copy.brandStory]
+        probing_question: "Why is the business called that? What should the name make people think of?"
+        derivation_note: >
+          The founder's own meaning outranks any reading a designer or writer finds in the name.
+          The logo is built on it and the copy must not contradict it. Record it in the
+          founder's words; never replace it with a pun or trade sense they did not intend.
+
+      - signal_key: setup.nameVersions
+        required: false
+        derives: [playbook.cover.nameVersions, logo.nameVersions]
+        probing_question: "Any other versions of the name you use, or would happily use?"
+        derivation_note: >
+          The core name and any name-plus-descriptor versions (e.g. "Hearth" and "Hearth
+          Bakery"). The playbook may propose a plain descriptor version from the core
+          offer, marked as proposed. The logo concepts are drawn across these versions.
 
       - signal_key: setup.oneLiner
         required: true

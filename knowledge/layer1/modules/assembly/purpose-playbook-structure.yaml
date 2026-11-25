@@ -49,8 +49,15 @@ sections:
   - key: cover
     title: Cover
     required: true
-    contains: [businessName, descriptor, sector, date, engagementRef]
-    from: [setup.businessName, setup.oneLiner, setup.sector, setup.respondent]
+    contains: [businessName, legalName, nameMeaning, nameVersions, descriptor, sector, date, engagementRef]
+    from: [setup.businessName, setup.nameMeaning, setup.nameVersions, setup.oneLiner, setup.sector, setup.respondent]
+    guidance: >
+      businessName is the trading name without any legal suffix (Ltd, Limited, LLC, Inc, PLC,
+      GmbH); legalName is the registered form, given only when it differs. nameMeaning states
+      why the business is called what it is, in the founder's words, or says it is not on
+      record. nameVersions lists the core name and any name-plus-descriptor versions the client
+      gave, and may add one plain descriptor version drawn from the core offer, marked
+      "(proposed)".
 
   - key: situation
     title: Where you are now

@@ -198,6 +198,17 @@ QUESTIONS += [
       config=text("Cre8ion")),
     q("SHORT_TEXT", "And who are we talking to — your name and role?",
       "setup.respondent", "setup", "s-who", config=text("Darrell, founder")),
+    q("LONG_TEXT", "Why is the business called that? What should the name make people think of?",
+      "setup.nameMeaning", "setup", "s-name", voice=True,
+      help="The real reason, even if it's simple. We build the logo on what the name means "
+           "to you, not on what we might read into it."),
+    q("SHORT_TEXT",
+      "Any other versions of the name you use, or would happily use?",
+      "setup.nameVersions", "setup", "s-name", required=False,
+      help="A shorter one, or one that says what you do — for example 'Hearth' and "
+           "'Hearth Bakery'. Leave out Ltd or LLC; that's for contracts, not the "
+           "logo. We'll suggest some too.",
+      config=text("Hearth · Hearth Bakery", 240)),
 
     q("SHORT_TEXT",
       "In one sentence, as you'd say it to a stranger at a bus stop — what do you do?",

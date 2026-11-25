@@ -70,6 +70,10 @@ Return JSON only — no preamble, no commentary, no markdown fence.
     "corePositioning": "the positioning that holds across all three directions",
     "toneSpectrum": "where the brand sits tonally, as a range rather than a point"
   },
+  "name": {
+    "meaning": "why the business is called what it is, in the founder's words as the cover gives them, or null when the playbook does not record it — never invented",
+    "versions": ["each version of the name the brand may use: the core name, the name with a descriptor of what it does; the client's own first, then at most one plain descriptor version you propose from the core offer, suffixed (proposed)"]
+  },
   "invariants": [
     "a constraint every direction must honour, phrased as a constraint"
   ],
@@ -88,7 +92,7 @@ Return JSON only — no preamble, no commentary, no markdown fence.
       "risk": "what it risks, stated plainly",
       "derivedFrom": ["playbook section keys, e.g. strategy.positioningSummary"],
       "brand": {
-        "name": "the business name exactly as the playbook gives it, or, if the playbook never establishes one, the marked gap [business name not on record] and nothing else",
+        "name": "the trading name as the playbook gives it, without any legal suffix (Ltd, Limited, LLC, Inc, PLC, GmbH), or, if the playbook never establishes one, the marked gap [business name not on record] and nothing else",
         "industry": "the sector",
         "coreOffer": "what the business actually sells, in this direction's framing",
         "personality": ["three to five personality traits for this direction"],
@@ -103,5 +107,5 @@ Return JSON only — no preamble, no commentary, no markdown fence.
 ```
 
 `directions` holds exactly three objects, one each with `direction` set to `ANCHORED`, `EVOLVED`
-and `DISRUPTIVE`, in that order. `brand.name` is identical in all three. `invariants` appears once,
+and `DISRUPTIVE`, in that order. `brand.name` is identical in all three. It is the brand name, not the registered name: a legal suffix belongs only in legal lines, never in a wordmark, a headline or the brand book's running text. `name` appears once, at the top level, because every direction shares it. `invariants` appears once,
 at the top level, because it is by definition shared.

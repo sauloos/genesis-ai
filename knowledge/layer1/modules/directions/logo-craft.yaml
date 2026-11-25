@@ -74,10 +74,13 @@ insight_mining:
         The letters themselves (shapes, a letter that can carry a device, a numeral), the
         initials, and the plain meaning of each word as the founder uses it. Illustrating the
         name's obvious meaning with a generic shape is a trap (see literalism below). When the
-        founder's meaning is the obvious one, the idea is allowed, and the work is to find the
-        specific, culturally recognisable form of it. That means the actual object or sign the
-        founder has in mind, drawn with its own proportions and conventions, rather than a bare
-        arrow or a generic icon of it.
+        founder's meaning is the obvious one, the idea is allowed, and the work starts from the
+        specific, culturally recognisable form of it: the actual object or sign the founder has
+        in mind, not a bare arrow or a generic icon. That form is raw material, not the logo.
+        Take one property of it (its proportions, a convention such as reversed-out capitals,
+        its colour rule, the shape of one part) and build the brand's own mark from that.
+        Reproducing the sign whole with the name set on or under it is a copy, and anyone with
+        the same name could use it.
     - name: what_the_customer_knows
       look_for: >
         Things the customer actually sees, handles and talks about: the ritual of using the
@@ -252,10 +255,56 @@ anti_examples:
         never think about that packaging part, so no one in the category would put it in their
         logo. It also reads as an upload button. The concept step should have started from the
         founder's own reason for the name and from what customers actually see.
+    - drafted: >
+        For a brand named after a road sign, in all three directions: the sign itself (a black
+        plate, a white arrow, the words of the sign reversed out), with the business's product
+        word set underneath or beside it.
+      failure: >
+        The right meaning, but copied rather than designed. It is the sign, not a logo, so any
+        business with the same name could use it. All three directions arrived at it, which left
+        the client choosing between three versions of one mark. One property of the sign (its
+        plate proportion, its reversed-out capitals, its single arrowhead) could have been
+        transformed into the brand's own mark, a different property in each direction.
+
+name_versions:
+  description: >
+    A brand usually has more than one version of its name, and a logo system uses them on
+    purpose. Settle which versions exist before drawing.
+  rules:
+    - The legal name is not the brand name. Legal suffixes (Ltd, Limited, LLC, Inc, PLC, GmbH, S.A.) never appear in a logo, a wordmark or running brand copy; they belong only in legal lines (footers, contracts, the colophon).
+    - The core name is the shortest form the brand answers to ("Hearth" for Hearth Bakery Ltd). It is often the strongest wordmark and the source of the icon.
+    - A descriptor says what the business does ("Bakery", "Coffee Roasters", "Studio"). It makes a young brand clearer, and it is always secondary to the name in the lockup — smaller, lighter or more tracked, on its own line or after the name — so the name reads first.
+    - The founder's own versions come first. When the brief records none, a plain descriptor drawn from the core offer may be proposed, and must be marked as proposed.
+    - Draw the concepts across the versions on record, so the creative director can choose which version makes the strongest logo rather than assume one.
+    - Decide the hierarchy of every name before drawing it. The distinctive word leads, and a generic word that says the category steps back, even inside the core name. In "Rudnick Transports", Rudnick is the name and Transports is secondary. In "Hearth Bakery", Hearth leads. A name made only of distinctive words is set as one unit.
+    - Hierarchy is design material, not only size. The primary word can carry the device, the weight and the colour; the secondary word sits smaller, lighter, more tracked or in a second face, below or after the primary, aligned to one of its edges.
+    - Choose the arrangement on purpose and spread the concepts across arrangements. Symbol beside the name, symbol above the name, the name alone, and the name with the descriptor stacked below are different logos, not variations of one. Each suits different uses: a horizontal lockup for signage and headers, a stacked one for packaging and squares.
+
+hierarchy_examples:
+  - name: Rudnick Transports
+    reading: Rudnick is distinctive, Transports says the category.
+    options:
+      - A bold RUDNICK with TRANSPORTS in small tracked capitals below, aligned to its left edge.
+      - A symbol to the left, with Rudnick large and Transports smaller beneath it inside the same block.
+      - RUDNICK alone as the core wordmark, for the icon, vehicles and small sizes.
+  - name: Hearth Bakery
+    reading: Hearth is the brand; Bakery is what it does.
+    options:
+      - A symbol above a centred Hearth, with Bakery small beneath it.
+      - Hearth alone in a warm serif, with the device inside one letter.
+
+direction_spread:
+  rule: >
+    The client chooses between three directions, so the three logos must look clearly different
+    at a glance. Three marks that share one sign, device or layout leave no real choice, however
+    well each is drawn. A direction may share its root idea with another only if it transforms
+    it with a different technique into a different form. ANCHORED is the natural home of the
+    most recognisable reading; EVOLVED and DISRUPTIVE move further from it.
 
 concept_process:
   - Start from the founder's own meaning for the name and purpose, when the brief gives it, then mine 5–8 concrete facts under insight_mining that the customer would recognise. Write the six banned first associations.
-  - Write each concept as one plain sentence of idea, then its technique, then the form in words.
-  - Spread the concepts across at least four techniques, and include at least one wordmark-led concept.
-  - Kill any concept that fails one_sentence, swap, literalism, audience or the cliché list before it is drawn.
+  - Settle the name versions (name_versions) and drop any legal suffix.
+  - Write each concept as one plain sentence of idea, then its technique, then the form in words, then the name version it sets, its hierarchy (which words lead, which step back) and its arrangement.
+  - Spread the concepts across at least four techniques, the name versions on record and the arrangements, and include at least one wordmark-led concept.
+  - Kill any concept that fails one_sentence, swap, literalism, audience or the cliché list before it is drawn, and any that repeats the logo another direction already has (direction_spread).
   - For each survivor, decide how it should be drawn so it does not collapse into a stock icon.

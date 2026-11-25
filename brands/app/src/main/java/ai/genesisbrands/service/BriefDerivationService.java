@@ -142,7 +142,7 @@ public class BriefDerivationService implements BriefDerivationExtension {
                 for (JsonNode t : d.path("trainingInstructions")) ti.add(t.asText());
 
                 DirectionBrief.BrandContext brand = new DirectionBrief.BrandContext(
-                    b.path("name").asText(""),
+                    BrandNames.tradingName(b.path("name").asText("")),
                     b.path("industry").asText(""),
                     foundation.targetAudiencePersona(),
                     b.path("coreOffer").asText(""),

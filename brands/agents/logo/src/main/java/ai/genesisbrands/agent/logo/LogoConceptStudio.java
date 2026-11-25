@@ -62,6 +62,8 @@ public class LogoConceptStudio {
 
         public String name() { return str(fields, "name"); }
         public String technique() { return str(fields, "technique"); }
+        /** The version of the brand name this concept sets, e.g. "One Way Coffee Roasters". */
+        public String nameVersion() { return str(fields, "nameVersion"); }
 
         /** WORDMARK when the name itself is the logo, so there is no separate symbol to cut. */
         public boolean wordmark() {
@@ -77,6 +79,9 @@ public class LogoConceptStudio {
             line(sb, "Built from", str(fields, "insight"));
             line(sb, "Technique", technique());
             line(sb, "Form", wordmark() ? "WORDMARK" : "LOCKUP");
+            line(sb, "Name version to set", nameVersion());
+            line(sb, "Hierarchy", str(fields, "hierarchy"));
+            line(sb, "Arrangement", str(fields, "arrangement"));
             line(sb, "Description", str(fields, "description"));
             line(sb, "Icon", str(fields, "icon"));
             line(sb, "Why it was chosen", why);
@@ -93,20 +98,78 @@ public class LogoConceptStudio {
     public List<Concept> develop(DirectionBrief brief, LogoIdentity identity, String briefPrompt,
                                  String earlierReview) {
         String craft = module(CRAFT_KEY);
-        Ideas ideas = ideate(briefPrompt, craft, earlierReview);
-        Review review = critique(brief, identity, craft, ideas, true);
+        String taken = takenByOtherDirections(brief);
+        Ideas ideas = ideate(briefPrompt + taken, craft, earlierReview);
+        Review review = critique(brief, identity, craft, taken, ideas, true);
 
         if (review != null && review.revise()) {
             log.info("Logo concept review for {} direction of engagement {} asked for new ideas: {}",
                 brief.direction(), brief.engagementId(), review.feedback());
-            Ideas second = ideate(briefPrompt, craft, conceptFeedback(ideas, review));
-            Review again = critique(brief, identity, craft, second, false);
+            Ideas second = ideate(briefPrompt + taken, craft, conceptFeedback(ideas, review));
+            Review again = critique(brief, identity, craft, taken, second, false);
             if (again != null || review.chosen().isEmpty()) {
                 ideas = second;
                 review = again;
             }
         }
-        return chosen(ideas, review);
+        List<Concept> out = chosen(ideas, review);
+        log.info("Logo concepts for {} direction of engagement {}: drawing {}", brief.direction(),
+            brief.engagementId(), out.stream().map(c -> c.name() + " (" + c.technique() + ", "
+                + c.nameVersion() + ")").toList());
+        return out;
+    }
+
+    // ── Spread across directions ──────────────────────────────────────────────
+
+    /**
+     * The logo each direction of an engagement ended up with, so the next direction is told what
+     * is already taken: a client choosing between three logos that look alike has no choice. The
+     * pipeline runs the directions one after another, so this sees the earlier ones. Held in
+     * memory and bounded; a regeneration after a restart simply runs without it.
+     */
+    private final Map<String, Map<DirectionBrief.CreativeDirection, String>> winners =
+        java.util.Collections.synchronizedMap(new LinkedHashMap<>(16, 0.75f, true) {
+            @Override
+            protected boolean removeEldestEntry(Map.Entry<String, Map<DirectionBrief.CreativeDirection, String>> e) {
+                return size() > 200;
+            }
+        });
+
+    /** Records the logo the creative director chose for this direction. */
+    public void recordWinner(DirectionBrief brief, Concept concept, String drawnAs) {
+        if (brief.engagementId() == null) return;
+        StringBuilder sb = new StringBuilder();
+        if (concept != null) {
+            line(sb, "Concept", concept.name());
+            line(sb, "Idea", str(concept.fields(), "idea"));
+            line(sb, "Technique", concept.technique());
+            line(sb, "Form", concept.wordmark() ? "WORDMARK" : "LOCKUP");
+            line(sb, "Name version", concept.nameVersion());
+            line(sb, "Arrangement", str(concept.fields(), "arrangement"));
+        }
+        line(sb, "As drawn", drawnAs);
+        if (sb.isEmpty()) return;
+        winners.computeIfAbsent(brief.engagementId(), k -> new java.util.concurrent.ConcurrentHashMap<>())
+            .put(brief.direction(), sb.toString());
+    }
+
+    /** The other directions' logos as a prompt block, or "" when there are none yet. */
+    String takenByOtherDirections(DirectionBrief brief) {
+        if (brief.engagementId() == null) return "";
+        Map<DirectionBrief.CreativeDirection, String> taken = winners.get(brief.engagementId());
+        if (taken == null) return "";
+        StringBuilder sb = new StringBuilder();
+        taken.forEach((direction, logo) -> {
+            if (direction != brief.direction()) {
+                sb.append("### ").append(direction.name()).append("\n").append(logo).append("\n");
+            }
+        });
+        if (sb.isEmpty()) return "";
+        return "## Logos the other directions of this engagement already have\n"
+            + "The client will see all three directions side by side. This direction's logo must be "
+            + "clearly different from these at a glance: a different idea, or the same root "
+            + "transformed by a different technique into a different form. Never the same sign, "
+            + "device or layout again.\n\n" + sb + "\n";
     }
 
     // ── Ideation ──────────────────────────────────────────────────────────────
@@ -152,8 +215,8 @@ public class LogoConceptStudio {
     private record Review(boolean revise, List<Pick> chosen, String rejected, String feedback) {}
 
     /** The creative director's review; null when it failed, which never fails the logo. */
-    private Review critique(DirectionBrief brief, LogoIdentity identity, String craft, Ideas ideas,
-                            boolean allowRevise) {
+    private Review critique(DirectionBrief brief, LogoIdentity identity, String craft, String taken,
+                            Ideas ideas, boolean allowRevise) {
         StringBuilder sb = new StringBuilder();
         if (!craft.isBlank()) sb.append("## Logo Craft (Layer 1 module — authoritative)\n").append(craft).append("\n\n");
         sb.append("## Logo Rubric\n").append(module(RUBRIC_KEY)).append("\n\n");
@@ -173,6 +236,7 @@ public class LogoConceptStudio {
         if (brief.additionalContext() != null && !brief.additionalContext().isBlank()) {
             sb.append("## Additional Context\n").append(brief.additionalContext()).append("\n\n");
         }
+        sb.append(taken);
         sb.append("## The Logo Agent's concepts\n").append(ideas.raw()).append("\n\n");
         sb.append("## Task\nChoose up to ").append(drawnConcepts).append(" concepts to draw, best first.\n");
         sb.append(allowRevise

@@ -323,6 +323,7 @@ public class PurposePlaybookBriefDerivation {
             str(value(fn, "toneSpectrum"))
         );
         List<String> invariants = strings(map.get("invariants"));
+        String nameBlock = nameBlock(map.get("name"));
 
         Object rawDirections = map.get("directions");
         if (!(rawDirections instanceof List<?> list)) {
@@ -334,7 +335,7 @@ public class PurposePlaybookBriefDerivation {
             if (!(item instanceof Map<?, ?> m)) {
                 continue;
             }
-            DirectionBrief brief = brief(engagementId, foundation, invariants, (Map<String, Object>) m);
+            DirectionBrief brief = brief(engagementId, foundation, invariants, nameBlock, (Map<String, Object>) m);
             byDirection.put(brief.direction(), brief);
         }
 
@@ -355,7 +356,7 @@ public class PurposePlaybookBriefDerivation {
 
     @SuppressWarnings("unchecked")
     private DirectionBrief brief(String engagementId, DirectionBrief.BrandFoundation foundation,
-                                 List<String> invariants, Map<String, Object> d) {
+                                 List<String> invariants, String nameBlock, Map<String, Object> d) {
         DirectionBrief.CreativeDirection direction = direction(str(d.get("direction")));
 
         DirectionBrief.PurposeDerivation purpose = new DirectionBrief.PurposeDerivation(
@@ -378,7 +379,7 @@ public class PurposePlaybookBriefDerivation {
             ? foundation.targetAudiencePersona()
             : purpose.audienceEmphasis();
         DirectionBrief.BrandContext brand = new DirectionBrief.BrandContext(
-            str(value(b, "name")),
+            BrandNames.tradingName(str(value(b, "name"))),
             str(value(b, "industry")),
             audience,
             str(value(b, "coreOffer")),
@@ -388,7 +389,37 @@ public class PurposePlaybookBriefDerivation {
         );
 
         return new DirectionBrief(engagementId, brand, foundation, direction,
-            strings(d.get("trainingInstructions")), render(purpose), purpose);
+            strings(d.get("trainingInstructions")), render(purpose) + nameBlock, purpose);
+    }
+
+    /**
+     * What the name means and which versions of it the brand may use, appended to every
+     * direction's {@code additionalContext}: the logo is built on the founder's meaning and drawn
+     * across the versions, and the copy must not contradict either. Empty when neither is known.
+     */
+    @SuppressWarnings("unchecked")
+    static String nameBlock(Object rawName) {
+        if (!(rawName instanceof Map<?, ?> m)) {
+            return "";
+        }
+        Map<String, Object> name = (Map<String, Object>) m;
+        StringBuilder sb = new StringBuilder();
+        String meaning = str(name.get("meaning"));
+        if (meaning != null && !meaning.isBlank() && !"null".equals(meaning.strip())) {
+            sb.append("Why the brand is called what it is (the founder's meaning — build on it, "
+                + "never on a reading they did not intend): ").append(meaning.strip()).append("\n\n");
+        }
+        List<String> versions = strings(name.get("versions")).stream()
+            .map(BrandNames::tradingName)
+            .filter(v -> v != null && !v.isBlank())
+            .distinct()
+            .toList();
+        if (!versions.isEmpty()) {
+            sb.append("Versions of the name the brand may use (a descriptor is always secondary to "
+                + "the name; never a legal suffix):\n");
+            versions.forEach(v -> sb.append("- ").append(v).append("\n"));
+        }
+        return sb.isEmpty() ? "" : "\n\n" + sb.toString().strip();
     }
 
     /**
