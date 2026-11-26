@@ -4,7 +4,10 @@ import ai.genesisbrands.model.Engagement;
 import ai.genesisbrands.repository.EngagementRepository;
 import ai.genesisbrands.security.AdminAuthHelper;
 import ai.genesisbrands.security.AdminSessionService;
+import ai.genesisbrands.agent.logo.AdoptedLogos;
+import ai.genesisbrands.service.AgentRegenerationService;
 import ai.genesisbrands.service.EngagementOrchestratorService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,13 +33,16 @@ class AdminEngagementControllerTest {
     @Mock private EngagementOrchestratorService orchestrator;
     @Mock private AdminAuthHelper adminAuth;
     @Mock private AdminSessionService adminSession;
+    @Mock private AgentRegenerationService regenerationService;
+    @Mock private AdoptedLogos adoptedLogos;
     @Mock private HttpServletRequest req;
 
     private AdminEngagementController controller;
 
     @BeforeEach
     void setUp() {
-        controller = new AdminEngagementController(engagementRepo, orchestrator, adminAuth, adminSession);
+        controller = new AdminEngagementController(engagementRepo, orchestrator, adminAuth, adminSession,
+            regenerationService, adoptedLogos, new ObjectMapper());
     }
 
     private Engagement done() {

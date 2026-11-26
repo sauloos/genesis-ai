@@ -1,0 +1,86 @@
+/* Logo assessment widget. Theme tokens only (WidgetCssTokensTest). */
+.la { display: flex; flex-direction: column; gap: 20px; color: var(--theme-text-primary); max-width: 880px; margin-inline: auto; }
+.la-heading { margin: 0; font-size: 1.6rem; text-wrap: balance; }
+.la-intro { margin: 0; color: var(--theme-text-muted); max-width: 62ch; }
+.la-status { margin: 0; color: var(--theme-text-muted); }
+.la-error { margin: 0; color: var(--theme-danger); }
+
+.la-spinner {
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 3px solid var(--theme-card-border); border-top-color: var(--theme-text-primary);
+  animation: la-spin 0.9s linear infinite;
+}
+@keyframes la-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .la-spinner { animation: none; } }
+
+.la-retry, .la-choice {
+  font: inherit; cursor: pointer; color: var(--theme-text-primary);
+  background: var(--theme-card-bg); border: 1px solid var(--theme-btn-border); border-radius: 8px;
+}
+.la-retry { align-self: flex-start; padding: 10px 18px; }
+.la-retry:hover, .la-choice:hover:not(:disabled) { background: var(--theme-card-bg-hover); }
+.la-retry:focus-visible, .la-choice:focus-visible { outline: 2px solid var(--theme-text-primary); outline-offset: 2px; }
+
+/* Summary: the logo on its preview ground, the score, the words. */
+.la { container-type: inline-size; }
+.la-summary {
+  display: grid; grid-template-columns: minmax(140px, 200px) 1fr; gap: 24px; align-items: start;
+  padding: 20px; background: var(--theme-card-bg); border: 1px solid var(--theme-card-border); border-radius: 12px;
+}
+.la-art {
+  width: 100%; aspect-ratio: 1; display: grid; place-items: center; border-radius: 8px;
+  background: var(--theme-preview-bg); border: 1px solid var(--theme-card-border); padding: 16px; box-sizing: border-box;
+}
+.la-logo { max-width: 100%; max-height: 100%; object-fit: contain; }
+.la-art-empty { color: var(--theme-preview-check); filter: brightness(0.55); font-size: 0.85rem; letter-spacing: 0.06em; text-transform: uppercase; }
+.la-score { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 4px; }
+.la-score-number { font-variant-numeric: tabular-nums; line-height: 1; }
+.la-score-number span { font-size: 3.4rem; font-weight: 700; }
+.la-score-number small { font-size: 1rem; color: var(--theme-text-muted); margin-left: 2px; }
+.la-verdict {
+  font-size: 0.78rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+  padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+}
+.la [data-tone="good"] { --la-tone: var(--theme-success); }
+.la [data-tone="warn"] { --la-tone: var(--theme-warning); }
+.la [data-tone="bad"] { --la-tone: var(--theme-danger); }
+.la-verdict { color: var(--la-tone); background: color-mix(in srgb, var(--la-tone) 14%, transparent); }
+.la-words { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.la-headline { margin: 0; font-size: 1.15rem; text-wrap: balance; }
+.la-summary-text, .la-confidence { margin: 0; color: var(--theme-text-muted); }
+.la-confidence { font-size: 0.9rem; font-style: italic; }
+
+/* Keep / change */
+.la-lists { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.la-list { padding: 16px 18px; border-radius: 10px; background: color-mix(in srgb, var(--la-tone) 7%, transparent); }
+.la-list-title { margin: 0 0 8px; font-size: 0.8rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--la-tone); }
+.la-list ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+
+/* Criteria */
+.la-criteria summary { cursor: pointer; color: var(--theme-text-label); font-weight: 600; }
+.la-criteria-list { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.la-criterion-top { display: flex; justify-content: space-between; gap: 12px; }
+.la-criterion-score { font-variant-numeric: tabular-nums; color: var(--theme-text-muted); }
+.la-bar { height: 6px; margin-top: 6px; border-radius: 3px; background: var(--theme-divider); overflow: hidden; }
+.la-bar-fill { height: 100%; border-radius: 3px; background: var(--la-tone); }
+.la-criterion-note { margin: 6px 0 0; font-size: 0.9rem; color: var(--theme-text-muted); }
+
+/* Decision */
+.la-decision { display: flex; flex-direction: column; gap: 12px; }
+.la-decision-title { margin: 0; font-size: 1.15rem; }
+.la-choices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.la-choice { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 16px; text-align: left; }
+.la-choice:disabled { cursor: default; opacity: 0.6; }
+.la-choice-recommended { border-color: var(--theme-text-primary); }
+.la-choice-title { font-weight: 600; }
+.la-choice-tag { font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--theme-text-label); }
+.la-choice-body { font-size: 0.9rem; color: var(--theme-text-muted); }
+
+/* Sized by the space the host gives the widget, not the viewport. */
+@container (max-width: 640px) {
+  .la-choices { grid-template-columns: 1fr; }
+}
+@container (max-width: 460px) {
+  .la-summary { grid-template-columns: 1fr; }
+  .la-art { width: 160px; }
+}

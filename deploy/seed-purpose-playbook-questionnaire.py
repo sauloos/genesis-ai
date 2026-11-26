@@ -556,6 +556,15 @@ QUESTIONS.append(
            "directions.",
       config=choices(["keep it", "evolve it", "start fresh", "not sure"])))
 
+# Same screen and condition: the logo assessment page after discovery reads this alongside the
+# file, so its verdict answers what the client already likes and dislikes.
+QUESTIONS.append(
+    q("LONG_TEXT", "How do you feel about it? What do you like, and what bothers you?",
+      "look.currentLogoFeelings", "look", "l-logo-intent", when="look.currentLogo is present",
+      required=False,
+      help="A line or two is plenty: where it came from, what you'd never lose, what never felt right.",
+      config=text("We love the leaf, but the lettering always felt dated")))
+
 QUESTIONS.append(
     q("FILE_UPLOAD", "Any colours, fonts or materials already in use that we should know "
                      "about?", "look.existingAssets", "look", "l-assets", required=False,

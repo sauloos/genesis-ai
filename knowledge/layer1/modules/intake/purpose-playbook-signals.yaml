@@ -726,6 +726,45 @@ sections:
           "evolve it" weights EVOLVED, "start fresh" weights DISRUPTIVE. The client is
           pre-selecting their own centre of gravity. See directions/purpose-to-direction.yaml.
 
+      - signal_key: look.currentLogoFeelings
+        required: false
+        condition: "look.currentLogo is present"
+        derives: [logo.brief]
+        probing_question: "How do you feel about it? What do you like, and what bothers you?"
+        derivation_note: >
+          The client's own read of their logo. The logo assessment weighs it against what it
+          sees, so its verdict says whether the thing they love is worth keeping and whether
+          the thing that bothers them is the real problem.
+
+      - signal_key: look.logoAssessment
+        required: false
+        source: logoAssessment widget
+        derives: [logo.brief, direction.weighting]
+        derivation_note: >
+          Not asked: the logo audit's scored assessment of look.currentLogo (score out of 100,
+          a KEEP / EVOLVE / REPLACE verdict, what to keep and what to change), shown to the
+          client on the page after discovery. ANCHORED and EVOLVED logos build on its keep and
+          change lists when the client chooses keep or evolve.
+
+      - signal_key: look.logoDecision
+        required: false
+        source: logoAssessment widget
+        options: [keep, evolve, fresh]
+        derives: [logo.brief, direction.weighting]
+        derivation_note: >
+          The client's choice after reading the assessment, and it overrides look.logoIntent.
+          keep: the ANCHORED direction uses their logo unchanged and EVOLVED develops from it.
+          evolve: ANCHORED stays closest to it and EVOLVED goes further. fresh: all three
+          directions get new logos. DISRUPTIVE is never tied to the current logo.
+
+      - signal_key: look.logoAssessedFile
+        required: false
+        source: logoAssessment widget
+        derives: [logo.brief]
+        derivation_note: >
+          Which uploaded file was assessed (the first one the audit can view), so a kept logo
+          is that exact file.
+
       - signal_key: look.existingAssets
         required: false
         type: file_upload

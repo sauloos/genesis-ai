@@ -9,6 +9,8 @@ import ai.genesisbrands.agent.copy.CopyAgent;
 import ai.genesisbrands.agent.copy.CopyOutput;
 import ai.genesisbrands.agent.copy.CopyRefinementLoop;
 import ai.genesisbrands.agent.core.DirectionBrief;
+import ai.genesisbrands.agent.logo.AdoptedLogos;
+import ai.genesisbrands.agent.logo.ImageTypes;
 import ai.genesisbrands.agent.logo.LogoAgent;
 import ai.genesisbrands.agent.logo.LogoExportService;
 import ai.genesisbrands.agent.logo.LogoOutput;
@@ -38,10 +40,15 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -65,6 +72,7 @@ public class EngagementOrchestratorService {
     private final VisualIdentityAgent visualAgent;
     private final VisualIdentityRefinementLoop visualLoop;
     private final LogoAgent logoAgent;
+    private final AdoptedLogos adoptedLogos;
 
     /** DALLE (the configured gpt-image model) or IDEOGRAM. */
     @org.springframework.beans.factory.annotation.Value("${genesis.logo.default-method:DALLE}")
@@ -131,10 +139,17 @@ public class EngagementOrchestratorService {
             engagement.setBriefsJson(objectMapper.writeValueAsString(briefs));
             saveEngagement(engagement);
 
+            // What the client chose to do with their current logo, after reading our assessment
+            // of it (the logoAssessment widget). Empty when they have none or chose a fresh start.
+            Optional<ClientLogoPlan> logoPlan = ClientLogoPlan.from(
+                QuestionnaireSignals.collect(questions, answers), objectMapper);
+            logoPlan.ifPresent(p -> log.info("Engagement {}: the client chose to {} their current logo ({}/100, {})",
+                engagementId, p.decision(), p.assessment().score(), p.assessment().verdict()));
+
             // Run pipeline for each direction
             List<DirectionOutput> directionOutputs = new ArrayList<>();
             for (DirectionBrief brief : briefs) {
-                directionOutputs.add(runDirection(brief, engagement.isEvalMode()));
+                directionOutputs.add(runDirection(brief, engagement.isEvalMode(), logoPlan));
             }
 
             // Source photos once per engagement using merged imageKeywords from all directions.
@@ -244,7 +259,8 @@ public class EngagementOrchestratorService {
         engagementRepo.save(engagement);
     }
 
-    private DirectionOutput runDirection(DirectionBrief brief, boolean evalMode) {
+    private DirectionOutput runDirection(DirectionBrief derived, boolean evalMode, Optional<ClientLogoPlan> logoPlan) {
+        DirectionBrief brief = logoPlan.map(p -> p.brief(derived)).orElse(derived);
         log.info("Running {} direction for engagement {}", brief.direction(), brief.engagementId());
 
         CopyOutput copy = evalMode
@@ -257,9 +273,11 @@ public class EngagementOrchestratorService {
 
         LogoOutput.Method logoMethod = LogoOutput.Method.valueOf(logoMethodName.trim().toUpperCase());
         var identity = LogoIdentities.from(visual);
-        LogoOutput logo = evalMode
-            ? logoLoop.run(brief, logoMethod, identity).output()
-            : logoAgent.execute(brief, logoMethod, identity);
+        LogoOutput logo = logoPlan.filter(p -> p.keepsLogoFor(brief.direction()))
+            .flatMap(p -> keptLogo(brief, p))
+            .orElseGet(() -> evalMode
+                ? logoLoop.run(brief, logoMethod, identity).output()
+                : logoAgent.execute(brief, logoMethod, identity));
 
         PlaybookInput playbookIn = new PlaybookInput(brief, copy, visual, logo);
         PlaybookOutput playbook = evalMode
@@ -272,6 +290,32 @@ public class EngagementOrchestratorService {
             : brandBookAgent.execute(bbIn);
 
         return new DirectionOutput(brief.direction().name(), brief, copy, visual, logo, playbook, brandBook, null, null);
+    }
+
+    /**
+     * The client's own logo as this direction's logo. Empty, so the direction gets a designed logo
+     * instead, when the file cannot be read as an image; the brief already carries the assessment.
+     */
+    private Optional<LogoOutput> keptLogo(DirectionBrief brief, ClientLogoPlan plan) {
+        try {
+            byte[] png = asPng(blobStorageService.download(plan.logoBlobPath()));
+            return Optional.of(adoptedLogos.clientLogo(
+                brief.engagementId(), brief.direction().name(), png, plan.assessment()));
+        } catch (Exception e) {
+            log.warn("Could not use the client's own logo for the {} direction of engagement {} ({}); "
+                + "designing one from the assessment instead", brief.direction(), brief.engagementId(), e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    /** The image as a PNG, converting a JPEG or GIF; a PNG is returned untouched. */
+    static byte[] asPng(byte[] image) throws IOException {
+        if ("image/png".equals(ImageTypes.sniff(image))) return image;
+        BufferedImage img = ImageIO.read(new ByteArrayInputStream(image));
+        if (img == null) throw new IOException("not an image this server can read");
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ImageIO.write(img, "png", out);
+        return out.toByteArray();
     }
 
     private String exportLogoPackage(DirectionOutput dir) {
