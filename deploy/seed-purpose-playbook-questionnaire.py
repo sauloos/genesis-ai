@@ -561,7 +561,7 @@ QUESTIONS.append(
 QUESTIONS.append(
     q("LONG_TEXT", "How do you feel about it? What do you like, and what bothers you?",
       "look.currentLogoFeelings", "look", "l-logo-intent", when="look.currentLogo is present",
-      required=False,
+      required=False, voice=True,
       help="A line or two is plenty: where it came from, what you'd never lose, what never felt right.",
       config=text("We love the leaf, but the lettering always felt dated")))
 

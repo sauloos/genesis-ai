@@ -74,11 +74,24 @@ call('POST', f'/api/admin/pages/{page["id"]}/widgets',
      {'slotKey': 'main', 'widgetType': 'questionnaire', 'label': 'Purpose Playbook discovery',
       'configJson': json.dumps({'questionnaireId': questionnaire['id']})})
 call('PUT', f'/api/admin/page-flows/{flow["id"]}/start', {'startPageId': page['id']})
-# The widget calls ctx.advance('next') itself on submit, so the flow end fires as soon as
-# the visitor finishes the last step — no separate outcome button, no extra page. The edge
-# has to exist: FlowSessionService.advance refuses an outcome with no transition row, so
-# without this the last submit returns 400 and no engagement is ever created.
+# The questionnaire widget calls ctx.advance('next') itself on submit, so there is no separate
+# outcome button. Every edge has to exist: FlowSessionService.advance refuses an outcome with no
+# transition row, so a missing one returns 400 and no engagement is ever created.
+#
+# "Your logo": the logoAssessment widget scores the logo the client uploaded and records
+# keep / evolve / start fresh. A client with no logo passes straight through
+# (the widget calls onOutcome itself). Its answers reach the engagement through
+# LogoAssessmentAnswerSource, so it only has to sit before the flow end.
+logo_page = call('POST', f'/api/admin/page-flows/{flow["id"]}/pages', {'name': 'Your logo'})
+call('PUT', f'/api/admin/pages/{logo_page["id"]}',
+     {'name': 'Your logo', 'requiresAuth': False, 'errorPage': False, 'endPage': False,
+      'bordered': True})
+call('POST', f'/api/admin/pages/{logo_page["id"]}/widgets',
+     {'slotKey': 'main', 'widgetType': 'logoAssessment', 'label': 'Logo assessment',
+      'configJson': '{}'})
 call('PUT', f'/api/admin/pages/{page["id"]}/transitions',
+     {'outcomeKey': 'next', 'targetKind': 'PAGE', 'targetPageId': logo_page['id']})
+call('PUT', f'/api/admin/pages/{logo_page["id"]}/transitions',
      {'outcomeKey': 'next', 'targetKind': 'FLOW_END', 'targetPageId': None})
 call('PUT', f'/api/admin/page-flows/{flow["id"]}/end', {'endAction': 'CREATE_ENGAGEMENT'})
 
