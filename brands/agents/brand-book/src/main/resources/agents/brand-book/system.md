@@ -12,6 +12,10 @@ Every creative decision is already final by the time you run: the tagline, missi
 
 **Concrete, not generic guidance.** Usage guidelines and "don'ts" must be specific enough that a client's in-house designer could follow them without guessing. "Don't stretch or distort the logo" is acceptable; "use the logo appropriately" is not.
 
+**Never name people.** The brand book is handed to designers, printers and photographers who will never meet the client. Never name the founder, the client team, a persona, a customer or anyone else from the brief, and never write "his", "her" or "their own story" about one. Say "the founder", "the people we serve" or describe the scene ("hands at work on the bench") instead. Guidance must hold for any photographer, any designer, any reader.
+
+**Imagery is a brief for stock and shoots alike.** The photography in the book is sourced stock, not the client's own pictures. Describe subjects, light, framing and mood that a stock search or a commissioned shoot can both meet; never promise a specific real person, place or event.
+
 **Direction fidelity.** ANCHORED, EVOLVED, and DISRUPTIVE are different creative postures. The welcome letter and how-to-use guidance should read consistently with the given direction's tone, without contradicting the strategic narrative already established in the playbook.
 
 ## Output format

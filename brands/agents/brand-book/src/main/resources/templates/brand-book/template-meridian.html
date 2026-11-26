@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{HEADLINE_FONT_URL}}:ital,wght@0,300;0,400;0,700;1,400&family={{BODY_FONT_URL}}:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="{{FONT_LINK_HREF}}">
 <title>{{BRAND_NAME}} Brand Identity Guidelines</title>
 <style>
 /* ═══════════════════════════════════════════════════════════════
@@ -1009,7 +1009,7 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 2 — BRAND STATEMENT
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page">
+<section data-toc="Brand Statement" class="page">
   <div class="m-sidebar">
     <div class="m-sidebar-brand">{{BRAND_NAME}}</div>
     <div class="m-sidebar-title">Statement</div>
@@ -1063,7 +1063,7 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 4 — MISSION (photo strip)
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page page-mission">
+<section data-toc="Mission" class="page page-mission">
   <div class="m-mission-photo"></div>
   <div class="m-mission-content">
     <div class="m-mission-label">Our Mission</div>
@@ -1076,7 +1076,7 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 5 — VISION PILLARS
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page">
+<section data-toc="Vision" class="page">
   <div class="m-sidebar">
     <div class="m-sidebar-brand">{{BRAND_NAME}}</div>
     <div class="m-sidebar-title">Vision</div>
@@ -1101,7 +1101,7 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 6 — VALUES
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page">
+<section data-toc="Values" class="page">
   <div class="m-sidebar">
     <div class="m-sidebar-brand">{{BRAND_NAME}}</div>
     <div class="m-sidebar-title">Values</div>
@@ -1125,7 +1125,7 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 7 — LOGO: PRIMARY
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page">
+<section data-toc="Logo System" class="page">
   <div class="m-sidebar">
     <div class="m-sidebar-brand">{{BRAND_NAME}}</div>
     <div class="m-sidebar-title">Logo</div>
@@ -1198,7 +1198,7 @@ body {
         <div class="m-eyebrow">Logo Usage</div>
         <div class="m-title">Clear Space &amp; Sizing</div>
       </div>
-      <div class="m-clearance-wrap">{{LOGO_CLEARANCE_SVG}}</div>
+      <div class="bb-slot">{{LOGO_CLEARANCE_SVG}}</div>
       <div class="m-clearance-note">{{LOGO_USAGE}}</div>
     </div>
   </div>
@@ -1222,7 +1222,7 @@ body {
         <div class="m-eyebrow">Logo Rules</div>
         <div class="m-title">What Not To Do</div>
       </div>
-      <div class="m-donts-row">
+      <div class="bb-slot">
         {{LOGO_DONTS_HTML}}
       </div>
     </div>
@@ -1233,7 +1233,7 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 11 — BRAND COLOURS
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page">
+<section data-toc="Brand Colours" class="page">
   <div class="m-sidebar">
     <div class="m-sidebar-brand">{{BRAND_NAME}}</div>
     <div class="m-sidebar-title">Colours</div>
@@ -1249,6 +1249,7 @@ body {
       <div class="m-swatch-row">
         {{SWATCH_SECTION_HTML}}
       </div>
+    <div class="bb-color-usage">{{COLOR_USAGE}}</div>
     </div>
   </div>
 </section>
@@ -1257,7 +1258,7 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 12 — GRADIENTS
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page">
+<section data-toc="Gradients" class="page">
   <div class="m-sidebar">
     <div class="m-sidebar-brand">Colour System</div>
     <div class="m-sidebar-title">Gradients</div>
@@ -1282,7 +1283,7 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 13 — GRAPHIC DEVICES
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page page-devices">
+<section data-toc="Graphic Devices" class="page page-devices">
   <div class="m-sidebar" style="background:rgba(0,0,0,0.3);">
     <div class="m-sidebar-brand" style="color:rgba(255,255,255,0.3);">Visual System</div>
     <div class="m-sidebar-title">Graphic Devices</div>
@@ -1293,11 +1294,11 @@ body {
     <div class="m-devices-row">
       <div class="m-devices-col">
         <div class="m-devices-col-label">Stroke Variants</div>
-        <div class="m-devices-variants">{{STROKE_VARIANTS_HTML}}</div>
+        <div class="bb-slot">{{STROKE_VARIANTS_HTML}}</div>
       </div>
       <div class="m-devices-col">
         <div class="m-devices-col-label">Box Variants</div>
-        <div class="m-devices-variants">{{BOX_VARIANTS_HTML}}</div>
+        <div class="bb-slot">{{BOX_VARIANTS_HTML}}</div>
       </div>
     </div>
     <div class="m-device-note">{{ICON_USAGE_NOTE}}</div>
@@ -1309,7 +1310,7 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 14 — PHOTOGRAPHY
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page">
+<section data-toc="Photography" class="page">
   <div class="m-sidebar">
     <div class="m-sidebar-brand">Visual Identity</div>
     <div class="m-sidebar-title">Photography</div>
@@ -1348,7 +1349,7 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 15 — TYPOGRAPHY SPECIMENS
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page">
+<section data-toc="Typography" class="page">
   <div class="m-sidebar">
     <div class="m-sidebar-brand">{{BRAND_NAME}}</div>
     <div class="m-sidebar-title">Typography</div>
@@ -1366,17 +1367,17 @@ body {
           <div class="m-type-name" style="font-family:var(--font-heading);">{{HEADLINE_FONT}}</div>
           <div class="m-type-role">Display / Heading</div>
           <div class="m-type-samples">
-            <div class="m-type-sample-row">
-              <div class="m-type-weight-tag">Light</div>
-              <div class="m-type-sample-h w300">Aa Bb Cc</div>
+            <div class="m-type-sample-row" style="{{HW1_DISPLAY}}">
+              <div class="m-type-weight-tag">{{HW1_LABEL}}</div>
+              <div class="m-type-sample-h" style="font-weight:{{HW1}}">Aa Bb Cc</div>
             </div>
-            <div class="m-type-sample-row">
-              <div class="m-type-weight-tag">Regular</div>
-              <div class="m-type-sample-h w400">Aa Bb Cc</div>
+            <div class="m-type-sample-row" style="{{HW2_DISPLAY}}">
+              <div class="m-type-weight-tag">{{HW2_LABEL}}</div>
+              <div class="m-type-sample-h" style="font-weight:{{HW2}}">Aa Bb Cc</div>
             </div>
-            <div class="m-type-sample-row">
-              <div class="m-type-weight-tag">Bold</div>
-              <div class="m-type-sample-h w700">Aa Bb Cc</div>
+            <div class="m-type-sample-row" style="{{HW3_DISPLAY}}">
+              <div class="m-type-weight-tag">{{HW3_LABEL}}</div>
+              <div class="m-type-sample-h" style="font-weight:{{HW3}}">Aa Bb Cc</div>
             </div>
           </div>
         </div>
@@ -1385,17 +1386,17 @@ body {
           <div class="m-type-name" style="font-family:var(--font-body);">{{BODY_FONT}}</div>
           <div class="m-type-role">Body / Supporting</div>
           <div class="m-type-samples">
-            <div class="m-type-sample-row">
-              <div class="m-type-weight-tag">Regular</div>
-              <div class="m-type-sample-b w400">Aa Bb Cc</div>
+            <div class="m-type-sample-row" style="{{BW1_DISPLAY}}">
+              <div class="m-type-weight-tag">{{BW1_LABEL}}</div>
+              <div class="m-type-sample-b" style="font-weight:{{BW1}}">Aa Bb Cc</div>
             </div>
-            <div class="m-type-sample-row">
-              <div class="m-type-weight-tag">Semibold</div>
-              <div class="m-type-sample-b w600">Aa Bb Cc</div>
+            <div class="m-type-sample-row" style="{{BW2_DISPLAY}}">
+              <div class="m-type-weight-tag">{{BW2_LABEL}}</div>
+              <div class="m-type-sample-b" style="font-weight:{{BW2}}">Aa Bb Cc</div>
             </div>
-            <div class="m-type-sample-row">
-              <div class="m-type-weight-tag">Bold</div>
-              <div class="m-type-sample-b w700">Aa Bb Cc</div>
+            <div class="m-type-sample-row" style="{{BW3_DISPLAY}}">
+              <div class="m-type-weight-tag">{{BW3_LABEL}}</div>
+              <div class="m-type-sample-b" style="font-weight:{{BW3}}">Aa Bb Cc</div>
             </div>
           </div>
         </div>
@@ -1459,7 +1460,7 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 17 — PORTRAIT GRID
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page">
+<section data-toc="Layout &amp; Grids" class="page">
   <div class="m-sidebar">
     <div class="m-sidebar-brand">Layout System</div>
     <div class="m-sidebar-title">Portrait Grid</div>
@@ -1473,20 +1474,7 @@ body {
         <div class="m-title">Portrait Grid</div>
       </div>
       <div class="m-grid-wrap">
-        <svg viewBox="0 0 240 320" xmlns="http://www.w3.org/2000/svg" width="160" height="213">
-          <rect width="240" height="320" fill="white" stroke="#e0e0e0" stroke-width="1"/>
-          <rect x="16" y="16" width="208" height="288" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="0.5" stroke-dasharray="2,2"/>
-          <line x1="73" y1="16" x2="73" y2="304" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
-          <line x1="130" y1="16" x2="130" y2="304" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
-          <line x1="187" y1="16" x2="187" y2="304" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
-          <line x1="16" y1="112" x2="224" y2="112" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
-          <line x1="16" y1="208" x2="224" y2="208" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
-          <path d="M16,26 L16,16 L26,16" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
-          <path d="M214,16 L224,16 L224,26" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
-          <path d="M16,294 L16,304 L26,304" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
-          <path d="M214,304 L224,304 L224,294" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
-          <text x="120" y="170" text-anchor="middle" font-family="sans-serif" font-size="8" fill="{{PRIMARY_HEX}}" opacity="0.4">Portrait Layout Grid</text>
-        </svg>
+        {{GRID_PORTRAIT_HTML}}
       </div>
     </div>
   </div>
@@ -1511,20 +1499,7 @@ body {
         <div class="m-title">Landscape Grid</div>
       </div>
       <div class="m-grid-wrap">
-        <svg viewBox="0 0 320 220" xmlns="http://www.w3.org/2000/svg" width="200" height="138">
-          <rect width="320" height="220" fill="white" stroke="#e0e0e0" stroke-width="1"/>
-          <rect x="16" y="14" width="288" height="192" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="0.5" stroke-dasharray="2,2"/>
-          <line x1="88" y1="14" x2="88" y2="206" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
-          <line x1="160" y1="14" x2="160" y2="206" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
-          <line x1="232" y1="14" x2="232" y2="206" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
-          <line x1="16" y1="78" x2="304" y2="78" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
-          <line x1="16" y1="142" x2="304" y2="142" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
-          <path d="M16,24 L16,14 L26,14" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
-          <path d="M294,14 L304,14 L304,24" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
-          <path d="M16,196 L16,206 L26,206" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
-          <path d="M294,206 L304,206 L304,196" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
-          <text x="160" y="118" text-anchor="middle" font-family="sans-serif" font-size="8" fill="{{PRIMARY_HEX}}" opacity="0.4">Landscape Layout Grid</text>
-        </svg>
+        {{GRID_LANDSCAPE_HTML}}
       </div>
     </div>
   </div>
@@ -1535,40 +1510,58 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 19 — BRAND APPLICATION 1
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page page-application">
-  <div class="m-app-sidebar">
-    <div class="m-app-sidebar-text">Brand Application</div>
+<section data-toc="Applications" class="page">
+  <div class="m-sidebar">
+    <div class="m-sidebar-brand">Brand Applications</div>
+    <div class="m-sidebar-title">Social Media</div>
+    <div class="m-sidebar-num">22</div>
   </div>
-  <div class="m-app-photo" style="background-image:url('{{PHOTO_EXAMPLES_1_DATA}}');">
-    <div class="m-app-overlay">
-      <div class="m-app-logo">{{LOGO_SYMBOL}}</div>
-      <div class="m-app-brand">{{BRAND_NAME}}</div>
+  <div class="m-main">
+    <div class="m-accent-bar"></div>
+    <div class="m-body">
+      <div class="m-header">
+        <div class="m-eyebrow">Brand Applications</div>
+        <div class="m-title">Social Media</div>
+      </div>
+      <div class="bb-slot">{{APP_1_HTML}}</div>
     </div>
   </div>
 </section>
 
 <!-- PAGE 20 — BRAND APPLICATION 2 -->
-<section class="page page-application">
-  <div class="m-app-sidebar">
-    <div class="m-app-sidebar-text">Brand Application</div>
+<section class="page">
+  <div class="m-sidebar">
+    <div class="m-sidebar-brand">Brand Applications</div>
+    <div class="m-sidebar-title">Website</div>
+    <div class="m-sidebar-num">22</div>
   </div>
-  <div class="m-app-photo" style="background-image:url('{{PHOTO_EXAMPLES_2_DATA}}');">
-    <div class="m-app-overlay">
-      <div class="m-app-logo">{{LOGO_SYMBOL}}</div>
-      <div class="m-app-brand">{{TAGLINE}}</div>
+  <div class="m-main">
+    <div class="m-accent-bar"></div>
+    <div class="m-body">
+      <div class="m-header">
+        <div class="m-eyebrow">Brand Applications</div>
+        <div class="m-title">Website</div>
+      </div>
+      <div class="bb-slot">{{APP_2_HTML}}</div>
     </div>
   </div>
 </section>
 
 <!-- PAGE 21 — BRAND APPLICATION 3 -->
-<section class="page page-application">
-  <div class="m-app-sidebar">
-    <div class="m-app-sidebar-text">Brand Application</div>
+<section class="page">
+  <div class="m-sidebar">
+    <div class="m-sidebar-brand">Brand Applications</div>
+    <div class="m-sidebar-title">Signage</div>
+    <div class="m-sidebar-num">22</div>
   </div>
-  <div class="m-app-photo" style="background-image:url('{{PHOTO_APP_DATA}}');">
-    <div class="m-app-overlay">
-      <div class="m-app-logo">{{LOGO_SYMBOL}}</div>
-      <div class="m-app-brand">{{MISSION_STATEMENT_TRUNCATED}}</div>
+  <div class="m-main">
+    <div class="m-accent-bar"></div>
+    <div class="m-body">
+      <div class="m-header">
+        <div class="m-eyebrow">Brand Applications</div>
+        <div class="m-title">Signage</div>
+      </div>
+      <div class="bb-slot">{{APP_3_HTML}}</div>
     </div>
   </div>
 </section>
@@ -1578,7 +1571,7 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 22 — STATIONERY
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page">
+<section data-toc="Stationery" class="page">
   <div class="m-sidebar">
     <div class="m-sidebar-brand">Brand Applications</div>
     <div class="m-sidebar-title">Stationery</div>
@@ -1591,34 +1584,7 @@ body {
         <div class="m-eyebrow">Brand Applications</div>
         <div class="m-title">Stationery</div>
       </div>
-      <div class="m-stationery-row">
-        <div class="m-stationery-col">
-          <div class="m-label" style="margin-bottom:3mm;">Business Card</div>
-          <div class="m-card-mock">
-            <div class="m-card-logo">{{LOGO_PRIMARY}}</div>
-            <div class="m-card-info">
-              <div class="m-card-brand">{{BRAND_NAME}}</div>
-              <div class="m-card-sub">{{TAGLINE}}</div>
-            </div>
-          </div>
-        </div>
-        <div class="m-stationery-col" style="flex:2;">
-          <div class="m-label" style="margin-bottom:3mm;">Letterhead</div>
-          <div class="m-letterhead-mock">
-            <div class="m-lh-top-bar"></div>
-            <div class="m-lh-body">
-              <div class="m-lh-logo-row">
-                <div class="m-lh-logo-area">{{LOGO_PRIMARY}}</div>
-                <div class="m-lh-brand">{{BRAND_NAME}}</div>
-              </div>
-              <div class="m-lh-line"></div>
-              <div class="m-lh-line" style="width:75%;"></div>
-              <div class="m-lh-line" style="width:85%;"></div>
-              <div class="m-lh-line" style="width:60%;"></div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <div class="bb-slot">{{STATIONERY_HTML}}</div>
     </div>
   </div>
 </section>
@@ -1628,7 +1594,7 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 23 — BRAND LANGUAGE
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page">
+<section data-toc="Brand Language" class="page">
   <div class="m-sidebar">
     <div class="m-sidebar-brand">Verbal Identity</div>
     <div class="m-sidebar-title">Brand Language</div>
@@ -1653,7 +1619,7 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 24 — TONE OF VOICE
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page">
+<section data-toc="Tone of Voice" class="page">
   <div class="m-sidebar">
     <div class="m-sidebar-brand">Verbal Identity</div>
     <div class="m-sidebar-title">Tone of Voice</div>
@@ -1669,9 +1635,7 @@ body {
       <div class="m-tone-grid">
         {{TONE_GUIDE_HTML}}
       </div>
-      <div style="margin-top:5mm; font-family:var(--font-body); font-size:7.5pt; color:var(--text-mid); line-height:1.65;">
-        {{COLOR_USAGE}}
-      </div>
+      
     </div>
   </div>
 </section>

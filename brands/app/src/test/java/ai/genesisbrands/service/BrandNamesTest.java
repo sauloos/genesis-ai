@@ -1,5 +1,6 @@
 package ai.genesisbrands.service;
 
+import ai.genesisbrands.agent.core.BrandNames;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

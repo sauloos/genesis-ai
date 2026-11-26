@@ -112,7 +112,7 @@ public class BrandBookAgentController {
         }
         if (keywords != null && !keywords.isEmpty()) {
             try {
-                photoSourcingService.fetchAndStore(request.input().brief().engagementId(), keywords);
+                photoSourcingService.ensurePhotos(request.input().brief().engagementId(), request.input().brief().direction().name(), keywords);
             } catch (Exception e) {
                 log.warn("Photo sourcing in render-pdf failed (non-fatal): {}", e.getMessage());
             }

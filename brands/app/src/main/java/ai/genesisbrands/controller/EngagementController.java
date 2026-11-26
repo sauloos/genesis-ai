@@ -421,8 +421,8 @@ public class EngagementController {
             }
         }
 
-        // Source photos before re-rendering so the PDF gets imagery even when blob
-        // storage wasn't available when the engagement originally ran.
+        // Source the direction's photos before re-rendering when it has none yet (blob storage
+        // wasn't available when the engagement ran); a direction that has them keeps them.
         // Falls back to brand-context keywords when imageKeywords is absent (older sessions).
         List<String> keywords = dir.visualIdentity() != null
             ? dir.visualIdentity().imageKeywords() : null;
@@ -436,7 +436,7 @@ public class EngagementController {
         }
         if (keywords != null && !keywords.isEmpty()) {
             try {
-                photoSourcingService.fetchAndStore(dir.brief().engagementId(), keywords);
+                photoSourcingService.ensurePhotos(dir.brief().engagementId(), dir.brief().direction().name(), keywords);
             } catch (Exception ex) {
                 log.warn("Photo sourcing before re-render failed (non-fatal): {}", ex.getMessage());
             }

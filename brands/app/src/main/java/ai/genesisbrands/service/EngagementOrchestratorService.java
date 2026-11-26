@@ -152,20 +152,17 @@ public class EngagementOrchestratorService {
                 directionOutputs.add(runDirection(brief, engagement.isEvalMode(), logoPlan));
             }
 
-            // Source photos once per engagement using merged imageKeywords from all directions.
-            // Non-fatal: a missing Unsplash key or network error just leaves photo slots empty
-            // (the PDF template falls back to the primary colour on those pages).
-            List<String> mergedKeywords = directionOutputs.stream()
-                .map(d -> d.visualIdentity().imageKeywords())
-                .filter(k -> k != null)
-                .flatMap(List::stream)
-                .distinct()
-                .limit(20)
-                .collect(Collectors.toList());
-            try {
-                photoSourcingService.fetchAndStore(engagementId, mergedKeywords);
-            } catch (Exception e) {
-                log.warn("Photo sourcing failed for engagement {} (non-fatal): {}", engagementId, e.getMessage());
+            // Source each direction's photos with its own image keywords; PhotoSourcingService
+            // keeps the three sets apart. Non-fatal: a missing Unsplash key or network error
+            // just leaves photo slots empty (the template falls back to the primary colour).
+            for (DirectionOutput dir : directionOutputs) {
+                try {
+                    photoSourcingService.fetchAndStore(engagementId, dir.brief().direction().name(),
+                        dir.visualIdentity() != null ? dir.visualIdentity().imageKeywords() : null);
+                } catch (Exception e) {
+                    log.warn("Photo sourcing failed for engagement {} {} (non-fatal): {}",
+                        engagementId, dir.brief().direction(), e.getMessage());
+                }
             }
 
             // Render screen PDF and export logo ZIP for each direction.

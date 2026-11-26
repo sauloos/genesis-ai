@@ -25,6 +25,8 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok'
 
     testImplementation project(':os:runtime')
+    testImplementation project(':shared-domain')
+    testImplementation 'org.springframework.boot:spring-boot-starter-json'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }

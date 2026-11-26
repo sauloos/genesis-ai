@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{HEADLINE_FONT_URL}}:ital,wght@0,300;0,400;0,700;1,400&family={{BODY_FONT_URL}}:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="{{FONT_LINK_HREF}}">
 <title>{{BRAND_NAME}} Brand Identity Guidelines</title>
 <style>
 /* ═══════════════════════════════════════════════════════════════
@@ -109,6 +109,9 @@ body {
 /* ── SHARED: content area ── */
 .e-body {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   padding: 12mm 16mm 14mm;
   overflow: hidden;
   position: relative;
@@ -277,8 +280,7 @@ body {
   font-size: 9pt;
   color: var(--text-mid);
   line-height: 1.75;
-  columns: 2;
-  column-gap: 8mm;
+  max-width: 150mm;
 }
 .e-statement-meta {
   margin-top: 8mm;
@@ -400,6 +402,15 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 5mm;
+  flex: 1;
+  align-content: stretch;
+  position: relative;
+}
+/* Generated pillars and values: two per row, equal widths, rows sharing the page height. */
+.e-card-grid > .vision-pillar,
+.e-card-grid > .value-card {
+  flex: 1 1 calc(50% - 5mm);
+  padding: 7mm;
 }
 .e-card {
   flex: 1 1 calc(50% - 5mm);
@@ -437,7 +448,7 @@ body {
   min-height: 55mm;
   border: 1px solid #f0f0ee;
 }
-.e-logo-stage svg, .e-logo-stage img { max-width: 80mm; max-height: 45mm; }
+.e-logo-stage svg, .e-logo-stage img { max-width: 130mm; max-height: 70mm; }
 .e-logo-caption {
   font-family: var(--font-body);
   font-size: 6.5pt;
@@ -469,7 +480,7 @@ body {
    colour itself, so it must not be substituted by --primary-panel. */
 .e-variant-stage.on-primary { background: var(--primary); }
 .e-variant-stage.on-light   { background: #f4f4f2; }
-.e-variant-stage svg, .e-variant-stage img { max-width: 60mm; max-height: 28mm; }
+.e-variant-stage svg, .e-variant-stage img { max-width: 72mm; max-height: 36mm; }
 .e-variant-label {
   font-family: var(--font-body);
   font-size: 6pt;
@@ -526,9 +537,13 @@ body {
 ═══════════════════════════════════════════════════════════════ */
 .e-swatch-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 4mm;
-  height: calc(100% - 5mm);
+  flex: 1;
+  min-height: 0;
+  align-content: stretch;
 }
+.e-swatch-row > .swatch-card { flex: 1 1 calc(33.333% - 4mm); }
 .e-swatch-col {
   flex: 1;
   display: flex;
@@ -571,6 +586,8 @@ body {
   align-items: flex-end;
   padding: 4mm 5mm;
 }
+.e-gradient-stack > .gradient-bar-wrap { flex: 1; min-height: 0; }
+.e-gradient-stack > .gradient-bar-wrap > .gradient-bar { flex: 1; min-height: 18mm; max-height: 70mm; }
 .e-gradient-label {
   font-family: var(--font-body);
   font-size: 7pt;
@@ -645,6 +662,7 @@ body {
   grid-template-rows: 1fr 1fr;
   gap: 3mm;
   flex: 1;
+  min-height: 150mm;
   margin-bottom: 4mm;
 }
 .e-photo-tile {
@@ -669,10 +687,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 3mm;
-  margin-bottom: 5mm;
+  margin: 4mm 0 8mm;
 }
 .e-type-face-name {
-  font-size: 15pt;
+  font-size: 24pt;
   font-weight: 700;
   color: var(--text-dark);
   line-height: 1;
@@ -697,8 +715,9 @@ body {
   color: var(--text-faint);
   letter-spacing: 0.12em;
 }
-.e-type-sample-h { font-family: var(--font-heading); font-size: 20pt; color: var(--text-dark); }
-.e-type-sample-b { font-family: var(--font-body);    font-size: 20pt; color: var(--text-dark); }
+.e-type-sample-h { font-family: var(--font-heading); font-size: 32pt; line-height: 1.1; color: var(--text-dark); }
+.e-type-sample-b { font-family: var(--font-body);    font-size: 32pt; line-height: 1.1; color: var(--text-dark); }
+.e-type-charset { font-size: 13pt; line-height: 1.45; color: var(--text-mid); letter-spacing: 0.02em; margin-top: 3mm; overflow-wrap: anywhere; }
 .w300 { font-weight: 300; }
 .w400 { font-weight: 400; }
 .w600 { font-weight: 600; }
@@ -995,9 +1014,10 @@ body {
   color: rgba(255,255,255,0.03);
   line-height: 1;
   pointer-events: none;
+  display: none;
 }
 .e-back-logo { max-height: 10mm; margin-bottom: 4mm; }
-.e-back-logo svg, .e-back-logo img { max-height: 10mm; max-width: 35mm; filter: brightness(0) invert(0.25); }
+.e-back-logo svg, .e-back-logo img { max-height: 10mm; max-width: 35mm; filter: brightness(0) invert(1); opacity: 0.85; }
 .e-back-meta {
   font-family: var(--font-body);
   font-size: 6.5pt;
@@ -1033,7 +1053,7 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 2 — BRAND STATEMENT
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page">
+<section data-toc="Brand Statement" class="page">
   <div class="e-band">
     <div class="e-band-eyebrow">Brand Identity</div>
     <div class="e-band-title">The Brand Statement</div>
@@ -1092,7 +1112,7 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 4 — MISSION (full-bleed photo)
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page page-mission">
+<section data-toc="Mission" class="page page-mission">
   <div class="e-mission-photo">
     <div class="e-mission-text">
       <div class="e-mission-label">Our Mission</div>
@@ -1107,7 +1127,7 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 5 — VISION
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page">
+<section data-toc="Vision" class="page">
   <div class="e-band">
     <div class="e-band-eyebrow">Strategic Foundation</div>
     <div class="e-band-title">Our Vision</div>
@@ -1130,7 +1150,7 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 6 — VALUES
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page">
+<section data-toc="Values" class="page">
   <div class="e-band">
     <div class="e-band-eyebrow">What We Stand For</div>
     <div class="e-band-title">Our Values</div>
@@ -1152,7 +1172,7 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 7 — LOGO: PRIMARY
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page">
+<section data-toc="Logo System" class="page">
   <div class="e-band">
     <div class="e-band-eyebrow">Identity System</div>
     <div class="e-band-title">Logo System</div>
@@ -1211,7 +1231,7 @@ body {
   </div>
   <div class="e-body e-body-white">
     <div class="e-num-ghost">09</div>
-    <div class="e-clearance-center">
+    <div class="bb-slot">
       {{LOGO_CLEARANCE_SVG}}
       <div class="e-clearance-note">{{LOGO_USAGE}}</div>
     </div>
@@ -1235,7 +1255,7 @@ body {
   </div>
   <div class="e-body">
     <div class="e-num-ghost">10</div>
-    <div class="e-donts-grid">
+    <div class="bb-slot">
       {{LOGO_DONTS_HTML}}
     </div>
   </div>
@@ -1249,7 +1269,7 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 11 — BRAND COLOURS
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page">
+<section data-toc="Brand Colours" class="page">
   <div class="e-band">
     <div class="e-band-eyebrow">Colour System</div>
     <div class="e-band-title">Brand Colours</div>
@@ -1260,6 +1280,7 @@ body {
     <div class="e-swatch-row">
       {{SWATCH_SECTION_HTML}}
     </div>
+    <div class="bb-color-usage">{{COLOR_USAGE}}</div>
   </div>
   <div class="e-footer">
     <div class="e-footer-brand">{{BRAND_NAME}}</div>
@@ -1271,7 +1292,7 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 12 — GRADIENTS
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page">
+<section data-toc="Gradients" class="page">
   <div class="e-band">
     <div class="e-band-eyebrow">Colour System</div>
     <div class="e-band-title">Brand Gradients</div>
@@ -1294,7 +1315,7 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 13 — GRAPHIC DEVICES
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page page-devices">
+<section data-toc="Graphic Devices" class="page page-devices">
   <div class="e-band" style="background:rgba(0,0,0,0.3);">
     <div class="e-band-eyebrow">Visual System</div>
     <div class="e-band-title">Graphic Devices</div>
@@ -1307,11 +1328,11 @@ body {
     </div>
     <div>
       <div class="e-devices-section-label">Stroke Variants</div>
-      <div class="e-devices-row">{{STROKE_VARIANTS_HTML}}</div>
+      <div class="bb-slot">{{STROKE_VARIANTS_HTML}}</div>
     </div>
     <div>
       <div class="e-devices-section-label">Box Variants</div>
-      <div class="e-devices-row">{{BOX_VARIANTS_HTML}}</div>
+      <div class="bb-slot">{{BOX_VARIANTS_HTML}}</div>
     </div>
   </div>
 </section>
@@ -1321,7 +1342,7 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 14 — PHOTOGRAPHY
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page">
+<section data-toc="Photography" class="page">
   <div class="e-band">
     <div class="e-band-eyebrow">Visual Identity</div>
     <div class="e-band-title">Photography Direction</div>
@@ -1348,7 +1369,7 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 15 — TYPOGRAPHY SPECIMENS
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page">
+<section data-toc="Typography" class="page">
   <div class="e-band">
     <div class="e-band-eyebrow">Type System</div>
     <div class="e-band-title">Typography</div>
@@ -1360,38 +1381,40 @@ body {
       <div class="e-type-face-name" style="font-family:var(--font-heading);">{{HEADLINE_FONT}}</div>
       <div class="e-type-role">Display / Heading Typeface</div>
       <div class="e-type-weights">
-        <div class="e-type-weight-group">
-          <div class="e-type-wt-label">Light</div>
-          <div class="e-type-sample-h w300">Aa Bb Cc</div>
+        <div class="e-type-weight-group" style="{{HW1_DISPLAY}}">
+          <div class="e-type-wt-label">{{HW1_LABEL}}</div>
+          <div class="e-type-sample-h" style="font-weight:{{HW1}}">Aa Bb Cc</div>
         </div>
-        <div class="e-type-weight-group">
-          <div class="e-type-wt-label">Regular</div>
-          <div class="e-type-sample-h w400">Aa Bb Cc</div>
+        <div class="e-type-weight-group" style="{{HW2_DISPLAY}}">
+          <div class="e-type-wt-label">{{HW2_LABEL}}</div>
+          <div class="e-type-sample-h" style="font-weight:{{HW2}}">Aa Bb Cc</div>
         </div>
-        <div class="e-type-weight-group">
-          <div class="e-type-wt-label">Bold</div>
-          <div class="e-type-sample-h w700">Aa Bb Cc</div>
+        <div class="e-type-weight-group" style="{{HW3_DISPLAY}}">
+          <div class="e-type-wt-label">{{HW3_LABEL}}</div>
+          <div class="e-type-sample-h" style="font-weight:{{HW3}}">Aa Bb Cc</div>
         </div>
       </div>
+      <div class="e-type-charset" style="font-family:var(--font-heading);">ABCDEFGHIJKLMNOPQRSTUVWXYZ<br>abcdefghijklmnopqrstuvwxyz<br>0123456789 &amp; £ € % ( ) “ ” ! ?</div>
     </div>
     <div class="e-type-divider"></div>
     <div class="e-type-specimen">
       <div class="e-type-face-name" style="font-family:var(--font-body);">{{BODY_FONT}}</div>
       <div class="e-type-role">Body / Supporting Typeface</div>
       <div class="e-type-weights">
-        <div class="e-type-weight-group">
-          <div class="e-type-wt-label">Regular</div>
-          <div class="e-type-sample-b w400">Aa Bb Cc</div>
+        <div class="e-type-weight-group" style="{{BW1_DISPLAY}}">
+          <div class="e-type-wt-label">{{BW1_LABEL}}</div>
+          <div class="e-type-sample-b" style="font-weight:{{BW1}}">Aa Bb Cc</div>
         </div>
-        <div class="e-type-weight-group">
-          <div class="e-type-wt-label">Semibold</div>
-          <div class="e-type-sample-b w600">Aa Bb Cc</div>
+        <div class="e-type-weight-group" style="{{BW2_DISPLAY}}">
+          <div class="e-type-wt-label">{{BW2_LABEL}}</div>
+          <div class="e-type-sample-b" style="font-weight:{{BW2}}">Aa Bb Cc</div>
         </div>
-        <div class="e-type-weight-group">
-          <div class="e-type-wt-label">Bold</div>
-          <div class="e-type-sample-b w700">Aa Bb Cc</div>
+        <div class="e-type-weight-group" style="{{BW3_DISPLAY}}">
+          <div class="e-type-wt-label">{{BW3_LABEL}}</div>
+          <div class="e-type-sample-b" style="font-weight:{{BW3}}">Aa Bb Cc</div>
         </div>
       </div>
+      <div class="e-type-charset" style="font-family:var(--font-body);">ABCDEFGHIJKLMNOPQRSTUVWXYZ<br>abcdefghijklmnopqrstuvwxyz<br>0123456789 &amp; £ € % ( ) “ ” ! ?</div>
     </div>
     <div class="e-type-divider"></div>
     <div class="e-type-rationale">{{TYPEFACE_RATIONALE}}</div>
@@ -1451,7 +1474,7 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 17 — PORTRAIT GRID
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page">
+<section data-toc="Layout &amp; Grids" class="page">
   <div class="e-band">
     <div class="e-band-eyebrow">Layout System</div>
     <div class="e-band-title">Portrait Grid</div>
@@ -1459,20 +1482,7 @@ body {
   </div>
   <div class="e-body e-body-white">
     <div class="e-grid-diagram">
-      <svg viewBox="0 0 240 320" xmlns="http://www.w3.org/2000/svg" width="160" height="213">
-        <rect width="240" height="320" fill="white" stroke="#e0e0e0" stroke-width="1"/>
-        <rect x="16" y="16" width="208" height="288" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="0.5" stroke-dasharray="2,2"/>
-        <line x1="73" y1="16" x2="73" y2="304" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
-        <line x1="130" y1="16" x2="130" y2="304" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
-        <line x1="187" y1="16" x2="187" y2="304" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
-        <line x1="16" y1="112" x2="224" y2="112" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
-        <line x1="16" y1="208" x2="224" y2="208" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
-        <path d="M16,26 L16,16 L26,16" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
-        <path d="M214,16 L224,16 L224,26" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
-        <path d="M16,294 L16,304 L26,304" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
-        <path d="M214,304 L224,304 L224,294" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
-        <text x="120" y="170" text-anchor="middle" font-family="sans-serif" font-size="8" fill="{{PRIMARY_HEX}}" opacity="0.4">Portrait Layout Grid</text>
-      </svg>
+      {{GRID_PORTRAIT_HTML}}
     </div>
   </div>
   <div class="e-footer">
@@ -1494,20 +1504,7 @@ body {
   </div>
   <div class="e-body e-body-white">
     <div class="e-grid-diagram">
-      <svg viewBox="0 0 320 220" xmlns="http://www.w3.org/2000/svg" width="200" height="138">
-        <rect width="320" height="220" fill="white" stroke="#e0e0e0" stroke-width="1"/>
-        <rect x="16" y="14" width="288" height="192" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="0.5" stroke-dasharray="2,2"/>
-        <line x1="88" y1="14" x2="88" y2="206" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
-        <line x1="160" y1="14" x2="160" y2="206" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
-        <line x1="232" y1="14" x2="232" y2="206" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
-        <line x1="16" y1="78" x2="304" y2="78" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
-        <line x1="16" y1="142" x2="304" y2="142" stroke="{{PRIMARY_HEX}}" stroke-width="0.3" stroke-dasharray="1,3" opacity="0.6"/>
-        <path d="M16,24 L16,14 L26,14" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
-        <path d="M294,14 L304,14 L304,24" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
-        <path d="M16,196 L16,206 L26,206" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
-        <path d="M294,206 L304,206 L304,196" fill="none" stroke="{{PRIMARY_HEX}}" stroke-width="1.5"/>
-        <text x="160" y="118" text-anchor="middle" font-family="sans-serif" font-size="8" fill="{{PRIMARY_HEX}}" opacity="0.4">Landscape Layout Grid</text>
-      </svg>
+      {{GRID_LANDSCAPE_HTML}}
     </div>
   </div>
   <div class="e-footer">
@@ -1521,45 +1518,54 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 19 — BRAND APPLICATION 1
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page page-application">
-  <div class="e-app-photo" style="background-image:url('{{PHOTO_EXAMPLES_1_DATA}}');">
-    <div class="e-app-overlay">
-      <div class="e-app-logo">{{LOGO_SYMBOL}}</div>
-      <div class="e-app-bottom">
-        <div class="e-app-label">Brand Application</div>
-        <div class="e-app-brand">{{BRAND_NAME}}</div>
-      </div>
-    </div>
+<section data-toc="Applications" class="page">
+  <div class="e-band">
+    <div class="e-band-eyebrow">Brand Applications</div>
+    <div class="e-band-title">Social Media</div>
+    <div class="e-band-ghost">22</div>
   </div>
-  <div class="e-app-accent-stripe"></div>
+  <div class="e-body e-body-white">
+    <div class="e-num-ghost">22</div>
+    <div class="bb-slot">{{APP_1_HTML}}</div>
+  </div>
+  <div class="e-footer">
+    <div class="e-footer-brand">{{BRAND_NAME}}</div>
+    <div class="e-footer-page">22</div>
+  </div>
 </section>
 
 <!-- PAGE 20 — BRAND APPLICATION 2 -->
-<section class="page page-application">
-  <div class="e-app-photo" style="background-image:url('{{PHOTO_EXAMPLES_2_DATA}}');">
-    <div class="e-app-overlay">
-      <div class="e-app-logo">{{LOGO_SYMBOL}}</div>
-      <div class="e-app-bottom">
-        <div class="e-app-label">Brand Application</div>
-        <div class="e-app-brand">{{TAGLINE}}</div>
-      </div>
-    </div>
+<section class="page">
+  <div class="e-band">
+    <div class="e-band-eyebrow">Brand Applications</div>
+    <div class="e-band-title">Website</div>
+    <div class="e-band-ghost">22</div>
   </div>
-  <div class="e-app-accent-stripe"></div>
+  <div class="e-body e-body-white">
+    <div class="e-num-ghost">22</div>
+    <div class="bb-slot">{{APP_2_HTML}}</div>
+  </div>
+  <div class="e-footer">
+    <div class="e-footer-brand">{{BRAND_NAME}}</div>
+    <div class="e-footer-page">22</div>
+  </div>
 </section>
 
 <!-- PAGE 21 — BRAND APPLICATION 3 -->
-<section class="page page-application">
-  <div class="e-app-photo" style="background-image:url('{{PHOTO_APP_DATA}}');">
-    <div class="e-app-overlay">
-      <div class="e-app-logo">{{LOGO_SYMBOL}}</div>
-      <div class="e-app-bottom">
-        <div class="e-app-label">Brand Application</div>
-        <div class="e-app-brand">{{MISSION_STATEMENT_TRUNCATED}}</div>
-      </div>
-    </div>
+<section class="page">
+  <div class="e-band">
+    <div class="e-band-eyebrow">Brand Applications</div>
+    <div class="e-band-title">Signage</div>
+    <div class="e-band-ghost">22</div>
   </div>
-  <div class="e-app-accent-stripe"></div>
+  <div class="e-body e-body-white">
+    <div class="e-num-ghost">22</div>
+    <div class="bb-slot">{{APP_3_HTML}}</div>
+  </div>
+  <div class="e-footer">
+    <div class="e-footer-brand">{{BRAND_NAME}}</div>
+    <div class="e-footer-page">22</div>
+  </div>
 </section>
 <!-- END-SECTION:brand-application -->
 
@@ -1567,7 +1573,7 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 22 — STATIONERY
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page">
+<section data-toc="Stationery" class="page">
   <div class="e-band">
     <div class="e-band-eyebrow">Brand Applications</div>
     <div class="e-band-title">Stationery</div>
@@ -1575,34 +1581,7 @@ body {
   </div>
   <div class="e-body e-body-white">
     <div class="e-num-ghost">22</div>
-    <div class="e-stationery-grid">
-      <div>
-        <div class="e-label" style="margin-bottom:3mm;">Business Card</div>
-        <div class="e-card-mock">
-          <div class="e-card-logo">{{LOGO_PRIMARY}}</div>
-          <div class="e-card-info">
-            <div class="e-card-name">{{BRAND_NAME}}</div>
-            <div class="e-card-tag">{{TAGLINE}}</div>
-          </div>
-        </div>
-      </div>
-      <div>
-        <div class="e-label" style="margin-bottom:3mm;">Letterhead</div>
-        <div class="e-letterhead-mock">
-          <div class="e-lh-top"></div>
-          <div class="e-lh-body">
-            <div class="e-lh-row">
-              <div class="e-lh-logo-area">{{LOGO_PRIMARY}}</div>
-              <div class="e-lh-name">{{BRAND_NAME}}</div>
-            </div>
-            <div class="e-lh-line"></div>
-            <div class="e-lh-line" style="width:75%;"></div>
-            <div class="e-lh-line" style="width:90%;"></div>
-            <div class="e-lh-line" style="width:55%;"></div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <div class="bb-slot">{{STATIONERY_HTML}}</div>
   </div>
   <div class="e-footer">
     <div class="e-footer-brand">{{BRAND_NAME}}</div>
@@ -1615,7 +1594,7 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 23 — BRAND LANGUAGE
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page">
+<section data-toc="Brand Language" class="page">
   <div class="e-band">
     <div class="e-band-eyebrow">Verbal Identity</div>
     <div class="e-band-title">Brand Language</div>
@@ -1638,7 +1617,7 @@ body {
 <!-- ═══════════════════════════════════════════════════════════════
      PAGE 24 — TONE OF VOICE
 ═══════════════════════════════════════════════════════════════ -->
-<section class="page">
+<section data-toc="Tone of Voice" class="page">
   <div class="e-band">
     <div class="e-band-eyebrow">Verbal Identity</div>
     <div class="e-band-title">Tone of Voice</div>
@@ -1649,9 +1628,7 @@ body {
     <div class="e-tone-grid">
       {{TONE_GUIDE_HTML}}
     </div>
-    <div style="margin-top:5mm; font-family:var(--font-body); font-size:7.5pt; color:var(--text-mid); line-height:1.65;">
-      {{COLOR_USAGE}}
-    </div>
+    
   </div>
   <div class="e-footer">
     <div class="e-footer-brand">{{BRAND_NAME}}</div>

@@ -1,4 +1,4 @@
-package ai.genesisbrands.service;
+package ai.genesisbrands.agent.core;
 
 import java.util.regex.Pattern;
 
@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
  * headline or the brand book's running text. The direction-brief prompt already asks for the
  * trading name; this makes it hold even when the model copies the registered form.
  */
-final class BrandNames {
+public final class BrandNames {
 
     private static final Pattern LEGAL_SUFFIX = Pattern.compile(
         "(?i)[\\s,]+(ltd\\.?|limited|llc|l\\.l\\.c\\.|inc\\.?|incorporated|plc|gmbh|s\\.?a\\.?|"
@@ -17,7 +17,7 @@ final class BrandNames {
     private BrandNames() {}
 
     /** The name without a trailing legal suffix; null and blank pass through unchanged. */
-    static String tradingName(String name) {
+    public static String tradingName(String name) {
         if (name == null || name.isBlank()) {
             return name;
         }

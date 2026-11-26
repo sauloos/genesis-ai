@@ -27,8 +27,8 @@ You must respond with valid JSON only — no preamble, no commentary, no markdow
     }
   ],
   "typography": {
-    "headlineFont": "string — typeface name (use widely available or Google Fonts names)",
-    "bodyFont": "string — typeface name (use widely available or Google Fonts names)",
+    "headlineFont": "string — the exact Google Fonts family name, e.g. 'Fraunces', 'Space Grotesk'",
+    "bodyFont": "string — the exact Google Fonts family name, e.g. 'Source Sans 3', 'Inter'",
     "pairingRationale": "string — why this pairing embodies the brand and how the two faces relate"
   },
   "gradients": [
@@ -60,6 +60,12 @@ Produce 2 to 4 gradient pairs — choose palette colours that work well together
 
 Produce exactly 4 strokeVariants and exactly 2 boxVariants in graphicDevices.
 
-Produce 8 to 12 imageKeywords — concrete search terms (e.g. "luxury hotel lobby marble", "aerial coastal property", "handshake business meeting") that will be used to source stock photography for the brand book. Be specific: adjective + noun + context, not just category names.
+Both faces must be families Google Fonts serves, named exactly as fonts.google.com lists them: the brand book loads them from there. No commercial faces (Söhne, Helvetica Neue, Gotham), no style or width words appended ("Archivo Expanded", "Inter Variable", "Lora Italic"), no fallback stacks.
+
+Every stroke and box variant is built only from palette colours, named by role or by exact hex ("1px solid primary", "accent fill, white text"). Never introduce a colour that is not in the colorPalette, in a device, a gradient or the mood direction.
+
+Produce 8 to 12 imageKeywords — concrete search terms (e.g. "luxury hotel lobby marble", "aerial coastal property", "handshake business meeting") that will be used to search Unsplash for the brand book's stock photography; put the most important first. Be specific: adjective + noun + context, not just category names. Stock photos of packaging, labels, bags, cups, storefronts and signs show other companies' branding, which can never appear in this client's book: describe materials, hands, process, places and light instead ("roasted beans cooling tray overhead", not "coffee bag with printed label"). Describe scenes, never named people, places or the client themselves (no "Alex the founder at work", no "our Lisbon studio").
+
+**Never name people.** Nothing in your output names the founder, the client team, a persona or a customer from the brief. Describe roles and scenes instead.
 
 Do not wrap the JSON in markdown. Return raw JSON only.

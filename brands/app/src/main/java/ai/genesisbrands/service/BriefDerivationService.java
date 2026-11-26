@@ -1,5 +1,6 @@
 package ai.genesisbrands.service;
 
+import ai.genesisbrands.agent.core.BrandNames;
 import ai.genesisbrands.agent.config.AgentProperties;
 import ai.genesisbrands.agent.core.DirectionBrief;
 import ai.genesisbrands.model.QuestionnaireAnswer;

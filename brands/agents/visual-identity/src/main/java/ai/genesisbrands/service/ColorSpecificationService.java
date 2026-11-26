@@ -6,8 +6,10 @@ import java.util.List;
 
 /**
  * Converts hex colour values to CMYK, RGB, and the nearest Pantone Solid Coated name.
- * CMYK conversion is algorithmic; Pantone matching is nearest-neighbour by Euclidean
- * RGB distance over a curated ~100-colour Pantone Solid Coated reference table.
+ * CMYK conversion is algorithmic; Pantone matching is nearest-neighbour by CIEDE2000 over a
+ * curated Pantone Solid Coated reference table. Euclidean RGB distance, used until 2026-11-26,
+ * judged a deep pine green nearer Black C than any green (the table had no dark greens, and RGB
+ * distance weighs a dark hue shift as nothing), so three of One Way's greens were specified as black.
  */
 @Service
 public class ColorSpecificationService {
@@ -75,6 +77,17 @@ public class ColorSpecificationService {
         new PantoneEntry("Pantone 364 C",     83, 152,  38),
         new PantoneEntry("Pantone 3415 C",     0, 119,  73),
         new PantoneEntry("Pantone 7482 C",    72, 200, 129),
+        // Dark and muted greens
+        new PantoneEntry("Pantone 3435 C",    21,  71,  52),
+        new PantoneEntry("Pantone 350 C",     44,  82,  52),
+        new PantoneEntry("Pantone 343 C",     17,  87,  64),
+        new PantoneEntry("Pantone 5535 C",    33,  61,  48),
+        new PantoneEntry("Pantone 5467 C",    24,  51,  47),
+        new PantoneEntry("Pantone 7743 C",    68, 105,  61),
+        new PantoneEntry("Pantone 5743 C",    62,  72,  39),
+        new PantoneEntry("Pantone 5747 C",    61,  68,  30),
+        new PantoneEntry("Pantone 5555 C",    91, 127, 113),
+        new PantoneEntry("Pantone 625 C",     80, 127, 112),
         // Teals & Cyans
         new PantoneEntry("Pantone 336 C",      0, 136, 103),
         new PantoneEntry("Pantone 329 C",      0, 136, 119),
@@ -120,6 +133,8 @@ public class ColorSpecificationService {
         new PantoneEntry("Pantone 462 C",    167, 130,  74),
         new PantoneEntry("Pantone 469 C",    152,  83,  30),
         new PantoneEntry("Pantone 476 C",    114,  76,  55),
+        new PantoneEntry("Pantone 484 C",    154,  51,  36),
+        new PantoneEntry("Pantone 7527 C",   214, 210, 196),
         // Golds
         new PantoneEntry("Pantone 128 C",    248, 200,  49),
         new PantoneEntry("Pantone 124 C",    234, 181,  31),
@@ -141,6 +156,11 @@ public class ColorSpecificationService {
         new PantoneEntry("Pantone Cool Gray 11 C", 108, 112, 114),
         // Blacks & White
         new PantoneEntry("Pantone Black C",   44,  42,  41),
+        new PantoneEntry("Pantone Black 2 C", 51,  47,  33),
+        new PantoneEntry("Pantone Black 3 C", 33,  39,  33),
+        new PantoneEntry("Pantone Black 4 C", 49,  38,  29),
+        new PantoneEntry("Pantone Black 7 C", 61,  57,  53),
+        new PantoneEntry("Pantone Neutral Black C", 34, 34, 35),
         new PantoneEntry("Pantone Black 6 C",  0,   0,   0),
         new PantoneEntry("Pantone White",    255, 255, 255)
     );
@@ -172,17 +192,84 @@ public class ColorSpecificationService {
     }
 
     public String nearestPantone(String hex) {
-        RgbValues rgb = hexToRgb(hex);
+        return nearestPantoneStatic(hex);
+    }
+
+    /** Same as {@link #nearestPantone}, for callers without the bean (the brand book renderer). */
+    public static String nearestPantoneStatic(String hex) {
+        double[] lab = lab(parse(hex));
         PantoneEntry best = null;
         double bestDist = Double.MAX_VALUE;
         for (PantoneEntry entry : PANTONE_SOLID_COATED) {
-            double dr = rgb.red()   - entry.r();
-            double dg = rgb.green() - entry.g();
-            double db = rgb.blue()  - entry.b();
-            double dist = dr * dr + dg * dg + db * db;
+            double dist = deltaE2000(lab, lab(new int[]{entry.r(), entry.g(), entry.b()}));
             if (dist < bestDist) { bestDist = dist; best = entry; }
         }
         return best != null ? best.name() : "Pantone Black C";
+    }
+
+    private static int[] parse(String hex) {
+        String h = hex.startsWith("#") ? hex.substring(1) : hex;
+        return new int[]{Integer.parseInt(h.substring(0, 2), 16), Integer.parseInt(h.substring(2, 4), 16),
+            Integer.parseInt(h.substring(4, 6), 16)};
+    }
+
+    /** sRGB (D65) to CIE L*a*b*. */
+    static double[] lab(int[] rgb) {
+        double[] lin = new double[3];
+        for (int i = 0; i < 3; i++) {
+            double c = rgb[i] / 255.0;
+            lin[i] = c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+        }
+        double x = (0.4124564 * lin[0] + 0.3575761 * lin[1] + 0.1804375 * lin[2]) / 0.95047;
+        double y = 0.2126729 * lin[0] + 0.7151522 * lin[1] + 0.0721750 * lin[2];
+        double z = (0.0193339 * lin[0] + 0.1191920 * lin[1] + 0.9503041 * lin[2]) / 1.08883;
+        double fx = f(x), fy = f(y), fz = f(z);
+        return new double[]{116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)};
+    }
+
+    private static double f(double t) {
+        return t > 216.0 / 24389 ? Math.cbrt(t) : (24389.0 / 27 * t + 16) / 116;
+    }
+
+    /** CIEDE2000 colour difference (Sharma, Wu and Dalal 2005). */
+    static double deltaE2000(double[] lab1, double[] lab2) {
+        double l1 = lab1[0], a1 = lab1[1], b1 = lab1[2];
+        double l2 = lab2[0], a2 = lab2[1], b2 = lab2[2];
+        double c1 = Math.hypot(a1, b1), c2 = Math.hypot(a2, b2);
+        double cBar = (c1 + c2) / 2;
+        double g = 0.5 * (1 - Math.sqrt(Math.pow(cBar, 7) / (Math.pow(cBar, 7) + Math.pow(25, 7))));
+        double a1p = (1 + g) * a1, a2p = (1 + g) * a2;
+        double c1p = Math.hypot(a1p, b1), c2p = Math.hypot(a2p, b2);
+        double h1p = hueDeg(b1, a1p), h2p = hueDeg(b2, a2p);
+        double dLp = l2 - l1, dCp = c2p - c1p;
+        double dhp;
+        if (c1p * c2p == 0) dhp = 0;
+        else if (Math.abs(h2p - h1p) <= 180) dhp = h2p - h1p;
+        else if (h2p - h1p > 180) dhp = h2p - h1p - 360;
+        else dhp = h2p - h1p + 360;
+        double dHp = 2 * Math.sqrt(c1p * c2p) * Math.sin(Math.toRadians(dhp / 2));
+        double lBarP = (l1 + l2) / 2, cBarP = (c1p + c2p) / 2;
+        double hBarP;
+        if (c1p * c2p == 0) hBarP = h1p + h2p;
+        else if (Math.abs(h1p - h2p) <= 180) hBarP = (h1p + h2p) / 2;
+        else if (h1p + h2p < 360) hBarP = (h1p + h2p + 360) / 2;
+        else hBarP = (h1p + h2p - 360) / 2;
+        double t = 1 - 0.17 * Math.cos(Math.toRadians(hBarP - 30)) + 0.24 * Math.cos(Math.toRadians(2 * hBarP))
+            + 0.32 * Math.cos(Math.toRadians(3 * hBarP + 6)) - 0.20 * Math.cos(Math.toRadians(4 * hBarP - 63));
+        double dTheta = 30 * Math.exp(-Math.pow((hBarP - 275) / 25, 2));
+        double rc = 2 * Math.sqrt(Math.pow(cBarP, 7) / (Math.pow(cBarP, 7) + Math.pow(25, 7)));
+        double sl = 1 + 0.015 * Math.pow(lBarP - 50, 2) / Math.sqrt(20 + Math.pow(lBarP - 50, 2));
+        double sc = 1 + 0.045 * cBarP;
+        double sh = 1 + 0.015 * cBarP * t;
+        double rt = -Math.sin(Math.toRadians(2 * dTheta)) * rc;
+        return Math.sqrt(Math.pow(dLp / sl, 2) + Math.pow(dCp / sc, 2) + Math.pow(dHp / sh, 2)
+            + rt * (dCp / sc) * (dHp / sh));
+    }
+
+    private static double hueDeg(double b, double a) {
+        if (a == 0 && b == 0) return 0;
+        double h = Math.toDegrees(Math.atan2(b, a));
+        return h < 0 ? h + 360 : h;
     }
 
     public ColorSpec fullSpec(String hex) {

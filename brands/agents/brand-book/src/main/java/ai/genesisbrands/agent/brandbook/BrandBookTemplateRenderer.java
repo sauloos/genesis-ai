@@ -1,6 +1,7 @@
 package ai.genesisbrands.agent.brandbook;
 
 import ai.genesisbrands.agent.copy.CopyOutput;
+import ai.genesisbrands.agent.core.BrandNames;
 import ai.genesisbrands.agent.core.DirectionBrief;
 import ai.genesisbrands.agent.logo.LogoOutput;
 import ai.genesisbrands.agent.logo.LogoVariantService;
@@ -9,6 +10,7 @@ import ai.genesisbrands.agent.visualidentity.VisualIdentityOutput;
 import ai.genesisbrands.model.BrandBookTemplate;
 import ai.genesisbrands.service.BlobStorageService;
 import ai.genesisbrands.service.BrandBookTemplateService;
+import ai.genesisbrands.service.ColorSpecificationService;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.BrowserType;
@@ -24,14 +26,23 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Year;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -41,6 +52,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -73,6 +85,13 @@ public class BrandBookTemplateRenderer {
     private final BrandBookTemplateService brandBookTemplateService;
 
     private final int renderThreads;
+
+    /** Resolves the agent's typeface names to Google Fonts families that load; replaceable in tests. */
+    private GoogleFonts fonts = GoogleFonts.live();
+
+    void useFonts(GoogleFonts fonts) {
+        this.fonts = fonts;
+    }
 
     /** One per render thread; only ever touched on that thread (except at shutdown). */
     private static final class RenderWorker {
@@ -255,6 +274,7 @@ public class BrandBookTemplateRenderer {
             Page tab = ctx.newPage();
             tab.navigate("file://" + tmpFile.toAbsolutePath(),
                 new Page.NavigateOptions().setWaitUntil(WaitUntilState.NETWORKIDLE));
+            awaitFonts(tab);
             Page.PdfOptions opts = new Page.PdfOptions().setPrintBackground(true);
             if (printReady) {
                 opts.setWidth("216mm").setHeight("303mm");
@@ -293,6 +313,7 @@ public class BrandBookTemplateRenderer {
             Page tab = ctx.newPage();
             tab.navigate("file://" + tmpFile.toAbsolutePath(),
                 new Page.NavigateOptions().setWaitUntil(WaitUntilState.NETWORKIDLE));
+            awaitFonts(tab);
             return tab.locator(".page").first().screenshot(new Locator.ScreenshotOptions()
                 .setType(ScreenshotType.JPEG)
                 .setQuality(70));
@@ -303,6 +324,18 @@ public class BrandBookTemplateRenderer {
             if (tmpFile != null) {
                 try { Files.delete(tmpFile); } catch (IOException ignored) {}
             }
+        }
+    }
+
+    /**
+     * Network idle is not font readiness: Chromium can still be decoding a webfont when it
+     * prints, and that page then comes out in the fallback face.
+     */
+    private static void awaitFonts(Page tab) {
+        try {
+            tab.evaluate("document.fonts.ready.then(() => true)");
+        } catch (RuntimeException e) {
+            log.debug("document.fonts.ready failed: {}", e.getMessage());
         }
     }
 
@@ -335,8 +368,30 @@ public class BrandBookTemplateRenderer {
      * size cap for that slot ({@code .e-card-logo img { max-height: 12mm }}) still wins. Inline
      * limits beat those caps, and a logo then grew past its slot.
      */
+    private static volatile String componentsCss;
+
+    /** Defaults for every block the renderer generates (don'ts, grids, mock-ups, tone), shared by all templates. */
+    static String componentsCss() {
+        String css = componentsCss;
+        if (css == null) {
+            try (InputStream in = BrandBookTemplateRenderer.class.getResourceAsStream("/templates/brand-book/_components.css")) {
+                if (in == null) throw new IllegalStateException("_components.css missing from the classpath");
+                css = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+                // Inside <style>, the text "</style" ends the element wherever it appears, comments included.
+                if (css.toLowerCase(Locale.ROOT).contains("</style")) {
+                    throw new IllegalStateException("_components.css must not contain the text </style");
+                }
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+            componentsCss = css;
+        }
+        return css;
+    }
+
     static String injectRasterLogoCss(String html) {
-        String css = "\n:where(img." + RASTER_LOGO_CLASS + ") { max-width: 100%; max-height: 100%; object-fit: contain; }\n";
+        String css = "\n:where(img." + RASTER_LOGO_CLASS + ") { max-width: 100%; max-height: 100%; object-fit: contain; }\n"
+            + componentsCss() + "\n";
         int idx = html.indexOf("</style>");
         if (idx < 0) return html;
         return html.substring(0, idx) + css + html.substring(idx);
@@ -379,123 +434,193 @@ public class BrandBookTemplateRenderer {
 
     // ── HTML builder ──────────────────────────────────────────────────────────
 
-    private String buildHtml(BrandBookInput input, BrandBookOutput output,
+    String buildHtml(BrandBookInput input, BrandBookOutput output,
                              String templateHtml, Set<String> includedSections) {
         DirectionBrief brief = input.brief();
         DirectionBrief.BrandContext brand = brief.brand();
         CopyOutput copy = input.copy();
         VisualIdentityOutput visual = input.visualIdentity();
         LogoOutput logo = input.logo();
+        List<VisualIdentityOutput.ColorSwatch> palette = visual.colorPalette();
+        // "One Way Coffee LTD" is the company; the book is about the brand people see.
+        String brandName = BrandNames.tradingName(brand.name());
 
         // Colors
-        String primaryHex   = findSwatchHex(visual.colorPalette(), "primary",   0);
-        String secondaryHex = findSwatchHex(visual.colorPalette(), "secondary", 1);
-        String accentHex    = findSwatchHex(visual.colorPalette(), "accent",    2);
-        String neutralHex   = findSwatchHex(visual.colorPalette(), "neutral",   3);
+        String primaryHex   = findSwatchHex(palette, "primary",   0);
+        String secondaryHex = findSwatchHex(palette, "secondary", 1);
+        String accentHex    = findSwatchHex(palette, "accent",    2);
+        String neutralHex   = findSwatchHex(palette, "neutral",   3);
         String primaryDark  = darken(primaryHex, 0.35);
         String primaryLight = lighten(primaryHex, 0.75);
-        String primaryInk   = legibleOnWhite(primaryHex, visual.colorPalette(), MIN_TEXT_CONTRAST,
-                                             Fallback.DEEPEST);
-        String primaryPanel = legibleOnWhite(primaryHex, visual.colorPalette(), MIN_PANEL_CONTRAST,
-                                             Fallback.MOST_COLOUR);
+        String primaryInk   = legibleOnWhite(primaryHex, palette, MIN_TEXT_CONTRAST, Fallback.DEEPEST);
+        String primaryPanel = legibleOnWhite(primaryHex, palette, MIN_PANEL_CONTRAST, Fallback.MOST_COLOUR);
 
-        // Typography
-        String headlineFont    = visual.typography().headlineFont();
-        String bodyFont        = visual.typography().bodyFont();
-        String headlineFontUrl = headlineFont.replace(" ", "+");
-        String bodyFontUrl     = bodyFont.replace(" ", "+");
+        // Typography: only families and weights Google Fonts really serves, so the page loads them.
+        GoogleFonts.Face heading = fonts.resolve(visual.typography().headlineFont(), GoogleFonts.FALLBACK_HEADING);
+        GoogleFonts.Face body    = fonts.resolve(visual.typography().bodyFont(), GoogleFonts.FALLBACK_BODY);
 
-        // Logo markup — primary + recoloured variants (SVG only; DALLE falls back to CSS filters)
-        String logoMarkup        = buildLogoMarkup(logo, brand.name());
-        // The symbol alone, for icon-sized slots; a logo without one uses the primary markup.
-        String logoSymbol        = logo.symbolImageUrl() != null
-            ? rasterMarkup(logo.symbolImageUrl(), logoMarkup) : logoMarkup;
-        String logoMarkupWhiteout = buildLogoVariant(logo, "#ffffff", brand.name());
-        String logoMarkupMono     = buildLogoVariant(logo, primaryHex, brand.name());
+        // Logo markup and variants
+        String logoMarkup   = buildLogoMarkup(logo, brandName);
+        boolean hasSymbol   = logo.symbolImageUrl() != null;
+        String logoSymbol   = hasSymbol ? rasterMarkup(logo.symbolImageUrl(), logoMarkup) : logoMarkup;
+        String logoWhite    = buildLogoVariant(logo, logo.imageUrl(), "#ffffff", logoMarkup, brandName);
+        String logoMono     = buildLogoVariant(logo, logo.imageUrl(), primaryInk, logoMarkup, brandName);
+        String logoOff      = buildLogoVariant(logo, logo.imageUrl(), BookBlocks.offBrand(accentHex), logoMarkup, brandName);
+        String symbolWhite  = hasSymbol
+            ? buildLogoVariant(logo, logo.symbolImageUrl(), "#ffffff", logoSymbol, brandName) : logoWhite;
 
-        // Photo data URIs (empty string = CSS background-color fallback)
-        String photoCover   = fetchPhotoDataUri(brief.engagementId(), "cover");
-        String photoMission = fetchPhotoDataUri(brief.engagementId(), "mission");
+        // Photos, each fetched once (empty string = CSS background-color fallback)
+        Map<String, String> photos = new HashMap<>();
+        for (String slot : PHOTO_SLOTS) {
+            photos.put(slot, fetchPhotoDataUri(brief.engagementId(), brief.direction().name(), slot));
+        }
 
-        // HTML snippets
-        String swatchHtml       = buildSwatchHtml(visual.colorPalette());
-        String visionHtml       = buildVisionHtml(copy.vision());
-        String valuesHtml       = buildValuesHtml(copy.values());
-        String vocabularyHtml   = buildVocabHtml(copy.vocabulary());
-        String gradientHtml     = buildGradientHtml(visual.gradients());
-        String dontsHtml        = buildDontsHtml(output.logoDonts(), logoMarkup);
-        String contentsHtml     = buildContentsHtml();
-        String toneGuideHtml    = buildToneGuideHtml(copy.toneGuide());
-        String clearanceSvg     = buildClearanceSvg(primaryHex);
-        String strokeHtml       = buildListHtml(visual.graphicDevices() != null ? visual.graphicDevices().strokeVariants() : List.of());
-        String boxHtml          = buildListHtml(visual.graphicDevices() != null ? visual.graphicDevices().boxVariants() : List.of());
-        String iconUsageNote    = visual.graphicDevices() != null && visual.graphicDevices().iconUsageNote() != null
-                                  ? visual.graphicDevices().iconUsageNote() : "";
+        String year = String.valueOf(Year.now().getValue());
+        BookBlocks.Ctx ctx = new BookBlocks.Ctx(brandName, copy.tagline(), copy.elevatorPitch(),
+            copy.missionStatement(), copy.values(), logoMarkup, logoWhite, logoOff, logoSymbol, symbolWhite,
+            hasSymbol, photos, primaryHex, primaryPanel, primaryInk, secondaryHex, accentHex, neutralHex,
+            palette, heading.family(), year);
 
-        String missionTrunc     = truncate(copy.missionStatement(), 90);
-        String brandStorySnip   = firstSentence(copy.brandStory());
-        String year             = String.valueOf(Year.now().getValue());
+        VisualIdentityOutput.GraphicDevicesSpec devices = visual.graphicDevices();
+        String iconUsageNote = devices != null && devices.iconUsageNote() != null ? devices.iconUsageNote() : "";
 
-        // Build substitution map (order matters — apply longest/most-specific keys first)
         Map<String, String> subs = new LinkedHashMap<>();
-        subs.put("{{HEADLINE_FONT_URL}}", headlineFontUrl);
-        subs.put("{{BODY_FONT_URL}}",     bodyFontUrl);
-        subs.put("{{HEADLINE_FONT}}",     esc(headlineFont));
-        subs.put("{{BODY_FONT}}",         esc(bodyFont));
+        subs.put("{{FONT_LINK_HREF}}",    GoogleFonts.stylesheetHref(heading, body));
+        subs.put("{{HEADLINE_FONT_URL}}", GoogleFonts.familyParam(heading.family()));
+        subs.put("{{BODY_FONT_URL}}",     GoogleFonts.familyParam(body.family()));
+        subs.put("{{HEADLINE_FONT}}",     esc(heading.family()));
+        subs.put("{{BODY_FONT}}",         esc(body.family()));
+        putSpecimen(subs, "HW", heading);
+        putSpecimen(subs, "BW", body);
         subs.put("{{PRIMARY_HEX}}",       primaryHex);
-        subs.put("{{PRIMARY_DARK_HEX}}", primaryDark);
+        subs.put("{{PRIMARY_DARK_HEX}}",  primaryDark);
         subs.put("{{PRIMARY_LIGHT_HEX}}", primaryLight);
         subs.put("{{PRIMARY_INK_HEX}}",   primaryInk);
         subs.put("{{PRIMARY_PANEL_HEX}}", primaryPanel);
-        subs.put("{{SECONDARY_HEX}}",    secondaryHex);
-        subs.put("{{ACCENT_HEX}}",       accentHex);
-        subs.put("{{NEUTRAL_HEX}}",      neutralHex);
-        subs.put("{{BRAND_NAME_UPPER}}", esc(brand.name().toUpperCase()));
-        subs.put("{{BRAND_NAME}}",       esc(brand.name()));
-        subs.put("{{TAGLINE}}",          esc(copy.tagline()));
-        subs.put("{{DIRECTION}}",        brief.direction().name());
-        subs.put("{{YEAR}}",             year);
-        subs.put("{{ELEVATOR_PITCH}}",   esc(copy.elevatorPitch()));
-        subs.put("{{WELCOME_LETTER}}",   esc(firstParagraph(output.welcomeLetterOpening() != null
-                                             ? output.welcomeLetterOpening() : output.welcomeNote())));
-        subs.put("{{HOW_TO_USE}}",       esc(output.howToUseThisGuide()));
-        subs.put("{{CONTENTS_HTML}}",    contentsHtml);
-        subs.put("{{MISSION_STATEMENT}}", esc(copy.missionStatement()));
-        subs.put("{{MISSION_STATEMENT_TRUNCATED}}", esc(missionTrunc));
-        subs.put("{{BRAND_STORY_SNIPPET}}", esc(brandStorySnip));
-        subs.put("{{VISION_PILLARS_HTML}}", visionHtml);
-        subs.put("{{VALUES_HTML}}",      valuesHtml);
-        subs.put("{{LOGO_WHITEOUT}}",    logoMarkupWhiteout);
-        subs.put("{{LOGO_MONO}}",        logoMarkupMono);
-        subs.put("{{LOGO_PRIMARY}}",     logoMarkup);
-        subs.put("{{LOGO_SYMBOL}}",      logoSymbol);
-        subs.put("{{LOGO_CLEARANCE_SVG}}", clearanceSvg);
-        subs.put("{{LOGO_USAGE}}",       esc(output.logoUsageGuidelines()));
-        subs.put("{{LOGO_DONTS_HTML}}", dontsHtml);
-        subs.put("{{SWATCH_SECTION_HTML}}", swatchHtml);
-        subs.put("{{GRADIENT_SECTION_HTML}}", gradientHtml);
-        subs.put("{{STROKE_VARIANTS_HTML}}", strokeHtml);
-        subs.put("{{BOX_VARIANTS_HTML}}",    boxHtml);
-        subs.put("{{ICON_USAGE_NOTE}}",  esc(iconUsageNote));
-        subs.put("{{IMAGERY_GUIDANCE}}", esc(output.imageryGuidance()));
-        subs.put("{{TYPEFACE_RATIONALE}}", esc(output.typefaceRationale()));
-        subs.put("{{TYPOGRAPHY_USAGE}}", esc(output.typographyUsageGuidelines()));
-        subs.put("{{COLOR_USAGE}}",      esc(output.colorUsageGuidelines()));
-        subs.put("{{VOCABULARY_HTML}}",  vocabularyHtml);
-        subs.put("{{TONE_GUIDE_HTML}}", toneGuideHtml);
-        subs.put("{{CLOSING_NOTE}}",     esc(output.closingNote()));
-        subs.put("{{PHOTO_COVER_DATA}}", photoCover);
-        subs.put("{{PHOTO_MISSION_DATA}}", photoMission);
-        for (int i = 1; i <= 5; i++) {
-            subs.put("{{PHOTO_IMAGERY_" + i + "_DATA}}", fetchPhotoDataUri(brief.engagementId(), "imagery-" + i));
-        }
-        for (int i = 1; i <= 3; i++) {
-            subs.put("{{PHOTO_EXAMPLES_" + i + "_DATA}}", fetchPhotoDataUri(brief.engagementId(), "examples-" + i));
-        }
-        subs.put("{{PHOTO_APP_DATA}}",      fetchPhotoDataUri(brief.engagementId(), "stationery"));
+        subs.put("{{SECONDARY_HEX}}",     secondaryHex);
+        subs.put("{{ACCENT_HEX}}",        accentHex);
+        subs.put("{{NEUTRAL_HEX}}",       neutralHex);
+        subs.put("{{BRAND_NAME_UPPER}}",  esc(brandName.toUpperCase(Locale.ROOT)));
+        subs.put("{{BRAND_NAME}}",        esc(brandName));
+        subs.put("{{TAGLINE}}",           esc(copy.tagline()));
+        subs.put("{{DIRECTION}}",         brief.direction().name());
+        subs.put("{{YEAR}}",              year);
+        subs.put("{{ELEVATOR_PITCH}}",    esc(TextFit.fit(copy.elevatorPitch(), 420)));
+        subs.put("{{WELCOME_LETTER}}",    esc(TextFit.fit(firstParagraph(output.welcomeLetterOpening() != null
+                                              ? output.welcomeLetterOpening() : output.welcomeNote()), 520)));
+        subs.put("{{HOW_TO_USE}}",        esc(TextFit.fit(output.howToUseThisGuide(), 260)));
+        subs.put("{{MISSION_STATEMENT}}", esc(TextFit.fit(copy.missionStatement(), 260)));
+        subs.put("{{MISSION_STATEMENT_TRUNCATED}}", esc(TextFit.fit(copy.missionStatement(), 90)));
+        subs.put("{{BRAND_STORY_SNIPPET}}", esc(TextFit.snippet(copy.brandStory(), 120, 320)));
+        subs.put("{{VISION_PILLARS_HTML}}", buildVisionHtml(copy.vision()));
+        subs.put("{{VALUES_HTML}}",       buildValuesHtml(copy.values()));
+        subs.put("{{LOGO_WHITEOUT}}",     logoWhite);
+        subs.put("{{LOGO_MONO}}",         logoMono);
+        subs.put("{{LOGO_PRIMARY}}",      logoMarkup);
+        subs.put("{{LOGO_SYMBOL}}",       logoSymbol);
+        subs.put("{{LOGO_CLEARANCE_SVG}}", BookBlocks.clearSpace(ctx));
+        subs.put("{{LOGO_USAGE}}",        esc(TextFit.fit(output.logoUsageGuidelines(), 420)));
+        subs.put("{{LOGO_DONTS_HTML}}",   BookBlocks.donts(output.logoDonts(), ctx));
+        subs.put("{{SWATCH_SECTION_HTML}}", buildSwatchHtml(palette));
+        subs.put("{{GRADIENT_SECTION_HTML}}", buildGradientHtml(visual.gradients()));
+        subs.put("{{STROKE_VARIANTS_HTML}}", BookBlocks.strokes(devices != null ? devices.strokeVariants() : List.of(), ctx));
+        subs.put("{{BOX_VARIANTS_HTML}}",  BookBlocks.boxes(devices != null ? devices.boxVariants() : List.of(), ctx));
+        subs.put("{{ICON_USAGE_NOTE}}",   esc(TextFit.fit(iconUsageNote, 260)));
+        subs.put("{{IMAGERY_GUIDANCE}}",  esc(TextFit.fit(output.imageryGuidance(), 420)));
+        subs.put("{{TYPEFACE_RATIONALE}}", esc(TextFit.fit(output.typefaceRationale(), 420)));
+        subs.put("{{TYPOGRAPHY_USAGE}}",  esc(TextFit.fit(output.typographyUsageGuidelines(), 420)));
+        subs.put("{{COLOR_USAGE}}",       esc(TextFit.fit(output.colorUsageGuidelines(), 360)));
+        subs.put("{{VOCABULARY_HTML}}",   buildVocabHtml(copy.vocabulary()));
+        subs.put("{{TONE_GUIDE_HTML}}",   BookBlocks.tone(copy.toneGuide()));
+        subs.put("{{CLOSING_NOTE}}",      esc(TextFit.fit(output.closingNote(), 420)));
+        subs.put("{{GRID_PORTRAIT_HTML}}",  BookBlocks.grid(false, ctx));
+        subs.put("{{GRID_LANDSCAPE_HTML}}", BookBlocks.grid(true, ctx));
+        subs.put("{{APP_1_HTML}}",        BookBlocks.social(ctx));
+        subs.put("{{APP_2_HTML}}",        BookBlocks.website(ctx));
+        subs.put("{{APP_3_HTML}}",        BookBlocks.signage(ctx));
+        subs.put("{{STATIONERY_HTML}}",   BookBlocks.stationery(ctx));
+        subs.put("{{PHOTO_COVER_DATA}}",  ctx.photo("cover"));
+        subs.put("{{PHOTO_MISSION_DATA}}", ctx.photo("mission"));
+        for (int i = 1; i <= 5; i++) subs.put("{{PHOTO_IMAGERY_" + i + "_DATA}}", ctx.photo("imagery-" + i));
+        for (int i = 1; i <= 3; i++) subs.put("{{PHOTO_EXAMPLES_" + i + "_DATA}}", ctx.photo("examples-" + i));
+        subs.put("{{PHOTO_APP_DATA}}",    ctx.photo("stationery"));
 
-        // Apply section filter before substitution so excluded section HTML is never processed
-        return injectRasterLogoCss(substitute(filterSections(templateHtml, includedSections), subs));
+        // Section filter first, so excluded sections are never numbered or listed in the contents.
+        String html = paginate(filterSections(templateHtml, includedSections));
+        subs.put("{{CONTENTS_HTML}}", buildContentsHtml(html));
+        return injectRasterLogoCss(substitute(html, subs));
+    }
+
+    static final List<String> PHOTO_SLOTS = List.of("cover", "mission", "imagery-1", "imagery-2", "imagery-3",
+        "imagery-4", "imagery-5", "examples-1", "examples-2", "examples-3", "stationery");
+
+    /** {@code {{HW1}}…{{HW3}}} = weight, {@code _LABEL} = "Light 300", {@code _DISPLAY} hides unused rows. */
+    private static void putSpecimen(Map<String, String> subs, String prefix, GoogleFonts.Face face) {
+        List<Integer> weights = face.specimenWeights();
+        for (int i = 1; i <= 3; i++) {
+            boolean shown = i <= weights.size();
+            int w = shown ? weights.get(i - 1) : 400;
+            subs.put("{{" + prefix + i + "}}", String.valueOf(w));
+            subs.put("{{" + prefix + i + "_LABEL}}", GoogleFonts.weightLabel(w) + " " + w);
+            subs.put("{{" + prefix + i + "_DISPLAY}}", shown ? "" : "display:none");
+        }
+    }
+
+    // ── Pagination ────────────────────────────────────────────────────────────
+
+    private static final Pattern SECTION_OPEN = Pattern.compile("<section\\b[^>]*class=\"page");
+    private static final Pattern PAGE_NUMBER = Pattern.compile(
+        "(class=\"[^\"]*(?:ghost|footer-page|sidebar-num)[^\"]*\">)\\s*\\d{1,2}\\s*(<)");
+    private static final Pattern DATA_TOC = Pattern.compile("^<section\\b[^>]*\\bdata-toc=\"([^\"]+)\"");
+
+    /** The {@code <section class="page">} spans of html, in page order. */
+    private static List<int[]> pageSpans(String html) {
+        List<int[]> spans = new ArrayList<>();
+        Matcher m = SECTION_OPEN.matcher(html);
+        int from = 0;
+        while (m.find(from)) {
+            int end = html.indexOf("</section>", m.start());
+            if (end < 0) break;
+            end += "</section>".length();
+            spans.add(new int[]{m.start(), end});
+            from = end;
+        }
+        return spans;
+    }
+
+    /**
+     * Writes each page's real number (cover = 1) into its page-number slots. The templates carry
+     * fixed numbers, which went wrong as soon as a section was filtered out or a page added, and
+     * four application pages all said 22.
+     */
+    static String paginate(String html) {
+        List<int[]> spans = pageSpans(html);
+        StringBuilder sb = new StringBuilder(html.length());
+        int last = 0;
+        for (int i = 0; i < spans.size(); i++) {
+            int[] s = spans.get(i);
+            sb.append(html, last, s[0]);
+            String page = html.substring(s[0], s[1]);
+            String num = String.format("%02d", i + 1);
+            sb.append(PAGE_NUMBER.matcher(page).replaceAll("$1" + num + "$2"));
+            last = s[1];
+        }
+        return sb.append(html, last, html.length()).toString();
+    }
+
+    /** The contents list from the pages that start a chapter ({@code data-toc}), with their real page numbers. */
+    static String buildContentsHtml(String html) {
+        StringBuilder sb = new StringBuilder();
+        List<int[]> spans = pageSpans(html);
+        for (int i = 0; i < spans.size(); i++) {
+            Matcher m = DATA_TOC.matcher(html.substring(spans.get(i)[0], Math.min(spans.get(i)[1], spans.get(i)[0] + 300)));
+            if (!m.find()) continue;
+            sb.append("<div class=\"contents-item\">")
+              .append("<div class=\"contents-num\">").append(String.format("%02d", i + 1)).append("</div>")
+              .append("<div class=\"contents-name\">").append(m.group(1)).append("</div>")
+              .append("</div>");
+        }
+        return sb.toString();
     }
 
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{\\{[A-Z0-9_]+\\}\\}");
@@ -545,14 +670,24 @@ public class BrandBookTemplateRenderer {
                   .append(s.cmyk().yellow()).append(" ").append(s.cmyk().black())
                   .append("</span>");
             }
-            if (s.pantone() != null) {
-                sb.append("<span class=\"swatch-spec-pill\"><strong>PANTONE</strong> ").append(esc(s.pantone())).append("</span>");
+            String pantone = pantoneFor(s);
+            if (pantone != null) {
+                // The nearest coated solid, recomputed here: the agent's own pick put greens on Black C.
+                sb.append("<span class=\"swatch-spec-pill\"><strong>PANTONE</strong> &#8776; ")
+                  .append(esc(pantone.replaceFirst("(?i)^pantone\\s+", ""))).append("</span>");
             }
             sb.append("</div>");
-            sb.append("<div style=\"font-size:7pt;color:var(--text-mid);margin-top:2mm;\">").append(esc(s.role())).append("</div>");
+            sb.append("<div class=\"swatch-role\">").append(esc(TextFit.fit(s.role(), 140))).append("</div>");
             sb.append("</div></div>");
         }
         return sb.toString();
+    }
+
+    private static String pantoneFor(VisualIdentityOutput.ColorSwatch s) {
+        if (s.hex() != null && s.hex().matches("#?[0-9A-Fa-f]{6}")) {
+            return ColorSpecificationService.nearestPantoneStatic(s.hex());
+        }
+        return s.pantone();
     }
 
     private String buildVisionHtml(CopyOutput.VisionPillars vision) {
@@ -617,96 +752,6 @@ public class BrandBookTemplateRenderer {
         return sb.toString();
     }
 
-    private String buildDontsHtml(List<String> donts, String logoMarkup) {
-        if (donts == null || donts.isEmpty()) return "";
-        StringBuilder sb = new StringBuilder();
-        for (String dont : donts) {
-            sb.append("<div class=\"dont-card\">")
-              .append("<div class=\"dont-mark\">").append(logoMarkup).append("</div>")
-              .append("<div class=\"dont-label\">").append(esc(dont)).append("</div>")
-              .append("</div>");
-        }
-        return sb.toString();
-    }
-
-    private String buildContentsHtml() {
-        String[][] items = {
-            {"1", "Brand Statement"}, {"2", "Mission"}, {"3", "Vision"}, {"4", "Values"},
-            {"5", "Logo System"}, {"6", "Brand Colours"}, {"7", "Gradients"},
-            {"8", "Graphic Devices"}, {"9", "Photography"}, {"10", "Typography"},
-            {"11", "Layout &amp; Grids"}, {"12", "Applications"}, {"13", "Stationery"},
-            {"14", "Brand Language"}, {"15", "Tone of Voice"},
-        };
-        StringBuilder sb = new StringBuilder();
-        for (String[] item : items) {
-            sb.append("<div class=\"contents-item\">")
-              .append("<div class=\"contents-num\">").append(item[0]).append("</div>")
-              .append("<div class=\"contents-name\">").append(item[1]).append("</div>")
-              .append("</div>");
-        }
-        return sb.toString();
-    }
-
-    private String buildToneGuideHtml(CopyOutput.ToneGuide toneGuide) {
-        if (toneGuide == null) return "";
-        StringBuilder sb = new StringBuilder();
-        if (toneGuide.principles() != null && !toneGuide.principles().isEmpty()) {
-            sb.append("<div class=\"brand-name-label\" style=\"margin-bottom:4mm;\">Voice Principles</div>");
-            for (String p : toneGuide.principles()) {
-                sb.append("<div style=\"font-family:var(--font-body);font-size:8.5pt;padding:3mm 4mm;")
-                  .append("border-left:2px solid var(--primary);margin-bottom:2.5mm;background:var(--off-white);\">")
-                  .append(esc(p)).append("</div>");
-            }
-        }
-        if (toneGuide.examples() != null && !toneGuide.examples().isEmpty()) {
-            sb.append("<div style=\"margin-top:5mm;\">")
-              .append("<div class=\"brand-name-label\" style=\"margin-bottom:4mm;\">Tone in Practice</div>");
-            for (CopyOutput.ToneExample e : toneGuide.examples()) {
-                sb.append("<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:3mm;margin-bottom:3mm;\">")
-                  .append("<div style=\"background:#edf7f2;padding:3mm 4mm;border-radius:1mm;\">")
-                  .append("<div style=\"font-size:6pt;font-weight:700;letter-spacing:0.1em;color:#2a7a50;margin-bottom:1mm;\">DO</div>")
-                  .append("<div style=\"font-size:7.5pt;\">").append(esc(e.doThis())).append("</div>")
-                  .append("</div>")
-                  .append("<div style=\"background:#fdf0f0;padding:3mm 4mm;border-radius:1mm;\">")
-                  .append("<div style=\"font-size:6pt;font-weight:700;letter-spacing:0.1em;color:#aa2222;margin-bottom:1mm;\">NOT THIS</div>")
-                  .append("<div style=\"font-size:7.5pt;\">").append(esc(e.notThis())).append("</div>")
-                  .append("</div></div>");
-            }
-            sb.append("</div>");
-        }
-        return sb.toString();
-    }
-
-    private String buildListHtml(List<String> items) {
-        if (items == null || items.isEmpty()) return "";
-        StringBuilder sb = new StringBuilder();
-        for (String item : items) {
-            sb.append("<div class=\"stroke-item\">").append(esc(item)).append("</div>");
-        }
-        return sb.toString();
-    }
-
-    private String buildClearanceSvg(String primaryHex) {
-        return "<svg viewBox=\"0 0 200 200\" xmlns=\"http://www.w3.org/2000/svg\">"
-            + "<defs><marker id=\"arr\" markerWidth=\"6\" markerHeight=\"6\" refX=\"6\" refY=\"3\" orient=\"auto\">"
-            + "<path d=\"M0,0 L6,3 L0,6\" fill=\"none\" stroke=\"" + primaryHex + "\" stroke-width=\"1\"/>"
-            + "</marker></defs>"
-            + "<rect x=\"15\" y=\"15\" width=\"170\" height=\"170\" fill=\"" + primaryHex + "\" fill-opacity=\"0.06\" "
-            + "stroke=\"" + primaryHex + "\" stroke-width=\"0.6\" stroke-dasharray=\"4,3\"/>"
-            + "<rect x=\"50\" y=\"50\" width=\"100\" height=\"100\" fill=\"white\" stroke=\"" + primaryHex + "\" stroke-width=\"1\" rx=\"2\"/>"
-            + "<line x1=\"15\" y1=\"33\" x2=\"50\" y2=\"33\" stroke=\"" + primaryHex + "\" stroke-width=\"0.8\" marker-end=\"url(#arr)\" opacity=\"0.7\"/>"
-            + "<line x1=\"185\" y1=\"33\" x2=\"150\" y2=\"33\" stroke=\"" + primaryHex + "\" stroke-width=\"0.8\" marker-start=\"url(#arr)\" opacity=\"0.7\"/>"
-            + "<text x=\"34\" y=\"11\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"9\" fill=\"" + primaryHex + "\" font-weight=\"700\">X</text>"
-            + "<text x=\"165\" y=\"11\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"9\" fill=\"" + primaryHex + "\" font-weight=\"700\">X</text>"
-            + "<line x1=\"33\" y1=\"15\" x2=\"33\" y2=\"50\" stroke=\"" + primaryHex + "\" stroke-width=\"0.8\" marker-end=\"url(#arr)\" opacity=\"0.7\"/>"
-            + "<line x1=\"33\" y1=\"185\" x2=\"33\" y2=\"150\" stroke=\"" + primaryHex + "\" stroke-width=\"0.8\" marker-start=\"url(#arr)\" opacity=\"0.7\"/>"
-            + "<text x=\"9\" y=\"100\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"9\" fill=\"" + primaryHex + "\" font-weight=\"700\">X</text>"
-            + "<text x=\"100\" y=\"170\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"6.5\" fill=\"" + primaryHex + "\" opacity=\"0.7\">LOGO MARK</text>"
-            + "<text x=\"100\" y=\"192\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"6\" fill=\"" + primaryHex + "\" opacity=\"0.55\">"
-            + "Minimum clear space: X = logo height &#215; 0.25</text>"
-            + "</svg>";
-    }
-
     // ── Asset helpers ─────────────────────────────────────────────────────────
 
     private String buildLogoMarkup(LogoOutput logo, String brandName) {
@@ -732,33 +777,75 @@ public class BrandBookTemplateRenderer {
     }
 
     private String rasterMarkup(String imageUrl, String fallback, String extraStyle) {
+        byte[] bytes = rasterBytes(imageUrl);
+        return bytes != null ? imgTag(bytes, extraStyle) : fallback;
+    }
+
+    /** The trimmed, knocked-out PNG behind a logo URL, or null when it cannot be loaded. */
+    private byte[] rasterBytes(String imageUrl) {
         String blobPath = imageUrl.startsWith(ASSET_URL_PREFIX)
             ? imageUrl.substring(ASSET_URL_PREFIX.length())
             : imageUrl;
         try {
-            byte[] bytes = LogoKnockout.apply(LogoTrim.trim(blobStorageService.download(blobPath)));
-            // Size limits come from injectRasterLogoCss, never inline, so template caps apply.
-            return "<img class=\"" + RASTER_LOGO_CLASS + "\" src=\"data:image/png;base64,"
-                + Base64.getEncoder().encodeToString(bytes) + "\""
-                + (extraStyle.isEmpty() ? "" : " style=\"" + extraStyle + "\"") + ">";
+            return LogoKnockout.apply(LogoTrim.trim(blobStorageService.download(blobPath)));
         } catch (Exception e) {
             log.warn("Cannot load logo image {} for brand book (using fallback): {}", blobPath, e.getMessage());
-            return fallback;
+            return null;
         }
     }
 
-    private String buildLogoVariant(LogoOutput logo, String targetColor, String brandName) {
-        if (logo.method() == LogoOutput.Method.SVG_CONCEPT && logo.svgMarkup() != null) {
+    private static String imgTag(byte[] png, String extraStyle) {
+        // Size limits come from injectRasterLogoCss, never inline, so template caps apply.
+        return "<img class=\"" + RASTER_LOGO_CLASS + "\" src=\"data:image/png;base64,"
+            + Base64.getEncoder().encodeToString(png) + "\""
+            + (extraStyle.isEmpty() ? "" : " style=\"" + extraStyle + "\"") + ">";
+    }
+
+    /**
+     * The logo (or its symbol, {@code imageUrl}) in one flat colour. SVG concepts are recoloured
+     * as markup. A raster logo with transparency is recoloured pixel by pixel, keeping its alpha,
+     * so the white, one-colour and off-brand versions are the real mark. A raster without
+     * transparency has a background a recolour would flood, so white falls back to a CSS filter
+     * and every other colour to the primary logo.
+     */
+    private String buildLogoVariant(LogoOutput logo, String imageUrl, String targetColor,
+                                    String primaryMarkup, String brandName) {
+        if (logo.method() == LogoOutput.Method.SVG_CONCEPT && logo.svgMarkup() != null && logoVariantService != null) {
             String svg = logo.svgMarkup().strip();
             if (svg.startsWith("<?xml")) svg = svg.substring(svg.indexOf("?>") + 2).strip();
             return logoVariantService.recolor(svg, targetColor);
         }
-        // A raster logo can't be recoloured, but a transparent one can be whited out: every pixel
-        // becomes white and its transparency stays. Not every template filters this stage itself.
-        if (logo.isImage() && logo.imageUrl() != null && "#ffffff".equalsIgnoreCase(targetColor)) {
-            return rasterMarkup(logo.imageUrl(), buildTextLogoSvg(brandName), "filter:brightness(0) invert(1);");
+        if (logo.isImage() && imageUrl != null) {
+            byte[] bytes = rasterBytes(imageUrl);
+            if (bytes != null) {
+                byte[] flat = recolour(bytes, targetColor);
+                if (flat != null) return imgTag(flat, "");
+                if ("#ffffff".equalsIgnoreCase(targetColor)) return imgTag(bytes, "filter:brightness(0) invert(1);");
+            }
         }
-        return buildLogoMarkup(logo, brandName);
+        return primaryMarkup;
+    }
+
+    /** Every pixel painted {@code hex}, alpha kept; null when the image has no alpha channel. */
+    static byte[] recolour(byte[] png, String hex) {
+        try {
+            BufferedImage src = ImageIO.read(new ByteArrayInputStream(png));
+            if (src == null || !src.getColorModel().hasAlpha()) return null;
+            int[] c = parseHex(hex);
+            int rgb = (c[0] << 16) | (c[1] << 8) | c[2];
+            BufferedImage out = new BufferedImage(src.getWidth(), src.getHeight(), BufferedImage.TYPE_INT_ARGB);
+            for (int y = 0; y < src.getHeight(); y++) {
+                for (int x = 0; x < src.getWidth(); x++) {
+                    int a = src.getRGB(x, y) >>> 24;
+                    out.setRGB(x, y, (a << 24) | rgb);
+                }
+            }
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            ImageIO.write(out, "png", bos);
+            return bos.toByteArray();
+        } catch (IOException e) {
+            return null;
+        }
     }
 
     private static String buildTextLogoSvg(String brandName) {
@@ -773,25 +860,40 @@ public class BrandBookTemplateRenderer {
             + safe + "</text></svg>";
     }
 
-    private String fetchPhotoDataUri(String engagementId, String slot) {
-        String blobPath = "assets/photos/%s/%s.jpg".formatted(engagementId, slot);
-        try {
-            byte[] bytes = blobStorageService.download(blobPath);
-            if (bytes == null || bytes.length == 0) return "";
-            return "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(bytes);
-        } catch (Exception e) {
-            log.debug("Photo unavailable for slot '{}' engagementId='{}': {}", slot, engagementId, e.getMessage());
-            return "";
+    /**
+     * A slot's photo: the direction's own first ({@code assets/photos/<eng>/<DIRECTION>/<slot>.jpg}),
+     * then the engagement-wide one older engagements have, which all three books shared.
+     */
+    private String fetchPhotoDataUri(String engagementId, String direction, String slot) {
+        for (String blobPath : List.of("assets/photos/%s/%s/%s.jpg".formatted(engagementId, direction, slot),
+                                       "assets/photos/%s/%s.jpg".formatted(engagementId, slot))) {
+            try {
+                byte[] bytes = blobStorageService.download(blobPath);
+                if (bytes != null && bytes.length > 0) {
+                    return "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(bytes);
+                }
+            } catch (Exception e) {
+                log.debug("Photo unavailable at {}: {}", blobPath, e.getMessage());
+            }
         }
+        return "";
     }
 
     // ── Color helpers ─────────────────────────────────────────────────────────
 
-    private String findSwatchHex(List<VisualIdentityOutput.ColorSwatch> palette, String roleKeyword, int fallbackIndex) {
+    /** Role words that fence a colour off; such a swatch must not become the book's working accent. */
+    private static final Pattern RESTRICTED_ROLE = Pattern.compile("(?i)\\b(reserved|exclusive(ly)?|only (for|on|in))\\b");
+
+    static String findSwatchHex(List<VisualIdentityOutput.ColorSwatch> palette, String roleKeyword, int fallbackIndex) {
         if (palette == null || palette.isEmpty()) return "#1a1a1a";
+        String restrictedMatch = null;
         for (VisualIdentityOutput.ColorSwatch s : palette) {
-            if (s.role() != null && s.role().toLowerCase().contains(roleKeyword)) return s.hex();
+            if (s.role() != null && s.role().toLowerCase().contains(roleKeyword)) {
+                if (!RESTRICTED_ROLE.matcher(s.role()).find()) return s.hex();
+                if (restrictedMatch == null) restrictedMatch = s.hex();
+            }
         }
+        if (restrictedMatch != null) return restrictedMatch;
         for (VisualIdentityOutput.ColorSwatch s : palette) {
             if (s.name() != null && s.name().toLowerCase().contains(roleKeyword)) return s.hex();
         }
