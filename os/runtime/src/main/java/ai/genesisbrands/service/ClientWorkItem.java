@@ -28,6 +28,12 @@ public record ClientWorkItem(
         List<VersionRef> versions
     ) {}
 
+    /**
+     * @param downloadUrl the dashboard downloads by navigating to it, so it must be a plain
+     *     GET that the client's session cookie authorises (no X-Api-Key or other custom
+     *     header; exempt it with an {@code ApiKeyExemption}) and that answers with
+     *     {@code Content-Disposition: attachment}.
+     */
     public record Asset(
         String kind,
         String label,

@@ -37,30 +37,28 @@ function fetchBlobUrl(url) {
   return previewCache.get(url);
 }
 
-async function downloadAsset(downloadUrl, filename, tile, labelEl, originalLabel, busyLabel) {
+// The browser downloads the file itself, inside the click: it shows its own progress and
+// saves the file when the transfer ends. Fetching the bytes in script and saving a blob
+// afterwards fails silently once a large file takes more than a few seconds, because by
+// then the browser no longer treats the save as part of the click. So a downloadUrl must be
+// a plain GET that the client's session cookie authorises (no custom headers), answering
+// with Content-Disposition: attachment (see ClientWorkItem.Asset).
+function downloadAsset(downloadUrl, filename, tile, labelEl, originalLabel, busyLabel) {
+  const a = document.createElement('a');
+  a.href = downloadUrl;
+  a.download = filename;
+  a.style.display = 'none';
+  // Some browsers ignore a click on a detached link.
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Acknowledge the click until the browser's own download indicator takes over.
   tile.disabled = true;
   labelEl.textContent = busyLabel;
-  try {
-    const res = await fetch(downloadUrl, { headers: HEADERS });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.style.display = 'none';
-    // Some browsers ignore a click on a detached link, and revoking the URL straight away
-    // can cancel the download before it starts.
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
-  } catch (err) {
-    alert('Download failed: ' + (err.message || err));
-  } finally {
+  setTimeout(() => {
     tile.disabled = false;
     labelEl.textContent = originalLabel;
-  }
+  }, 4000);
 }
 
 // `isCurrent` gates both the download action and the live preview-image fetch — a
@@ -119,7 +117,7 @@ function buildTile(asset, unlocked, isCurrent) {
   if (canDownload) {
     const ext = asset.kind === 'image' ? 'zip' : 'pdf';
     const filename = `${asset.label.toLowerCase().replace(/\s+/g, '-')}.${ext}`;
-    const busyLabel = asset.kind === 'image' ? 'Zipping…' : 'Generating…';
+    const busyLabel = 'Downloading…';
     tile.onclick = () => downloadAsset(asset.downloadUrl, filename, tile, labelEl, asset.label, busyLabel);
   } else {
     const sub = document.createElement('div');
