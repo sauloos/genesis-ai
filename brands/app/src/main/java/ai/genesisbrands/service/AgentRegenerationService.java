@@ -283,7 +283,7 @@ public class AgentRegenerationService {
         if (find == null || find.isBlank() || replace == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Send the text to find and its replacement");
         }
-        return queueAdminJob(engagementId, direction, ADMIN_TEXT_PATCH_JOB, find + "\u0000" + replace);
+        return queueAdminJob(engagementId, direction, ADMIN_TEXT_PATCH_JOB, find + "\u001f" + replace);
     }
 
     private AgentRegenerationJob queueAdminJob(String engagementId, String direction, String marker, String note) {
@@ -431,7 +431,7 @@ public class AgentRegenerationService {
         job.setStatus(AgentRegenerationJob.Status.RUNNING);
         jobRepo.save(job);
         try {
-            String[] pair = job.getFeedback().split("\u0000", 2);
+            String[] pair = job.getFeedback().split("\u001f", 2);
             Engagement engagement = engagementRepo.findById(job.getEngagementId())
                 .orElseThrow(() -> new RuntimeException("Engagement not found: " + job.getEngagementId()));
             DirectionOutput dir = findDirectionOutput(engagement, job.getDirection());
