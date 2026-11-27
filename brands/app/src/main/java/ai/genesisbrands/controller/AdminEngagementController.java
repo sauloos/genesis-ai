@@ -178,6 +178,27 @@ public class AdminEngagementController {
         return job;
     }
 
+    public record TextPatchRequest(String find, String replace) {}
+
+    /** Swaps exact wording in one direction's output and re-renders its PDF (no model call). */
+    @PostMapping("/{id}/directions/{direction}/text-patch")
+    @Operation(summary = "Replace exact wording in a direction and re-render its brand book")
+    public AgentRegenerationJob textPatch(@PathVariable String id, @PathVariable String direction,
+                                          @RequestBody TextPatchRequest body, HttpServletRequest req) {
+        if (!adminAuth.isAdminRequest(req) && !adminSession.hasValidSession(req)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Admin credentials required");
+        }
+        AgentRegenerationJob job;
+        try {
+            job = regenerationService.queueAdminTextPatch(id, direction, body.find(), body.replace());
+        } catch (NoSuchElementException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
+        }
+        log.info("Admin text patch of {} / {} queued as job {}", id, job.getDirection(), job.getId());
+        regenerationService.applyAdminTextPatch(job.getId());
+        return job;
+    }
+
     @GetMapping("/logo-jobs/{jobId}")
     @Operation(summary = "Status of an admin logo replacement")
     public AgentRegenerationJob logoJob(@PathVariable String jobId, HttpServletRequest req) {

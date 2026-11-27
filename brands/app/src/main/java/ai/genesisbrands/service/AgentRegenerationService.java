@@ -275,6 +275,17 @@ public class AgentRegenerationService {
         return queueAdminJob(engagementId, direction, ADMIN_REBUILD_JOB, feedback);
     }
 
+    /** The job id an admin text patch (exact wording swap, no model call, PDF re-rendered) is tracked under. */
+    public static final String ADMIN_TEXT_PATCH_JOB = "admin-text-patch";
+
+    /** Admin-only: queues replacing {@code find} with {@code replace} everywhere in a direction's output. */
+    public AgentRegenerationJob queueAdminTextPatch(String engagementId, String direction, String find, String replace) {
+        if (find == null || find.isBlank() || replace == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Send the text to find and its replacement");
+        }
+        return queueAdminJob(engagementId, direction, ADMIN_TEXT_PATCH_JOB, find + "\u0000" + replace);
+    }
+
     private AgentRegenerationJob queueAdminJob(String engagementId, String direction, String marker, String note) {
         Engagement engagement = engagementRepo.findById(engagementId)
             .orElseThrow(() -> new NoSuchElementException("Engagement not found: " + engagementId));
@@ -408,6 +419,62 @@ public class AgentRegenerationService {
         }
     }
 
+    /**
+     * Swaps exact wording in a direction's stored output (no model call), re-renders the PDF,
+     * archives the previous output as a version and saves it. Fails, changing nothing, when the
+     * wording is not found.
+     */
+    @Async
+    public void applyAdminTextPatch(String jobId) {
+        AgentRegenerationJob job = jobRepo.findById(jobId)
+            .orElseThrow(() -> new RuntimeException("Regeneration job not found: " + jobId));
+        job.setStatus(AgentRegenerationJob.Status.RUNNING);
+        jobRepo.save(job);
+        try {
+            String[] pair = job.getFeedback().split("\u0000", 2);
+            Engagement engagement = engagementRepo.findById(job.getEngagementId())
+                .orElseThrow(() -> new RuntimeException("Engagement not found: " + job.getEngagementId()));
+            DirectionOutput dir = findDirectionOutput(engagement, job.getDirection());
+            if (dir == null) throw new RuntimeException("Direction not found: " + job.getDirection());
+
+            String json = objectMapper.writeValueAsString(dir);
+            String from = jsonEscaped(pair[0]);
+            if (!json.contains(from)) throw new RuntimeException("Text not found in this direction's output");
+            DirectionOutput patched = objectMapper.readValue(json.replace(from, jsonEscaped(pair[1])), DirectionOutput.class);
+            patched = patched.withPdfBlobPath(renderAndStorePdf(patched, jobId));
+
+            Engagement fresh = engagementRepo.findById(job.getEngagementId()).orElseThrow();
+            EngagementResults results = objectMapper.readValue(fresh.getResultsJson(), EngagementResults.class);
+            List<DirectionOutput> directions = new ArrayList<>(results.directions());
+            for (int i = 0; i < directions.size(); i++) {
+                if (directions.get(i).direction().equalsIgnoreCase(job.getDirection())) {
+                    archiveVersion(job.getEngagementId(), job.getDirection(), directions.get(i), jobId);
+                    directions.set(i, patched);
+                }
+            }
+            fresh.setResultsJson(objectMapper.writeValueAsString(new EngagementResults(directions)));
+            fresh.setUpdatedAt(Instant.now());
+            saveEngagement(fresh);
+
+            job.setStatus(AgentRegenerationJob.Status.DONE);
+            job.setCompletedAt(Instant.now());
+            jobRepo.save(job);
+            log.info("Admin text patch {}: {} of engagement {} re-worded", jobId, job.getDirection(), job.getEngagementId());
+        } catch (Exception e) {
+            log.error("Admin text patch {} failed: {}", jobId, e.getMessage(), e);
+            job.setStatus(AgentRegenerationJob.Status.FAILED);
+            job.setErrorMessage(e.getMessage());
+            job.setCompletedAt(Instant.now());
+            jobRepo.save(job);
+        }
+    }
+
+    /** The text as it appears inside a JSON string literal, without the surrounding quotes. */
+    private String jsonEscaped(String text) throws com.fasterxml.jackson.core.JsonProcessingException {
+        String quoted = objectMapper.writeValueAsString(text);
+        return quoted.substring(1, quoted.length() - 1);
+    }
+
     public AgentRegenerationJob saveJob(AgentRegenerationJob job) {
         return jobRepo.save(job);
     }
@@ -415,7 +482,8 @@ public class AgentRegenerationService {
     /** An admin logo job, for polling. */
     public AgentRegenerationJob adminJob(String jobId) {
         return jobRepo.findById(jobId)
-            .filter(j -> ADMIN_LOGO_JOB.equals(j.getAgentId()) || ADMIN_REBUILD_JOB.equals(j.getAgentId()))
+            .filter(j -> ADMIN_LOGO_JOB.equals(j.getAgentId()) || ADMIN_REBUILD_JOB.equals(j.getAgentId())
+                || ADMIN_TEXT_PATCH_JOB.equals(j.getAgentId()))
             .orElseThrow(() -> new NoSuchElementException("Job not found: " + jobId));
     }
 
