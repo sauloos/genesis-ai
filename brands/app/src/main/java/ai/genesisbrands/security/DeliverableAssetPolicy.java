@@ -29,6 +29,6 @@ public class DeliverableAssetPolicy implements AssetAccessPolicy {
 
     static boolean isDeliverable(String blobPath) {
         String p = blobPath.toLowerCase();
-        return p.startsWith("assets/brand-books/") || p.endsWith(".pdf") || p.endsWith(".zip");
+        return p.startsWith("assets/brand-books/") || p.startsWith("previews/") || p.endsWith(".pdf") || p.endsWith(".zip");
     }
 }

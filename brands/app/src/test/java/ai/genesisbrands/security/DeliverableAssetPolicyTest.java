@@ -21,6 +21,11 @@ class DeliverableAssetPolicyTest {
     }
 
     @Test
+    void publicCannotFetchStoredCovers() {
+        assertFalse(policy.allows("previews/e1/anchored-ab12.jpg", req));
+    }
+
+    @Test
     void publicCanStillFetchImages() {
         assertTrue(policy.allows("assets/logos/abc/ANCHORED-1.png", req));
         assertTrue(policy.allows("uploads/abc/logo.jpg", req));

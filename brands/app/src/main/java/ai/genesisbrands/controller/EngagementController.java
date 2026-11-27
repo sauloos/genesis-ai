@@ -209,20 +209,53 @@ public class EngagementController {
         BrandBookInput input = new BrandBookInput(
             dir.brief(), dir.playbook(), dir.copy(), dir.visualIdentity(), dir.logo()
         );
-        // The results JSON changes whenever any direction is regenerated, so a stale cover is
-        // never served.
-        String key = id + ":" + dir.direction() + ":" + e.getResultsJson().hashCode();
+        // The cover is keyed by what it is drawn from, so a regenerated direction gets a new one
+        // and an unchanged one is never rendered twice, across page loads and restarts.
+        String hash;
+        try {
+            hash = contentHash(dir);
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        }
+        String etag = "\"" + hash + "\"";
+        if (etag.equals(req.getHeader(HttpHeaders.IF_NONE_MATCH))) {
+            return ResponseEntity.status(HttpStatus.NOT_MODIFIED)
+                .header(HttpHeaders.ETAG, etag).header(HttpHeaders.CACHE_CONTROL, "private, no-cache").build();
+        }
+        String blobPath = "previews/%s/%s-%s.jpg".formatted(id, dir.direction().toLowerCase(), hash);
         byte[] jpeg;
         try {
-            jpeg = previewCache.get(key, () -> pdfRenderer.renderPreviewImage(input, dir.brandBook()));
+            byte[] stored;
+            try {
+                stored = blobStorageService.download(blobPath);
+            } catch (Exception missing) {
+                stored = null;
+            }
+            if (stored != null && stored.length > 0) {
+                jpeg = stored;
+            } else {
+                jpeg = previewCache.get(blobPath, () -> pdfRenderer.renderPreviewImage(input, dir.brandBook()));
+                try {
+                    blobStorageService.upload(blobPath, jpeg);
+                } catch (Exception ex) {
+                    log.warn("Could not store cover {}: {}", blobPath, ex.getMessage());
+                }
+            }
         } catch (Exception ex) {
             log.error("Preview render failed for engagement {} direction {}: {}", id, direction, ex.getMessage(), ex);
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
         }
         return ResponseEntity.ok()
             .contentType(MediaType.IMAGE_JPEG)
+            .header(HttpHeaders.ETAG, etag)
             .header(HttpHeaders.CACHE_CONTROL, "private, no-cache")
             .body(jpeg);
+    }
+
+    private String contentHash(DirectionOutput dir) throws Exception {
+        byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
+            .digest(objectMapper.writeValueAsBytes(dir));
+        return java.util.HexFormat.of().formatHex(digest, 0, 8);
     }
 
     /**

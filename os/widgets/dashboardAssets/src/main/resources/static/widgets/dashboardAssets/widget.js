@@ -61,6 +61,59 @@ function downloadAsset(downloadUrl, filename, tile, labelEl, originalLabel, busy
   }, 4000);
 }
 
+
+// Logos arrive with generous empty margins. Crop to the visible mark (transparent pixels, or
+// pixels matching the corner colour on an opaque image) so the tile can take the logo's own shape.
+// Any failure (tainted canvas, decode error) leaves the original image in place.
+function trimmedLogo(src) {
+  return new Promise(resolve => {
+    const im = new Image();
+    im.onload = () => {
+      try {
+        const w = im.naturalWidth, h = im.naturalHeight;
+        if (!w || !h) return resolve(null);
+        const scale = Math.min(1, 512 / Math.max(w, h));
+        const cw = Math.max(1, Math.round(w * scale)), ch = Math.max(1, Math.round(h * scale));
+        const c = document.createElement('canvas');
+        c.width = cw; c.height = ch;
+        const g = c.getContext('2d', { willReadFrequently: true });
+        g.drawImage(im, 0, 0, cw, ch);
+        const px = g.getImageData(0, 0, cw, ch).data;
+        const at = (x, y) => (y * cw + x) * 4;
+        const k = at(0, 0);
+        const opaqueBg = px[k + 3] > 240;
+        const bg = [px[k], px[k + 1], px[k + 2]];
+        const isInk = i => opaqueBg
+          ? Math.abs(px[i] - bg[0]) + Math.abs(px[i + 1] - bg[1]) + Math.abs(px[i + 2] - bg[2]) > 40
+          : px[i + 3] > 16;
+        let x0 = cw, y0 = ch, x1 = -1, y1 = -1;
+        for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
+          if (isInk(at(x, y))) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+        }
+        if (x1 < 0) return resolve(null);
+        const pad = Math.round(Math.max(x1 - x0, y1 - y0) * 0.04);
+        x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad);
+        x1 = Math.min(cw - 1, x1 + pad); y1 = Math.min(ch - 1, y1 + pad);
+        const tw = x1 - x0 + 1, th = y1 - y0 + 1;
+        const out = document.createElement('canvas');
+        out.width = tw; out.height = th;
+        out.getContext('2d').drawImage(c, x0, y0, tw, th, 0, 0, tw, th);
+        out.toBlob(b => resolve(b ? { url: URL.createObjectURL(b), aspect: tw / th } : null), 'image/png');
+      } catch (e) { resolve(null); }
+    };
+    im.onerror = () => resolve(null);
+    im.src = src;
+  });
+}
+
+// Shape a tile after its picture: a landscape cover or a wide wordmark gets a landscape sheet
+// spanning two grid columns; portrait and square stay one column wide.
+function shapeTile(tile, doc, aspect, wideFrom) {
+  const a = Math.min(3, Math.max(0.5, aspect));
+  doc.style.setProperty('--dass-aspect', a.toFixed(3));
+  if (a >= wideFrom) tile.classList.add('dass-tile-wide');
+}
+
 // `isCurrent` gates both the download action and the live preview-image fetch — a
 // historical variant snapshot (fetched from the versions endpoint) can only ever be
 // browsed, never downloaded or thumbnailed, and the generic ClientWorkItem.Asset DTO
@@ -90,8 +143,10 @@ function buildTile(asset, unlocked, isCurrent) {
   tile.appendChild(doc);
 
   if (asset.kind === 'image') {
+    let src = asset.previewUrl;
     if (asset.inlineSvg) {
       thumb.innerHTML = asset.inlineSvg;
+      src = URL.createObjectURL(new Blob([asset.inlineSvg], { type: 'image/svg+xml' }));
     } else if (asset.previewUrl) {
       const img = document.createElement('img');
       img.alt = `${asset.label} preview`;
@@ -106,13 +161,27 @@ function buildTile(asset, unlocked, isCurrent) {
       thumb.innerHTML = '';
       thumb.appendChild(img);
     }
+    if (src) {
+      trimmedLogo(src).then(trim => {
+        if (asset.inlineSvg) URL.revokeObjectURL(src);
+        if (!trim) return;
+        const img = document.createElement('img');
+        img.alt = `${asset.label} preview`;
+        img.src = trim.url;
+        thumb.innerHTML = '';
+        thumb.appendChild(img);
+        shapeTile(tile, doc, trim.aspect, 1.5);
+        if (isCurrent && !unlocked) addLock(thumb);
+      });
+    }
     if (isCurrent && !unlocked) addLock(thumb);
   } else if (asset.previewUrl) {
     fetchBlobUrl(asset.previewUrl).then(url => {
       if (!url) return;
       const img = document.createElement('img');
-      img.src = url;
       img.alt = `${asset.label} preview`;
+      img.onload = () => shapeTile(tile, doc, img.naturalWidth / img.naturalHeight, 1.2);
+      img.src = url;
       thumb.innerHTML = '';
       thumb.appendChild(img);
       if (!unlocked) addLock(thumb);

@@ -17,18 +17,19 @@
   justify-content: center; transition: border-color 0.15s; }
 .dass-tile:not(:disabled):hover .dass-tile-thumb { border-color: var(--theme-text-primary); }
 .dass-tile:focus-visible .dass-tile-thumb { border-color: var(--theme-text-primary); }
-.dass-tile-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dass-tile-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .dass-tile-thumb.dass-logo-thumb { background: repeating-conic-gradient(var(--theme-preview-check) 0% 25%, var(--theme-preview-bg) 0% 50%) 50% / 16px 16px; }
-.dass-tile-thumb.dass-logo-thumb svg, .dass-tile-thumb.dass-logo-thumb img { width: 70%; height: 70%; object-fit: contain; }
+.dass-tile-thumb.dass-logo-thumb svg, .dass-tile-thumb.dass-logo-thumb img { width: 80%; height: 80%; object-fit: contain; }
+.dass-tile-wide { grid-column: span 2; }
 .dass-doc { position: relative; width: 100%; filter: drop-shadow(0 3px 8px color-mix(in srgb, var(--theme-card-shadow, var(--theme-text-primary)) 55%, transparent)); transition: transform 0.15s; }
-.dass-doc .dass-tile-thumb { aspect-ratio: 3 / 4; border-radius: 3px; border: none;
+.dass-doc .dass-tile-thumb { aspect-ratio: var(--dass-aspect, 3 / 4); border-radius: 3px; border: none;
   clip-path: polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 0 100%); }
 .dass-doc::after { content: ''; position: absolute; top: 0; right: 0; width: 24px; height: 24px; pointer-events: none;
   background: linear-gradient(225deg, transparent 50%, var(--theme-preview-check) 50%);
   box-shadow: -2px 2px 3px color-mix(in srgb, var(--theme-card-shadow, var(--theme-text-primary)) 35%, transparent);
   border-bottom-left-radius: 3px; }
 .dass-doc-square::after { display: none; }
-.dass-doc-square .dass-tile-thumb { aspect-ratio: 1; clip-path: none; border-radius: 6px; border: 1px solid var(--theme-card-border); }
+.dass-doc-square .dass-tile-thumb { aspect-ratio: var(--dass-aspect, 1); clip-path: none; border-radius: 6px; border: 1px solid var(--theme-card-border); }
 .dass-doc-cue { position: absolute; left: 0; right: 0; bottom: 0; padding: 22px 6px 8px; text-align: center;
   font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; pointer-events: none;
   color: var(--theme-body-bg); opacity: 0; transition: opacity 0.15s; border-radius: 0 0 3px 3px;
