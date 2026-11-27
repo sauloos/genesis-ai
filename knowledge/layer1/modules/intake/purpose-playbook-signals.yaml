@@ -128,6 +128,18 @@ sections:
         derives: [playbook.team.respondent]
         probing_question: "And who are we talking to — your name and role?"
 
+      - signal_key: setup.publicFace
+        required: false
+        options: [yes, no, not sure]
+        derives: [playbook.team.publicFace, brief.invariants]
+        probing_question: "Do you want to be the public face of the brand?"
+        derivation_note: >
+          Decides whether any deliverable may name the founder. "yes" lets their name appear
+          only in the brand story, the About page and the sign-off. "no", "not sure" or no
+          answer means every deliverable speaks as the brand, or as an unnamed "I", and names
+          nobody. Record the answer, or its absence, in the body, and carry it into the brief's
+          invariants either way so the specialists never have to guess.
+
 # ─────────────────────────────────────────────────────────────────────────────
 # ACT 1 — BELIEF
 # ─────────────────────────────────────────────────────────────────────────────

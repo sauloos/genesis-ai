@@ -49,6 +49,13 @@ forbidden colours and anything that must be kept. The module lists them. Restate
 constraints, once, and let every direction inherit them. A direction that drops one of them is not
 bolder — it is a different company.
 
+Always add one invariant about names, from the `setup.publicFace` answer. If the client said yes:
+"The founder is the public face: their name may appear only in the brand story, the About page
+and the sign-off, and nowhere else." Otherwise, including when it was not answered:
+"Nobody is named: every deliverable speaks as the brand or as an unnamed 'I', and never names
+the founder, the team or a persona." Personas are described by what they do, never by an
+invented first name.
+
 The never-list words are hard negative constraints. Carry them as words to avoid; do not reproduce
 them as the brand's description.
 

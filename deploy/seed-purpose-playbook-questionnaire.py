@@ -217,6 +217,12 @@ QUESTIONS += [
            "so you're judging type with your own words.",
       config=text("We make the thing people come back for.", 240)),
 
+    q("SINGLE_SELECT", "Do you want to be the public face of the brand?",
+      "setup.publicFace", "setup", "s-who", required=False,
+      help="If yes, your name can appear in the brand story, the About page and the sign-off. "
+           "If no, everything speaks as the brand and never names you.",
+      config=choices(["yes", "no", "not sure"])),
+
     q("SHORT_TEXT", "Which sector are you in?", "setup.sector", "setup", "s-shape",
       config=text("Childcare franchising")),
     q("SINGLE_SELECT", "Where are you up to?", "setup.stage", "setup", "s-shape",
