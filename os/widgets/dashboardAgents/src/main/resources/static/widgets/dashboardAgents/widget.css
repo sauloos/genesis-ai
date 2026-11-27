@@ -16,6 +16,39 @@
 .da-badge.live { background: color-mix(in srgb, var(--theme-success) 15%, transparent); color: var(--theme-success); }
 .da-empty { font-size: 13px; color: var(--theme-text-muted); padding: 16px 0; }
 
+/* The dialog hosts agent views that style themselves only through --av-* (agent-views/_shared/
+   tokens.css, whose light defaults suit a light page). Map them to the active theme here so the
+   dialog and everything mounted in it follow the theme, light or dark. */
+.da-dialog-backdrop {
+  --av-surface: var(--theme-body-bg);
+  --av-surface-subtle: color-mix(in srgb, var(--theme-text-primary) 5%, var(--theme-body-bg));
+  --av-surface-hover: color-mix(in srgb, var(--theme-text-primary) 9%, var(--theme-body-bg));
+  --av-text: var(--theme-text-primary);
+  --av-text-strong: var(--theme-text-primary);
+  --av-text-muted: var(--theme-text-muted);
+  --av-text-label: var(--theme-text-label);
+  --av-text-faint: color-mix(in srgb, var(--theme-text-primary) 30%, transparent);
+  --av-border: color-mix(in srgb, var(--theme-text-primary) 18%, transparent);
+  --av-border-subtle: color-mix(in srgb, var(--theme-text-primary) 10%, transparent);
+  --av-input-bg: color-mix(in srgb, var(--theme-text-primary) 6%, var(--theme-body-bg));
+  --av-input-disabled-bg: color-mix(in srgb, var(--theme-text-primary) 3%, var(--theme-body-bg));
+  --av-accent: var(--theme-text-primary);
+  --av-accent-text: var(--theme-body-bg);
+  --av-bubble-bg: color-mix(in srgb, var(--theme-text-primary) 10%, var(--theme-body-bg));
+  --av-bubble-text: var(--theme-text-primary);
+  --av-success: var(--theme-success);
+  --av-success-text: var(--theme-body-bg);
+  --av-success-bg: color-mix(in srgb, var(--theme-success) 14%, var(--theme-body-bg));
+  --av-success-border: color-mix(in srgb, var(--theme-success) 40%, transparent);
+  --av-warning: var(--theme-warning);
+  --av-warning-bg: color-mix(in srgb, var(--theme-warning) 14%, var(--theme-body-bg));
+  --av-warning-border: color-mix(in srgb, var(--theme-warning) 40%, transparent);
+  --av-danger: var(--theme-danger);
+  --av-danger-bg: color-mix(in srgb, var(--theme-danger) 14%, var(--theme-body-bg));
+  --av-backdrop: color-mix(in srgb, var(--theme-body-bg) 70%, transparent);
+  --av-shadow: color-mix(in srgb, var(--theme-text-primary) 14%, transparent);
+}
+
 /* ── Agent dialog shell (chrome only — content is the mounted agent view module) ──
    Fixed footprint shared by every agent (same width/height regardless of content),
    with the body as the only scrollable region so the header stays put. */

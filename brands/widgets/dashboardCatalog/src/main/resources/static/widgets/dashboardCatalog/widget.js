@@ -1,7 +1,6 @@
+// The product catalog is not built yet. Until it is, the widget takes no space on the page
+// rather than showing a "coming soon" panel; the page flow keeps it so it appears once real.
 export function mount(container) {
-  container.classList.add('dc-panel');
-  container.innerHTML = `
-    <div class="dc-panel-label">Catalog</div>
-    <div class="dc-coming-soon">Products for your brand — coming soon</div>
-  `;
+  container.hidden = true;
+  container.style.display = 'none';
 }

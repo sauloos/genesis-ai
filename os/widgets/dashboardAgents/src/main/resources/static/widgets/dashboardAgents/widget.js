@@ -89,7 +89,7 @@ export async function mount(container, widget, ctx) {
       card.innerHTML = `
         <div class="da-name">${esc(a.displayName)}</div>
         <div class="da-desc">${esc(a.description)}</div>
-        <div class="da-badge${clickable ? ' live' : ''}">${clickable ? 'Manage' : 'Coming soon'}</div>
+        <div class="da-badge${clickable ? ' live' : ''}">${clickable ? 'Manage' : 'Available once your brand is ready'}</div>
       `;
       if (clickable) {
         card.onclick = () => openAgentDialog(a.agentId, a.displayName, target || {}, ctx || {});
