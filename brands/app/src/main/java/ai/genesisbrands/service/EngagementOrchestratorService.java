@@ -342,7 +342,12 @@ public class EngagementOrchestratorService {
         }
     }
 
-    public record EngagementResults(List<DirectionOutput> directions) {}
+    public record EngagementResults(List<DirectionOutput> directions) {
+        public EngagementResults withoutDeliverablePaths() {
+            return directions == null ? this
+                : new EngagementResults(directions.stream().map(DirectionOutput::withoutDeliverablePaths).toList());
+        }
+    }
 
     public record DirectionOutput(
         String direction,
@@ -357,6 +362,10 @@ public class EngagementOrchestratorService {
     ) {
         DirectionOutput withPdfBlobPath(String path) {
             return new DirectionOutput(direction, brief, copy, visualIdentity, logo, playbook, brandBook, path, logoZipBlobPath);
+        }
+        /** The view an unpaid viewer gets: no storage paths to the paid PDF or logo package. */
+        public DirectionOutput withoutDeliverablePaths() {
+            return new DirectionOutput(direction, brief, copy, visualIdentity, logo, playbook, brandBook, null, null);
         }
         DirectionOutput withLogoZipBlobPath(String path) {
             return new DirectionOutput(direction, brief, copy, visualIdentity, logo, playbook, brandBook, pdfBlobPath, path);

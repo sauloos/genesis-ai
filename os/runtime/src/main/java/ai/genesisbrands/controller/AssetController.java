@@ -1,7 +1,9 @@
 package ai.genesisbrands.controller;
 
+import ai.genesisbrands.service.AssetAccessPolicy;
 import ai.genesisbrands.service.BlobStorageService;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -22,14 +24,25 @@ public class AssetController {
 
     private final BlobStorageService blobStorageService;
 
-    public AssetController(BlobStorageService blobStorageService) {
+    private final ObjectProvider<AssetAccessPolicy> policies;
+
+    public AssetController(BlobStorageService blobStorageService, ObjectProvider<AssetAccessPolicy> policies) {
         this.blobStorageService = blobStorageService;
+        this.policies = policies;
     }
 
     @GetMapping("/api/assets/**")
     public ResponseEntity<ByteArrayResource> get(HttpServletRequest request) {
         String path = (String) request.getAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE);
         String blobPath = path.startsWith(PREFIX) ? path.substring(PREFIX.length()) : path;
+
+        if (blobPath.contains("..") || blobPath.startsWith("/") || blobPath.contains("\\")) {
+            return ResponseEntity.notFound().build();
+        }
+        // 404, not 403: a withheld deliverable should look the same as one that does not exist.
+        for (AssetAccessPolicy policy : policies.orderedStream().toList()) {
+            if (!policy.allows(blobPath, request)) return ResponseEntity.notFound().build();
+        }
 
         try {
             byte[] bytes = blobStorageService.download(blobPath);

@@ -144,6 +144,8 @@ public class EngagementController {
         boolean ownsEngagement = clientUserId != null && clientUserId.equals(e.getClientUserId());
         boolean downloadAllowed = adminAccess || e.getPaymentStatus() == Engagement.PaymentStatus.PAID;
 
+        if (results != null && !downloadAllowed) results = results.withoutDeliverablePaths();
+
         return new EngagementDetail(EngagementSummary.of(e), results, adminAccess, downloadAllowed, ownsEngagement);
     }
 
@@ -338,12 +340,14 @@ public class EngagementController {
         Engagement e = engagementRepo.findById(id)
             .orElseThrow(() -> new NoSuchElementException("Engagement not found: " + id));
         requireOwner(e, req);
+        boolean downloadAllowed = isAdmin(req) || e.getPaymentStatus() == Engagement.PaymentStatus.PAID;
 
         EngagementDirectionVersion version = versionRepo
             .findByEngagementIdAndDirectionAndVersionNumber(id, direction.toUpperCase(), versionNumber)
             .orElseThrow(() -> new NoSuchElementException("Version not found: " + versionNumber));
         try {
-            return objectMapper.readValue(version.getDirectionOutputJson(), DirectionOutput.class);
+            DirectionOutput out = objectMapper.readValue(version.getDirectionOutputJson(), DirectionOutput.class);
+            return downloadAllowed ? out : out.withoutDeliverablePaths();
         } catch (Exception ex) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Could not parse stored version");
         }
