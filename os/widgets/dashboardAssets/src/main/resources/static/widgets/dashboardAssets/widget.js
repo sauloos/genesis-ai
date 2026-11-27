@@ -76,7 +76,18 @@ function buildTile(asset, unlocked, isCurrent) {
   const thumb = document.createElement('div');
   thumb.className = asset.kind === 'image' ? 'dass-tile-thumb dass-logo-thumb' : 'dass-tile-thumb';
   thumb.innerHTML = asset.kind === 'image' ? LOGO_ICON : BOOK_ICON;
-  tile.appendChild(thumb);
+  // A document reads as a sheet of paper with a turned-down corner; a logo package stays a
+  // square. The wrapper carries the shadow because clip-path would cut it off the thumb itself.
+  const doc = document.createElement('div');
+  doc.className = asset.kind === 'image' ? 'dass-doc dass-doc-square' : 'dass-doc';
+  doc.appendChild(thumb);
+  if (canDownload) {
+    const cue = document.createElement('div');
+    cue.className = 'dass-doc-cue';
+    cue.textContent = 'Download';
+    doc.appendChild(cue);
+  }
+  tile.appendChild(doc);
 
   if (asset.kind === 'image') {
     if (asset.inlineSvg) {

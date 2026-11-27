@@ -20,7 +20,24 @@
 .dass-tile-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .dass-tile-thumb.dass-logo-thumb { background: repeating-conic-gradient(var(--theme-preview-check) 0% 25%, var(--theme-preview-bg) 0% 50%) 50% / 16px 16px; }
 .dass-tile-thumb.dass-logo-thumb svg, .dass-tile-thumb.dass-logo-thumb img { width: 70%; height: 70%; object-fit: contain; }
-.dass-tile-icon { width: 34px; height: 34px; color: var(--theme-preview-check); }
+.dass-doc { position: relative; width: 100%; filter: drop-shadow(0 3px 8px color-mix(in srgb, var(--theme-card-shadow, var(--theme-text-primary)) 55%, transparent)); transition: transform 0.15s; }
+.dass-doc .dass-tile-thumb { aspect-ratio: 3 / 4; border-radius: 3px; border: none;
+  clip-path: polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 0 100%); }
+.dass-doc::after { content: ''; position: absolute; top: 0; right: 0; width: 24px; height: 24px; pointer-events: none;
+  background: linear-gradient(225deg, transparent 50%, var(--theme-preview-check) 50%);
+  box-shadow: -2px 2px 3px color-mix(in srgb, var(--theme-card-shadow, var(--theme-text-primary)) 35%, transparent);
+  border-bottom-left-radius: 3px; }
+.dass-doc-square::after { display: none; }
+.dass-doc-square .dass-tile-thumb { aspect-ratio: 1; clip-path: none; border-radius: 6px; border: 1px solid var(--theme-card-border); }
+.dass-doc-cue { position: absolute; left: 0; right: 0; bottom: 0; padding: 22px 6px 8px; text-align: center;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; pointer-events: none;
+  color: var(--theme-body-bg); opacity: 0; transition: opacity 0.15s; border-radius: 0 0 3px 3px;
+  background: linear-gradient(to top, color-mix(in srgb, var(--theme-text-primary) 85%, transparent), transparent); }
+.dass-tile:not(:disabled):hover .dass-doc, .dass-tile:focus-visible .dass-doc { transform: translateY(-3px); }
+.dass-tile:not(:disabled):hover .dass-doc-cue, .dass-tile:focus-visible .dass-doc-cue { opacity: 1; }
+@media (hover: none) { .dass-doc-cue { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .dass-doc, .dass-doc-cue { transition: none; } .dass-tile:not(:disabled):hover .dass-doc { transform: none; } }
+.dass-tile-icon { width: 44px; height: 44px; color: var(--theme-preview-check); }
 .dass-tile-lock { position: absolute; inset: 0; background: color-mix(in srgb, var(--theme-preview-bg) 72%, transparent);
   display: flex; align-items: center; justify-content: center; font-size: 18px; }
 .dass-tile-label { font-size: 11px; font-weight: 600; color: var(--theme-text-primary); text-align: center; line-height: 1.3; }
