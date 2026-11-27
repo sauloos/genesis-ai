@@ -150,6 +150,34 @@ public class AdminEngagementController {
         }
     }
 
+    public record RebuildRequest(String feedback) {}
+
+    /**
+     * Regenerates one agent's output for one direction of a finished engagement, then everything
+     * downstream of it (Copy goes on to Playbook, Brand Book and PDF), keeping the logo and
+     * palette. Applied straight in with the old output archived as a version. Poll
+     * {@code /logo-jobs/{jobId}}.
+     */
+    @PostMapping("/{id}/directions/{direction}/agents/{agentId}/rebuild")
+    @Operation(summary = "Regenerate an agent for a direction and rebuild everything downstream")
+    public AgentRegenerationJob rebuild(@PathVariable String id, @PathVariable String direction,
+                                        @PathVariable String agentId,
+                                        @RequestBody(required = false) RebuildRequest body,
+                                        HttpServletRequest req) {
+        if (!adminAuth.isAdminRequest(req) && !adminSession.hasValidSession(req)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Admin credentials required");
+        }
+        AgentRegenerationJob job;
+        try {
+            job = regenerationService.queueAdminRebuild(id, direction, agentId, body == null ? null : body.feedback());
+        } catch (NoSuchElementException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
+        }
+        log.info("Admin rebuild of {} / {} from {} queued as job {}", id, job.getDirection(), agentId, job.getId());
+        regenerationService.applyAdminRebuild(job.getId(), agentId);
+        return job;
+    }
+
     @GetMapping("/logo-jobs/{jobId}")
     @Operation(summary = "Status of an admin logo replacement")
     public AgentRegenerationJob logoJob(@PathVariable String jobId, HttpServletRequest req) {

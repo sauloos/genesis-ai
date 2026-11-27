@@ -72,6 +72,7 @@ public class AgentRegenerationService {
     private final PlaybookAgent playbookAgent;
     private final BrandBookAgent brandBookAgent;
     private final BrandBookTemplateRenderer pdfRenderer;
+    private final PhotoSourcingService photoSourcingService;
     private final LogoExportService logoExportService;
     private final BlobStorageService blobStorageService;
     private final ObjectMapper objectMapper;
@@ -260,6 +261,21 @@ public class AgentRegenerationService {
      * proxy so the cascade runs in the background.
      */
     public AgentRegenerationJob queueAdminLogo(String engagementId, String direction, String note) {
+        return queueAdminJob(engagementId, direction, ADMIN_LOGO_JOB, note);
+    }
+
+    /** The job id an admin rebuild (regenerate one agent and everything downstream) is tracked under. */
+    public static final String ADMIN_REBUILD_JOB = "admin-rebuild";
+
+    /** Admin-only: queues regenerating {@code agentId} for a direction and its cascade. */
+    public AgentRegenerationJob queueAdminRebuild(String engagementId, String direction, String agentId, String feedback) {
+        if (!REGENERATABLE_AGENT_IDS.contains(agentId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Agent does not support regeneration: " + agentId);
+        }
+        return queueAdminJob(engagementId, direction, ADMIN_REBUILD_JOB, feedback);
+    }
+
+    private AgentRegenerationJob queueAdminJob(String engagementId, String direction, String marker, String note) {
         Engagement engagement = engagementRepo.findById(engagementId)
             .orElseThrow(() -> new NoSuchElementException("Engagement not found: " + engagementId));
         if (engagement.getStatus() != Engagement.Status.DONE) {
@@ -281,7 +297,7 @@ public class AgentRegenerationService {
             job.setId(UUID.randomUUID().toString());
             job.setEngagementId(engagementId);
             job.setDirection(normalizedDirection);
-            job.setAgentId(ADMIN_LOGO_JOB);
+            job.setAgentId(marker);
             job.setFeedback(note);
             return jobRepo.save(job);
         }
@@ -342,6 +358,56 @@ public class AgentRegenerationService {
         }
     }
 
+    /**
+     * Regenerates {@code agentId} for the job's direction, re-runs everything downstream, re-renders
+     * the PDF, archives the previous output as a version and writes the result straight into the
+     * engagement: an admin decided this, so there is no client approval step. The job's feedback is
+     * the revision brief.
+     */
+    @Async
+    public void applyAdminRebuild(String jobId, String agentId) {
+        AgentRegenerationJob job = jobRepo.findById(jobId)
+            .orElseThrow(() -> new RuntimeException("Regeneration job not found: " + jobId));
+        job.setStatus(AgentRegenerationJob.Status.RUNNING);
+        jobRepo.save(job);
+        try {
+            Engagement engagement = engagementRepo.findById(job.getEngagementId())
+                .orElseThrow(() -> new RuntimeException("Engagement not found: " + job.getEngagementId()));
+            DirectionOutput current = findDirectionOutput(engagement, job.getDirection());
+            if (current == null) throw new RuntimeException("Direction not found: " + job.getDirection());
+
+            DirectionOutput rebuilt = regenerateSlot(current, agentId,
+                new AgentRevision(job.getFeedback(), List.of(), List.of()), jobId, true);
+
+            // Re-read: the cascade took minutes and the other directions may have changed since.
+            Engagement fresh = engagementRepo.findById(job.getEngagementId()).orElseThrow();
+            EngagementResults results = objectMapper.readValue(fresh.getResultsJson(), EngagementResults.class);
+            List<DirectionOutput> directions = new ArrayList<>(results.directions());
+            for (int i = 0; i < directions.size(); i++) {
+                if (directions.get(i).direction().equalsIgnoreCase(job.getDirection())) {
+                    archiveVersion(job.getEngagementId(), job.getDirection(), directions.get(i), jobId);
+                    directions.set(i, rebuilt);
+                }
+            }
+            fresh.setResultsJson(objectMapper.writeValueAsString(new EngagementResults(directions)));
+            fresh.setUpdatedAt(Instant.now());
+            saveEngagement(fresh);
+
+            job.setDraftOutputJson(objectMapper.writeValueAsString(rebuilt));
+            job.setStatus(AgentRegenerationJob.Status.DONE);
+            job.setCompletedAt(Instant.now());
+            jobRepo.save(job);
+            log.info("Admin rebuild job {}: {} of engagement {} regenerated from {}", jobId,
+                job.getDirection(), job.getEngagementId(), agentId);
+        } catch (Exception e) {
+            log.error("Admin rebuild job {} failed: {}", jobId, e.getMessage(), e);
+            job.setStatus(AgentRegenerationJob.Status.FAILED);
+            job.setErrorMessage(e.getMessage());
+            job.setCompletedAt(Instant.now());
+            jobRepo.save(job);
+        }
+    }
+
     public AgentRegenerationJob saveJob(AgentRegenerationJob job) {
         return jobRepo.save(job);
     }
@@ -349,7 +415,7 @@ public class AgentRegenerationService {
     /** An admin logo job, for polling. */
     public AgentRegenerationJob adminJob(String jobId) {
         return jobRepo.findById(jobId)
-            .filter(j -> ADMIN_LOGO_JOB.equals(j.getAgentId()))
+            .filter(j -> ADMIN_LOGO_JOB.equals(j.getAgentId()) || ADMIN_REBUILD_JOB.equals(j.getAgentId()))
             .orElseThrow(() -> new NoSuchElementException("Job not found: " + jobId));
     }
 
@@ -394,6 +460,11 @@ public class AgentRegenerationService {
     }
 
     private DirectionOutput regenerateSlot(DirectionOutput dir, String agentId, AgentRevision revision, String generationId) {
+        return regenerateSlot(dir, agentId, revision, generationId, false);
+    }
+
+    private DirectionOutput regenerateSlot(DirectionOutput dir, String agentId, AgentRevision revision,
+                                           String generationId, boolean refreshPhotos) {
         CopyOutput copy = dir.copy();
         VisualIdentityOutput visual = dir.visualIdentity();
         LogoOutput logo = dir.logo();
@@ -429,6 +500,18 @@ public class AgentRegenerationService {
         DirectionOutput rebuilt = new DirectionOutput(
             dir.direction(), dir.brief(), copy, visual, logo, playbook, brandBook,
             dir.pdfBlobPath(), dir.logoZipBlobPath());
+
+        if (refreshPhotos) {
+            // An admin rebuild re-sources this direction's photos, so the book never keeps a set an
+            // older run chose (shared with a sibling direction, or showing another brand's packaging).
+            try {
+                photoSourcingService.fetchAndStore(dir.brief().engagementId(), dir.direction(),
+                    visual != null ? visual.imageKeywords() : null);
+            } catch (Exception e) {
+                log.warn("Photo refresh failed for {} direction of engagement {} (non-fatal): {}",
+                    dir.direction(), dir.brief().engagementId(), e.getMessage());
+            }
+        }
 
         String pdfBlobPath = renderAndStorePdf(rebuilt, generationId);
         rebuilt = rebuilt.withPdfBlobPath(pdfBlobPath);
