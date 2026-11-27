@@ -39,6 +39,11 @@ public record PageLayout(
             "280px 1fr", true
         ),
         new PageLayout(
+            "WIDE_SINGLE_COLUMN", "Single column, wide",
+            List.of(new Slot("main", "Main")),
+            "1fr", true
+        ),
+        new PageLayout(
             "FULL_BLEED", "Full bleed",
             List.of(new Slot("main", "Main")),
             "1fr", false

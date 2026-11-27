@@ -46,12 +46,24 @@
   }
 
   #card.no-border { border: none; box-shadow: none; }
-  #card.wide { max-width: 1280px; }
+  #card.wide { max-width: min(1440px, 100% - 48px); }
+
+  /* Narrow screens: the frame gives its space back and multi-column layouts stack,
+     so a sidebar never squeezes the main column on a phone. */
+  @media (max-width: 860px) {
+    #page-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 700px) {
+    #card { margin: 16px auto; padding: 24px 18px; border-radius: 12px; }
+    #card.wide { max-width: calc(100% - 24px); }
+    #card.full-bleed { margin: 0; padding: 0; border-radius: 0; }
+  }
 
   #page-header { display: flex; flex-direction: column; gap: 16px; }
   #page-header:empty { display: none; }
   #page-header:not(:empty) { margin-bottom: 24px; }
-  #page-grid { display: grid; gap: 24px; }
+  #page-grid { display: grid; gap: 24px; grid-template-columns: var(--cols, 1fr); }
+  #page-grid > .slot { min-width: 0; }
   #card.full-bleed #page-grid { gap: 0; height: 100%; min-height: 100vh; }
   .slot { display: flex; flex-direction: column; gap: 16px; }
   #card.full-bleed .slot { gap: 0; height: 100%; }
@@ -284,7 +296,7 @@ function renderPage(page, isEnded) {
   widgets.filter(w => w.slotKey === 'header').forEach(w => headerEl.appendChild(renderWidget(w)));
 
   const grid = document.getElementById('page-grid');
-  grid.style.gridTemplateColumns = layout ? layout.gridTemplateColumns : '1fr';
+  grid.style.setProperty('--cols', layout ? layout.gridTemplateColumns : '1fr');
   grid.innerHTML = '';
   (layout ? layout.slots : [{ key: 'main', label: 'Main' }]).forEach(slot => {
     const slotEl = document.createElement('div');
