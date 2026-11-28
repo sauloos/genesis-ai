@@ -64,20 +64,25 @@ public class AdminEngagementController {
      * Runs the whole pipeline again for an existing engagement, in place: same id, same owner,
      * same flow-session pointer, so the client's results page and dashboard pick up the new
      * directions without anything else changing. Everything the last run derived is cleared.
-     * Optionally points the engagement at a different questionnaire response first.
+     * Optionally points the engagement at a different questionnaire response first. An engagement
+     * that is PENDING or RUNNING is refused unless {@code force=true}.
      */
     @PostMapping("/{id}/rerun")
     @Operation(summary = "Regenerate an engagement's playbook, briefs and three directions")
     public EngagementController.EngagementSummary rerun(@PathVariable String id,
                                                        @RequestBody(required = false) RerunRequest body,
+                                                       @RequestParam(defaultValue = "false") boolean force,
                                                        HttpServletRequest req) {
         if (!adminAuth.isAdminRequest(req) && !adminSession.hasValidSession(req)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Admin credentials required");
         }
         Engagement e = engagementRepo.findById(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Engagement not found: " + id));
-        if (e.getStatus() == Engagement.Status.PENDING || e.getStatus() == Engagement.Status.RUNNING) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Engagement is already " + e.getStatus());
+        // force=true is for a run orphaned by a restart or deploy: its status stays RUNNING with no
+        // process behind it, and nothing else clears it.
+        if (!force && (e.getStatus() == Engagement.Status.PENDING || e.getStatus() == Engagement.Status.RUNNING)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Engagement is already " + e.getStatus()
+                + " (pass force=true if the run was interrupted by a restart)");
         }
 
         if (body != null && body.questionnaireResponseId() != null && !body.questionnaireResponseId().isBlank()) {
