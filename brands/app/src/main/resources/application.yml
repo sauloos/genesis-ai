@@ -94,7 +94,7 @@ genesis:
       model: claude-haiku-4-5
   agents:
     consultant:
-      model: claude-opus-5-5
+      model: claude-opus-5
       system-prompt: agents/consultant/system-prompt.md
   consultant:
     out-of-scope-response: >-
