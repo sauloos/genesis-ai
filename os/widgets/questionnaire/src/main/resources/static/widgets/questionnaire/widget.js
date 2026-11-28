@@ -995,9 +995,11 @@ export async function mount(container, widget, ctx) {
       return;
     }
     if (resumed) {
-      // Land on the first part that still has an unanswered question (the last part if all are).
-      const open = state.steps.findIndex(step => step.some(q => isEmpty(state.answers[q.id])));
-      state.stepIndex = open >= 0 ? open : state.steps.length - 1;
+      // Answers are saved when a part is completed, so any part with an answer was finished: carry on
+      // at the part after the last of those (optional questions left blank never pull a visitor back).
+      let last = -1;
+      state.steps.forEach((step, i) => { if (step.some(q => !isEmpty(state.answers[q.id]))) last = i; });
+      state.stepIndex = Math.min(last + 1, state.steps.length - 1);
     }
     renderStep();
   } catch (e) {
