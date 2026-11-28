@@ -64,7 +64,7 @@ class AdminEngagementControllerTest {
         when(adminAuth.isAdminRequest(req)).thenReturn(false);
         when(adminSession.hasValidSession(req)).thenReturn(false);
 
-        assertThatThrownBy(() -> controller.rerun("e1", null, req))
+        assertThatThrownBy(() -> controller.rerun("e1", null, false, req))
             .isInstanceOf(ResponseStatusException.class)
             .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
             .isEqualTo(HttpStatus.UNAUTHORIZED);
@@ -78,7 +78,7 @@ class AdminEngagementControllerTest {
         when(adminAuth.isAdminRequest(req)).thenReturn(true);
         when(engagementRepo.findById("e1")).thenReturn(Optional.of(e));
 
-        assertThatThrownBy(() -> controller.rerun("e1", null, req))
+        assertThatThrownBy(() -> controller.rerun("e1", null, false, req))
             .isInstanceOf(ResponseStatusException.class)
             .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
             .isEqualTo(HttpStatus.CONFLICT);
@@ -91,7 +91,7 @@ class AdminEngagementControllerTest {
         when(adminAuth.isAdminRequest(req)).thenReturn(true);
         when(engagementRepo.findById("e1")).thenReturn(Optional.of(e));
 
-        controller.rerun("e1", new AdminEngagementController.RerunRequest("new-response"), req);
+        controller.rerun("e1", new AdminEngagementController.RerunRequest("new-response"), false, req);
 
         assertThat(e.getStatus()).isEqualTo(Engagement.Status.PENDING);
         assertThat(e.getQuestionnaireResponseId()).isEqualTo("new-response");
@@ -110,9 +110,22 @@ class AdminEngagementControllerTest {
         when(adminAuth.isAdminRequest(req)).thenReturn(true);
         when(engagementRepo.findById("e1")).thenReturn(Optional.of(e));
 
-        controller.rerun("e1", null, req);
+        controller.rerun("e1", null, false, req);
 
         assertThat(e.getQuestionnaireResponseId()).isEqualTo("old-response");
+        verify(orchestrator).runEngagement("e1");
+    }
+
+    @Test
+    void forceRerunsAnEngagementOrphanedAsRunning() {
+        Engagement e = done();
+        e.setStatus(Engagement.Status.RUNNING);
+        when(adminAuth.isAdminRequest(req)).thenReturn(true);
+        when(engagementRepo.findById("e1")).thenReturn(Optional.of(e));
+
+        controller.rerun("e1", null, true, req);
+
+        assertThat(e.getStatus()).isEqualTo(Engagement.Status.PENDING);
         verify(orchestrator).runEngagement("e1");
     }
 }
