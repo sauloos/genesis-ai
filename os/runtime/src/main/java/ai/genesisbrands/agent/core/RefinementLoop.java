@@ -34,6 +34,7 @@ public class RefinementLoop {
         for (int i = 1; i <= maxIterations; i++) {
             EvaluationResult evaluation = evaluate.apply(current);
             rounds.add(new EvaluationRound(i, evaluation));
+            logRound(agentName, engagementId, i, maxIterations, evaluation);
 
             if (evaluation.verdict() == EvaluationResult.Verdict.ACCEPT) {
                 return new RefinementResult<>(current, true, rounds);
@@ -49,6 +50,27 @@ public class RefinementLoop {
         }
 
         return new RefinementResult<>(current, false, rounds);
+    }
+
+    /**
+     * One line per evaluator round, so a loop that never accepts can be explained afterwards
+     * (which verdict, what the evaluator said, which issues) instead of only costing money.
+     */
+    static void logRound(String agentName, String engagementId, int round, int maxIterations,
+                         EvaluationResult evaluation) {
+        AgentRevision rev = evaluation.revision();
+        int issues = rev == null || rev.specificIssues() == null ? 0 : rev.specificIssues().size();
+        String firstIssues = issues == 0 ? "" : rev.specificIssues().stream().limit(3)
+            .map(s -> clip(s, 160)).collect(java.util.stream.Collectors.joining(" | "));
+        log.info("{} evaluation round {}/{} for engagement {}: {} — {} [{} issue(s): {}]",
+            agentName, round, maxIterations, engagementId, evaluation.verdict(),
+            clip(evaluation.summary(), 300), issues, firstIssues);
+    }
+
+    private static String clip(String s, int max) {
+        if (s == null) return "";
+        String flat = s.replaceAll("\\s+", " ").trim();
+        return flat.length() <= max ? flat : flat.substring(0, max) + "…";
     }
 
     public record EvaluationRound(int iteration, EvaluationResult evaluation) {}
