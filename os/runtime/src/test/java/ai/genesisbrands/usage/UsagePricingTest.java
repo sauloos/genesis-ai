@@ -12,8 +12,9 @@ class UsagePricingTest {
     @Test
     void pricesByLongestPrefix() {
         UsagePricing pricing = new UsagePricing();
-        // 1M in × $5 + 1M out × $25
-        assertThat(pricing.costMicros("claude-opus-5-5", 1_000_000, 1_000_000, 0)).isEqualTo(30_000_000);
+        // Opus 5: 1M in × $5 + 1M out × $25. Opus 5.5 is cheaper: $4 in, $20 out.
+        assertThat(pricing.costMicros("claude-opus-5", 1_000_000, 1_000_000, 0)).isEqualTo(30_000_000);
+        assertThat(pricing.costMicros("claude-opus-5-5", 1_000_000, 1_000_000, 0)).isEqualTo(24_000_000);
         assertThat(pricing.costMicros("claude-haiku-4-5-20251001", 1_000_000, 0, 0)).isEqualTo(1_000_000);
         assertThat(pricing.costMicros("gpt-image-1", 0, 0, 2)).isEqualTo(334_000);
     }

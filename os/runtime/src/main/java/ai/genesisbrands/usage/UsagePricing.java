@@ -50,6 +50,7 @@ public class UsagePricing {
     static {
         DEFAULTS.put("claude-fable", new Price("10", "50", "0"));
         DEFAULTS.put("claude-opus", new Price("5", "25", "0"));
+        DEFAULTS.put("claude-opus-5-5", new Price("4", "20", "0"));
         DEFAULTS.put("claude-sonnet", new Price("3", "15", "0"));
         DEFAULTS.put("claude-haiku", new Price("1", "5", "0"));
         // Image models, 1024x1024. The bare id is high quality (what the Logo agent asks for);

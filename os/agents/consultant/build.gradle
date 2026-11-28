@@ -12,6 +12,7 @@ dependencies {
     compileOnly 'org.springframework.boot:spring-boot-starter-web'
     compileOnly 'org.springframework.boot:spring-boot-starter-data-jpa'
     compileOnly 'org.springframework.ai:spring-ai-model'
+    compileOnly 'org.springframework.ai:spring-ai-starter-model-anthropic'
     compileOnly 'io.projectreactor:reactor-core'
     compileOnly 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
     compileOnly 'org.projectlombok:lombok'

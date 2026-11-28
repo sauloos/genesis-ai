@@ -10,7 +10,9 @@ import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.model.tool.ToolCallingChatOptions;
+import org.springframework.ai.anthropic.AnthropicChatOptions;
+import org.springframework.ai.anthropic.api.AnthropicCacheOptions;
+import org.springframework.ai.anthropic.api.AnthropicCacheStrategy;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.lang.Nullable;
 import reactor.core.publisher.Flux;
@@ -128,9 +130,12 @@ public class ConsultantService {
     // turned the toggle on via the agents admin page (AgentCatalogConfig.toolsEnabled).
     private ChatOptions buildOptions(String subjectId, ConversationMessage.Source source) {
         AgentProperties.AgentConfig config = agentProperties.get(AGENT_ID);
-        ToolCallingChatOptions.Builder options = ToolCallingChatOptions.builder()
+        // Cache the system message (and the tool definitions, when attached): it is identical
+        // from one turn to the next, so repeat turns read it at a fraction of the input price.
+        AnthropicChatOptions.Builder options = AnthropicChatOptions.builder()
             .model(config.getModel())
-            .maxTokens(config.getMaxTokens());
+            .maxTokens(config.getMaxTokens())
+            .cacheOptions(AnthropicCacheOptions.builder().strategy(AnthropicCacheStrategy.SYSTEM_AND_TOOLS).build());
         List<ToolCallback> tools = toolsFor(subjectId, source);
         if (!tools.isEmpty()) options.toolCallbacks(tools);
         return options.build();
@@ -237,7 +242,7 @@ public class ConsultantService {
                                         ConversationMessage.Source source) {
         List<Message> messages = new ArrayList<>();
 
-        String systemContent = buildSystemContent(subject, userMessage, attachmentText, urlContents);
+        String systemContent = buildSystemContent(subject);
         messages.add(new SystemMessage(systemContent));
 
         List<ConversationMessage> history = historyFor(subject.id(), conversationId, source);
@@ -250,13 +255,15 @@ public class ConsultantService {
                 : new AssistantMessage(m.getContent()));
         }
 
-        messages.add(new UserMessage(userMessage));
+        String turnContext = buildTurnContext(userMessage, attachmentText, urlContents);
+        messages.add(new UserMessage(turnContext.isEmpty() ? userMessage : turnContext + "# User Message\n\n" + userMessage));
         return messages;
     }
 
-    private String buildSystemContent(ConsultantSubject subject, String query,
-                                      String attachmentText,
-                                      List<ContextEnrichmentService.UrlContent> urlContents) {
+    // The system message holds only what is stable from one turn to the next (persona, subject,
+    // Layer 1), so the provider can cache it. Everything that changes per turn (retrieved
+    // knowledge, attachments, URLs) goes in front of the user's message instead.
+    private String buildSystemContent(ConsultantSubject subject) {
         var sb = new StringBuilder();
 
         sb.append(tenantConfig.systemPrompt()).append("\n\n");
@@ -279,6 +286,12 @@ public class ConsultantService {
             sb.append(layer1Context).append("\n\n");
         }
 
+        return sb.toString();
+    }
+
+    private String buildTurnContext(String query, String attachmentText,
+                                    List<ContextEnrichmentService.UrlContent> urlContents) {
+        var sb = new StringBuilder();
         AgentProperties.RagConfig rag = agentProperties.get(AGENT_ID).getRag();
         String retrieved = rag.isEnabled() ? retrieval.retrieve(query, rag.getTopK()) : "";
         if (!retrieved.isBlank()) {
