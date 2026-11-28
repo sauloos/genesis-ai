@@ -10,6 +10,7 @@ include 'os:standing'
 include 'os:web'
 include 'os:channel-sdk'
 include 'os:publishing'
+include 'os:previews'
 include 'os:app'
 
 // Each directory under os/agents/ is its own agent module — dropping in a new folder (with a

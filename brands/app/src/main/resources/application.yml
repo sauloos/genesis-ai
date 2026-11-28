@@ -73,6 +73,10 @@ springdoc:
 
 genesis:
   environment: ${APP_ENV:dev}
+  # View-only document previews (os/previews): inert unless enabled and a signing key (16+ chars) is set.
+  previews:
+    enabled: ${GENESIS_PREVIEWS_ENABLED:false}
+    signing-key: ${GENESIS_PREVIEWS_SIGNING_KEY:}
   api-key: ${GENESIS_API_KEY:dev-key-change-in-prod}
   allowed-hosts: ${GENESIS_ALLOWED_HOSTS:genesisbrands.ai,www.genesisbrands.ai}
   basic-auth:

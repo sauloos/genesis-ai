@@ -28,7 +28,7 @@ COPY ingestion ingestion
 
 # Install Chromium (for brand-book PDF), Python 3 + pip (for ingestion pipeline), and
 # all Python ingestion dependencies. `--with-deps` handles Chromium's glibc apt deps.
-RUN apt-get update && apt-get install -y --no-install-recommends unzip ca-certificates python3 python3-pip \
+RUN apt-get update && apt-get install -y --no-install-recommends unzip ca-certificates python3 python3-pip fontconfig fonts-dejavu-core \
   && mkdir -p /tmp/pwinstall \
   && unzip -q app.jar "BOOT-INF/lib/*" -d /tmp/pwinstall \
   && java -cp "/tmp/pwinstall/BOOT-INF/lib/*" com.microsoft.playwright.CLI install --with-deps chromium \

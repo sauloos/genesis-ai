@@ -226,6 +226,88 @@ public class BrandBookTemplateRenderer {
         return renderPreviewScreenshot(html);
     }
 
+    /** One page of the book as an image, with the chapter it belongs to. */
+    public record PreviewPage(String chapter, byte[] jpeg) {}
+
+    /**
+     * Every page as a JPEG, for the view-only preview. Same HTML build as the PDF, with the
+     * exact colour specifications (HEX/RGB/CMYK/Pantone pills) removed: a preview shows the
+     * book, it does not hand over the palette. No watermark here; the preview service marks
+     * each page per viewer.
+     */
+    public List<PreviewPage> renderPreviewPages(BrandBookInput input, BrandBookOutput output) {
+        BrandBookTemplate template = brandBookTemplateService.select(
+            input.brief().brand(), input.brief().direction());
+        Set<String> includedSections = brandBookTemplateService.resolveIncludedSections(template);
+        String templateHtml = brandBookTemplateService.loadHtml(template);
+        return renderPreviewPages(input, output, templateHtml, includedSections);
+    }
+
+    List<PreviewPage> renderPreviewPages(BrandBookInput input, BrandBookOutput output,
+                                         String templateHtml, Set<String> includedSections) {
+        String html = injectPreviewRedactionCss(buildHtml(input, output, templateHtml, includedSections));
+        List<String> chapters = pageChapters(html);
+        return onRenderThread(browser -> renderPages(browser, html, chapters));
+    }
+
+    private List<PreviewPage> renderPages(Browser browser, String html, List<String> chapters) {
+        Path tmpFile = null;
+        // 1.5x of A4 (~794 CSS px wide) gives ~1190 px: sharp enough to read, per-viewer output is capped lower still.
+        BrowserContext ctx = browser.newContext(new Browser.NewContextOptions()
+            .setViewportSize(900, 1300)
+            .setDeviceScaleFactor(1.5));
+        try {
+            tmpFile = Files.createTempFile("brand-book-pages-", ".html");
+            Files.writeString(tmpFile, html, StandardCharsets.UTF_8);
+            Page tab = ctx.newPage();
+            tab.navigate("file://" + tmpFile.toAbsolutePath(),
+                new Page.NavigateOptions().setWaitUntil(WaitUntilState.NETWORKIDLE));
+            awaitFonts(tab);
+            Locator pages = tab.locator("section.page");
+            int count = Math.min(pages.count(), chapters.size());
+            List<PreviewPage> out = new ArrayList<>(count);
+            for (int i = 0; i < count; i++) {
+                byte[] jpeg = pages.nth(i).screenshot(new Locator.ScreenshotOptions()
+                    .setType(ScreenshotType.JPEG).setQuality(88));
+                out.add(new PreviewPage(chapters.get(i), jpeg));
+            }
+            return out;
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to write temp HTML file for page previews", e);
+        } finally {
+            ctx.close();
+            if (tmpFile != null) {
+                try { Files.delete(tmpFile); } catch (IOException ignored) {}
+            }
+        }
+    }
+
+    /**
+     * The chapter of every page, in order: a page that starts one carries {@code data-toc}, and
+     * the pages after it belong to it. The cover, closing and back pages are named by their class.
+     */
+    static List<String> pageChapters(String html) {
+        List<String> out = new ArrayList<>();
+        String current = "";
+        for (int[] span : pageSpans(html)) {
+            String head = html.substring(span[0], Math.min(span[1], span[0] + 300));
+            Matcher toc = DATA_TOC.matcher(head);
+            if (head.contains("page-cover")) current = "Cover";
+            else if (head.contains("page-closing") || head.contains("page-back")) current = "Closing";
+            else if (toc.find()) current = toc.group(1).replace("&amp;", "&");
+            out.add(current);
+        }
+        return out;
+    }
+
+    private static String injectPreviewRedactionCss(String html) {
+        String css = "\n/* Preview: exact colour specifications are not part of a preview */\n"
+            + ".swatch-spec-row { display: none !important; }\n";
+        int idx = html.lastIndexOf("</style>");
+        if (idx < 0) return html;
+        return html.substring(0, idx) + css + html.substring(idx);
+    }
+
     // ── Section filtering ─────────────────────────────────────────────────────
 
     /**

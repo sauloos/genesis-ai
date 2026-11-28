@@ -25,6 +25,7 @@ dependencies {
     implementation project(':os:agents:knowledge-gardener')
     implementation project(':os:connectors')
     implementation project(':os:standing')
+    implementation project(':os:previews')
     implementation project(':os:publishing')
     implementation project(':os:channels:meta')
     implementation project(':os:channels:linkedin')

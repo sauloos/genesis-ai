@@ -100,6 +100,14 @@ class BrandBookRenderHarness {
                 try (InputStream in = getClass().getResourceAsStream("/templates/brand-book/" + template)) {
                     templateHtml = new String(in.readAllBytes(), StandardCharsets.UTF_8);
                 }
+                if ("1".equals(System.getenv("BB_PREVIEW"))) {
+                    var pv = renderer.renderPreviewPages(input, output, templateHtml, Set.of());
+                    for (int i = 0; i < pv.size(); i++) {
+                        Files.write(out.resolve("%s-pv-%02d.jpg".formatted(name, i + 1)), pv.get(i).jpeg());
+                    }
+                    System.out.println("HARNESS " + name + " preview pages: "
+                        + pv.stream().map(BrandBookTemplateRenderer.PreviewPage::chapter).toList());
+                }
                 String html = renderer.buildHtml(input, output, templateHtml, Set.of());
                 Path htmlFile = out.resolve(name + ".html");
                 Files.writeString(htmlFile, html);
