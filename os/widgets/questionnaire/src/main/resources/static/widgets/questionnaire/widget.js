@@ -957,20 +957,47 @@ export async function mount(container, widget, ctx) {
       return;
     }
 
-    const startRes = await fetch(
-      `/api/questionnaires/${state.questionnaireId}/responses${ctx.simulate ? '?simulated=true' : ''}`,
-      { method: 'POST', headers: HEADERS }
-    ).then(r => r.json());
-    state.responseId = startRes.id;
+    // A visitor who reloads (or comes back) carries on with the response they started: the id was
+    // saved in the flow session, and the server says whether it can still be continued.
+    let resumed = null;
+    if (!ctx.simulate && ctx.session?.token) {
+      try {
+        const r = await fetch(
+          `/api/public/questionnaire/flow-sessions/${ctx.session.token}/widgets/${widget.id}/resume`
+          + `?questionnaireId=${encodeURIComponent(state.questionnaireId)}`, { headers: HEADERS });
+        if (r.ok) {
+          const body = await r.json();
+          if (body && body.responseId) resumed = body;
+        }
+      } catch (e) { /* no resume available: start a new response below */ }
+    }
 
-    try {
-      await ctx.saveContext?.({ ['__questionnaireResponse:' + widget.id]: state.responseId });
-    } catch (e) { /* best effort — the server can still find the response by its id */ }
+    if (resumed) {
+      state.responseId = resumed.responseId;
+      (resumed.answers || []).forEach(a => {
+        try { state.answers[a.questionId] = JSON.parse(a.valueJson); } catch (e) { /* skip unreadable */ }
+      });
+    } else {
+      const startRes = await fetch(
+        `/api/questionnaires/${state.questionnaireId}/responses${ctx.simulate ? '?simulated=true' : ''}`,
+        { method: 'POST', headers: HEADERS }
+      ).then(r => r.json());
+      state.responseId = startRes.id;
+
+      try {
+        await ctx.saveContext?.({ ['__questionnaireResponse:' + widget.id]: state.responseId });
+      } catch (e) { /* best effort — the server can still find the response by its id */ }
+    }
 
     await refreshActive();
     if (!state.steps.length) {
       release('This questionnaire has no questions that apply right now.');
       return;
+    }
+    if (resumed) {
+      // Land on the first part that still has an unanswered question (the last part if all are).
+      const open = state.steps.findIndex(step => step.some(q => isEmpty(state.answers[q.id])));
+      state.stepIndex = open >= 0 ? open : state.steps.length - 1;
     }
     renderStep();
   } catch (e) {
