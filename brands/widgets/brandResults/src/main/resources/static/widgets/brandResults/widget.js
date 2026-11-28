@@ -34,6 +34,48 @@ function paletteOf(dir) {
   return list.map(c => c && c.hex).filter(h => /^#[0-9a-fA-F]{6}$/.test(h || '')).slice(0, 5);
 }
 
+// The tagline is set in the direction's own headline font, so each direction feels like itself.
+// The name comes from model output, so only plain font-family names are accepted.
+function headlineFontOf(dir) {
+  const name = text(dir.visualIdentity && dir.visualIdentity.typography && dir.visualIdentity.typography.headlineFont);
+  return /^[A-Za-z0-9 ]{2,40}$/.test(name) ? name : '';
+}
+
+function loadFonts(names) {
+  const unique = [...new Set(names.filter(Boolean))];
+  if (!unique.length) return;
+  const href = 'https://fonts.googleapis.com/css2?'
+    + unique.map(n => 'family=' + encodeURIComponent(n).replace(/%20/g, '+')).join('&') + '&display=swap';
+  if ([...document.head.querySelectorAll('link[rel=stylesheet]')].some(l => l.href === href)) return;
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = href;
+  document.head.appendChild(link);
+}
+
+// Up to three short bullets under a label, or nothing when the brief has none.
+function bullets(label, items) {
+  const list = (Array.isArray(items) ? items : []).map(text).filter(Boolean).slice(0, 3);
+  if (!list.length) return null;
+  const block = el('div', 'br-fact');
+  const ul = el('ul', 'br-bullets');
+  list.forEach(item => ul.appendChild(el('li', '', item)));
+  block.append(el('div', 'br-fact-label', label), ul);
+  return block;
+}
+
+// A spectrum that teaches the three names without a glossary.
+function ribbon(directions) {
+  const wrap = el('div', 'br-ribbon');
+  wrap.setAttribute('role', 'img');
+  wrap.setAttribute('aria-label', 'From closest to your brand today to boldest: ' + directions.map(d => directionLabel(d.direction)).join(', then '));
+  wrap.append(el('span', 'br-ribbon-end', 'Closest to today'));
+  const track = el('div', 'br-ribbon-track');
+  directions.forEach(d => track.appendChild(el('span', 'br-ribbon-stop', directionLabel(d.direction))));
+  wrap.append(track, el('span', 'br-ribbon-end', 'Boldest'));
+  return wrap;
+}
+
 function fact(label, value) {
   if (!value) return null;
   const row = el('div', 'br-fact');
@@ -130,6 +172,8 @@ export function mount(container, widget, ctx) {
     const errorEl = el('div', 'br-error br-page-error');
     errorEl.setAttribute('role', 'alert');
     const controls = [];
+    loadFonts(results.directions.map(headlineFontOf));
+    container.appendChild(ribbon(results.directions));
     const grid = el('div', 'br-cards');
     results.directions.forEach(dir => {
       const name = directionLabel(dir.direction);
@@ -148,10 +192,16 @@ export function mount(container, widget, ctx) {
       const body = el('div', 'br-card-body');
       body.append(el('div', 'br-card-label', name), el('div', 'br-card-meaning', DIRECTION_MEANING[dir.direction] || ''));
       const tagline = text(dir.copy && dir.copy.tagline);
-      if (tagline) body.appendChild(el('div', 'br-card-tagline', `“${tagline}”`));
+      if (tagline) {
+        const t = el('div', 'br-card-tagline', `“${tagline}”`);
+        const font = headlineFontOf(dir);
+        if (font) t.style.fontFamily = `"${font}", Georgia, serif`;
+        body.appendChild(t);
+      }
       const summary = text(purpose.summary);
       if (summary) body.appendChild(el('p', 'br-card-summary', summary));
-      [fact('Personality', text(purpose.archetype)), fact('The bet', text(purpose.bet)), fact('The trade-off', text(purpose.risk))]
+      [fact('Personality', text(purpose.archetype)), bullets('Keeps', purpose.retains), bullets('Lets go of', purpose.releases),
+        fact('The bet', text(purpose.bet)), fact('The trade-off', text(purpose.risk))]
         .filter(Boolean).forEach(f => body.appendChild(f));
       const colours = paletteOf(dir);
       if (colours.length) {
