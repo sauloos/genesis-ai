@@ -2,7 +2,9 @@ package ai.genesisbrands.config;
 
 import ai.genesisbrands.controller.ClientWorkspaceController;
 import ai.genesisbrands.security.ClientAuthHelper;
+import ai.genesisbrands.service.ClientVariantChooser;
 import ai.genesisbrands.service.ClientWorkspaceProvider;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,8 +23,9 @@ public class ClientWorkspaceConfiguration {
     @ConditionalOnBean(ClientWorkspaceProvider.class)
     public ClientWorkspaceController clientWorkspaceController(
         ClientWorkspaceProvider provider,
-        ClientAuthHelper clientAuthHelper
+        ClientAuthHelper clientAuthHelper,
+        ObjectProvider<ClientVariantChooser> chooser
     ) {
-        return new ClientWorkspaceController(provider, clientAuthHelper);
+        return new ClientWorkspaceController(provider, clientAuthHelper, chooser.getIfAvailable());
     }
 }

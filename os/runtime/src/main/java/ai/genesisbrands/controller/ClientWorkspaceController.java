@@ -3,6 +3,7 @@ package ai.genesisbrands.controller;
 import ai.genesisbrands.platform.RegisteredByConfiguration;
 import ai.genesisbrands.model.ClientUser;
 import ai.genesisbrands.security.ClientAuthHelper;
+import ai.genesisbrands.service.ClientVariantChooser;
 import ai.genesisbrands.service.ClientWorkItem;
 import ai.genesisbrands.service.ClientWorkspaceProvider;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,6 +37,7 @@ public class ClientWorkspaceController {
 
     private final ClientWorkspaceProvider provider;
     private final ClientAuthHelper clientAuthHelper;
+    private final ClientVariantChooser chooser;
 
     @GetMapping
     @Operation(summary = "List the signed-in client's work items")
@@ -53,6 +55,19 @@ public class ClientWorkspaceController {
     ) {
         return provider.loadVersion(workItemId, variantKey, versionNumber, requireClientUserId(req))
             .orElseThrow(() -> new NoSuchElementException("Version not found: " + versionNumber));
+    }
+
+    @PostMapping("/{workItemId}/variants/{variantKey}/choose")
+    @Operation(summary = "Choose which variant of a work item is the client's own")
+    public ClientWorkItem choose(
+        @PathVariable String workItemId,
+        @PathVariable String variantKey,
+        HttpServletRequest req
+    ) {
+        if (chooser == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Choosing is not offered here");
+        }
+        return chooser.choose(workItemId, variantKey, requireClientUserId(req));
     }
 
     private String requireClientUserId(HttpServletRequest req) {

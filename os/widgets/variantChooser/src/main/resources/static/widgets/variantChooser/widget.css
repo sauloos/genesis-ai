@@ -1,0 +1,132 @@
+.widget-variant-chooser { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.widget-variant-chooser .vc-heading { font-size: clamp(22px, 3vw, 30px); font-weight: 700; margin-bottom: 8px; letter-spacing: -0.01em; color: var(--theme-text-primary); }
+.widget-variant-chooser .vc-intro { font-size: 15px; color: var(--theme-text-muted); max-width: 560px; line-height: 1.5; margin-bottom: 22px; }
+.widget-variant-chooser .vc-status { font-size: 13px; color: var(--theme-text-muted); max-width: 380px; line-height: 1.5; }
+.widget-variant-chooser .vc-error { font-size: 13px; color: var(--theme-danger); max-width: 420px; line-height: 1.5; margin-bottom: 14px; }
+.widget-variant-chooser .vc-page-error:empty, .widget-variant-chooser .vc-dialog-error:empty { display: none; }
+.widget-variant-chooser .vc-note { font-size: 12px; color: var(--theme-text-muted); margin-top: 24px; }
+
+/* Spectrum: closest to today → boldest */
+.widget-variant-chooser .vc-ribbon { width: 100%; max-width: 760px; display: flex; align-items: center; gap: 14px; margin: 0 auto 26px; }
+.widget-variant-chooser .vc-ribbon-end { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--theme-text-muted); white-space: nowrap; }
+.widget-variant-chooser .vc-ribbon-track { position: relative; flex: 1; display: flex; justify-content: space-between; align-items: center; min-height: 28px; }
+.widget-variant-chooser .vc-ribbon-track::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 2px; transform: translateY(-50%);
+  background: linear-gradient(90deg, var(--theme-card-border), var(--theme-text-primary));
+}
+.widget-variant-chooser .vc-ribbon-stop {
+  position: relative; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700;
+  background: var(--theme-card-bg); border: 1px solid var(--theme-text-primary); color: var(--theme-text-primary);
+}
+
+/* Wide: three columns whose rows line up (summary beside summary, risk beside risk). */
+.widget-variant-chooser .vc-cards {
+  width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: auto; column-gap: 24px; row-gap: 0; text-align: left;
+}
+.widget-variant-chooser .vc-card {
+  display: grid; grid-template-rows: subgrid; grid-row: span 11; row-gap: 12px; min-width: 0;
+  border: 1px solid var(--theme-card-border); border-radius: 16px; background: var(--theme-card-bg);
+  padding: 18px; box-shadow: 0 2px 18px var(--theme-card-shadow);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+}
+.widget-variant-chooser .vc-card:hover { transform: translateY(-3px); box-shadow: 0 10px 30px color-mix(in srgb, var(--theme-text-primary) 14%, transparent); }
+@media (hover: hover) and (pointer: fine) {
+  .widget-variant-chooser .vc-cards:has(.vc-card:hover) .vc-card:not(:hover) { opacity: 0.85; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .widget-variant-chooser .vc-card { transition: none; }
+  .widget-variant-chooser .vc-card:hover { transform: none; }
+}
+.widget-variant-chooser .vc-row { min-width: 0; }
+.widget-variant-chooser .vc-cover {
+  position: relative; display: flex; align-items: center; justify-content: center; width: 100%; padding: 0;
+  border: 1px solid var(--theme-card-border); border-radius: 10px; overflow: hidden; cursor: zoom-in;
+  background: var(--theme-card-border); font-family: inherit; min-height: 120px;
+}
+.widget-variant-chooser .vc-cover-img { width: 100%; max-height: min(46vh, 520px); object-fit: contain; display: block; }
+.widget-variant-chooser .vc-cover-cue {
+  position: absolute; inset: auto 10px 10px auto; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+  background: color-mix(in srgb, var(--theme-card-bg) 92%, transparent); color: var(--theme-text-primary);
+  opacity: 0; transform: translateY(4px); transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.widget-variant-chooser .vc-cover:hover .vc-cover-cue, .widget-variant-chooser .vc-cover:focus-visible .vc-cover-cue { opacity: 1; transform: none; }
+@media (hover: none) { .widget-variant-chooser .vc-cover-cue { opacity: 1; transform: none; } }
+.widget-variant-chooser .vc-name { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 20px; font-weight: 700; color: var(--theme-text-primary); }
+.widget-variant-chooser .vc-badge {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px;
+  background: var(--theme-text-primary); color: var(--theme-body-bg);
+}
+.widget-variant-chooser .vc-descriptor { font-size: 13px; font-weight: 600; color: var(--theme-text-muted); margin-top: -6px; }
+.widget-variant-chooser .vc-tagline { font-size: 19px; line-height: 1.35; color: var(--theme-text-primary); overflow-wrap: anywhere; }
+.widget-variant-chooser .vc-palette { display: flex; gap: 6px; align-items: center; }
+.widget-variant-chooser .vc-swatch { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--theme-card-border); }
+.widget-variant-chooser .vc-summary { margin: 0; font-size: 14px; line-height: 1.55; color: var(--theme-text-primary); }
+.widget-variant-chooser .vc-fact { display: flex; flex-direction: column; gap: 2px; }
+.widget-variant-chooser .vc-fact:not(:empty) { padding-top: 10px; border-top: 1px solid var(--theme-card-border); }
+.widget-variant-chooser .vc-fact-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--theme-text-muted); }
+.widget-variant-chooser .vc-fact-text { font-size: 13px; line-height: 1.5; color: var(--theme-text-primary); }
+.widget-variant-chooser .vc-bullets { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.5; color: var(--theme-text-primary); }
+.widget-variant-chooser .vc-bullets li + li { margin-top: 3px; }
+.widget-variant-chooser .vc-actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; align-self: end; }
+
+.widget-variant-chooser .vc-btn {
+  min-height: 44px; padding: 10px 16px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit;
+  border: 1px solid var(--theme-btn-border); background: none; color: var(--theme-text-primary);
+}
+.widget-variant-chooser .vc-btn:hover { border-color: var(--theme-text-primary); }
+.widget-variant-chooser .vc-btn-primary { border: none; background: var(--theme-text-primary); color: var(--theme-body-bg); }
+.widget-variant-chooser .vc-btn-quiet { min-height: 36px; padding: 6px 12px; }
+.widget-variant-chooser .vc-btn:disabled, .widget-variant-chooser .vc-cover:disabled { opacity: 0.5; cursor: default; }
+.widget-variant-chooser button:focus-visible { outline: 2px solid var(--theme-text-primary); outline-offset: 2px; }
+
+/* Segmented control and the phone action bar only exist below the three-column breakpoint. */
+.widget-variant-chooser .vc-segmented, .widget-variant-chooser .vc-bar { display: none; }
+
+@media (max-width: 999px) {
+  .widget-variant-chooser .vc-segmented {
+    display: flex; gap: 4px; padding: 4px; margin-bottom: 16px; border-radius: 999px;
+    border: 1px solid var(--theme-card-border); background: var(--theme-card-bg);
+  }
+  .widget-variant-chooser .vc-seg {
+    min-height: 36px; padding: 6px 14px; border-radius: 999px; border: none; background: none; cursor: pointer;
+    font-family: inherit; font-size: 13px; font-weight: 600; color: var(--theme-text-muted);
+  }
+  .widget-variant-chooser .vc-seg-on { background: var(--theme-text-primary); color: var(--theme-body-bg); }
+  /* One card at a time, the next one peeking; swipe or use the control above. */
+  .widget-variant-chooser .vc-cards {
+    display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px 4px 14px;
+    scrollbar-width: none;
+  }
+  .widget-variant-chooser .vc-cards::-webkit-scrollbar { display: none; }
+  .widget-variant-chooser .vc-card { display: flex; flex-direction: column; flex: 0 0 min(560px, 86%); scroll-snap-align: center; gap: 12px; }
+  .widget-variant-chooser .vc-cards:has(.vc-card:hover) .vc-card:not(:hover) { opacity: 1; }
+  .widget-variant-chooser .vc-ribbon { display: none; }
+}
+/* Phones: the card's own buttons give way to a sticky bar that follows the visible card. */
+@media (max-width: 699px) {
+  .widget-variant-chooser .vc-card .vc-actions { display: none; }
+  .widget-variant-chooser .vc-bar {
+    display: grid; grid-template-columns: 1fr 1.6fr; gap: 10px; position: sticky; bottom: 0; width: 100%;
+    padding: 12px 0 calc(12px + env(safe-area-inset-bottom)); background: var(--theme-body-bg);
+    border-top: 1px solid var(--theme-card-border);
+  }
+}
+
+.widget-variant-chooser .vc-dialog {
+  width: min(880px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow-y: auto; text-align: left;
+  border: 1px solid var(--theme-card-border); border-radius: 18px; padding: 22px;
+  background: var(--theme-card-bg); color: var(--theme-text-primary);
+  box-shadow: 0 24px 80px color-mix(in srgb, var(--theme-text-primary) 30%, transparent);
+}
+.widget-variant-chooser .vc-dialog::backdrop { background: color-mix(in srgb, var(--theme-text-primary) 55%, transparent); backdrop-filter: blur(3px); }
+.widget-variant-chooser .vc-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.widget-variant-chooser .vc-dialog-title { font-size: 20px; font-weight: 700; }
+.widget-variant-chooser .vc-dialog-img { width: 100%; display: block; border-radius: 10px; border: 1px solid var(--theme-card-border); }
+.widget-variant-chooser .vc-dialog-text { font-size: 15px; line-height: 1.6; margin-top: 16px; max-width: 64ch; }
+.widget-variant-chooser .vc-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.widget-variant-chooser .vc-dialog-error { margin: 14px 0 0; max-width: none; }
+@media (max-width: 600px) {
+  .widget-variant-chooser .vc-dialog { width: 100vw; max-width: 100vw; max-height: 100vh; border-radius: 0; margin: 0; min-height: 100vh; }
+  .widget-variant-chooser .vc-dialog-actions > * { flex: 1; }
+}

@@ -9,10 +9,16 @@ import ai.genesisbrands.service.EngagementOrchestratorService.DirectionOutput;
 import ai.genesisbrands.service.EngagementOrchestratorService.EngagementResults;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Instant;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 /**
  * Genesis Brands' answer to "what is a client's work item": a PAID/DONE Engagement, and
@@ -24,11 +30,21 @@ import java.util.Optional;
  */
 @Component
 @RequiredArgsConstructor
-public class EngagementWorkspaceProvider implements ClientWorkspaceProvider {
+public class EngagementWorkspaceProvider implements ClientWorkspaceProvider, ClientVariantChooser {
+
+    private static final Pattern HEX = Pattern.compile("#[0-9a-fA-F]{6}");
 
     private final EngagementRepository engagementRepo;
     private final EngagementDirectionVersionRepository versionRepo;
     private final ObjectMapper objectMapper;
+
+    // Plain-words lines under each direction's name; tenant wording, so they are config.
+    @Value("${genesis.brands.directions.descriptor.anchored:Builds on who you are today}")
+    private String anchoredDescriptor;
+    @Value("${genesis.brands.directions.descriptor.evolved:A confident step forward}")
+    private String evolvedDescriptor;
+    @Value("${genesis.brands.directions.descriptor.disruptive:The boldest move in your category}")
+    private String disruptiveDescriptor;
 
     @Override
     public List<ClientWorkItem> listMine(String clientUserId) {
@@ -56,6 +72,26 @@ public class EngagementWorkspaceProvider implements ClientWorkspaceProvider {
             .flatMap(this::parseArchivedVariant);
     }
 
+    @Override
+    public ClientWorkItem choose(String workItemId, String variantKey, String clientUserId) {
+        Engagement e = engagementRepo.findById(workItemId).orElse(null);
+        if (e == null || !clientUserId.equals(e.getClientUserId())) {
+            throw new NoSuchElementException("Work item not found: " + workItemId);
+        }
+        if (e.getStatus() != Engagement.Status.DONE) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Your brand is not finished yet");
+        }
+        EngagementResults results = parseResults(e.getResultsJson());
+        DirectionOutput chosen = results == null ? null : results.directions().stream()
+            .filter(d -> d.direction().equalsIgnoreCase(variantKey)).findFirst().orElse(null);
+        if (chosen == null) {
+            throw new NoSuchElementException("Unknown direction: " + variantKey);
+        }
+        e.setChosenDirection(chosen.direction().toUpperCase());
+        e.setUpdatedAt(Instant.now());
+        return toWorkItem(engagementRepo.save(e));
+    }
+
     private ClientWorkItem toWorkItem(Engagement e) {
         EngagementResults results = parseResults(e.getResultsJson());
         boolean unlocked = e.getPaymentStatus() == Engagement.PaymentStatus.PAID;
@@ -65,14 +101,14 @@ public class EngagementWorkspaceProvider implements ClientWorkspaceProvider {
 
         List<ClientWorkItem.Variant> variants = dirs.stream()
             .filter(dir -> dir.pdfBlobPath() != null || dir.logo() != null)
-            .map(dir -> toVariant(e.getId(), e.getChosenDirection(), dir, true))
+            .map(dir -> toVariant(e.getId(), e.getChosenDirection(), dir, true, true))
             .toList();
 
         return new ClientWorkItem(e.getId(), title, unlocked, variants, false, null);
     }
 
     private ClientWorkItem.Variant toVariant(String engagementId, String chosenDirection,
-                                              DirectionOutput dir, boolean isCurrent) {
+                                              DirectionOutput dir, boolean isCurrent, boolean withDecision) {
         boolean chosen = dir.direction().equalsIgnoreCase(chosenDirection);
         List<ClientWorkItem.Asset> assets = new java.util.ArrayList<>();
 
@@ -88,7 +124,50 @@ public class EngagementWorkspaceProvider implements ClientWorkspaceProvider {
                 .toList()
             : List.of();
 
-        return new ClientWorkItem.Variant(dir.direction(), chosen, assets, versions);
+        ClientWorkItem.Decision decision = withDecision ? decisionOf(engagementId, dir) : null;
+        return new ClientWorkItem.Variant(dir.direction(), chosen, assets, versions, decision);
+    }
+
+    /** What the chooser shows for one direction: the brief's own words, palette and type. */
+    private ClientWorkItem.Decision decisionOf(String engagementId, DirectionOutput dir) {
+        var purpose = dir.brief() == null ? null : dir.brief().purpose();
+        var visual = dir.visualIdentity();
+        List<String> palette = visual == null || visual.colorPalette() == null ? List.of()
+            : visual.colorPalette().stream().map(c -> c == null ? null : c.hex())
+                .filter(h -> h != null && HEX.matcher(h).matches()).limit(5).toList();
+        String font = visual == null || visual.typography() == null ? null : visual.typography().headlineFont();
+        String tagline = dir.copy() == null ? null : dir.copy().tagline();
+        return new ClientWorkItem.Decision(
+            capitalize(dir.direction()),
+            descriptorOf(dir.direction()),
+            clean(tagline),
+            clean(font),
+            purpose == null ? null : clean(purpose.summary()),
+            purpose == null ? null : clean(purpose.archetype()),
+            palette,
+            purpose == null ? List.of() : cleanList(purpose.retains()),
+            purpose == null ? List.of() : cleanList(purpose.releases()),
+            purpose == null ? null : clean(purpose.bet()),
+            purpose == null ? null : clean(purpose.risk()),
+            "/api/engagements/" + engagementId + "/preview/" + dir.direction());
+    }
+
+    private String descriptorOf(String direction) {
+        return switch (direction.toUpperCase()) {
+            case "ANCHORED" -> anchoredDescriptor;
+            case "EVOLVED" -> evolvedDescriptor;
+            case "DISRUPTIVE" -> disruptiveDescriptor;
+            default -> null;
+        };
+    }
+
+    private static String clean(String s) {
+        return s == null || s.isBlank() ? null : s.trim();
+    }
+
+    private static List<String> cleanList(List<String> items) {
+        return items == null ? List.of()
+            : items.stream().map(EngagementWorkspaceProvider::clean).filter(java.util.Objects::nonNull).limit(3).toList();
     }
 
     private ClientWorkItem.Asset buildPdfAsset(String engagementId, DirectionOutput dir, boolean isCurrent) {
@@ -114,7 +193,7 @@ public class EngagementWorkspaceProvider implements ClientWorkspaceProvider {
     private Optional<ClientWorkItem.Variant> parseArchivedVariant(EngagementDirectionVersion version) {
         try {
             DirectionOutput dir = objectMapper.readValue(version.getDirectionOutputJson(), DirectionOutput.class);
-            return Optional.of(toVariant(version.getEngagementId(), null, dir, false));
+            return Optional.of(toVariant(version.getEngagementId(), null, dir, false, false));
         } catch (Exception ex) {
             return Optional.empty();
         }

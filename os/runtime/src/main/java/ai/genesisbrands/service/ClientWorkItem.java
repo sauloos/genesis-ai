@@ -21,11 +21,47 @@ public record ClientWorkItem(
     boolean inProgress,
     String statusNote
 ) {
+    /**
+     * @param decision what a client needs to compare variants and pick one, or null when the
+     *                 tenant offers no choice for this item
+     */
     public record Variant(
         String key,
         boolean chosen,
         List<Asset> assets,
-        List<VersionRef> versions
+        List<VersionRef> versions,
+        Decision decision
+    ) {
+        public Variant(String key, boolean chosen, List<Asset> assets, List<VersionRef> versions) {
+            this(key, chosen, assets, versions, null);
+        }
+    }
+
+    /**
+     * The comparison card for one variant, consumed by the core {@code variantChooser} widget.
+     * Every field is optional; the widget renders what is present. Tenant wording only, so the
+     * platform never decides what a "direction" means.
+     *
+     * @param descriptor   one plain-words line on what makes this variant different
+     * @param headlineFont a plain font-family name the tagline is set in (widget validates it)
+     * @param palette      up to five {@code #rrggbb} colours
+     * @param keeps        what this variant keeps from today
+     * @param letsGo       what it deliberately lets go of
+     * @param previewUrl   cover image, a plain GET the client's session authorises
+     */
+    public record Decision(
+        String label,
+        String descriptor,
+        String tagline,
+        String headlineFont,
+        String summary,
+        String personality,
+        List<String> palette,
+        List<String> keeps,
+        List<String> letsGo,
+        String bet,
+        String risk,
+        String previewUrl
     ) {}
 
     /**
