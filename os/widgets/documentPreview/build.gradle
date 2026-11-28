@@ -1,0 +1,5 @@
+// Widget module — its WidgetDescriptor bean plus its client module at static/widgets/<type>/.
+dependencies {
+    implementation project(':os:widget-sdk')
+    compileOnly 'org.springframework:spring-context'   // provided by the adopting app
+}

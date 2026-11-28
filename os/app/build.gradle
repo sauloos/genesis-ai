@@ -43,6 +43,7 @@ dependencies {
     implementation project(':os:widgets:dashboardAgents')
     implementation project(':os:widgets:dashboardAssets')
     implementation project(':os:widgets:variantChooser')
+    implementation project(':os:widgets:documentPreview')
     implementation project(':os:widgets:agentSubscriptions')
     implementation project(':os:widgets:agentInbox')
 

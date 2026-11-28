@@ -81,9 +81,22 @@ export function mount(container, widget, ctx) {
   };
 
   // One native <dialog> does both jobs: look inside, and confirm. Focus is trapped and Escape closes it.
-  const openDialog = (item, variant, mode, controls, pageError) => {
+  const openDialog = async (item, variant, mode, controls, pageError) => {
     const d = variant.decision || {};
     const name = d.label || variant.key;
+    // "Look inside" opens the page viewer (documentPreview). When previews are off or fail, the
+    // single cover image below is the fallback, so the chooser always keeps working.
+    if (mode === 'look') {
+      try {
+        const viewer = await import('/widgets/documentPreview/viewer.js');
+        await viewer.openDocumentPreview({
+          workItemId: item.id, variantKey: variant.key,
+          chooseLabel: `Choose ${name}`,
+          onChoose: () => openDialog(item, variant, 'confirm', controls, pageError),
+        });
+        return;
+      } catch (e) { /* fall through to the cover dialog */ }
+    }
     const dialog = el('dialog', 'vc-dialog');
     const titleId = `vc-title-${Math.random().toString(36).slice(2, 8)}`;
     dialog.setAttribute('aria-labelledby', titleId);

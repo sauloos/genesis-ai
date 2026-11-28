@@ -1,0 +1,56 @@
+/* Viewer chrome, styled only through --theme-* tokens. PhotoSwipe's own sheet is vendored. */
+.pswp {
+  --pswp-bg: var(--theme-body-bg);
+  --pswp-icon-color: var(--theme-text-primary);
+  --pswp-icon-color-secondary: var(--theme-body-bg);
+  --pswp-icon-stroke-color: var(--theme-body-bg);
+  --pswp-placeholder-bg: var(--theme-card-bg);
+  --pswp-error-text-color: var(--theme-text-muted);
+  font-family: inherit;
+}
+.pswp .pswp__counter { color: var(--theme-text-muted); }
+
+.dp-caption {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 10;
+  display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; justify-content: center;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--theme-body-bg) 88%, transparent);
+  color: var(--theme-text-primary); font-size: 14px; pointer-events: none;
+}
+.dp-caption-title { font-weight: 600; }
+.dp-caption-total { color: var(--theme-text-muted); font-size: 13px; }
+
+.dp-choose { position: absolute; right: 16px; bottom: calc(56px + env(safe-area-inset-bottom)); z-index: 11; }
+.dp-choose-btn {
+  min-height: 44px; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer;
+  background: var(--theme-text-primary); color: var(--theme-body-bg); font: inherit; font-weight: 600;
+}
+.dp-choose-btn:focus-visible { outline: 2px solid var(--theme-text-primary); outline-offset: 3px; }
+
+.dp-skip {
+  box-sizing: border-box; width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 140px); overflow-y: auto;
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 28px 24px; text-align: left; border-radius: 12px;
+  background: var(--theme-card-bg); border: 1px solid var(--theme-card-border); color: var(--theme-text-primary);
+}
+.dp-skip-kicker { margin: 0 0 6px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--theme-text-muted); }
+.dp-skip-title { margin: 0 0 14px; font-size: 22px; text-wrap: balance; }
+.dp-skip-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; line-height: 1.45; }
+.dp-skip-item span { color: var(--theme-text-muted); }
+.dp-skip-hint { margin: 16px 0 0; font-size: 13px; color: var(--theme-text-muted); }
+
+/* Launcher (documentPreview widget) */
+.widget-document-preview .dp-heading { margin: 0 0 6px; }
+.widget-document-preview .dp-intro { margin: 0 0 18px; color: var(--theme-text-muted); max-width: 62ch; }
+.widget-document-preview .dp-list { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.widget-document-preview .dp-doc {
+  display: flex; flex-direction: column; gap: 4px; padding: 16px; text-align: left; cursor: pointer; font: inherit;
+  border: 1px solid var(--theme-card-border); border-radius: 10px;
+  background: var(--theme-card-bg); color: var(--theme-text-primary);
+}
+.widget-document-preview .dp-doc:hover { border-color: var(--theme-text-primary); }
+.widget-document-preview .dp-doc:focus-visible { outline: 2px solid var(--theme-text-primary); outline-offset: 2px; }
+.widget-document-preview .dp-doc-title { font-weight: 600; }
+.widget-document-preview .dp-doc-sub { color: var(--theme-text-muted); font-size: 14px; }
+.widget-document-preview .dp-status { color: var(--theme-text-muted); }
+.widget-document-preview .dp-status-error { color: var(--theme-danger); }
+@media (prefers-reduced-motion: reduce) { .pswp { --pswp-transition-duration: 0ms; } }
