@@ -1,2 +1,2 @@
-model: claude-opus-5
+model: claude-opus-5-5
 max-tokens: 9000

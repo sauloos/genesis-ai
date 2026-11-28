@@ -5,7 +5,7 @@
 # On the orchestrator's model, not the specialists'. This step decides what three brands the client
 # will be shown and is read by five agents across three directions, so an error here costs the
 # whole engagement rather than one deliverable — the same reasoning as purpose-playbook itself.
-model: claude-opus-5
+model: claude-opus-5-5
 # Three briefs, each carrying eleven fields of the purpose-to-direction output contract plus the
 # shared invariants: substantial, but a fraction of the playbook it is derived from.
 max-tokens: 16000

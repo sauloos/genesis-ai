@@ -43,8 +43,8 @@ public class KnowledgeCaseService implements KnowledgeCases {
     private final ObjectMapper objectMapper;
     private final ChatClient chatClient;
 
-    @Value("${genesis.knowledge.cases.model:claude-opus-5}")
-    private String model = "claude-opus-5";
+    @Value("${genesis.knowledge.cases.model:claude-opus-5-5}")
+    private String model = "claude-opus-5-5";
 
     @Value("${genesis.knowledge.cases.max-tokens:3000}")
     private int maxTokens = 3000;

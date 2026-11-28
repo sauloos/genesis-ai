@@ -62,7 +62,9 @@ public class AnthropicThinkingCompat {
             String model = obj.path("model").asText("");
             if (models.stream().noneMatch(model::startsWith)) return body;
             if (!"disabled".equals(obj.path("thinking").path("type").asText())) return body;
-            obj.set("thinking", MAPPER.createObjectNode().put("type", "adaptive"));
+            // "omitted" keeps the reasoning text out of the response, so it can never reach a streamed
+            // chat or a JSON parser; the model may still emit an (empty) thinking block.
+            obj.set("thinking", MAPPER.createObjectNode().put("type", "adaptive").put("display", "omitted"));
             JsonNode existing = obj.get("output_config");
             ObjectNode cfg = existing instanceof ObjectNode o ? o : obj.putObject("output_config");
             if (!cfg.has("effort")) cfg.put("effort", effort);

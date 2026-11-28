@@ -4,7 +4,7 @@
 # Consultant history built on it. So it is configured on the orchestrator's model, not the
 # specialists', and given room for a document of real length: the structure module's target is the
 # lower half of 48k-88k characters across ~30 sections.
-model: claude-opus-5
+model: claude-opus-5-5
 # 64000, not the 32000 this started on, because 32000 was the binding constraint rather than a
 # budget: the first real generation hit the cap mid-object and failed to parse, and only the blind
 # retry came back inside it. Opus 5 allows 128000 output tokens, so this is headroom for a document

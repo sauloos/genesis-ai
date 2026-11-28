@@ -6,7 +6,7 @@
 # On the orchestrator's model for the same reason as `direction-brief`: this step decides what
 # three brands the client is shown, and five agents across three directions read the result, so an
 # error here costs the whole engagement rather than one deliverable.
-model: claude-opus-5
+model: claude-opus-5-5
 # Three briefs with a shared foundation block. Lower than `direction-brief`'s 16000 because the
 # legacy output contract is much thinner — four foundation fields and three brands, against the
 # eleven-field purpose derivation. This is the value the path has always run at, carried over

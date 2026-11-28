@@ -5,10 +5,13 @@ import org.springframework.ai.chat.metadata.ChatResponseMetadata;
 import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 import reactor.core.publisher.Flux;
 
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -41,7 +44,7 @@ public class MeteredChatModel implements ChatModel {
             usage.recordChat(modelOf(response, prompt), tokens(u.getPromptTokens()), tokens(u.getCompletionTokens()),
                 cacheRead(u), cacheWrite(u), scope, hint);
         }
-        return response;
+        return withoutThinking(response);
     }
 
     @Override
@@ -56,6 +59,7 @@ public class MeteredChatModel implements ChatModel {
         AtomicLong cacheWrite = new AtomicLong();
         AtomicReference<String> model = new AtomicReference<>();
         return delegate.stream(prompt)
+            .map(MeteredChatModel::withoutThinking)
             .doOnNext(r -> {
                 Usage u = usageOf(r);
                 if (u != null) {
@@ -89,6 +93,25 @@ public class MeteredChatModel implements ChatModel {
         String hint = UsageContext.agentHint();
         UsageContext.clearAgentHint();
         return hint;
+    }
+
+    /**
+     * Models that think adaptively may put a thinking block before the answer, and Spring AI
+     * turns it into the first generation, so {@code getResult()} would be empty or be the
+     * reasoning instead of the answer. Callers only ever want the answer: drop those
+     * generations (thinking blocks carry a "signature", redacted ones "data").
+     */
+    static ChatResponse withoutThinking(ChatResponse response) {
+        if (response == null || response.getResults() == null || response.getResults().size() < 2) return response;
+        List<Generation> answer = response.getResults().stream().filter(g -> !isThinking(g)).toList();
+        if (answer.isEmpty() || answer.size() == response.getResults().size()) return response;
+        return ChatResponse.builder().from(response).generations(answer).build();
+    }
+
+    private static boolean isThinking(Generation g) {
+        if (g.getOutput() == null) return false;
+        Map<String, Object> props = g.getOutput().getMetadata();
+        return props != null && (props.containsKey("signature") || props.containsKey("data"));
     }
 
     // Anthropic reports prompt-cache tokens apart from input_tokens; they sit on the native usage.

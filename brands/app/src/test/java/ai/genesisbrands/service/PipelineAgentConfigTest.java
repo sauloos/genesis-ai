@@ -35,7 +35,7 @@ class PipelineAgentConfigTest {
     @Test
     void theLegacyDerivationReadsItsModelAndCapFromConfig() {
         AgentProperties.AgentConfig config = props.defaults(BriefDerivationService.AGENT_ID);
-        assertThat(config.getModel()).isEqualTo("claude-opus-5");
+        assertThat(config.getModel()).isEqualTo("claude-opus-5-5");
         assertThat(config.getMaxTokens()).isEqualTo(8000);
         // An engagement old enough to need this path predates the Layer 1 signal keys, so there is
         // nothing to tell Layer 2 precedent apart from noise for it.
@@ -45,7 +45,7 @@ class PipelineAgentConfigTest {
     @Test
     void thePurposePlaybookDerivationReadsItsModelAndCapFromConfig() {
         AgentProperties.AgentConfig config = props.defaults(PurposePlaybookBriefDerivation.AGENT_ID);
-        assertThat(config.getModel()).isEqualTo("claude-opus-5");
+        assertThat(config.getModel()).isEqualTo("claude-opus-5-5");
         assertThat(config.getMaxTokens()).isEqualTo(16000);
         assertThat(config.getRag().isEnabled()).isTrue();
     }

@@ -29,6 +29,7 @@ class AnthropicThinkingCompatTest {
         byte[] in = b("{\"model\":\"claude-opus-5-5\",\"max_tokens\":10,\"thinking\":{\"type\":\"disabled\"}}");
         JsonNode out = M.readTree(AnthropicThinkingCompat.rewrite(in, MODELS, "low"));
         assertThat(out.path("thinking").path("type").asText()).isEqualTo("adaptive");
+        assertThat(out.path("thinking").path("display").asText()).isEqualTo("omitted");
         assertThat(out.path("output_config").path("effort").asText()).isEqualTo("low");
         assertThat(out.path("max_tokens").asInt()).isEqualTo(10);
     }
