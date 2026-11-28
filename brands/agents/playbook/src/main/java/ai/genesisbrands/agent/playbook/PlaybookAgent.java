@@ -160,6 +160,7 @@ public class PlaybookAgent {
             // failing the whole parse.
             Map<String, Object> map = objectMapper.reader()
                 .with(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS)
+                .with(JsonReadFeature.ALLOW_TRAILING_COMMA)
                 .readValue(json, Map.class);
 
             List<String> recommendedApplications = (List<String>) map.getOrDefault("recommendedApplications", List.of());

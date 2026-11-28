@@ -310,6 +310,7 @@ public class PurposePlaybookBriefDerivation {
             }
             map = objectMapper.reader()
                 .with(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS)
+                .with(JsonReadFeature.ALLOW_TRAILING_COMMA)
                 .readValue(json, Map.class);
         } catch (Exception e) {
             throw new IllegalStateException(

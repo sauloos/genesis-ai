@@ -92,6 +92,7 @@ public class BaselineVisualIdentityService {
             }
             Map<String, Object> map = objectMapper.reader()
                 .with(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS)
+                .with(JsonReadFeature.ALLOW_TRAILING_COMMA)
                 .readValue(json, Map.class);
 
             List<Map<String, String>> paletteMaps = (List<Map<String, String>>) map.get("colorPalette");

@@ -111,6 +111,7 @@ public class CopyEvaluator {
             }
             Map<String, Object> map = objectMapper.reader()
                 .with(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS)
+                .with(JsonReadFeature.ALLOW_TRAILING_COMMA)
                 .readValue(json, Map.class);
 
             EvaluationResult.Verdict verdict = EvaluationResult.Verdict.valueOf((String) map.get("verdict"));

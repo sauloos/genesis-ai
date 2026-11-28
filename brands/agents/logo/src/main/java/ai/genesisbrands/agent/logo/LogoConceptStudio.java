@@ -356,6 +356,7 @@ public class LogoConceptStudio {
         }
         return objectMapper.reader()
             .with(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS)
+                .with(JsonReadFeature.ALLOW_TRAILING_COMMA)
             .readValue(json, Map.class);
     }
 
