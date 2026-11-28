@@ -1,5 +1,6 @@
 package ai.genesisbrands.usage;
 
+import org.springframework.ai.anthropic.api.AnthropicApi;
 import org.springframework.ai.chat.metadata.ChatResponseMetadata;
 import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.model.ChatModel;
@@ -37,7 +38,8 @@ public class MeteredChatModel implements ChatModel {
         ChatResponse response = delegate.call(prompt);
         Usage u = usageOf(response);
         if (u != null) {
-            usage.recordChat(modelOf(response, prompt), tokens(u.getPromptTokens()), tokens(u.getCompletionTokens()), scope, hint);
+            usage.recordChat(modelOf(response, prompt), tokens(u.getPromptTokens()), tokens(u.getCompletionTokens()),
+                cacheRead(u), cacheWrite(u), scope, hint);
         }
         return response;
     }
@@ -50,6 +52,8 @@ public class MeteredChatModel implements ChatModel {
         // later ones, so the largest value seen for each is the call's total.
         AtomicLong in = new AtomicLong();
         AtomicLong out = new AtomicLong();
+        AtomicLong cacheRead = new AtomicLong();
+        AtomicLong cacheWrite = new AtomicLong();
         AtomicReference<String> model = new AtomicReference<>();
         return delegate.stream(prompt)
             .doOnNext(r -> {
@@ -57,13 +61,15 @@ public class MeteredChatModel implements ChatModel {
                 if (u != null) {
                     in.accumulateAndGet(tokens(u.getPromptTokens()), Math::max);
                     out.accumulateAndGet(tokens(u.getCompletionTokens()), Math::max);
+                    cacheRead.accumulateAndGet(cacheRead(u), Math::max);
+                    cacheWrite.accumulateAndGet(cacheWrite(u), Math::max);
                 }
                 String m = r.getMetadata() == null ? null : r.getMetadata().getModel();
                 if (m != null && !m.isBlank()) model.set(m);
             })
             .doFinally(signal -> {
-                if (in.get() > 0 || out.get() > 0) {
-                    usage.recordChat(model.get() != null ? model.get() : optionsModel(prompt), in.get(), out.get(), scope, hint);
+                if (in.get() > 0 || out.get() > 0 || cacheRead.get() > 0 || cacheWrite.get() > 0) {
+                    usage.recordChat(model.get() != null ? model.get() : optionsModel(prompt), in.get(), out.get(), cacheRead.get(), cacheWrite.get(), scope, hint);
                 }
             });
     }
@@ -83,6 +89,15 @@ public class MeteredChatModel implements ChatModel {
         String hint = UsageContext.agentHint();
         UsageContext.clearAgentHint();
         return hint;
+    }
+
+    // Anthropic reports prompt-cache tokens apart from input_tokens; they sit on the native usage.
+    private static long cacheRead(Usage u) {
+        return u.getNativeUsage() instanceof AnthropicApi.Usage n ? tokens(n.cacheReadInputTokens()) : 0;
+    }
+
+    private static long cacheWrite(Usage u) {
+        return u.getNativeUsage() instanceof AnthropicApi.Usage n ? tokens(n.cacheCreationInputTokens()) : 0;
     }
 
     private static Usage usageOf(ChatResponse response) {

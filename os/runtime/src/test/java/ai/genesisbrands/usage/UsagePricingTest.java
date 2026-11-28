@@ -20,6 +20,14 @@ class UsagePricingTest {
     }
 
     @Test
+    void cacheReadsBillAtTenthAndWritesAtOneAndAQuarterOfInput() {
+        UsagePricing pricing = new UsagePricing();
+        // Opus 5 at $5/Mtok: 1M uncached = 5.00, 1M read = 0.50, 1M written = 6.25
+        assertThat(pricing.costMicros("claude-opus-5", 1_000_000, 0, 0, 1_000_000, 1_000_000)).isEqualTo(11_750_000);
+        assertThat(pricing.costMicros("claude-opus-5", 1_000_000, 0, 0)).isEqualTo(5_000_000);
+    }
+
+    @Test
     void configuredPricesOverrideDefaults() {
         UsagePricing pricing = new UsagePricing();
         UsagePricing.Price opus55 = new UsagePricing.Price();

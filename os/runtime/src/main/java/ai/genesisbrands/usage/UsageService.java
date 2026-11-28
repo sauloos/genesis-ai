@@ -21,26 +21,37 @@ public class UsageService {
     private final UsagePricing pricing;
 
     public void recordChat(String model, long inputTokens, long outputTokens, UsageScope scope, String agentHint) {
-        record(UsageEvent.Kind.CHAT, model, inputTokens, outputTokens, 0, scope, agentHint);
+        record(UsageEvent.Kind.CHAT, model, inputTokens, outputTokens, 0, 0, 0, scope, agentHint);
+    }
+
+    /** {@code inputTokens} excludes cached tokens; the event stores the full prompt size, priced per kind. */
+    public void recordChat(String model, long inputTokens, long outputTokens, long cacheReadTokens, long cacheWriteTokens,
+                           UsageScope scope, String agentHint) {
+        record(UsageEvent.Kind.CHAT, model, inputTokens, outputTokens, 0, cacheReadTokens, cacheWriteTokens, scope, agentHint);
     }
 
     /** For image models, whose calls carry no token counts (the Logo agent also calls Ideogram over REST). */
     public void recordImage(String model, int images) {
-        record(UsageEvent.Kind.IMAGE, model, 0, 0, images, UsageContext.current(), UsageContext.agentHint());
+        record(UsageEvent.Kind.IMAGE, model, 0, 0, images, 0, 0, UsageContext.current(), UsageContext.agentHint());
     }
 
     /** Never throws: metering must not break the call it measures. */
     void record(UsageEvent.Kind kind, String model, long in, long out, int images, UsageScope scope, String hint) {
+        record(kind, model, in, out, images, 0, 0, scope, hint);
+    }
+
+    void record(UsageEvent.Kind kind, String model, long in, long out, int images, long cacheRead, long cacheWrite,
+                UsageScope scope, String hint) {
         try {
             UsageEvent e = new UsageEvent();
             e.setId(UUID.randomUUID().toString());
             e.setOccurredAt(Instant.now());
             e.setKind(kind);
             e.setModel(model);
-            e.setInputTokens(in);
+            e.setInputTokens(in + cacheRead + cacheWrite);
             e.setOutputTokens(out);
             e.setImages(images);
-            e.setCostMicros(pricing.costMicros(model, in, out, images));
+            e.setCostMicros(pricing.costMicros(model, in, out, images, cacheRead, cacheWrite));
             if (scope != null) {
                 e.setClientUserId(scope.resolveClientUserId());
                 e.setAgentId(scope.agentId() != null ? scope.agentId() : hint);

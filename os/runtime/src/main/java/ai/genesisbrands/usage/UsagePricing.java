@@ -104,10 +104,21 @@ public class UsagePricing {
 
     /** Cost in millionths of a dollar. */
     public long costMicros(String model, long inputTokens, long outputTokens, int images) {
+        return costMicros(model, inputTokens, outputTokens, images, 0, 0);
+    }
+
+    /**
+     * {@code inputTokens} are the uncached input tokens. Prompt-cache reads bill at 0.1x the
+     * input price and cache writes at 1.25x (5-minute cache), as Anthropic publishes them.
+     */
+    public long costMicros(String model, long inputTokens, long outputTokens, int images,
+                           long cacheReadTokens, long cacheWriteTokens) {
         Price p = priceFor(model);
         if (p == null) return 0;
         // $/Mtok × tokens = micro-dollars exactly, so token costs need no scaling.
         BigDecimal micros = p.inputPerMtok.multiply(BigDecimal.valueOf(inputTokens))
+            .add(p.inputPerMtok.multiply(BigDecimal.valueOf(cacheReadTokens)).multiply(new BigDecimal("0.1")))
+            .add(p.inputPerMtok.multiply(BigDecimal.valueOf(cacheWriteTokens)).multiply(new BigDecimal("1.25")))
             .add(p.outputPerMtok.multiply(BigDecimal.valueOf(outputTokens)))
             .add(p.perImage.multiply(BigDecimal.valueOf(images)).multiply(BigDecimal.valueOf(1_000_000)));
         return micros.setScale(0, java.math.RoundingMode.HALF_UP).longValueExact();
