@@ -15,6 +15,8 @@ import ai.genesisbrands.agent.playbook.PlaybookInput;
 import ai.genesisbrands.agent.playbook.PlaybookOutput;
 import ai.genesisbrands.agent.visualidentity.VisualIdentityAgent;
 import ai.genesisbrands.agent.visualidentity.VisualIdentityOutput;
+import ai.genesisbrands.usage.UsageContext;
+import ai.genesisbrands.usage.UsageScope;
 import ai.genesisbrands.model.AgentRegenerationJob;
 import ai.genesisbrands.model.Engagement;
 import ai.genesisbrands.model.EngagementDirectionVersion;
@@ -150,6 +152,10 @@ public class AgentRegenerationService {
 
     @Async
     public void regenerate(String jobId) {
+        scoped(jobId, () -> regenerateWork(jobId));
+    }
+
+    private void regenerateWork(String jobId) {
         AgentRegenerationJob job = jobRepo.findById(jobId)
             .orElseThrow(() -> new RuntimeException("Regeneration job not found: " + jobId));
 
@@ -321,6 +327,10 @@ public class AgentRegenerationService {
      */
     @Async
     public void applyAdminLogo(String jobId, LogoOutput logo) {
+        scoped(jobId, () -> applyAdminLogoWork(jobId, logo));
+    }
+
+    private void applyAdminLogoWork(String jobId, LogoOutput logo) {
         AgentRegenerationJob job = jobRepo.findById(jobId)
             .orElseThrow(() -> new RuntimeException("Regeneration job not found: " + jobId));
         job.setStatus(AgentRegenerationJob.Status.RUNNING);
@@ -377,6 +387,10 @@ public class AgentRegenerationService {
      */
     @Async
     public void applyAdminRebuild(String jobId, String agentId) {
+        scoped(jobId, () -> applyAdminRebuildWork(jobId, agentId));
+    }
+
+    private void applyAdminRebuildWork(String jobId, String agentId) {
         AgentRegenerationJob job = jobRepo.findById(jobId)
             .orElseThrow(() -> new RuntimeException("Regeneration job not found: " + jobId));
         job.setStatus(AgentRegenerationJob.Status.RUNNING);
@@ -426,6 +440,10 @@ public class AgentRegenerationService {
      */
     @Async
     public void applyAdminTextPatch(String jobId) {
+        scoped(jobId, () -> applyAdminTextPatchWork(jobId));
+    }
+
+    private void applyAdminTextPatchWork(String jobId) {
         AgentRegenerationJob job = jobRepo.findById(jobId)
             .orElseThrow(() -> new RuntimeException("Regeneration job not found: " + jobId));
         job.setStatus(AgentRegenerationJob.Status.RUNNING);
@@ -630,5 +648,21 @@ public class AgentRegenerationService {
             engagement.setChosenDirection(current.getChosenDirection());
         });
         engagementRepo.save(engagement);
+    }
+
+    /** Meters a job's model calls to its engagement's client, with the job id as the run id. */
+    private void scoped(String jobId, Runnable work) {
+        String clientUserId = null;
+        String engagementId = null;
+        try {
+            AgentRegenerationJob job = jobRepo.findById(jobId).orElse(null);
+            if (job != null) {
+                engagementId = job.getEngagementId();
+                clientUserId = engagementRepo.findById(engagementId).map(Engagement::getClientUserId).orElse(null);
+            }
+        } catch (RuntimeException ignored) {
+            // metering context is best effort; the job itself still runs
+        }
+        UsageContext.runWith(UsageScope.of(clientUserId, null, "regeneration:" + engagementId, jobId), work);
     }
 }

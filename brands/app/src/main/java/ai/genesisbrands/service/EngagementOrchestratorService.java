@@ -26,6 +26,8 @@ import ai.genesisbrands.agent.purposeplaybook.PurposePlaybookRefinementLoop;
 import ai.genesisbrands.agent.visualidentity.VisualIdentityAgent;
 import ai.genesisbrands.agent.visualidentity.VisualIdentityOutput;
 import ai.genesisbrands.agent.visualidentity.VisualIdentityRefinementLoop;
+import ai.genesisbrands.usage.UsageContext;
+import ai.genesisbrands.usage.UsageScope;
 import ai.genesisbrands.model.Engagement;
 import ai.genesisbrands.model.QuestionnaireAnswer;
 import ai.genesisbrands.model.QuestionnaireQuestion;
@@ -112,7 +114,13 @@ public class EngagementOrchestratorService {
         runEngagementCore(engagement, questions, answers);
     }
 
+    /** Meters the whole pipeline under one run id (the engagement), so its cost can be read back per engagement and client. */
     private void runEngagementCore(Engagement engagement, List<QuestionnaireQuestion> questions, List<QuestionnaireAnswer> answers) {
+        UsageContext.runWith(UsageScope.of(engagement.getClientUserId(), null, "engagement", engagement.getId()),
+            () -> runEngagementPipeline(engagement, questions, answers));
+    }
+
+    private void runEngagementPipeline(Engagement engagement, List<QuestionnaireQuestion> questions, List<QuestionnaireAnswer> answers) {
         String engagementId = engagement.getId();
 
         engagement.setStatus(Engagement.Status.RUNNING);
